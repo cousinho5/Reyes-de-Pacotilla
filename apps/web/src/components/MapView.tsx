@@ -112,7 +112,7 @@ export function MapView({ state, draft, setDraft, act }: Props) {
           />
         )
       )}
-      {!tile && !compose && <p className="hint">Toca una casilla para ver qué hay y dar órdenes desde tus tierras.</p>}
+      {!tile && !compose && <p className="hint">Toca una casilla tuya (las de borde de tu color; al principio, tu castillo) para mover o atacar con sus tropas.</p>}
     </div>
   );
 }
@@ -244,7 +244,7 @@ function Composer({
               Añadir orden
             </button>
           </div>
-          <p className="hint">Las órdenes se guardan en la pestaña Órdenes.</p>
+          <p className="hint">La orden se guarda al añadirla. Puedes verla o quitarla en la pestaña Órdenes.</p>
         </>
       )}
       <button className="link" onClick={() => setCompose(null)}>

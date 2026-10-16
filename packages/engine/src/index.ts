@@ -14,3 +14,4 @@ export * from "./trade";
 export * from "./objectives";
 export * from "./autopilot";
 export * from "./bots";
+export * from "./simulation";
