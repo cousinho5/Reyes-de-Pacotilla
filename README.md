@@ -61,6 +61,10 @@ Para desarrollar el cliente con recarga en caliente: `npm run dev:web` (en otra 
 
 ## Publicar en Cloudflare
 
+**Automático (recomendado):** cada vez que se une algo a `main`, GitHub Actions publica el juego (`.github/workflows/publicar.yml`). Crea la base de datos la primera vez, aplica las migraciones, publica y genera la clave de sesiones y las claves de las notificaciones si faltan. Solo necesita tres secretos del repositorio (**Settings → Secrets and variables → Actions**): `CLOUDFLARE_API_TOKEN` (plantilla "Edit Cloudflare Workers" más el permiso **Cuenta → D1 → Editar**), `CLOUDFLARE_ACCOUNT_ID` y `ADMIN_SECRET` (la clave para crear partidas). También se puede lanzar a mano desde la pestaña **Actions**.
+
+**A mano**, si alguna vez hace falta:
+
 1. Crear la base de datos (una vez): `npx wrangler d1 create reyes` y copiar el `database_id` en `apps/server/wrangler.toml`.
 2. Guardar los secretos: `npx wrangler secret put SESSION_SECRET` (una cadena larga al azar) y `npx wrangler secret put ADMIN_SECRET`.
    Para las notificaciones, generar claves con `node apps/server/scripts/claves-vapid.mjs` y guardar `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` y `VAPID_SUBJECT` (por ejemplo `mailto:tu@correo`) con `wrangler secret put`.
