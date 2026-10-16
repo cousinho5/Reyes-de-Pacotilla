@@ -16,15 +16,18 @@ export const BUILDING_RESOURCE: Record<BuildingKind, keyof Resources> = {
 };
 
 /** Coste de subir AL nivel indicado (índice = nivel destino). */
+// Más Madera que Piedra: la Piedra también se usa para fortificar (simulación del 16-10-2026).
 export const UPGRADE_COST: Record<2 | 3 | 4 | 5, Partial<Resources>> = {
-  2: { madera: 12, piedra: 12 },
-  3: { madera: 25, piedra: 25 },
-  4: { madera: 40, piedra: 40, hierro: 25 },
-  5: { madera: 60, piedra: 60, hierro: 40, oro: 40 },
+  2: { madera: 15, piedra: 10 },
+  3: { madera: 30, piedra: 20 },
+  4: { madera: 50, piedra: 30, hierro: 25 },
+  5: { madera: 75, piedra: 45, hierro: 40, oro: 40 },
 };
 
 /** Coste de reclutar una tropa. */
-export const TROOP_COST: Partial<Resources> = { hierro: 2, pan: 1 };
+// Antes 2 Hierro + 1 Pan: el Hierro era el único recurso escaso y el Pan sobraba.
+// Con 1 Hierro + 2 Pan pasaba lo contrario; 2 + 2 deja los dos justos (simulación del 16-10-2026).
+export const TROOP_COST: Partial<Resources> = { hierro: 2, pan: 2 };
 
 /** Coste de fortificar una casilla y cuántas resoluciones dura. */
 export const FORTIFY_COST: Partial<Resources> = { piedra: 10 };
@@ -61,7 +64,7 @@ export const DEFENSE_BONUS = {
 } as const;
 
 /** Mantenimiento semanal: 1 Pan por cada TROOPS_PER_PAN tropas. */
-export const TROOPS_PER_PAN = 4;
+export const TROOPS_PER_PAN = 3;
 /** A partir de esta casilla, cada casilla extra cuesta STRETCH_PAN Pan a la semana. */
 export const STRETCH_FREE_TILES = 4;
 export const STRETCH_PAN = 2;
@@ -132,4 +135,15 @@ export const BOT = {
   castleGarrison: 2,
   /** Aceptan un trato si lo que reciben vale al menos esto por lo que dan. */
   tradeRatio: 1,
+} as const;
+
+/** Umbrales de los objetivos secretos (ver objectives.ts). */
+export const OBJECTIVE_TARGETS = {
+  gold: 200,
+  troops: 40,
+  tiles: 6,
+  tilesTakenFromHouses: 3,
+  tradePartners: 3,
+  validTrades: 10,
+  allBuildingsLevel: 3,
 } as const;

@@ -87,7 +87,7 @@ check("reclutar 2 tropas", recruit.status === 200, recruit);
 const after = (await pablo("GET", `/api/partidas/${gameId}`)).data;
 const castle = after.casillas.find((t) => t.type === "castillo" && t.owner === after.yo.casa);
 check("el castillo tiene 8 tropas (6 + 2)", castle.troops === 8, castle);
-check("reclutar cobra 4 de Hierro y 2 de Pan", after.yo.recursos.hierro === 6 && after.yo.recursos.pan === 8, after.yo.recursos);
+check("reclutar cobra 4 de Hierro y 4 de Pan", after.yo.recursos.hierro === 6 && after.yo.recursos.pan === 6, after.yo.recursos);
 
 const adjacent = after.casillas.filter(
   (t) => Math.abs(t.x - castle.x) + Math.abs(t.y - castle.y) === 1 && t.owner === null,

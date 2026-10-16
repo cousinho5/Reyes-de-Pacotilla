@@ -39,9 +39,9 @@ const ORDERS: Record<Strategy, Parameters<typeof planBotOrders>[0]["margins"] | 
 };
 
 const PREFERRED_OBJECTIVES: Partial<Record<Strategy, ObjectiveKey[]>> = {
-  constructora: ["edificios_nivel_3", "obra_maestra", "oro_100"],
-  conquistadora: ["casilla_ajena", "seis_casillas", "fortaleza", "tropas_30", "dos_puertos"],
-  comerciante: ["comercio_con_todas", "diez_tratos"],
+  constructora: ["edificios_nivel_3", "obra_maestra", "oro_200"],
+  conquistadora: ["casillas_ajenas", "seis_casillas", "fortaleza", "tropas_40", "puerto_y_fortaleza"],
+  comerciante: ["comercio_con_tres", "diez_tratos"],
 };
 
 export interface SimOptions {
@@ -102,7 +102,7 @@ interface HouseState {
   helpUntil: number | null;
   helpWeeks: number;
   deserted: number;
-  tookFromHouse: boolean;
+  takenFromHouses: number;
   achievements: Partial<Record<AchievementKey, number>>;
   prestigeBySunday: number[];
 }
@@ -137,7 +137,7 @@ export function simulateGame(opts: SimOptions): SimGameResult {
       helpUntil: null,
       helpWeeks: 0,
       deserted: 0,
-      tookFromHouse: false,
+      takenFromHouses: 0,
       achievements: {},
       prestigeBySunday: [],
     };
@@ -235,7 +235,7 @@ export function simulateGame(opts: SimOptions): SimGameResult {
       else combatsVsHouse++;
       if (e.conquered && e.winner != null && e.previousOwner != null) {
         conquestsFromHouses++;
-        byId.get(e.winner)!.tookFromHouse = true;
+        byId.get(e.winner)!.takenFromHouses++;
       }
       if (
         e.conquered &&
@@ -284,7 +284,7 @@ export function simulateGame(opts: SimOptions): SimGameResult {
       partnersAllGame: partners.size,
       otherHouses: houses.length - 1,
       validTradesAllGame: valid,
-      tookTileFromHouse: h.tookFromHouse,
+      tilesTakenFromHouses: h.takenFromHouses,
     });
     const own = tiles.filter((t) => t.owner === h.id);
     return {

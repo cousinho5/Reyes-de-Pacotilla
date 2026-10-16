@@ -362,12 +362,13 @@ export async function finishGame(env: NotifyEnv, game: GameRow, now: Date): Prom
     loadBuildings(db, game.id),
     db.prepare("SELECT house_a, house_b FROM trades WHERE game_id = ? AND valid = 1").bind(game.id).all<{ house_a: number; house_b: number }>(),
     db.prepare(
-      `SELECT DISTINCT json_extract(payload, '$.winner') AS house FROM event_log
+      `SELECT json_extract(payload, '$.winner') AS house, COUNT(*) AS n FROM event_log
        WHERE game_id = ? AND type = 'combate' AND json_extract(payload, '$.conquered') = 1
-         AND json_extract(payload, '$.previousOwner') IS NOT NULL`,
+         AND json_extract(payload, '$.previousOwner') IS NOT NULL
+       GROUP BY house`,
     )
       .bind(game.id)
-      .all<{ house: number }>(),
+      .all<{ house: number; n: number }>(),
   ]);
   const tiles = toEngineTiles(tileRows);
   const prestige = await computeAllPrestige(db, game.id, houses, tiles, now);
@@ -400,7 +401,7 @@ export async function finishGame(env: NotifyEnv, game: GameRow, now: Date): Prom
         partnersAllGame: partners.size,
         otherHouses: houses.length - 1,
         validTradesAllGame: valid,
-        tookTileFromHouse: takes.results.some((t) => t.house === h.id),
+        tilesTakenFromHouses: takes.results.find((t) => t.house === h.id)?.n ?? 0,
       });
     const p = prestige.get(h.id)!;
     const total = p.total + (met ? PRESTIGE.secretObjective : 0);

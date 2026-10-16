@@ -9,14 +9,14 @@ describe("Acciones", () => {
   it("mejorar: coste del siguiente nivel, sin pasar de 5 y sin recursos negativos", () => {
     expect(checkUpgrade({ ...levels }, "cantera", rich)).toEqual({
       ok: true,
-      value: { cost: { madera: 12, piedra: 12 }, newLevel: 2 },
+      value: { cost: { madera: 15, piedra: 10 }, newLevel: 2 },
     });
     expect(checkUpgrade({ ...levels }, "mercado", rich).ok).toBe(false);
     expect(checkUpgrade({ ...levels }, "cantera", poor).ok).toBe(false);
   });
 
-  it("reclutar: 2 Hierro y 1 Pan por tropa", () => {
-    expect(checkRecruit(5, rich)).toEqual({ ok: true, value: { cost: { hierro: 10, pan: 5 } } });
+  it("reclutar: 2 Hierro y 2 Pan por tropa", () => {
+    expect(checkRecruit(5, rich)).toEqual({ ok: true, value: { cost: { hierro: 10, pan: 10 } } });
     expect(checkRecruit(5, poor).ok).toBe(false);
     expect(checkRecruit(0, rich).ok).toBe(false);
   });
@@ -38,13 +38,13 @@ describe("Mantenimiento del domingo", () => {
   ];
 
   it("con Pan suficiente se paga y no deserta nadie", () => {
-    expect(applyUpkeep(tiles, 1, 10)).toMatchObject({ cost: 4, paid: 4, deserted: 0 });
+    expect(applyUpkeep(tiles, 1, 10)).toMatchObject({ cost: 6, paid: 6, deserted: 0 });
   });
 
   it("sin Pan desertan primero las tropas más alejadas del castillo", () => {
-    const r = applyUpkeep(tiles, 1, 2); // faltan 2 Pan: desertan 8 tropas
-    expect(r).toMatchObject({ cost: 4, paid: 2, deserted: 8 });
-    expect(r.tiles.map((t) => t.troops)).toEqual([8, 0, 0]);
+    const r = applyUpkeep(tiles, 1, 2); // 16 tropas cuestan 6; faltan 4 Pan: desertan 12 tropas
+    expect(r).toMatchObject({ cost: 6, paid: 2, deserted: 12 });
+    expect(r.tiles.map((t) => t.troops)).toEqual([4, 0, 0]);
   });
 });
 

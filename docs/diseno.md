@@ -80,10 +80,12 @@ Cinco recursos. En las reglas, la interfaz y el código se usa siempre la misma 
 
 | Subir a | Coste | Total |
 | --- | --- | --- |
-| Nivel 2 | 12 Madera + 12 Piedra | 24 |
-| Nivel 3 | 25 Madera + 25 Piedra | 50 |
-| Nivel 4 | 40 Madera + 40 Piedra + 25 Hierro | 105 |
-| Nivel 5 | 60 Madera + 60 Piedra + 40 Hierro + 40 Oro | 200 |
+| Nivel 2 | 15 Madera + 10 Piedra | 25 |
+| Nivel 3 | 30 Madera + 20 Piedra | 50 |
+| Nivel 4 | 50 Madera + 30 Piedra + 25 Hierro | 105 |
+| Nivel 5 | 75 Madera + 45 Piedra + 40 Hierro + 40 Oro | 200 |
+
+Las mejoras piden más Madera que Piedra porque la Piedra también sirve para fortificar (ajuste tras la simulación del 16 de octubre de 2026: la Madera sobraba y la Piedra iba justa).
 
 Una mejora se nota en la producción del día siguiente. En la simulación, quien solo construye tiene casi todo a nivel 5 al final de la sexta semana, no antes, así que construir siempre tiene sentido.
 
@@ -182,7 +184,7 @@ Cada día puedes hacer, sin límite más allá de lo que puedas pagar:
 | Acción | Coste | Efecto |
 | --- | --- | --- |
 | Mejorar un edificio | Ver tabla de la sección 5 | Sube un nivel; la producción aumenta al día siguiente. |
-| Reclutar | 2 Hierro + 1 Pan por tropa | Las tropas aparecen en tu castillo y pueden recibir órdenes para la siguiente resolución. |
+| Reclutar | 2 Hierro + 2 Pan por tropa | Las tropas aparecen en tu castillo y pueden recibir órdenes para la siguiente resolución. |
 | Fortificar una casilla tuya | 10 Piedra | +25% de defensa durante las dos resoluciones siguientes. |
 | Dar órdenes | Gratis | Mover, atacar, apoyar o mantener (sección 8). |
 | Comerciar | Gratis | Ofertas, contraofertas y tratados (sección 9). |
@@ -255,7 +257,7 @@ Las tropas se mueven como máximo una casilla por resolución, dos por semana.
 
 ### 8.6 Mantenimiento
 
-- **Cada domingo:** 1 Pan por cada 4 tropas. Si no puedes pagar, desertan las tropas que falten por cubrir, empezando por las más alejadas del castillo.
+- **Cada domingo:** 1 Pan por cada 3 tropas. Si no puedes pagar, desertan las tropas que falten por cubrir, empezando por las más alejadas del castillo.
 
 - **Estirarse cuesta:** a partir de la quinta casilla controlada, cada casilla extra cuesta 2 Pan más por semana. Es un freno suave al que más se expande.
 
@@ -327,7 +329,7 @@ Pocos y públicos, que dan Prestigio permanente:
 
 Al empezar, cada casa recibe dos objetivos al azar y elige uno. Nadie más lo conoce. Si al final de la partida se cumple, da **+6 de Prestigio**, y se revela en el último boletín.
 
-Catálogo actual (10, en `packages/engine/src/objectives.ts`): controlar 2 puertos al final; tener los 5 edificios a nivel 3 o más; terminar con 100 Oro o más; cerrar tratos válidos con todas las demás casas; controlar una fortaleza al final; tomar al menos una casilla a otra casa; terminar con 30 tropas o más; controlar 6 casillas o más al final; tener un edificio a nivel 5; cerrar 10 tratos válidos. Con la versión 1 se añadirán los de subastas (ganar 2 Gran Subastas) y pactos (firmar 2 pactos sin romper ninguno).
+Catálogo actual (10, en `packages/engine/src/objectives.ts`, umbrales en `rules.ts`): controlar un puerto y una fortaleza al final; tener los 5 edificios a nivel 3 o más; terminar con 200 Oro o más; cerrar tratos válidos con 3 casas distintas; controlar una fortaleza al final; tomar 3 casillas a otras casas; terminar con 40 tropas o más; controlar 6 casillas o más al final; tener un edificio a nivel 5; cerrar 10 tratos válidos. Los umbrales se ajustaron con la simulación del 16 de octubre de 2026: con los anteriores, terminar con 100 Oro se cumplía casi siempre y controlar 2 puertos o comerciar con todas casi nunca. Con la versión 1 se añadirán los de subastas (ganar 2 Gran Subastas) y pactos (firmar 2 pactos sin romper ninguno).
 
 El objetivo se elige antes de la primera resolución; quien no elige se queda con la primera opción.
 
@@ -618,14 +620,14 @@ Pixel art en lo jugable, interfaz plana y limpia en lo informativo y un toque de
 2. **Script de simulación:** partidas con jugadores ficticios para afinar costes, guarniciones y Prestigio. Comparte el motor con el juego.
 3. **MVP 1 (hecho):** cuentas por invitación y código, casa (nombre, color y lema), mapa justo con niebla de guerra, producción, construir, reclutar, fortificar, órdenes de mover y apoyar con simulación, resolución con rebotes, mantenimiento con deserciones, ayuda al último y Prestigio en vivo.
 4. **MVP 2 (hecho):** comercio (ofertas públicas y dirigidas, contraofertas y aceptación atómica sin dobles aceptaciones), objetivos secretos, logros de primera fortaleza y obra maestra, piloto automático y modo vacaciones, notificaciones push y final de partida con revelación de objetivos y coronación.
-5. **Partida piloto de 2 semanas** con los amigos.
+5. **Partida piloto de 4 semanas** con los amigos (en la simulación, las partidas de 2 semanas las gana casi siempre quien va primero en la segunda semana). Antes, partidas de prueba contra bots y el simulador (`npm run simular`, resultados en `docs/simulaciones.md`).
 6. **Versión 1:** Gran Subasta y cartas, eventos, boletín con Fray Abundio (incluido el soborno), creador de escudos y lemas, y botón de compartir en WhatsApp.
 7. **Primera partida completa de 6 semanas.**
 8. **Versión 2:** tratados comerciales, mensajes privados, temporadas, títulos y la Crónica Definitiva.
 
 ## 22. Valores a afinar
 
-Todos son valores de partida, comprobados con una simulación sencilla. Se afinarán con el script de simulación y la partida piloto:
+Todos son valores de partida. El simulador (`npm run simular`) ya ajustó el coste de las tropas, el mantenimiento, los costes de mejora y los objetivos secretos (ver `docs/simulaciones.md`). Quedan por afinar, con más simulaciones y la partida piloto:
 
 - Costes de mejora (objetivo: que solo construyendo no se llegue a todo nivel 5 antes de la última semana).
 - Guarniciones neutrales (objetivo: la expansión ocupa las dos o tres primeras semanas y después llega el contacto entre casas).
@@ -641,7 +643,7 @@ Todos son valores de partida, comprobados con una simulación sencilla. Se afina
 **Decidido**
 
 - Juego de navegador para 4-8 amigos, con una sesión corta al día y dos resoluciones por semana.
-- Partidas de 6 semanas (configurables a 4, 6 u 8), con una piloto de 2 semanas antes de la primera completa. El número de jugadores se fija al invitar.
+- Partidas de 6 semanas (configurables a 4, 6 u 8), con una piloto de 4 semanas antes de la primera completa. El número de jugadores se fija al invitar.
 - Mezcla de comercio, conquista y construcción, sin puntos de acción.
 - Prestigio en vivo, logros y objetivo secreto.
 - Combate determinista con apoyos y rebotes, al estilo de Diplomacy, y niebla de guerra.
@@ -688,7 +690,7 @@ Todos son valores de partida, comprobados con una simulación sencilla. Se afina
 
 **Próximos pasos**
 
-1. Publicar en Cloudflare y jugar la partida piloto de 2 semanas con el grupo.
+1. Publicar en Cloudflare (hecho) y jugar la partida piloto de 4 semanas con el grupo.
 2. Completar los catálogos de eventos y cartas, y los objetivos secretos de subastas y pactos.
 3. Script de simulación para afinar los números.
 4. Versión 1: Gran Subasta y cartas, eventos, boletín de Fray Abundio con soborno, creador de escudos, pixel art y botón de compartir en WhatsApp.

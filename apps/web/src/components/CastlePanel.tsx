@@ -30,7 +30,10 @@ export function CastlePanel({ state, gameId, act }: Props) {
   const recruitCost: Partial<Resources> = { hierro: (TROOP_COST.hierro ?? 0) * recruit, pan: (TROOP_COST.pan ?? 0) * recruit };
   const myCastle = state.casillas?.find((t) => t.type === "castillo" && t.owner === state.yo.casa);
   const active = state.partida.estado === "active";
-  const maxRecruit = Math.max(1, Math.min(Math.floor(res.hierro / 2), res.pan, 50));
+  const maxRecruit = Math.max(
+    1,
+    Math.min(50, ...(Object.entries(TROOP_COST) as [Resource, number][]).map(([r, v]) => Math.floor(res[r] / v))),
+  );
 
   return (
     <div>
@@ -117,7 +120,7 @@ export function CastlePanel({ state, gameId, act }: Props) {
       <section className="card">
         <h2>Reclutar</h2>
         <p className="muted">
-          Las tropas aparecen en tu castillo ({myCastle?.troops ?? 0} ahora). Cada una cuesta 2 de Hierro y 1 de Pan.
+          Las tropas aparecen en tu castillo ({myCastle?.troops ?? 0} ahora). Cada una cuesta {TROOP_COST.hierro} de Hierro y {TROOP_COST.pan} de Pan.
         </p>
         <label>
           Tropas: <strong>{recruit}</strong>

@@ -6,7 +6,7 @@ export function Create() {
   const [clave, setClave] = useState("");
   const [nombre, setNombre] = useState("");
   const [creador, setCreador] = useState("");
-  const [semanas, setSemanas] = useState(2);
+  const [semanas, setSemanas] = useState(4);
   const [prueba, setPrueba] = useState(false);
   const [bots, setBots] = useState(4);
   const [error, setError] = useState<string | null>(null);
@@ -84,8 +84,8 @@ export function Create() {
         <label>
           Duración
           <select value={semanas} onChange={(e) => setSemanas(Number(e.target.value))}>
-            <option value={2}>2 semanas (partida piloto)</option>
-            <option value={4}>4 semanas</option>
+            <option value={2}>2 semanas (prueba rápida)</option>
+            <option value={4}>4 semanas (partida piloto)</option>
             <option value={6}>6 semanas (estándar)</option>
             <option value={8}>8 semanas</option>
           </select>
