@@ -5,6 +5,7 @@
 import { checkFortify, checkUpgrade, recruitCost } from "./actions";
 import { canAfford, upgradeCost, weeklyUpkeep } from "./economy";
 import { areAdjacent } from "./map";
+import { TROOP_COST } from "./rules";
 import { BUILDINGS, type BuildingKind, type HouseId, type Resources, type Tile, type TileId } from "./types";
 
 export type AutopilotTemplate = "defensiva" | "economica" | "equilibrada";
@@ -75,7 +76,12 @@ export function planAutopilot(input: AutopilotInput): AutopilotPlan {
   const troops = own.reduce((a, t) => a + t.troops, 0);
   const controlled = own.filter((t) => t.type !== "castillo").length;
   const reservePan = weeklyUpkeep(troops + MAX_RECRUIT, controlled);
-  let n = Math.min(MAX_RECRUIT, Math.floor(left.hierro / 2), Math.max(0, left.pan - reservePan));
+  // Lo que se pueda pagar con TROOP_COST, sin tocar el Pan reservado para el mantenimiento.
+  let n = MAX_RECRUIT;
+  for (const [r, v] of Object.entries(TROOP_COST) as [keyof Resources, number][]) {
+    const usable = left[r] - (r === "pan" ? reservePan : 0);
+    n = Math.min(n, Math.max(0, Math.floor(usable / v)));
+  }
   while (n > 0 && !canAfford(left, recruitCost(n))) n--;
   if (n > 0) {
     plan.recruit = n;

@@ -43,16 +43,23 @@ describe("Objetivos secretos", () => {
       partnersAllGame: 2,
       otherHouses: 3,
       validTradesAllGame: 4,
-      tookTileFromHouse: false,
+      tilesTakenFromHouses: 2,
     };
-    expect(objectiveMet("dos_puertos", ctx)).toBe(true);
-    expect(objectiveMet("oro_100", ctx)).toBe(true);
-    expect(objectiveMet("tropas_30", ctx)).toBe(true);
+    expect(objectiveMet("puerto_y_fortaleza", ctx)).toBe(false);
+    expect(objectiveMet("oro_200", ctx)).toBe(false);
+    expect(objectiveMet("oro_200", { ...ctx, gold: 200 })).toBe(true);
+    expect(objectiveMet("tropas_40", ctx)).toBe(false);
+    expect(objectiveMet("tropas_40", { ...ctx, tiles: [...ctx.tiles, { type: "campos", owner: 1, troops: 40 }] })).toBe(true);
     expect(objectiveMet("obra_maestra", ctx)).toBe(true);
     expect(objectiveMet("fortaleza", ctx)).toBe(false);
-    expect(objectiveMet("comercio_con_todas", ctx)).toBe(false);
+    expect(objectiveMet("comercio_con_tres", ctx)).toBe(false);
+    expect(objectiveMet("comercio_con_tres", { ...ctx, partnersAllGame: 3 })).toBe(true);
+    // Con solo 2 rivales basta comerciar con los dos.
+    expect(objectiveMet("comercio_con_tres", { ...ctx, otherHouses: 2 })).toBe(true);
     expect(objectiveMet("edificios_nivel_3", ctx)).toBe(false);
-    expect(objectiveMet("casilla_ajena", ctx)).toBe(false);
+    expect(objectiveMet("casillas_ajenas", ctx)).toBe(false);
+    expect(objectiveMet("casillas_ajenas", { ...ctx, tilesTakenFromHouses: 3 })).toBe(true);
+    expect(objectiveMet("dos_puertos" as never, ctx)).toBe(false); // retirado del catálogo
   });
 });
 
@@ -67,7 +74,7 @@ describe("Piloto automático", () => {
   it("económica: mejora el edificio de menor nivel que pueda pagar", () => {
     const plan = planAutopilot({ ...base, template: "economica", resources: { ...rich } });
     expect(plan.upgrade).toBe("cantera");
-    expect(plan.cost).toEqual({ madera: 12, piedra: 12 });
+    expect(plan.cost).toEqual({ madera: 15, piedra: 10 });
   });
 
   it("defensiva: fortifica la casilla amenazada y recluta guardando Pan", () => {

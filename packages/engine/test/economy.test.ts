@@ -15,9 +15,9 @@ describe("Economía", () => {
     expect(p.hierro).toBe(2 + 3);
   });
 
-  it("costes de mejora del diseño v2", () => {
-    expect(upgradeCost(1)).toEqual({ madera: 12, piedra: 12 });
-    expect(upgradeCost(4)).toEqual({ madera: 60, piedra: 60, hierro: 40, oro: 40 });
+  it("costes de mejora (más Madera que Piedra)", () => {
+    expect(upgradeCost(1)).toEqual({ madera: 15, piedra: 10 });
+    expect(upgradeCost(4)).toEqual({ madera: 75, piedra: 45, hierro: 40, oro: 40 });
     expect(upgradeCost(5)).toBeNull();
   });
 
@@ -26,9 +26,9 @@ describe("Economía", () => {
     expect(() => pay(have, { madera: 12, piedra: 12 })).toThrow();
   });
 
-  it("mantenimiento: 1 Pan cada 4 tropas y 2 Pan por casilla a partir de la quinta", () => {
-    expect(weeklyUpkeep(8, 4)).toBe(2);
-    expect(weeklyUpkeep(9, 6)).toBe(3 + 4);
+  it("mantenimiento: 1 Pan cada 3 tropas y 2 Pan por casilla a partir de la quinta", () => {
+    expect(weeklyUpkeep(9, 4)).toBe(3);
+    expect(weeklyUpkeep(10, 6)).toBe(4 + 4);
   });
 });
 

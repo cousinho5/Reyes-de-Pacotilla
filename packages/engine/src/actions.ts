@@ -61,7 +61,7 @@ export interface UpkeepResult {
 }
 
 /**
- * Mantenimiento del domingo: 1 Pan cada 4 tropas y 2 Pan por casilla a partir
+ * Mantenimiento del domingo: 1 Pan cada 3 tropas y 2 Pan por casilla a partir
  * de la quinta. Si no llega, desertan las tropas que falten por cubrir,
  * empezando por las más alejadas del castillo.
  */
