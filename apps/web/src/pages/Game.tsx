@@ -17,17 +17,16 @@ export function Game({ id }: { id: number }) {
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("mapa");
   const [draft, setDraft] = useState<OrderView[]>([]);
-  const [dirty, setDirty] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
-  // Mientras haya cambios sin sellar, las recargas no pisan el borrador.
-  const dirtyRef = useRef(false);
+  // Mientras se guarda una orden, las recargas no pisan lo que se ve.
+  const savingRef = useRef(false);
 
   const load = useCallback(async () => {
     try {
       const s = await api.game(id);
       setState(s);
       setError(null);
-      if (!dirtyRef.current) setDraft(s.ordenes ?? []);
+      if (!savingRef.current) setDraft(s.ordenes ?? []);
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) navigate("/entrar");
       else setError((err as Error).message);
@@ -80,13 +79,20 @@ export function Game({ id }: { id: number }) {
   const offersForMe = (state.ofertas ?? []).filter((o) => o.estado === "open" && o.para === state.yo.casa).length;
   const p = state.partida;
 
-  const markDirty = (value: boolean) => {
-    dirtyRef.current = value;
-    setDirty(value);
-  };
-  const updateDraft = (orders: OrderView[]) => {
+  // Cada cambio de órdenes se guarda al momento (no hay que "sellar").
+  const updateDraft = async (orders: OrderView[]) => {
+    const removed = orders.length < draft.length;
     setDraft(orders);
-    markDirty(true);
+    savingRef.current = true;
+    try {
+      await api.saveOrders(id, orders);
+      setToast(removed ? "Orden quitada." : "Orden guardada. Se cumplirá en la resolución.");
+    } catch (err) {
+      setToast((err as Error).message);
+    } finally {
+      savingRef.current = false;
+      await load();
+    }
   };
 
   return (
@@ -128,22 +134,7 @@ export function Game({ id }: { id: number }) {
         {tab === "mapa" && <MapView state={state} draft={draft} setDraft={updateDraft} act={act} />}
         {tab === "castillo" && <CastlePanel state={state} act={act} gameId={id} />}
         {tab === "ordenes" && (
-          <OrdersPanel
-            state={state}
-            draft={draft}
-            setDraft={updateDraft}
-            dirty={dirty}
-            onSave={() =>
-              act(async () => {
-                await api.saveOrders(id, draft);
-                markDirty(false);
-              }, "Órdenes selladas. Nadie más las conoce. Por ahora.")
-            }
-            onDiscard={() => {
-              setDraft(state.ordenes ?? []);
-              markDirty(false);
-            }}
-          />
+          <OrdersPanel state={state} draft={draft} setDraft={updateDraft} />
         )}
         {tab === "comercio" && <TradePanel state={state} act={act} />}
         {tab === "reino" && <Realm state={state} />}
@@ -160,7 +151,7 @@ export function Game({ id }: { id: number }) {
           [
             ["mapa", "Mapa"],
             ["castillo", "Castillo"],
-            ["ordenes", dirty ? "Órdenes •" : "Órdenes"],
+            ["ordenes", draft.length > 0 ? `Órdenes (${draft.length})` : "Órdenes"],
             ["comercio", offersForMe > 0 ? `Comercio (${offersForMe})` : "Comercio"],
             ["reino", "Reino"],
           ] as [Tab, string][]

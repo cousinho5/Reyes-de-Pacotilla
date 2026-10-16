@@ -7,6 +7,7 @@ Juego de estrategia asíncrono de navegador para 4-8 amigos. El rey Aldric ha mu
 - [Documento de diseño](docs/diseno.md)
 - [Banco de frases de Fray Abundio](docs/banco-de-frases.md)
 - [Esquema de la base de datos](docs/esquema-bd.md)
+- [Simulaciones de equilibrio](docs/simulaciones.md)
 
 ## Estado: MVP 2
 
@@ -82,6 +83,15 @@ En `/crear`, marca **Partida de prueba** y elige cuántos bots rivales quieres (
 - **Borrar**: elimina la prueba y sus bots.
 
 Los bots construyen y reclutan con el piloto automático, atacan casillas vecinas que pueden ganar y aceptan las ofertas que les salen a cuenta. El reloj de la prueba es simulado: el cron real no la toca y las partidas de verdad no se ven afectadas.
+
+## Simular partidas entre bots
+
+```bash
+npm run simular                                   # 500 partidas de 6 semanas con estrategias mezcladas
+npm run simular -- --partidas 2000 --modo espejo  # todas las casas iguales
+```
+
+Resume qué estrategias ganan, si las especialidades son justas, qué objetivos se cumplen y qué recursos sobran. Resultados y propuestas en [docs/simulaciones.md](docs/simulaciones.md).
 
 ## Crear una partida
 

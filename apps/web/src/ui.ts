@@ -113,6 +113,11 @@ export function timeLeft(iso: string | null | undefined, now = Date.now()): stri
   return `faltan ${h} h ${m} min`;
 }
 
+/** "1 tropa", "3 tropas". */
+export function troops(n: number): string {
+  return `${n} ${n === 1 ? "tropa" : "tropas"}`;
+}
+
 /** Línea de la crónica para un evento (el boletín de Fray Abundio llega en la versión 1). */
 export function describeEvent(e: EventView, houses: HouseInfo[], tiles: TileView[]): string | null {
   const tile = (id: unknown) => tiles.find((t) => t.id === id)?.nombre ?? "una casilla";
@@ -121,9 +126,9 @@ export function describeEvent(e: EventView, houses: HouseInfo[], tiles: TileView
     case "combate":
       if (d.conquered) {
         const prev = d.previousOwner == null ? "la guarnición neutral" : houseName(houses, d.previousOwner);
-        return `${houseName(houses, d.winner)} toma ${tile(d.tile)} a ${prev} y conserva ${d.survivors} tropas.`;
+        return `${houseName(houses, d.winner)} toma ${tile(d.tile)} a ${prev} y conserva ${troops(d.survivors)}.`;
       }
-      return `${tile(d.tile)} resiste: ${houseName(houses, d.winner)} conserva ${d.survivors} tropas.`;
+      return `${tile(d.tile)} resiste: ${houseName(houses, d.winner)} conserva ${troops(d.survivors)}.`;
     case "rebote":
       return `Rebote en ${tile(d.tile)}: ${(d.houses as number[]).map((h) => houseName(houses, h)).join(" y ")} chocan con la misma fuerza y nadie entra.`;
     case "choque_frontal":
@@ -132,15 +137,15 @@ export function describeEvent(e: EventView, houses: HouseInfo[], tiles: TileView
         : `${houseName(houses, d.winner)} gana un choque a medio camino.`;
     case "repliegue":
       return d.arrived
-        ? `${houseName(houses, d.house)} se repliega a ${tile(d.to)} con ${d.troops} tropas. Fray Abundio lo llamará repliegue genial.`
-        : `${houseName(houses, d.house)} no tiene adónde replegarse: sus ${d.troops} tropas se dispersan.`;
+        ? `${houseName(houses, d.house)} se repliega a ${tile(d.to)} con ${troops(d.troops)}. Fray Abundio lo llamará repliegue genial.`
+        : `${houseName(houses, d.house)} no tiene adónde replegarse: sus ${troops(d.troops)} se dispersan.`;
     case "apoyo_cortado":
       return `El apoyo de ${houseName(houses, d.house)} desde ${tile(d.from)} queda cortado por un ataque.`;
     case "movimiento":
-      return `${houseName(houses, d.house)} mueve ${d.troops} tropas a ${tile(d.to)}.`;
+      return `${houseName(houses, d.house)} mueve ${troops(d.troops)} a ${tile(d.to)}.`;
     case "mantenimiento":
       return d.deserted > 0
-        ? `Mantenimiento: costaba ${d.cost} de Pan y solo había ${d.paid}. Desertan ${d.deserted} tropas.`
+        ? `Mantenimiento: costaba ${d.cost} de Pan y solo había ${d.paid}. Desertan: ${troops(d.deserted)}.`
         : `Mantenimiento pagado: ${d.cost} de Pan.`;
     case "ayuda_ultimo":
       return `La Corona ayuda a ${houseName(houses, d.house)}, última en Prestigio, durante la próxima semana.`;
@@ -152,7 +157,7 @@ export function describeEvent(e: EventView, houses: HouseInfo[], tiles: TileView
       const parts = [
         d.upgrade && `mejora ${BUILDING_LABEL[d.upgrade as BuildingKind] ?? d.upgrade}`,
         d.fortify && `fortifica ${tile(d.fortify)}`,
-        d.recruit > 0 && `recluta ${d.recruit} tropas`,
+        d.recruit > 0 && `recluta ${troops(d.recruit)}`,
       ].filter(Boolean);
       return `Tu piloto automático ${parts.length ? parts.join(", ") : "vigila y no toca nada"}.`;
     }

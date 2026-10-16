@@ -37,6 +37,25 @@ describe("Bots de las partidas de prueba", () => {
     expect(planBotOrders({ house: 1, tiles: weak, resolution: 1 })).toEqual([]);
   });
 
+  it("las tropas del interior avanzan hacia la frontera", () => {
+    const tiles = [
+      tile(1, 0, 0, { type: "castillo", owner: 1, castleOf: 1, troops: 8 }),
+      tile(2, 1, 0, { owner: 1, troops: 1 }),
+      tile(3, 2, 0, { type: "fortaleza", troops: 30 }), // demasiado fuerte: no se ataca
+    ];
+    // El castillo no toca nada atacable: manda 6 (guarda 2) a la casilla de la frontera.
+    expect(planBotOrders({ house: 1, tiles, resolution: 1 })).toEqual([{ kind: "move", house: 1, from: 1, to: 2, troops: 6 }]);
+  });
+
+  it("con attackHouses=false no atacan a otras casas", () => {
+    const tiles = [
+      tile(1, 0, 0, { type: "castillo", owner: 1, castleOf: 1, troops: 30 }),
+      tile(2, 1, 0, { owner: 2, troops: 1 }),
+    ];
+    expect(planBotOrders({ house: 1, tiles, resolution: 1 })[0]!.to).toBe(2);
+    expect(planBotOrders({ house: 1, tiles, resolution: 1, attackHouses: false })).toEqual([]);
+  });
+
   it("son deterministas y no modifican la entrada", () => {
     const tiles = [tile(1, 0, 0, { type: "castillo", owner: 1, castleOf: 1, troops: 12 }), tile(2, 1, 0, {})];
     const copy = JSON.parse(JSON.stringify(tiles)) as typeof tiles;

@@ -7,12 +7,9 @@ interface Props {
   state: GameState;
   draft: OrderView[];
   setDraft: (o: OrderView[]) => void;
-  dirty: boolean;
-  onSave: () => void;
-  onDiscard: () => void;
 }
 
-export function OrdersPanel({ state, draft, setDraft, dirty, onSave, onDiscard }: Props) {
+export function OrdersPanel({ state, draft, setDraft }: Props) {
   const tiles = state.casillas ?? [];
   const name = (id: number | null) => tiles.find((t) => t.id === id)?.nombre ?? "?";
   const open = !!state.partida.ordenesAbiertas;
@@ -48,7 +45,8 @@ export function OrdersPanel({ state, draft, setDraft, dirty, onSave, onDiscard }
       <section className="card">
         <h2>Órdenes para la resolución {state.partida.proximaResolucion ?? "—"}</h2>
         <p className="muted">
-          Se resuelven el {formatWhen(state.partida.resolucion)}. Puedes cambiarlas hasta el cierre ({formatWhen(state.partida.cierre)}).
+          Se cumplen todas a la vez el {formatWhen(state.partida.resolucion)}. Se guardan solas en cuanto las das y
+          puedes quitarlas hasta el cierre ({formatWhen(state.partida.cierre)}). Nadie más las ve hasta entonces.
         </p>
         {draft.length === 0 ? (
           <p>Sin órdenes: tus tropas mantendrán sus posiciones. Para dar una, toca una casilla tuya en el mapa.</p>
@@ -84,18 +82,6 @@ export function OrdersPanel({ state, draft, setDraft, dirty, onSave, onDiscard }
               </li>
             ))}
           </ul>
-        )}
-        {open && (
-          <div className="actions">
-            <button className="primary" disabled={!dirty} onClick={onSave}>
-              {dirty ? "Sellar órdenes" : "Órdenes selladas"}
-            </button>
-            {dirty && (
-              <button className="link" onClick={onDiscard}>
-                Deshacer cambios
-              </button>
-            )}
-          </div>
         )}
         {!open && <p className="error">Las órdenes están cerradas hasta la resolución.</p>}
       </section>
