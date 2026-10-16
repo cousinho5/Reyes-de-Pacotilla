@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
+import { Create } from "./pages/Create";
 import { Game } from "./pages/Game";
 import { Home } from "./pages/Home";
 import { Join } from "./pages/Join";
 import { Login } from "./pages/Login";
 
-/** Enrutador mínimo: /, /entrar, /unirse/:codigo, /partida/:id */
+/** Enrutador mínimo: /, /entrar, /crear, /unirse/:codigo, /partida/:id */
 export function navigate(path: string) {
   window.history.pushState(null, "", path);
   window.dispatchEvent(new PopStateEvent("popstate"));
@@ -27,5 +28,6 @@ export function App() {
   if (join) return <Join code={decodeURIComponent(join[1]!)} />;
   if (game) return <Game id={Number(game[1])} />;
   if (path === "/entrar") return <Login />;
+  if (path === "/crear") return <Create />;
   return <Home />;
 }

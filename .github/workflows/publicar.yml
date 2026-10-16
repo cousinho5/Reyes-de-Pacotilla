@@ -1,0 +1,108 @@
+name: Publicar en Cloudflare
+
+# Publica el juego cada vez que se une algo a main (y a mano desde la pestaña
+# Actions). Necesita estos secretos del repositorio:
+#   CLOUDFLARE_API_TOKEN   token con permisos de Workers y D1
+#   CLOUDFLARE_ACCOUNT_ID  cuenta de Cloudflare
+#   ADMIN_SECRET           clave para crear partidas
+# La clave de sesiones y las claves de las notificaciones se generan solas la
+# primera vez y se guardan como secretos del Worker (nunca en el repositorio).
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: publicar
+  cancel-in-progress: false
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - run: npm install -g npm@11
+      - run: npm ci
+
+      - name: Comprobar que están los secretos
+        env:
+          ADMIN_SECRET: ${{ secrets.ADMIN_SECRET }}
+        run: |
+          for s in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID ADMIN_SECRET; do
+            if [ -z "${!s}" ]; then echo "::error::Falta el secreto $s en Settings > Secrets and variables > Actions"; exit 1; fi
+          done
+
+      - name: Pruebas
+        run: npm test
+
+      - name: Compilar el cliente
+        run: npm run build -w @reyes/web
+
+      - name: Base de datos D1 (se crea la primera vez)
+        working-directory: apps/server
+        run: |
+          id=$(npx wrangler d1 list --json | jq -r '.[] | select(.name == "reyes") | .uuid')
+          if [ -z "$id" ]; then
+            echo "Creando la base de datos reyes…"
+            npx wrangler d1 create reyes
+            id=$(npx wrangler d1 list --json | jq -r '.[] | select(.name == "reyes") | .uuid')
+          fi
+          if [ -z "$id" ]; then echo "::error::No se pudo obtener la base de datos"; exit 1; fi
+          sed -i "s/PENDIENTE-crear-con-wrangler-d1-create/$id/" wrangler.toml
+          npx wrangler d1 migrations apply reyes --remote
+
+      - name: Publicar el Worker
+        working-directory: apps/server
+        run: npx wrangler deploy | tee deploy.out
+
+      - name: Secretos del Worker
+        working-directory: apps/server
+        env:
+          ADMIN_SECRET: ${{ secrets.ADMIN_SECRET }}
+        run: |
+          existing=$(npx wrangler secret list --format json | jq -r '.[].name')
+          has() { echo "$existing" | grep -qx "$1"; }
+
+          # La clave de creación de partidas siempre se sincroniza con GitHub.
+          printf '%s' "$ADMIN_SECRET" | npx wrangler secret put ADMIN_SECRET
+
+          # La clave de sesiones se genera una sola vez (cambiarla cerraría todas las sesiones).
+          if ! has SESSION_SECRET; then
+            openssl rand -base64 48 | tr -d '\n' | npx wrangler secret put SESSION_SECRET
+          fi
+
+          # Claves de las notificaciones push, también una sola vez.
+          if ! has VAPID_PRIVATE_KEY; then
+            node scripts/claves-vapid.mjs > vapid.env
+            pub=$(grep VAPID_PUBLIC_KEY vapid.env | cut -d'"' -f2)
+            priv=$(grep VAPID_PRIVATE_KEY vapid.env | cut -d'"' -f2)
+            echo "::add-mask::$priv"
+            printf '%s' "$pub" | npx wrangler secret put VAPID_PUBLIC_KEY
+            printf '%s' "$priv" | npx wrangler secret put VAPID_PRIVATE_KEY
+            printf '%s' "mailto:reyes@example.com" | npx wrangler secret put VAPID_SUBJECT
+            rm vapid.env
+          fi
+
+      - name: Comprobar que el juego responde
+        working-directory: apps/server
+        run: |
+          url=$(grep -oE 'https://[a-z0-9.-]+\.workers\.dev' deploy.out | head -1)
+          if [ -z "$url" ]; then echo "::error::No se encontró la dirección publicada"; exit 1; fi
+          for i in 1 2 3 4 5 6; do
+            if body=$(curl -fsS "$url/api/salud"); then
+              echo "$body"
+              echo "::notice title=Juego publicado::$url"
+              echo "### Reyes de Pacotilla publicado en $url" >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::El juego no responde en $url"
+          exit 1
