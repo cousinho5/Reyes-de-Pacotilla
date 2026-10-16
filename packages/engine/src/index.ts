@@ -5,3 +5,8 @@ export * from "./combat";
 export * from "./economy";
 export * from "./prestige";
 export * from "./schedule";
+export * from "./names";
+export * from "./random";
+export * from "./mapgen";
+export * from "./fog";
+export * from "./actions";

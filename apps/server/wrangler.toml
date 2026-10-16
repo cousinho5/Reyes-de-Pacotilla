@@ -2,6 +2,15 @@ name = "reyes-de-pacotilla"
 main = "src/index.ts"
 compatibility_date = "2026-10-01"
 
+# El mismo Worker sirve el cliente compilado (apps/web/dist), así cliente y API
+# comparten dominio y la cookie de sesión funciona sin trucos. Las rutas /api/*
+# las atiende el Worker; el resto, los archivos estáticos (con vuelta a
+# index.html para las rutas del cliente).
+[assets]
+directory = "../web/dist"
+not_found_handling = "single-page-application"
+run_worker_first = ["/api/*"]
+
 # Base de datos D1. Crear una vez con:
 #   npx wrangler d1 create reyes
 # y pegar aquí el database_id que devuelve.
@@ -15,3 +24,8 @@ migrations_dir = "migrations"
 # en la hora local de cada partida, si toca producción, cierre o resolución.
 [triggers]
 crons = ["0 * * * *"]
+
+# Secretos (no van en el repositorio):
+#   npx wrangler secret put SESSION_SECRET   (cadena larga al azar)
+#   npx wrangler secret put ADMIN_SECRET     (clave para crear partidas)
+# En local van en apps/server/.dev.vars.

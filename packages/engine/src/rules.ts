@@ -88,3 +88,33 @@ export const PRESTIGE = {
 
 /** Soborno al cronista. */
 export const BRIBE_COST = 10;
+
+/** Inicio de partida: tropas en el castillo y recursos de cada tipo. */
+export const STARTING_TROOPS = 6;
+export const STARTING_RESOURCES = 10;
+
+/**
+ * Especialidades iniciales (dos edificios a nivel 2). Se reparten en este orden
+ * para que cada edificio sea especialidad del mismo número de casas y todas
+ * dependan del comercio.
+ */
+export const SPECIALTY_PAIRS: [BuildingKind, BuildingKind][] = [
+  ["granja", "aserradero"],
+  ["cantera", "mina"],
+  ["mercado", "granja"],
+  ["aserradero", "cantera"],
+  ["mina", "mercado"],
+];
+
+/** Proporción de cada tipo entre las casillas neutrales del mapa. */
+export const TILE_MIX: Record<Exclude<TileType, "castillo">, number> = {
+  campos: 0.2,
+  bosque: 0.2,
+  cantera: 0.2,
+  montana: 0.2,
+  puerto: 0.1,
+  fortaleza: 0.1,
+};
+
+/** Días sin entrar a partir de los que se activa el piloto automático. */
+export const ABSENT_AFTER_DAYS = 3;

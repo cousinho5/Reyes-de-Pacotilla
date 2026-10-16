@@ -1,35 +1,31 @@
-import { resolveCampaign, type Tile } from "@reyes/engine";
+import { useEffect, useState } from "react";
+import { Game } from "./pages/Game";
+import { Home } from "./pages/Home";
+import { Join } from "./pages/Join";
+import { Login } from "./pages/Login";
 
-// Pantalla provisional: demuestra que el cliente usa el mismo motor que el
-// servidor (el futuro botón Simular). Las pantallas reales llegan con el MVP 1.
-const demoTiles: Tile[] = [
-  { id: 1, x: 0, y: 0, type: "castillo", owner: 1, troops: 7, castleOf: 1 },
-  { id: 2, x: 1, y: 0, type: "campos", owner: null, troops: 4 },
-];
-const demo = resolveCampaign({
-  resolution: 1,
-  tiles: demoTiles,
-  orders: [{ kind: "move", house: 1, from: 1, to: 2, troops: 7 }],
-});
-const villa = demo.tiles.find((t) => t.id === 2)!;
+/** Enrutador mínimo: /, /entrar, /unirse/:codigo, /partida/:id */
+export function navigate(path: string) {
+  window.history.pushState(null, "", path);
+  window.dispatchEvent(new PopStateEvent("popstate"));
+}
+
+function usePath() {
+  const [path, setPath] = useState(window.location.pathname);
+  useEffect(() => {
+    const on = () => setPath(window.location.pathname);
+    window.addEventListener("popstate", on);
+    return () => window.removeEventListener("popstate", on);
+  }, []);
+  return path;
+}
 
 export function App() {
-  return (
-    <main className="pergamino">
-      <h1>Reyes de Pacotilla</h1>
-      <p className="subtitulo">Aldricia, el Reino Más o Menos Unido</p>
-      <p>
-        El trono está vacío y Fray Abundio ya afila la pluma. El juego está en obras; los albañiles piden
-        paciencia (y propina).
-      </p>
-      <section className="cronica">
-        <h2>Simulación de prueba</h2>
-        <p>
-          7 tropas marchan sobre Villa Mediocre (4 de guarnición). Resultado: la casilla queda en manos de la casa{" "}
-          {villa.owner} con {villa.troops} tropas.
-        </p>
-        <p className="margen">Nota del cronista: las cifras son exactas. Los adjetivos, no tanto.</p>
-      </section>
-    </main>
-  );
+  const path = usePath();
+  const join = path.match(/^\/unirse\/([^/]+)/);
+  const game = path.match(/^\/partida\/(\d+)/);
+  if (join) return <Join code={decodeURIComponent(join[1]!)} />;
+  if (game) return <Game id={Number(game[1])} />;
+  if (path === "/entrar") return <Login />;
+  return <Home />;
 }

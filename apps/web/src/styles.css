@@ -1,43 +1,518 @@
+/* Interfaz plana y legible (diseño, sección 19). El pergamino se reserva para
+   la crónica. Pensado primero para móvil. */
+
 :root {
-  --pergamino: #f4ead5;
-  --tinta: #2b2118;
-  --sable: #1e1e24;
+  --bg: #f4ead5;
+  --card: #fffaf0;
+  --ink: #2b2118;
+  --muted: #6b5d4f;
+  --line: #d9c9a8;
+  --accent: #1b3c80;
+  --danger: #b3291d;
   --oro: #e8b83a;
-  --gules: #b3291d;
-  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-  color: var(--tinta);
-  background: var(--pergamino);
+
+  --res-pan: #b9832c;
+  --res-madera: #6d4c2f;
+  --res-piedra: #6f747b;
+  --res-hierro: #3d4f63;
+  --res-oro: #b08a12;
+
+  --t-campos: #e7d59a;
+  --t-bosque: #8fb37c;
+  --t-cantera: #c4c0b8;
+  --t-montana: #b39b86;
+  --t-puerto: #9cc3d6;
+  --t-fortaleza: #9a948c;
+  --t-castillo: #efe2c4;
+
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 16px;
+  line-height: 1.45;
+  color: var(--ink);
+  background: var(--bg);
+}
+
+* {
+  box-sizing: border-box;
 }
 
 body {
   margin: 0;
+  background: var(--bg);
 }
 
-.pergamino {
-  max-width: 40rem;
-  margin: 0 auto;
-  padding: 1.5rem 1rem 3rem;
-  line-height: 1.5;
-}
-
-h1 {
-  margin-bottom: 0;
+h1,
+h2 {
   font-family: Georgia, "Times New Roman", serif;
+  line-height: 1.2;
+}
+h1 {
+  font-size: 1.8rem;
+  margin: 0.5rem 0 0.25rem;
+}
+h2 {
+  font-size: 1.15rem;
+  margin: 0 0 0.5rem;
 }
 
-.subtitulo {
+button,
+.button,
+input,
+select {
+  font: inherit;
+}
+
+button,
+.button {
+  min-height: 44px;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  border: 1px solid var(--ink);
+  background: var(--card);
+  color: var(--ink);
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+}
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+button.primary,
+.button {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+button.secondary {
+  border-style: dashed;
+}
+button.link {
+  border: none;
+  background: none;
+  color: var(--accent);
+  text-decoration: underline;
+  min-height: 36px;
+  padding: 0.25rem 0.5rem;
+}
+
+input,
+select {
+  width: 100%;
+  min-height: 44px;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
   margin-top: 0.25rem;
+}
+input[type="range"] {
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+label {
+  display: block;
+  margin: 0.75rem 0;
+}
+fieldset {
+  border: none;
+  padding: 0;
+  margin: 0.75rem 0;
+}
+legend {
+  margin-bottom: 0.25rem;
+}
+
+.page {
+  max-width: 34rem;
+  margin: 0 auto;
+  padding: 1rem 1rem 3rem;
+}
+.hero {
+  text-align: center;
+  padding: 1.5rem 0 0.5rem;
+}
+.subtitle {
+  margin-top: 0;
+  color: var(--muted);
   font-style: italic;
 }
-
-.cronica {
-  border: 2px solid var(--tinta);
-  padding: 0.75rem 1rem;
-  background: #fbf5e6;
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 1rem;
+  margin: 0.75rem 0;
+}
+.muted {
+  color: var(--muted);
+}
+.error {
+  color: var(--danger);
+  font-weight: 600;
+}
+.hint {
+  color: var(--muted);
+  text-align: center;
+  font-size: 0.9rem;
+}
+.note {
+  font-family: Georgia, serif;
+  font-style: italic;
+  color: #5a3f22;
+}
+.mono {
+  font-family: ui-monospace, Menlo, monospace;
+  word-break: break-all;
+  font-size: 0.9rem;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+.inline {
+  display: flex;
+  gap: 0.5rem;
+}
+.inline input {
+  margin-top: 0;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.5rem 0;
 }
 
-.margen {
+.list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.list > li {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--line);
+}
+.list > li:last-child {
+  border-bottom: none;
+}
+.list.orders li,
+.list.buildings li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+.row-button {
+  width: 100%;
+  justify-content: flex-start;
+  text-align: left;
+  border: none;
+  background: none;
+  padding: 0.25rem 0;
+}
+.house-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.swatch {
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 4px;
+  flex-shrink: 0;
+  border: 2px solid var(--oro);
+}
+.chip {
+  display: inline-block;
+  border: 2px solid;
+  border-radius: 999px;
+  padding: 0 0.5rem;
+  margin: 0.15rem;
   font-size: 0.85rem;
-  font-style: italic;
-  color: var(--gules);
+}
+.colors {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+}
+.color {
+  height: 48px;
+  border: 3px solid transparent;
+  color: #fff;
+}
+.color.selected {
+  border-color: var(--oro);
+  outline: 2px solid var(--ink);
+}
+.access-code {
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 2.2rem;
+  letter-spacing: 0.3rem;
+  text-align: center;
+  background: #fff;
+  border: 2px dashed var(--ink);
+  border-radius: 8px;
+  padding: 0.75rem;
+}
+.code-input {
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 1.6rem;
+  letter-spacing: 0.3rem;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+/* Recursos: color y forma propios */
+.res {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.res-pan {
+  color: var(--res-pan);
+}
+.res-madera {
+  color: var(--res-madera);
+}
+.res-piedra {
+  color: var(--res-piedra);
+}
+.res-hierro {
+  color: var(--res-hierro);
+}
+.res-oro {
+  color: var(--res-oro);
+}
+
+/* Partida */
+.game {
+  max-width: 34rem;
+  margin: 0 auto;
+  min-height: 100vh;
+  padding-bottom: 4.5rem;
+}
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--card);
+  border-bottom: 4px solid;
+  padding: 0.5rem 1rem;
+}
+.topbar-title {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+.topbar-title .link {
+  font-size: 1.4rem;
+  text-decoration: none;
+  padding: 0 0.5rem 0 0;
+}
+.resources {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 700;
+  margin: 0.25rem 0;
+}
+.clock {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.game-body {
+  padding: 0.75rem 1rem;
+}
+
+.map {
+  display: grid;
+  gap: 3px;
+}
+.tile {
+  position: relative;
+  aspect-ratio: 1;
+  min-height: 0;
+  padding: 0;
+  border: 1px solid rgba(0, 0, 0, 0.25);
+  border-radius: 6px;
+  flex-direction: column;
+  gap: 0;
+}
+.tile-campos {
+  background: var(--t-campos);
+}
+.tile-bosque {
+  background: var(--t-bosque);
+}
+.tile-cantera {
+  background: var(--t-cantera);
+}
+.tile-montana {
+  background: var(--t-montana);
+}
+.tile-puerto {
+  background: var(--t-puerto);
+}
+.tile-fortaleza {
+  background: var(--t-fortaleza);
+}
+.tile-castillo {
+  background: var(--t-castillo);
+}
+.tile.fogged {
+  filter: saturate(0.4) brightness(0.92);
+}
+.tile.selected {
+  outline: 3px solid var(--ink);
+  outline-offset: 1px;
+  z-index: 1;
+}
+.tile.target {
+  outline: 3px dashed var(--accent);
+  outline-offset: -6px;
+  animation: pulse 1.2s ease-in-out infinite;
+}
+.tile.source {
+  outline: 3px solid var(--oro);
+}
+@keyframes pulse {
+  50% {
+    filter: brightness(1.12);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tile.target {
+    animation: none;
+  }
+}
+.tile-mark {
+  font-size: 1.1rem;
+  line-height: 1;
+  opacity: 0.75;
+}
+.tile-troops {
+  font-weight: 800;
+  font-size: 1.05rem;
+  font-variant-numeric: tabular-nums;
+}
+.tile-fort {
+  position: absolute;
+  top: 2px;
+  left: 4px;
+  font-size: 0.8rem;
+}
+.tile-banner {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 10px;
+  height: 14px;
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 75%, 0 100%);
+  border: none;
+}
+.tile-orders {
+  position: absolute;
+  bottom: 1px;
+  right: 4px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: var(--accent);
+}
+.tile-panel h2,
+.composer h2 {
+  margin-bottom: 0.15rem;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.table th,
+.table td {
+  text-align: left;
+  padding: 0.3rem 0.25rem;
+  border-bottom: 1px solid var(--line);
+  font-variant-numeric: tabular-nums;
+}
+
+.ranking {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.ranking li {
+  border-bottom: 1px solid var(--line);
+}
+.ranking li.me {
+  background: #fff3cf;
+}
+.ranking .row-button {
+  gap: 0.6rem;
+}
+.rank {
+  width: 1.5rem;
+  text-align: center;
+  font-weight: 700;
+}
+.grow {
+  flex: 1;
+}
+.breakdown {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin: 0 0 0.5rem 2.1rem;
+}
+
+.chronicle {
+  background: #fbf3df;
+  border-color: #c9b48a;
+  font-family: Georgia, serif;
+}
+
+.tabs {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  background: var(--card);
+  border-top: 1px solid var(--line);
+  padding-bottom: env(safe-area-inset-bottom);
+  max-width: 34rem;
+  margin: 0 auto;
+}
+.tabs button {
+  border: none;
+  border-radius: 0;
+  background: none;
+  min-height: 56px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.tabs button.active {
+  color: var(--ink);
+  box-shadow: inset 0 3px 0 var(--accent);
+}
+
+.toast {
+  position: fixed;
+  left: 1rem;
+  right: 1rem;
+  bottom: 5rem;
+  max-width: 32rem;
+  margin: 0 auto;
+  background: var(--ink);
+  color: #fff;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  z-index: 10;
+  text-align: center;
 }

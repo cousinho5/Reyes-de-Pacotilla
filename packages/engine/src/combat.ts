@@ -63,23 +63,11 @@ export function resolveCampaign(input: CampaignInput): CampaignResult {
   const events: CampaignEvent[] = [];
 
   // 1. Validar órdenes y repartir las tropas de cada casilla.
-  const committed = new Map<TileId, number>();
   const moves: Move[] = [];
   const supports: SupportOrder[] = [];
-
-  for (const order of input.orders) {
-    const reason = validate(order, tiles);
-    if (reason) {
-      events.push({ type: "orden_invalida", order, reason });
-      continue;
-    }
-    const from = tiles.get(order.from)!;
-    const used = committed.get(order.from) ?? 0;
-    if (used + order.troops > from.troops) {
-      events.push({ type: "orden_invalida", order, reason: "no hay tropas suficientes en la casilla" });
-      continue;
-    }
-    committed.set(order.from, used + order.troops);
+  const checked = checkOrders(input.tiles, input.orders);
+  for (const { order, reason } of checked.invalid) events.push({ type: "orden_invalida", order, reason });
+  for (const order of checked.valid) {
     if (order.kind === "move") {
       // Varias órdenes iguales de la misma casa se agrupan.
       const same = moves.find((m) => m.house === order.house && m.from === order.from && m.to === order.to);
@@ -248,6 +236,36 @@ export function resolveCampaign(input: CampaignInput): CampaignResult {
     tiles: input.tiles.map((t) => tiles.get(t.id)!),
     events,
   };
+}
+
+/**
+ * Separa las órdenes válidas de las inválidas, con el motivo. Una casilla no
+ * puede comprometer más tropas de las que tiene (se aceptan en orden).
+ */
+export function checkOrders(
+  tileList: Tile[],
+  orders: Order[],
+): { valid: Order[]; invalid: { order: Order; reason: string }[] } {
+  const tiles = new Map<TileId, Tile>(tileList.map((t) => [t.id, t]));
+  const committed = new Map<TileId, number>();
+  const valid: Order[] = [];
+  const invalid: { order: Order; reason: string }[] = [];
+  for (const order of orders) {
+    const reason = validate(order, tiles);
+    if (reason) {
+      invalid.push({ order, reason });
+      continue;
+    }
+    const from = tiles.get(order.from)!;
+    const used = committed.get(order.from) ?? 0;
+    if (used + order.troops > from.troops) {
+      invalid.push({ order, reason: "no hay tropas suficientes en la casilla" });
+      continue;
+    }
+    committed.set(order.from, used + order.troops);
+    valid.push(order);
+  }
+  return { valid, invalid };
 }
 
 function validate(order: Order, tiles: Map<TileId, Tile>): string | null {

@@ -72,7 +72,7 @@ Cinco recursos. En las reglas, la interfaz y el código se usa siempre la misma 
 
 - **Producción diaria por edificio:** nivel 1 = 2, nivel 2 = 4, nivel 3 = 6, nivel 4 = 8, nivel 5 = 10.
 
-- **Inicio:** dos edificios en nivel 2 (las especialidades de cada casa, repartidas para que todos dependan del comercio) y tres en nivel 1. Son 14 recursos al día.
+- **Inicio:** dos edificios en nivel 2 (las especialidades de cada casa, repartidas para que todos dependan del comercio) y tres en nivel 1. Son 14 recursos al día. Cada casa empieza además con 10 de cada recurso y 6 tropas en el castillo.
 
 - **Los edificios no se pueden perder**, porque están dentro del castillo. Por eso no hace falta un ingreso mínimo aparte: siempre produces.
 
@@ -118,7 +118,7 @@ El mapa es una cuadrícula que escala con el número de jugadores, con unas 4 ca
 
 - Se controla una casilla teniendo al menos 1 tropa en ella. Si una casilla se queda vacía, sigue siendo tuya hasta que otro entre.
 
-- El mapa se genera a partir de una semilla para que sea justo: cada casa tiene alrededor una mezcla parecida de tipos de casilla.
+- El mapa se genera a partir de una semilla para que sea justo. El generador prueba 600 colocaciones y elige la más justa: los castillos van a distancias iguales por el borde, nunca en una esquina (solo tendrían dos vecinas) ni juntos, las fortalezas nunca están al lado de un castillo y el valor de las casillas cercanas a cada castillo difiere como mucho 1,5 puntos (1 por casilla vecina, 0,5 a dos pasos). Se comprueba con pruebas automáticas para 4 a 8 casas.
 
 ### 6.2 Qué ve cada jugador (niebla de guerra)
 
@@ -136,7 +136,7 @@ El mapa es una cuadrícula que escala con el número de jugadores, con unas 4 ca
 
 - **Castillos:** se llaman según la casa ("Castillo de la Casa del Nabo Altivo").
 
-- **Casillas neutrales:** reserva de nombres por tipo. Cada partida saca los suyos al azar. Con 8 jugadores hacen falta hasta 28 nombres, así que la reserva debe llegar a unos 8 por tipo; los 30 primeros están aquí y se ampliarán.
+- **Casillas neutrales:** reserva de 8 nombres por tipo (48 en total, en `packages/engine/src/names.ts`). Cada partida saca los suyos al azar. Aquí están los 30 primeros.
 
 - **Dónde se ven:** en el panel de la casilla y en el boletín, no encima del mapa. Al tocar una casilla aparece su nota del cronista.
 
@@ -614,7 +614,7 @@ Pixel art en lo jugable, interfaz plana y limpia en lo informativo y un toque de
 
 1. **Prototipo sin código:** una mini-partida con los amigos usando una hoja de cálculo, resolviendo a mano dos resoluciones y escribiendo a mano un boletín en la voz de Fray Abundio.
 2. **Script de simulación:** partidas con jugadores ficticios para afinar costes, guarniciones y Prestigio. Comparte el motor con el juego.
-3. **MVP 1:** cuentas por invitación y código, casa (nombre y color), mapa con niebla de guerra, producción, construir, reclutar, órdenes de mover y mantener, resolución con rebotes, mantenimiento y Prestigio en vivo.
+3. **MVP 1 (hecho):** cuentas por invitación y código, casa (nombre, color y lema), mapa justo con niebla de guerra, producción, construir, reclutar, fortificar, órdenes de mover y apoyar con simulación, resolución con rebotes, mantenimiento con deserciones, ayuda al último y Prestigio en vivo.
 4. **MVP 2:** comercio (ofertas y aceptación atómica), apoyos, fortificar, objetivos secretos, logros, piloto automático y notificaciones push.
 5. **Partida piloto de 2 semanas** con los amigos.
 6. **Versión 1:** Gran Subasta y cartas, eventos, boletín con Fray Abundio (incluido el soborno), creador de escudos y lemas, y botón de compartir en WhatsApp.
@@ -657,7 +657,6 @@ Todos son valores de partida, comprobados con una simulación sencilla. Se afina
 | Tema | Qué falta | Prioridad |
 | --- | --- | --- |
 | Catálogo completo | Unos 20 eventos, 8-10 cartas de la Corona y 10-12 objetivos secretos, con efectos exactos. | Media |
-| Reserva de nombres | Ampliar a unos 8 nombres por tipo de casilla para mapas de 8 jugadores. | Baja |
 
 **Cosas a comprobar en la piloto**
 
@@ -687,10 +686,10 @@ Todos son valores de partida, comprobados con una simulación sencilla. Se afina
 
 **Próximos pasos**
 
-1. Completar los catálogos de eventos, cartas y objetivos secretos.
-2. Prototipo sin código con los amigos.
-3. Preparar el repositorio (estructura, migración inicial y despliegue en Cloudflare).
-4. Script de simulación y MVP 1.
+1. Publicar el MVP 1 en Cloudflare y hacer una prueba con el grupo.
+2. Completar los catálogos de eventos, cartas y objetivos secretos.
+3. Script de simulación para afinar los números.
+4. MVP 2: comercio, apoyos en la interfaz, objetivos secretos, logros, piloto automático y notificaciones push.
 
 ## 24. Fuentes consultadas
 
