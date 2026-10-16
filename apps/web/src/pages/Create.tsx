@@ -7,6 +7,8 @@ export function Create() {
   const [nombre, setNombre] = useState("");
   const [creador, setCreador] = useState("");
   const [semanas, setSemanas] = useState(2);
+  const [prueba, setPrueba] = useState(false);
+  const [bots, setBots] = useState(4);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<{ invitacion: string; acceso: string | null } | null>(null);
@@ -23,7 +25,11 @@ export function Create() {
           </section>
         )}
         <section className="card">
-          <p>Ahora elige tu casa. Después comparte la invitación desde la sala de espera.</p>
+          <p>
+            {prueba
+              ? "Ahora elige tu casa. Después, en la sala de espera, empieza la prueba: los bots se añaden solos."
+              : "Ahora elige tu casa. Después comparte la invitación desde la sala de espera."}
+          </p>
           <p className="mono">{link}</p>
           <button className="primary" onClick={() => navigate(`/unirse/${done.invitacion}`)}>
             Elegir mi casa
@@ -47,7 +53,7 @@ export function Create() {
               method: "POST",
               credentials: "same-origin",
               headers: { "content-type": "application/json", "x-admin": clave },
-              body: JSON.stringify({ nombre, semanas, creador }),
+              body: JSON.stringify(prueba ? { nombre, semanas, creador, prueba, bots } : { nombre, semanas, creador }),
             });
             const data = (await res.json().catch(() => ({}))) as {
               error?: string;
@@ -84,9 +90,25 @@ export function Create() {
             <option value={8}>8 semanas</option>
           </select>
         </label>
+        <label className="check">
+          <input type="checkbox" checked={prueba} onChange={(e) => setPrueba(e.target.checked)} />
+          Partida de prueba (yo contra bots, con el tiempo a mi ritmo)
+        </label>
+        {prueba && (
+          <label>
+            Bots rivales
+            <select value={bots} onChange={(e) => setBots(Number(e.target.value))}>
+              {[3, 4, 5, 6, 7].map((n) => (
+                <option key={n} value={n}>
+                  {n} bots ({n + 1} casas)
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         {error && <p className="error">{error}</p>}
         <button className="primary" type="submit" disabled={busy}>
-          Crear partida
+          {prueba ? "Crear prueba" : "Crear partida"}
         </button>
       </form>
     </main>

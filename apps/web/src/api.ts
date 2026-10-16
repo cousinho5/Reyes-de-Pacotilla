@@ -25,7 +25,7 @@ async function call<T>(method: string, path: string, body?: unknown): Promise<T>
 
 export interface Me {
   usuario: { id: number; nombre: string } | null;
-  partidas: { id: number; nombre: string; estado: string; casa: string; color: string }[];
+  partidas: { id: number; nombre: string; estado: string; prueba?: boolean; casa: string; color: string }[];
 }
 
 export interface Invitation {
@@ -136,11 +136,22 @@ export interface GameState {
     ausencia?: { vacaciones: boolean; plantilla: "defensiva" | "economica" | "equilibrada" };
   };
   casas: HouseInfo[];
+  /** Solo en partidas de prueba (y solo para quien las creó, en juego). */
+  prueba?: TestInfo | null;
   casillas?: TileView[];
   ordenes?: OrderView[];
   eventos?: EventView[];
   ofertas?: OfferInfo[];
   tratos?: TradeInfo[];
+}
+
+export interface TestInfo {
+  /** En la sala de espera: bots que se añadirán al empezar. */
+  bots?: number;
+  /** En juego: hora simulada y casa que manejas. */
+  ahora?: string;
+  jugandoComo?: number;
+  casas?: { id: number; nombre: string; color: string; bot: boolean }[];
 }
 
 export const api = {
@@ -170,4 +181,8 @@ export const api = {
   pushSubscribe: (sub: PushSubscriptionJSON) => call<{ ok: true }>("POST", "/push/suscribir", sub),
   pushUnsubscribe: (endpoint: string) => call<{ ok: true }>("POST", "/push/baja", { endpoint }),
   pushTest: () => call<{ ok: true }>("POST", "/push/prueba"),
+  testAdvance: (id: number, hasta: "paso" | "resolucion") =>
+    call<{ ok: true; ahora: string; resolucion: number; estado: string }>("POST", `/partidas/${id}/prueba/avanzar`, { hasta }),
+  testPlayAs: (id: number, casa: number) => call<{ ok: true }>("POST", `/partidas/${id}/prueba/jugar-como`, { casa }),
+  deleteGame: (id: number) => call<{ ok: true }>("DELETE", `/partidas/${id}`),
 };

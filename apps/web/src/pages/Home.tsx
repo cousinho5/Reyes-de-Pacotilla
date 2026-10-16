@@ -34,6 +34,7 @@ export function Home() {
                     <br />
                     <small>
                       {p.casa} · {estado(p.estado)}
+                      {p.prueba && " · prueba"}
                     </small>
                   </span>
                 </button>

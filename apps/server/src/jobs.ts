@@ -36,34 +36,54 @@ import {
 
 const ABSENT_AFTER_MS = ABSENT_AFTER_DAYS * 24 * 60 * 60 * 1000;
 
-export function isAbsent(h: Pick<HouseRow, "vacation" | "last_seen_at">, now: Date): boolean {
-  return h.vacation === 1 || !h.last_seen_at || now.getTime() - Date.parse(h.last_seen_at) > ABSENT_AFTER_MS;
+export function isAbsent(
+  h: Pick<HouseRow, "id" | "vacation" | "last_seen_at" | "is_bot">,
+  now: Date,
+  game?: Pick<GameRow, "is_test" | "played_house_id">,
+): boolean {
+  if (h.vacation === 1) return true;
+  // En las pruebas el reloj salta días: solo juegan solos los bots que no estás manejando.
+  if (game?.is_test === 1) return h.is_bot === 1 && h.id !== game.played_house_id;
+  return !h.last_seen_at || now.getTime() - Date.parse(h.last_seen_at) > ABSENT_AFTER_MS;
 }
 
 export async function runHourly(env: NotifyEnv, now: Date): Promise<void> {
   const db = env.DB;
-  const { results: games } = await db.prepare("SELECT id FROM games WHERE status = 'active'").all<{ id: number }>();
+  // Las partidas de prueba tienen su propio reloj: solo avanzan desde la mesa de pruebas.
+  const { results: games } = await db
+    .prepare("SELECT id FROM games WHERE status = 'active' AND is_test = 0")
+    .all<{ id: number }>();
   for (const { id } of games) {
     const game = await loadGame(db, id);
-    if (!game?.start_date) continue;
-    const clock: GameClock = {
-      timezone: game.timezone,
-      closeTime: game.close_time,
-      resolveTime: game.resolve_time,
-      startDate: game.start_date,
-      weeks: game.weeks,
-      currentResolution: game.current_resolution,
-    };
-    for (const job of dueJobs(now, clock)) {
-      try {
-        if (job.kind === "produccion") await runProduction(env, game, job.key, job.date, now);
-        else if (job.kind === "aviso_cierre") await closeWarning(env, game, job.resolution);
-        else if (job.kind === "resolucion") await runResolution(env, game, job.resolution, now);
-        else if (job.kind === "fin") await finishGame(env, game, now);
-      } catch (err) {
-        if (isAlreadyDone(err)) continue;
-        console.error(`Partida ${game.id}, tarea ${job.key}:`, err);
-      }
+    if (game) await runGameJobs(env, game, now);
+  }
+}
+
+export function clockOf(game: GameRow): GameClock | null {
+  if (!game.start_date) return null;
+  return {
+    timezone: game.timezone,
+    closeTime: game.close_time,
+    resolveTime: game.resolve_time,
+    startDate: game.start_date,
+    weeks: game.weeks,
+    currentResolution: game.current_resolution,
+  };
+}
+
+/** Ejecuta las tareas que tocan en una partida en el instante `now`. */
+export async function runGameJobs(env: NotifyEnv, game: GameRow, now: Date): Promise<void> {
+  const clock = clockOf(game);
+  if (!clock || game.status !== "active") return;
+  for (const job of dueJobs(now, clock)) {
+    try {
+      if (job.kind === "produccion") await runProduction(env, game, job.key, job.date, now);
+      else if (job.kind === "aviso_cierre") await closeWarning(env, game, job.resolution);
+      else if (job.kind === "resolucion") await runResolution(env, game, job.resolution, now);
+      else if (job.kind === "fin") await finishGame(env, game, now);
+    } catch (err) {
+      if (isAlreadyDone(err)) continue;
+      console.error(`Partida ${game.id}, tarea ${job.key}:`, err);
     }
   }
 }
@@ -97,7 +117,7 @@ export async function runProduction(env: NotifyEnv, game: GameRow, key: string, 
   const tiles = toEngineTiles(tileRows);
   const day = Math.round((Date.parse(`${date}T12:00:00Z`) - Date.parse(`${game.start_date}T12:00:00Z`)) / 864e5);
   for (const house of houses) {
-    if (!isAbsent(house, now) || house.autopilot_ran_on === date) continue;
+    if (!isAbsent(house, now, game) || house.autopilot_ran_on === date) continue;
     const levels = buildings.get(house.id);
     const p = produced.get(house.id);
     if (!levels || !p) continue;
@@ -211,7 +231,7 @@ export async function runResolution(env: NotifyEnv, game: GameRow, n: number, no
           troops: o.troops,
         },
   );
-  const absentHouses = houses.filter((h) => isAbsent(h, now)).map((h) => h.id);
+  const absentHouses = houses.filter((h) => isAbsent(h, now, game)).map((h) => h.id);
 
   const result = resolveCampaign({ resolution: n, tiles, orders, absentHouses });
   const { week, kind } = resolutionInfo(n);

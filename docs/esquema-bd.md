@@ -112,7 +112,19 @@ He creado el esquema en SQLite 3.45 (la familia de D1), con una partida de ejemp
 
 Los objetivos secretos usan las columnas que ya existían (`objective_options`, `objective_key`, `objective_met`), y las notificaciones, las tablas `push_subscriptions` y `notifications`.
 
-## 7. SQL completo (migración 0001)
+## 7. Migración 0003 (partidas de prueba)
+
+Para probar el juego sin reunir a 4 personas:
+
+- `games.is_test`: marca una partida de prueba. El cron horario no la toca.
+- `games.test_bots`: cuántos bots se añaden al empezar (de 3 a 7).
+- `games.sim_now`: el reloj simulado de la partida. Solo avanza con los botones de la mesa de pruebas. Todo lo que depende de la hora (órdenes abiertas, Prestigio de comercio, ofertas recientes) usa esta hora en vez de la real.
+- `games.played_house_id`: la casa que maneja quien creó la prueba ("jugar como").
+- `houses.is_bot`: casa de un bot. Cada bot tiene un usuario con un código que nadie conoce.
+
+Borrar una prueba elimina la partida, sus filas y los usuarios de sus bots en un solo lote.
+
+## 8. SQL completo (migración 0001)
 
 ```sql
 -- Reyes de Pacotilla: esquema de base de datos v1

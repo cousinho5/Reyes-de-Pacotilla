@@ -602,3 +602,73 @@ h3 {
   text-align: center;
   font-family: Georgia, serif;
 }
+
+/* Mesa de pruebas (solo en partidas de prueba) */
+.testbench {
+  background: repeating-linear-gradient(-45deg, #fff4d6, #fff4d6 10px, #fbecc4 10px, #fbecc4 20px);
+  border-bottom: 1px solid var(--line);
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+}
+.testbench-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: baseline;
+}
+.testbench .actions {
+  margin: 0.4rem 0 0.2rem;
+}
+.testbench .actions button {
+  padding: 0.35rem 0.6rem;
+  font-size: 0.85rem;
+}
+.testbench summary {
+  cursor: pointer;
+  color: var(--muted);
+  padding: 0.25rem 0;
+}
+.testbench-houses {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.4rem 0;
+}
+.testbench-houses button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.5rem;
+  font-size: 0.85rem;
+}
+.testbench-houses button.chosen {
+  border-width: 2px;
+  font-weight: 700;
+}
+.testbench-houses .swatch {
+  width: 0.9rem;
+  height: 0.9rem;
+}
+button.danger {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+}
+label.check {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+label.check input {
+  width: auto;
+}
+.testbench-buttons {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.4rem;
+  margin: 0.4rem 0 0.1rem;
+}
+.testbench-buttons button {
+  padding: 0.4rem 0.3rem;
+  font-size: 0.85rem;
+}

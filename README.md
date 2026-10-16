@@ -71,6 +71,18 @@ Para desarrollar el cliente con recarga en caliente: `npm run dev:web` (en otra 
 3. Aplicar migraciones: `npm run db:migrate:remote -w @reyes/server`.
 4. Compilar y publicar: `npm run build -w @reyes/web && npm run deploy -w @reyes/server`.
 
+## Probar el juego tú solo
+
+En `/crear`, marca **Partida de prueba** y elige cuántos bots rivales quieres (de 3 a 7). Eliges tu casa, pulsas **Empezar la prueba** y aparece la mesa de pruebas encima del mapa:
+
+- **Siguiente paso**: lleva a la mañana siguiente (producción y piloto automático) o a la resolución de las 22:00.
+- **Resolver**: avanza hasta pasar la próxima resolución.
+- **Hasta el final**: juega toda la partida hasta la coronación.
+- **Jugar como**: maneja cualquier casa, por ejemplo para atacarte a ti mismo o aceptar tu propia oferta.
+- **Borrar**: elimina la prueba y sus bots.
+
+Los bots construyen y reclutan con el piloto automático, atacan casillas vecinas que pueden ganar y aceptan las ofertas que les salen a cuenta. El reloj de la prueba es simulado: el cron real no la toca y las partidas de verdad no se ven afectadas.
+
 ## Crear una partida
 
 Lo más fácil: abrir `https://TU-DOMINIO/crear`, escribir la clave de administración (`ADMIN_SECRET`), el nombre de la partida, tu nombre y la duración. Después eliges tu casa y compartes la invitación. También se puede con la API:

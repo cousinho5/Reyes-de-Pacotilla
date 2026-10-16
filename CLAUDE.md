@@ -18,6 +18,7 @@ Juego de estrategia asíncrono de navegador para 4-8 amigos. El diseño completo
 - `npm run prueba-humo`: prueba de la API de punta a punta contra el servidor local (40 comprobaciones, incluidas dos aceptaciones simultáneas de una oferta).
 - `node apps/server/scripts/claves-vapid.mjs`: genera las claves VAPID de las notificaciones push.
 - Cron en local: `POST /cdn-cgi/local/explorer/api/local/scheduled?worker=reyes-de-pacotilla` con `{"cron":"0 * * * *"}`. La ruta `/__scheduled` no sirve porque la atienden los archivos estáticos.
+- Partidas de prueba (`apps/server/src/pruebas.ts`): bots y reloj simulado (`games.sim_now`). En el servidor, la hora de una partida se obtiene siempre con `gameNow(game)`, nunca con `new Date()`, para que las pruebas funcionen.
 - Para comprobar la interfaz, si el entorno tiene Chromium (por ejemplo en `/opt/pw-browsers`), usar Playwright con un viewport de móvil de 390x844.
 
 ## Reglas del proyecto

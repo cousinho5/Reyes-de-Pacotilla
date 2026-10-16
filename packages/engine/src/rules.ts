@@ -118,3 +118,18 @@ export const TILE_MIX: Record<Exclude<TileType, "castillo">, number> = {
 
 /** Días sin entrar a partir de los que se activa el piloto automático. */
 export const ABSENT_AFTER_DAYS = 3;
+
+/**
+ * Bots de las partidas de prueba. No existen en las partidas reales: solo
+ * sirven para probar el juego sin reunir a 4 personas.
+ */
+export const BOT = {
+  /** Atacan una casilla neutral si su fuerza supera la defensa por este factor. */
+  marginNeutral: 1.2,
+  /** Contra otra casa son más prudentes (puede recibir apoyos). */
+  marginHouse: 1.5,
+  /** Tropas que nunca salen del castillo. */
+  castleGarrison: 2,
+  /** Aceptan un trato si lo que reciben vale al menos esto por lo que dan. */
+  tradeRatio: 1,
+} as const;
