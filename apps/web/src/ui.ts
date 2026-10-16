@@ -1,6 +1,6 @@
 // Textos, colores y formatos de la interfaz. Todo en español.
 
-import type { BuildingKind, Resource, TileType } from "@reyes/engine";
+import { OBJECTIVES, type BuildingKind, type ObjectiveKey, type Resource, type TileType } from "@reyes/engine";
 import type { EventView, HouseInfo, TileView } from "./api";
 
 /** Paleta de las casas (diseño, sección 18.2). */
@@ -40,6 +40,12 @@ export const BUILDING_LABEL: Record<BuildingKind, string> = {
   mercado: "Mercado",
 };
 
+export const ACHIEVEMENT_LABEL: Record<string, string> = {
+  primera_fortaleza: "Primera fortaleza",
+  obra_maestra: "Obra maestra",
+  ganador_subasta: "Ganador de subasta",
+};
+
 export const TILE_LABEL: Record<TileType, string> = {
   castillo: "Castillo",
   campos: "Campos",
@@ -64,6 +70,11 @@ export function houseColor(houses: HouseInfo[], id: number | null): string | nul
   if (id == null) return null;
   const h = houses.find((x) => x.id === id);
   return h ? (HOUSE_COLORS[h.color]?.hex ?? "#666") : null;
+}
+
+/** "Casa del Nabo" → "la Casa del Nabo" (para frases como "¡Larga vida a la Casa…!"). */
+export function withArticle(name: string): string {
+  return /^casa\b/i.test(name) ? `la ${name}` : name;
 }
 
 export function houseName(houses: HouseInfo[], id: number | null | undefined): string {
@@ -135,6 +146,25 @@ export function describeEvent(e: EventView, houses: HouseInfo[], tiles: TileView
       return `La Corona ayuda a ${houseName(houses, d.house)}, última en Prestigio, durante la próxima semana.`;
     case "orden_invalida":
       return `Una orden tuya no se ejecutó: ${d.reason}.`;
+    case "logro":
+      return `${houseName(houses, d.house)} consigue el logro ${ACHIEVEMENT_LABEL[d.logro as string] ?? d.logro}.`;
+    case "piloto_automatico": {
+      const parts = [
+        d.upgrade && `mejora ${BUILDING_LABEL[d.upgrade as BuildingKind] ?? d.upgrade}`,
+        d.fortify && `fortifica ${tile(d.fortify)}`,
+        d.recruit > 0 && `recluta ${d.recruit} tropas`,
+      ].filter(Boolean);
+      return `Tu piloto automático ${parts.length ? parts.join(", ") : "vigila y no toca nada"}.`;
+    }
+    case "objetivo": {
+      const texto = OBJECTIVES[d.objetivo as ObjectiveKey];
+      if (!texto) return `${houseName(houses, d.house)} no tenía ambición secreta. El cronista lo encuentra admirable.`;
+      return `La ambición secreta de ${houseName(houses, d.house)} era: «${texto.replace(/\.$/, "")}». ${
+        d.cumplido ? "Cumplida: +6 de Prestigio." : "No la cumplió."
+      }`;
+    }
+    case "fin":
+      return d.winner != null ? `Fin del interregno. ¡Larga vida a ${withArticle(houseName(houses, d.winner))}!` : "Fin del interregno.";
     default:
       return null;
   }

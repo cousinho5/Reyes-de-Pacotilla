@@ -17,6 +17,7 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20261016.1",
+    "http_ece": "^1.2.1",
     "wrangler": "^4.151.0"
   }
 }

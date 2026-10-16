@@ -2,6 +2,7 @@ import { useState } from "react";
 import { BUILDINGS, RESOURCES, TROOP_COST, canAfford, upgradeCost, type Resource, type Resources } from "@reyes/engine";
 import { api, type GameState } from "../api";
 import { BUILDING_LABEL, RESOURCE_LABEL, RESOURCE_MARK } from "../ui";
+import { HouseSettings } from "./HouseSettings";
 
 interface Props {
   state: GameState;
@@ -28,6 +29,7 @@ export function CastlePanel({ state, gameId, act }: Props) {
   const [recruit, setRecruit] = useState(5);
   const recruitCost: Partial<Resources> = { hierro: (TROOP_COST.hierro ?? 0) * recruit, pan: (TROOP_COST.pan ?? 0) * recruit };
   const myCastle = state.casillas?.find((t) => t.type === "castillo" && t.owner === state.yo.casa);
+  const active = state.partida.estado === "active";
   const maxRecruit = Math.max(1, Math.min(Math.floor(res.hierro / 2), res.pan, 50));
 
   return (
@@ -100,7 +102,7 @@ export function CastlePanel({ state, gameId, act }: Props) {
                 </div>
                 {cost && (
                   <button
-                    disabled={!affordable}
+                    disabled={!affordable || !active}
                     onClick={() => act(() => api.upgrade(gameId, b), `${BUILDING_LABEL[b]} sube a nivel ${level + 1}. Las obras han terminado a tiempo, cosa nunca vista.`)}
                   >
                     Mejorar
@@ -126,12 +128,14 @@ export function CastlePanel({ state, gameId, act }: Props) {
         </p>
         <button
           className="primary"
-          disabled={!canAfford(res, recruitCost)}
+          disabled={!canAfford(res, recruitCost) || !active}
           onClick={() => act(() => api.recruit(gameId, recruit), `${recruit} tropas se presentan en el castillo.`)}
         >
           Reclutar
         </button>
       </section>
+
+      <HouseSettings state={state} act={act} />
     </div>
   );
 }

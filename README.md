@@ -8,7 +8,7 @@ Juego de estrategia asíncrono de navegador para 4-8 amigos. El rey Aldric ha mu
 - [Banco de frases de Fray Abundio](docs/banco-de-frases.md)
 - [Esquema de la base de datos](docs/esquema-bd.md)
 
-## Estado: MVP 1
+## Estado: MVP 2
 
 Ya se puede jugar una partida completa:
 
@@ -18,6 +18,10 @@ Ya se puede jugar una partida completa:
 - Producción diaria, mejorar edificios, reclutar, fortificar.
 - Órdenes de mover/atacar y apoyar, con simulación usando el mismo motor que el servidor.
 - Resoluciones el miércoles y el domingo a las 22:00 (hora de Madrid), con mantenimiento, deserciones, ayuda al último y Prestigio en vivo.
+- Comercio: ofertas públicas y dirigidas, contraofertas y aceptación atómica (dos aceptaciones simultáneas nunca cobran dos veces).
+- Objetivo secreto, logros y final de partida con revelación de objetivos y coronación.
+- Piloto automático para ausentes y modo vacaciones.
+- Notificaciones push (ofertas, cierre de órdenes, resultados y fin) e instalación como app en el móvil.
 - Crónica sencilla de lo ocurrido (el boletín de Fray Abundio llega en la versión 1).
 
 ## Desarrollo en local
@@ -35,6 +39,7 @@ Servidor local (sirve también el cliente compilado):
 ```bash
 # Secretos locales (una vez)
 printf 'SESSION_SECRET="secreto-local"\nADMIN_SECRET="admin-local"\n' > apps/server/.dev.vars
+node apps/server/scripts/claves-vapid.mjs >> apps/server/.dev.vars   # opcional: avisos push
 npm run db:migrate:local -w @reyes/server
 npm run dev:server   # compila el cliente y arranca en http://localhost:8787
 ```
@@ -58,6 +63,7 @@ Para desarrollar el cliente con recarga en caliente: `npm run dev:web` (en otra 
 
 1. Crear la base de datos (una vez): `npx wrangler d1 create reyes` y copiar el `database_id` en `apps/server/wrangler.toml`.
 2. Guardar los secretos: `npx wrangler secret put SESSION_SECRET` (una cadena larga al azar) y `npx wrangler secret put ADMIN_SECRET`.
+   Para las notificaciones, generar claves con `node apps/server/scripts/claves-vapid.mjs` y guardar `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` y `VAPID_SUBJECT` (por ejemplo `mailto:tu@correo`) con `wrangler secret put`.
 3. Aplicar migraciones: `npm run db:migrate:remote -w @reyes/server`.
 4. Compilar y publicar: `npm run build -w @reyes/web && npm run deploy -w @reyes/server`.
 

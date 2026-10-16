@@ -6,9 +6,10 @@ import { CastlePanel } from "../components/CastlePanel";
 import { MapView } from "../components/MapView";
 import { OrdersPanel } from "../components/OrdersPanel";
 import { Realm } from "../components/Realm";
+import { TradePanel } from "../components/TradePanel";
 import { HOUSE_COLORS, RESOURCE_LABEL, RESOURCE_MARK, formatDay, formatWhen, timeLeft } from "../ui";
 
-type Tab = "mapa" | "castillo" | "ordenes" | "reino";
+type Tab = "mapa" | "castillo" | "ordenes" | "comercio" | "reino";
 
 export function Game({ id }: { id: number }) {
   const [state, setState] = useState<GameState | null>(null);
@@ -72,6 +73,7 @@ export function Game({ id }: { id: number }) {
   if (state.partida.estado === "lobby") return <Lobby state={state} onStart={() => act(() => api.start(id), "¡La partida empieza el lunes!")} />;
 
   const me = state.casas.find((h) => h.id === state.yo.casa)!;
+  const offersForMe = (state.ofertas ?? []).filter((o) => o.estado === "open" && o.para === state.yo.casa).length;
   const p = state.partida;
 
   const markDirty = (value: boolean) => {
@@ -137,6 +139,7 @@ export function Game({ id }: { id: number }) {
             }}
           />
         )}
+        {tab === "comercio" && <TradePanel state={state} act={act} />}
         {tab === "reino" && <Realm state={state} />}
       </main>
 
@@ -152,6 +155,7 @@ export function Game({ id }: { id: number }) {
             ["mapa", "Mapa"],
             ["castillo", "Castillo"],
             ["ordenes", dirty ? "Órdenes •" : "Órdenes"],
+            ["comercio", offersForMe > 0 ? `Comercio (${offersForMe})` : "Comercio"],
             ["reino", "Reino"],
           ] as [Tab, string][]
         ).map(([key, label]) => (

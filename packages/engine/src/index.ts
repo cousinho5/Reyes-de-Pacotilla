@@ -10,3 +10,6 @@ export * from "./random";
 export * from "./mapgen";
 export * from "./fog";
 export * from "./actions";
+export * from "./trade";
+export * from "./objectives";
+export * from "./autopilot";

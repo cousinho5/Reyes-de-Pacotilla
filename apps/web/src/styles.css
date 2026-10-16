@@ -516,3 +516,89 @@ legend {
   z-index: 10;
   text-align: center;
 }
+
+/* MVP 2 */
+.tabs {
+  grid-template-columns: repeat(5, 1fr);
+}
+.tabs button {
+  font-size: 0.85rem;
+  padding: 0.25rem;
+}
+button.wide {
+  width: 100%;
+  margin: 0.25rem 0;
+}
+.offer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.offer-terms {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  margin-top: 0.25rem;
+}
+.offer-terms .res {
+  margin-right: 0.4rem;
+}
+.offer .actions button {
+  min-height: 40px;
+}
+.swatch.small {
+  display: inline-block;
+  width: 0.8rem;
+  height: 0.8rem;
+  vertical-align: middle;
+  border-width: 1px;
+}
+.stepper {
+  display: grid;
+  grid-template-columns: 1fr 44px 4.5rem 44px;
+  gap: 0.35rem;
+  align-items: center;
+  margin: 0.3rem 0;
+}
+.stepper input {
+  margin: 0;
+  text-align: center;
+  min-height: 40px;
+  padding: 0.25rem;
+}
+.stepper button {
+  min-height: 40px;
+  padding: 0;
+  font-size: 1.2rem;
+}
+h3 {
+  font-size: 1rem;
+  margin: 0.75rem 0 0.25rem;
+}
+.radio {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+}
+.radio input {
+  width: auto;
+  min-height: auto;
+  margin-top: 0.3rem;
+}
+.secret {
+  border-style: dashed;
+  border-color: #8a6d3b;
+}
+.chip.achievement {
+  border-color: var(--oro);
+  background: #fff3cf;
+  font-size: 0.75rem;
+  margin-left: 0;
+  margin-right: 0.25rem;
+}
+.coronation {
+  background: #fff3cf;
+  border-color: var(--oro);
+  text-align: center;
+  font-family: Georgia, serif;
+}

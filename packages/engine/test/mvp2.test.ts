@@ -1,0 +1,90 @@
+import { describe, expect, it } from "vitest";
+import { OBJECTIVE_KEYS, checkOffer, cleanBundle, dealObjectives, objectiveMet, planAutopilot, type Tile } from "../src";
+
+const levels = { granja: 2, aserradero: 2, cantera: 1, mina: 1, mercado: 1 } as const;
+const rich = { pan: 100, madera: 100, piedra: 100, hierro: 100, oro: 100 };
+
+describe("Comercio", () => {
+  it("limpia cantidades y rechaza las raras", () => {
+    expect(cleanBundle({ pan: 5, oro: 0, madera: 3 })).toEqual({ pan: 5, madera: 3 });
+    expect(cleanBundle({ pan: -1 })).toBeNull();
+    expect(cleanBundle({ pan: 2.5 })).toBeNull();
+  });
+  it("hay que dar y pedir algo, distinto, y tener lo que se ofrece", () => {
+    expect(checkOffer({ pan: 10 }, { hierro: 5 }, rich).ok).toBe(true);
+    expect(checkOffer({ pan: 10 }, {}, rich).ok).toBe(false);
+    expect(checkOffer({ pan: 10 }, { pan: 5 }, rich).ok).toBe(false);
+    expect(checkOffer({ pan: 1000 }, { hierro: 5 }, rich).ok).toBe(false);
+  });
+});
+
+describe("Objetivos secretos", () => {
+  it("reparto reproducible: dos objetivos distintos por casa y poco repetidos", () => {
+    const houses = [1, 2, 3, 4, 5];
+    const a = dealObjectives("semilla", houses);
+    expect(dealObjectives("semilla", houses)).toEqual(a);
+    for (const [x, y] of a.values()) expect(x).not.toBe(y);
+    const all = [...a.values()].flat();
+    expect(new Set(all).size).toBe(OBJECTIVE_KEYS.length); // 5 casas x 2 = 10 = catálogo completo
+  });
+
+  it("evalúa los objetivos con el estado final", () => {
+    const tiles: Pick<Tile, "type" | "owner" | "troops">[] = [
+      { type: "castillo", owner: 1, troops: 20 },
+      { type: "puerto", owner: 1, troops: 6 },
+      { type: "puerto", owner: 1, troops: 5 },
+      { type: "fortaleza", owner: 2, troops: 9 },
+    ];
+    const ctx = {
+      house: 1,
+      tiles,
+      buildings: { ...levels, mercado: 5 },
+      gold: 120,
+      partnersAllGame: 2,
+      otherHouses: 3,
+      validTradesAllGame: 4,
+      tookTileFromHouse: false,
+    };
+    expect(objectiveMet("dos_puertos", ctx)).toBe(true);
+    expect(objectiveMet("oro_100", ctx)).toBe(true);
+    expect(objectiveMet("tropas_30", ctx)).toBe(true);
+    expect(objectiveMet("obra_maestra", ctx)).toBe(true);
+    expect(objectiveMet("fortaleza", ctx)).toBe(false);
+    expect(objectiveMet("comercio_con_todas", ctx)).toBe(false);
+    expect(objectiveMet("edificios_nivel_3", ctx)).toBe(false);
+    expect(objectiveMet("casilla_ajena", ctx)).toBe(false);
+  });
+});
+
+describe("Piloto automático", () => {
+  const tiles: Tile[] = [
+    { id: 1, x: 0, y: 0, type: "castillo", owner: 1, troops: 6, castleOf: 1 },
+    { id: 2, x: 1, y: 0, type: "campos", owner: 1, troops: 3 },
+    { id: 3, x: 2, y: 0, type: "bosque", owner: 2, troops: 8 },
+  ];
+  const base = { day: 0, house: 1, tiles, buildings: { ...levels }, nextResolution: 3 };
+
+  it("económica: mejora el edificio de menor nivel que pueda pagar", () => {
+    const plan = planAutopilot({ ...base, template: "economica", resources: { ...rich } });
+    expect(plan.upgrade).toBe("cantera");
+    expect(plan.cost).toEqual({ madera: 12, piedra: 12 });
+  });
+
+  it("defensiva: fortifica la casilla amenazada y recluta guardando Pan", () => {
+    const plan = planAutopilot({ ...base, template: "defensiva", resources: { ...rich } });
+    expect(plan.fortify).toEqual({ tile: 2, until: 4 });
+    expect(plan.recruit).toBe(10);
+    expect(plan.upgrade).toBeNull();
+  });
+
+  it("nunca gasta lo que no tiene", () => {
+    const poor = { pan: 2, madera: 0, piedra: 0, hierro: 1, oro: 0 };
+    const plan = planAutopilot({ ...base, template: "defensiva", resources: poor });
+    expect(plan).toMatchObject({ fortify: null, recruit: 0, upgrade: null });
+  });
+
+  it("equilibrada: alterna económica y defensiva según el día", () => {
+    expect(planAutopilot({ ...base, template: "equilibrada", day: 2, resources: { ...rich } }).upgrade).toBe("cantera");
+    expect(planAutopilot({ ...base, template: "equilibrada", day: 3, resources: { ...rich } }).fortify).not.toBeNull();
+  });
+});
