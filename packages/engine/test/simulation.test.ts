@@ -21,4 +21,14 @@ describe("Simulador de partidas", () => {
     // Quien no hace nada no conquista nada.
     expect(r.houses.find((h) => h.strategy === "pasiva")!.tiles).toBe(0);
   });
+
+  it("con personalidades: determinista, sin recursos negativos y con apoyos y comercio", () => {
+    const strategies = ["estratega", "mercader", "guerrero", "arquitecta", "oportunista", "estratega"] as const;
+    const a = simulateGame({ seed: "sim-personalidades", strategies: [...strategies], weeks: 4 });
+    expect(simulateGame({ seed: "sim-personalidades", strategies: [...strategies], weeks: 4 })).toEqual(a);
+    for (const h of a.houses) for (const v of Object.values(h.leftover)) expect(v).toBeGreaterThanOrEqual(0);
+    expect(a.supports).toBeGreaterThan(0);
+    expect(a.trades).toBeGreaterThan(0);
+    expect(a.attacksWon).toBeGreaterThan(0);
+  });
 });

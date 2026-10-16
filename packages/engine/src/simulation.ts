@@ -15,10 +15,27 @@ import { dealObjectives, objectiveMet, type ObjectiveKey } from "./objectives";
 import { computePrestige, isValidTrade, type AchievementKey, type PrestigeBreakdown } from "./prestige";
 import { resolveCampaign } from "./combat";
 import { PRESTIGE, SPECIALTY_PAIRS, STARTING_RESOURCES } from "./rules";
+import { totalOf } from "./trade";
 import { BUILDINGS, RESOURCES, type BuildingKind, type HouseId, type Order, type Resource, type Resources, type Tile } from "./types";
+import {
+  PERSONALITIES,
+  PERSONALITY_NAMES,
+  chooseObjective,
+  offerGain,
+  planDay,
+  planOrders,
+  proposeOffer,
+  situation,
+  type AiView,
+  type PersonalityName,
+} from "./ai";
 
 /**
  * Cómo juega cada casa simulada.
+ * Bots con personalidad (ai/): estratega, mercader, guerrero, arquitecta y
+ * oportunista. Valoran recursos, objetivos y amenazas, atacan con apoyos,
+ * defienden y comercian entre ellos.
+ * Bots clásicos, más simples (sirven de referencia):
  * - equilibrada: el bot de las partidas de prueba (piloto equilibrado + ataques).
  * - constructora: sube edificios siempre que puede; solo ataca neutrales con mucho margen.
  * - conquistadora: recluta todo lo que puede y ataca con poco margen, también a otras casas.
@@ -26,10 +43,16 @@ import { BUILDINGS, RESOURCES, type BuildingKind, type HouseId, type Order, type
  * - ausente: solo el piloto automático (nunca ataca, defiende con +25%).
  * - pasiva: no hace nada (como quien se apunta y no vuelve a entrar sin piloto).
  */
-export const STRATEGIES = ["equilibrada", "constructora", "conquistadora", "comerciante", "ausente", "pasiva"] as const;
-export type Strategy = (typeof STRATEGIES)[number];
+export const CLASSIC_STRATEGIES = ["equilibrada", "constructora", "conquistadora", "comerciante", "ausente", "pasiva"] as const;
+export type ClassicStrategy = (typeof CLASSIC_STRATEGIES)[number];
+export type Strategy = ClassicStrategy | PersonalityName;
+export const STRATEGIES: Strategy[] = [...PERSONALITY_NAMES, ...CLASSIC_STRATEGIES];
 
-const ORDERS: Record<Strategy, Parameters<typeof planBotOrders>[0]["margins"] | "none" | "default"> = {
+function isSmart(s: Strategy): s is PersonalityName {
+  return s in PERSONALITIES;
+}
+
+const ORDERS: Record<ClassicStrategy, Parameters<typeof planBotOrders>[0]["margins"] | "none" | "default"> = {
   equilibrada: "default",
   constructora: { neutral: 1.5, house: 99 },
   conquistadora: { neutral: 1.05, house: 1.15 },
@@ -38,7 +61,7 @@ const ORDERS: Record<Strategy, Parameters<typeof planBotOrders>[0]["margins"] | 
   pasiva: "none",
 };
 
-const PREFERRED_OBJECTIVES: Partial<Record<Strategy, ObjectiveKey[]>> = {
+const PREFERRED_OBJECTIVES: Partial<Record<ClassicStrategy, ObjectiveKey[]>> = {
   constructora: ["edificios_nivel_3", "obra_maestra", "oro_200"],
   conquistadora: ["casillas_ajenas", "seis_casillas", "fortaleza", "tropas_40", "puerto_y_fortaleza"],
   comerciante: ["comercio_con_tres", "diez_tratos"],
@@ -63,6 +86,7 @@ export interface SimHouseResult {
   tiles: number;
   troops: number;
   buildingLevels: number;
+  levels: Record<BuildingKind, number>;
   leftover: Resources;
   deserted: number;
   validTrades: number;
@@ -90,6 +114,15 @@ export interface SimGameResult {
   combatsVsHouse: number;
   conquestsFromHouses: number;
   bounces: number;
+  /** Órdenes de ataque (a casillas ajenas) y cuántas tomaron la casilla. */
+  attacks: number;
+  attacksWon: number;
+  /** Órdenes de apoyo (a ataques o a defensas). */
+  supports: number;
+  /** Tratos cerrados (válidos o no). */
+  trades: number;
+  /** Mapa al final de la partida. */
+  finalTiles: Tile[];
 }
 
 interface HouseState {
@@ -105,6 +138,8 @@ interface HouseState {
   takenFromHouses: number;
   achievements: Partial<Record<AchievementKey, number>>;
   prestigeBySunday: number[];
+  /** Recurso que pide como ayuda al último. */
+  helpChoice: Resource | null;
 }
 
 export function simulateGame(opts: SimOptions): SimGameResult {
@@ -125,7 +160,7 @@ export function simulateGame(opts: SimOptions): SimGameResult {
     const pair = SPECIALTY_PAIRS[i % SPECIALTY_PAIRS.length]!;
     const strategy = opts.strategies[i]!;
     const options = objectives.get(id)!;
-    const preferred = PREFERRED_OBJECTIVES[strategy] ?? [];
+    const preferred = isSmart(strategy) ? [chooseObjective(options, PERSONALITIES[strategy])] : (PREFERRED_OBJECTIVES[strategy] ?? []);
     return {
       id,
       strategy,
@@ -140,6 +175,7 @@ export function simulateGame(opts: SimOptions): SimGameResult {
       takenFromHouses: 0,
       achievements: {},
       prestigeBySunday: [],
+      helpChoice: null,
     };
   });
   const byId = new Map(houses.map((h) => [h.id, h]));
@@ -152,6 +188,9 @@ export function simulateGame(opts: SimOptions): SimGameResult {
   let combatsVsHouse = 0;
   let conquestsFromHouses = 0;
   let bounces = 0;
+  let attacks = 0;
+  let attacksWon = 0;
+  let supports = 0;
   let rankWeek2: Map<HouseId, number> | null = null;
 
   const prestigeOf = (h: HouseState, day: number, objectiveMet?: boolean) => {
@@ -172,17 +211,54 @@ export function simulateGame(opts: SimOptions): SimGameResult {
     });
   };
 
-  for (let day = 0; day < opts.weeks * 7; day++) {
+  const totalDays = opts.weeks * 7;
+  /** Lo que ve una casa con personalidad (sus casillas y vecinas, Prestigio público). */
+  const viewOf = (h: HouseState, day: number, ranking: { house: HouseId; total: number }[]): AiView => ({
+    house: h.id,
+    tiles,
+    buildings: h.levels,
+    resources: { ...h.res },
+    nextResolution: resolution + 1,
+    day,
+    totalDays,
+    objective: h.objective,
+    prestige: ranking,
+    recentPartners: [
+      ...new Set(
+        trades
+          .filter((t) => t.valid && day - t.day < PRESTIGE.tradeWindowDays && (t.a === h.id || t.b === h.id))
+          .map((t) => (t.a === h.id ? t.b : t.a)),
+      ),
+    ],
+    help: h.helpUntil != null && h.helpUntil > resolution ? (h.helpChoice ?? "pan") : null,
+  });
+  const ranking = (day: number) => houses.map((h) => ({ house: h.id, total: prestigeOf(h, day).total }));
+
+  for (let day = 0; day < totalDays; day++) {
     // 1. Producción (y ayuda al último si está activa).
     for (const h of houses) {
-      const help = h.helpUntil != null && h.helpUntil > resolution ? helpResource(h.res) : null;
+      const helpActive = h.helpUntil != null && h.helpUntil > resolution;
+      const help = helpActive ? (isSmart(h.strategy) ? (h.helpChoice ?? "pan") : helpResource(h.res)) : null;
       const p = dailyProduction(h.levels, tiles.filter((t) => t.owner === h.id), help);
       for (const r of RESOURCES) h.res[r] += p[r];
     }
 
     // 2. Acciones del día según la estrategia.
+    const morning = ranking(day);
     for (const h of houses) {
-      const plan = dailyPlan(h, day, tiles, resolution + 1);
+      if (isSmart(h.strategy)) {
+        const plan = planDay(situation(viewOf(h, day, morning), PERSONALITIES[h.strategy]));
+        for (const r of RESOURCES) h.res[r] -= plan.cost[r];
+        for (const b of plan.upgrades) {
+          h.levels[b]++;
+          if (h.levels[b] === 5 && !houses.some((o) => o.achievements.obra_maestra)) h.achievements.obra_maestra = 1;
+        }
+        for (const f of plan.fortify) tiles = tiles.map((t) => (t.id === f.tile ? { ...t, fortifiedUntil: f.until } : t));
+        if (plan.recruit > 0) tiles = tiles.map((t) => (t.castleOf === h.id ? { ...t, troops: t.troops + plan.recruit } : t));
+        h.helpChoice = plan.help;
+        continue;
+      }
+      const plan = dailyPlan(h as HouseState & { strategy: ClassicStrategy }, day, tiles, resolution + 1);
       if (!plan) continue;
       for (const [r, v] of Object.entries(plan.cost) as [Resource, number][]) h.res[r] -= v;
       if (plan.upgrade) {
@@ -206,12 +282,43 @@ export function simulateGame(opts: SimOptions): SimGameResult {
       trades.push({ a: h.id, b: partner.id, day, valid: isValidTrade(amount, amount) });
     }
 
+    // 3b. Mercado: cada casa con personalidad publica como mucho una oferta y
+    // la acepta quien más gane con ella (las clásicas, si no pierden).
+    const market = ranking(day);
+    for (const h of houses.filter((x) => isSmart(x.strategy))) {
+      const offer = proposeOffer(situation(viewOf(h, day, market), PERSONALITIES[h.strategy as PersonalityName]));
+      if (!offer) continue;
+      let best: { o: HouseState; gain: number } | null = null;
+      for (const o of houses) {
+        if (o.id === h.id || o.strategy === "ausente" || o.strategy === "pasiva") continue;
+        const gain = isSmart(o.strategy)
+          ? offerGain(situation(viewOf(o, day, market), PERSONALITIES[o.strategy]), offer.give, offer.want, h.id)
+          : botAcceptsOffer(offer.give, offer.want, o.res)
+            ? totalOf(offer.give) - totalOf(offer.want)
+            : -Infinity;
+        if (gain > 0 && (!best || gain > best.gain)) best = { o, gain };
+      }
+      if (!best) continue;
+      if (RESOURCES.some((r) => h.res[r] < (offer.give[r] ?? 0))) continue;
+      for (const r of RESOURCES) {
+        const d = (offer.give[r] ?? 0) - (offer.want[r] ?? 0);
+        h.res[r] -= d;
+        best.o.res[r] += d;
+      }
+      trades.push({ a: h.id, b: best.o.id, day, valid: isValidTrade(totalOf(offer.give), totalOf(offer.want)) });
+    }
+
     // 4. Resolución el miércoles (día 2) y el domingo (día 6).
     const weekday = day % 7;
     if (weekday !== 2 && weekday !== 6) continue;
     resolution++;
     const orders: Order[] = [];
+    const evening = ranking(day);
     for (const h of houses) {
+      if (isSmart(h.strategy)) {
+        orders.push(...planOrders(situation(viewOf(h, day, evening), PERSONALITIES[h.strategy])));
+        continue;
+      }
       const margins = ORDERS[h.strategy];
       if (margins === "none") continue;
       orders.push(
@@ -226,6 +333,10 @@ export function simulateGame(opts: SimOptions): SimGameResult {
       );
     }
     const before = new Map(tiles.map((t) => [t.id, t]));
+    for (const o of orders) {
+      if (o.kind === "support") supports++;
+      else if (before.get(o.to)?.owner !== o.house) attacks++;
+    }
     const result = resolveCampaign({ resolution, tiles, orders, absentHouses: absent });
     tiles = result.tiles;
     for (const e of result.events) {
@@ -233,6 +344,7 @@ export function simulateGame(opts: SimOptions): SimGameResult {
       if (e.type !== "combate") continue;
       if (e.previousOwner == null) combatsVsNeutral++;
       else combatsVsHouse++;
+      if (e.conquered) attacksWon++;
       if (e.conquered && e.winner != null && e.previousOwner != null) {
         conquestsFromHouses++;
         byId.get(e.winner)!.takenFromHouses++;
@@ -311,6 +423,11 @@ export function simulateGame(opts: SimOptions): SimGameResult {
     combatsVsHouse,
     conquestsFromHouses,
     bounces,
+    attacks,
+    attacksWon,
+    supports,
+    trades: trades.length,
+    finalTiles: tiles,
     houses: final.map((f, i) => ({
       house: f.h.id,
       strategy: f.h.strategy,
@@ -322,6 +439,7 @@ export function simulateGame(opts: SimOptions): SimGameResult {
       tiles: f.tiles,
       troops: f.troops,
       buildingLevels: Object.values(f.h.levels).reduce((a, l) => a + l, 0),
+      levels: { ...f.h.levels },
       leftover: { ...f.h.res },
       deserted: f.h.deserted,
       validTrades: f.valid,
@@ -333,7 +451,7 @@ export function simulateGame(opts: SimOptions): SimGameResult {
   };
 }
 
-function dailyPlan(h: HouseState, day: number, tiles: Tile[], nextResolution: number): AutopilotPlan | null {
+function dailyPlan(h: HouseState & { strategy: ClassicStrategy }, day: number, tiles: Tile[], nextResolution: number): AutopilotPlan | null {
   const run = (template: AutopilotTemplate) =>
     planAutopilot({ template, day, house: h.id, tiles, buildings: h.levels, resources: { ...h.res }, nextResolution });
   switch (h.strategy) {

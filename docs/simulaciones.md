@@ -1,30 +1,109 @@
 # Simulaciones de equilibrio
 
-Resultados del simulador (`npm run simular`) con los valores actuales de `packages/engine/src/rules.ts`. Los bots son sencillos, así que las cifras marcan tendencias, no verdades: lo que importa es lo que sale muy desequilibrado.
+Resultados del simulador (`npm run simular`) con los valores de `packages/engine/src/rules.ts`. Los bots juegan bien pero no como personas: las cifras marcan tendencias. Lo que importa es lo que sale muy desequilibrado.
 
 ## Cómo se simula
 
 Cada partida reproduce el calendario del servidor: producción diaria, acciones del día, comercio, resoluciones el miércoles y el domingo, mantenimiento, ayuda al último, Prestigio en vivo y final con objetivos secretos.
 
-Cada casa juega con una de estas estrategias:
+### Bots con personalidad (`packages/engine/src/ai`)
+
+Son los que se usan por defecto y los de las partidas de prueba. Solo ven lo que vería una persona: sus casillas, las vecinas y el Prestigio público. Cada día:
+
+- **Valoran cada recurso** según lo que van a necesitar: mantenimiento, tropas, mejoras y fortificaciones. Lo que les sobra vale poco y lo que les falta, mucho; en la última semana lo guardado deja de valer.
+- **Construyen o reclutan** según lo que más rinde: producción por los días que quedan más Prestigio. No reclutan más tropas de las que pueden alimentar y siempre guardan el Pan del domingo.
+- **Fortifican** las casillas amenazadas a las que la fortificación salva.
+- **Comercian:** publican una oferta con lo que les sobra y aceptan las que les convienen (un socio nuevo da Prestigio).
+- **Antes de cada resolución:**
+  - Atacan los objetivos que más valen, con una casilla que se mueve y apoyos desde las demás vecinas. El apoyo no sale de su casilla, así que también usan las tropas que dejan de guardia.
+  - Refuerzan o apoyan las casillas amenazadas.
+  - Llevan el resto hacia la frontera.
+- **Persiguen su objetivo secreto** (lo eligen según su personalidad) y la que quiere la obra maestra ahorra para ella.
+
+| Personalidad | Margen de ataque | Prudencia | Contra casas | Manía al líder | Comercio | Especialización | Ejército |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| estratega | x1,25 | 0,8 | 0,8 | 0,5 | 0,6 | 0,3 | 1,0 |
+| mercader | x1,4 | 0,9 | 0,4 | 0,3 | 1,0 | 0,5 | 0,7 |
+| guerrero | x1,1 | 0,6 | 1,3 | 0,6 | 0,3 | 0,2 | 1,6 |
+| arquitecta | x1,5 | 1,0 | 0,3 | 0,2 | 0,6 | 1,0 | 0,5 |
+| oportunista | x1,2 | 0,7 | 1,1 | 1,0 | 0,5 | 0,3 | 1,1 |
+
+### Bots clásicos (referencia)
+
+Los primeros bots, más simples, siguen disponibles para comparar:
 
 | Estrategia | Qué hace |
 | --- | --- |
-| equilibrada | El bot de las partidas de prueba: piloto automático equilibrado y ataques con margen (x1,2 a neutrales, x1,5 a casas). |
+| equilibrada | Piloto automático equilibrado y ataques con margen (x1,2 a neutrales, x1,5 a casas). |
 | constructora | Sube edificios siempre que puede; solo ataca neutrales y con mucho margen. |
 | conquistadora | Recluta todo lo posible y ataca con poco margen, también a otras casas. |
-| comerciante | Como la equilibrada, y además cada día cambia 10 de lo que más le sobra por 10 de lo que le falte (si alguien tiene de sobra). |
+| comerciante | Como la equilibrada, y además cada día cambia 10 de lo que más le sobra por 10 de lo que le falte. |
 | ausente | Solo el piloto automático: nunca ataca y defiende con +25%. |
 | pasiva | No hace nada. |
 
 Comandos:
 
 ```bash
-npm run simular                                   # 500 partidas de 6 semanas, 4-8 casas, estrategias mezcladas
-npm run simular -- --partidas 2000 --modo espejo  # todas iguales: ¿es justo el reparto inicial?
-npm run simular -- --semanas 2                    # partidas cortas
+npm run simular                                   # 500 partidas de 6 semanas, 4-8 casas, personalidades mezcladas
+npm run simular -- --partidas 2000 --modo espejo  # todas estrategas: ¿es justo el reparto inicial?
+npm run simular -- --modo todos                   # personalidades y bots clásicos juntos
+npm run simular -- --modo clasico                 # solo los bots clásicos
+npm run simular -- --estrategias guerrero,mercader
+npm run simular -- --semanas 4                    # duración de la partida
 npm run simular -- --json datos.json              # además, todos los datos
 ```
+
+## Con bots con personalidad (16 de octubre de 2026)
+
+1000 partidas mezcladas de 6 semanas, 2000 en espejo (todas estrategas) y 1000 con todos los bots.
+
+### Personalidades
+
+| Personalidad | Gana | x lo esperado | Prestigio medio |
+| --- | --- | --- | --- |
+| guerrero | 21% | 1,3 | 36,8 |
+| estratega | 18% | 1,1 | 36,7 |
+| oportunista | 16% | 1,0 | 36,2 |
+| mercader | 15% | 0,9 | 36,3 |
+| arquitecta | 11% | 0,7 | 34,8 |
+
+Contra los bots clásicos, las personalidades ganan entre 1,1 y 2,0 veces lo esperado; los clásicos, entre 0,1 y 1,5 veces. El bot nuevo juega claramente mejor.
+
+### Lo que está bien
+
+- **Hay varias formas de ganar.** Todas las personalidades quedan entre 0,7 y 1,3, sin ninguna dominante.
+- **Las partidas son ajustadas.** Entre el primero y el segundo hay de media 4 puntos de Prestigio, y el líder de la semana 2 solo gana una de cada cuatro veces. Con 4 semanas, el 28%: la piloto de 4 semanas sigue abierta hasta el final.
+- **Las especialidades iniciales son justas** (0,9-1,1 en espejo).
+- **El combate funciona:**
+  - Unas 48 órdenes de ataque y 12 de apoyo por partida.
+  - El 66% de los ataques toma la casilla.
+  - Se roban entre 6 y 19 casillas entre casas según el número de jugadores.
+- **Casi nadie sufre deserciones** (1%): el mantenimiento obliga a planificar sin castigar.
+
+### Lo que está desequilibrado
+
+1. **El comercio satura:**
+   - Con bots que comercian a menudo (unos 55 tratos por partida), casi todas las casas llegan al tope de Prestigio de comercio: de 5,1 a 5,9 sobre 6.
+   - comercio_con_tres y diez_tratos se cumplen el 100% de las veces.
+   - Falta saber si las personas comerciarán tanto; la partida piloto lo dirá.
+2. **Los objetivos de territorio son casi imposibles, y quien los cumple casi siempre gana:**
+   - seis_casillas: se cumple el 2-3% de las veces y gana el 87%.
+   - puerto_y_fortaleza: 3-4%, gana el 75%.
+   - fortaleza: 11-12%, gana el 82%.
+   - Las fortalezas neutrales (10 de guarnición con +75% de defensa) piden unas 22 tropas, y con 5 o más casas el mapa se llena pronto.
+3. **edificios_nivel_3 es casi regalado** (96-97%).
+4. **La obra maestra no compensa.** Solo la consigue el 9% de quien la persigue, y de ellos gana el 12%. Los niveles 4 y 5 cuestan 305 recursos por +2 de producción y +2 de Prestigio.
+5. **Sobra Oro** (unos 200) **y Piedra** (60-75) al final. El Oro tendrá salida en la versión 1.
+
+### Propuestas (sin aplicar)
+
+| Problema | Cambio posible |
+| --- | --- |
+| Comercio saturado | Esperar a la piloto. Si las personas comercian tanto: socio válido con 15 por lado (ahora 10) y objetivos comercio_con_cuatro y quince_tratos. |
+| Objetivos de territorio | seis_casillas → cinco_casillas; fortaleza: guarnición neutral de 10 → 8 |
+| edificios_nivel_3 regalado | Cuatro edificios a nivel 4 |
+| Obra maestra sin premio | Nivel 5 más barato (60 Madera + 35 Piedra + 30 Hierro + 30 Oro) o +3 de Prestigio por edificio a nivel 5 |
+| Piedra sobrante | Fortificar con 8 de Piedra (ahora 10) o que dure 3 resoluciones |
 
 ## Ajuste del 16 de octubre de 2026 (aplicado)
 

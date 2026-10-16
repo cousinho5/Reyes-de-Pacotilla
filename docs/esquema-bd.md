@@ -122,6 +122,8 @@ Para probar el juego sin reunir a 4 personas:
 - `games.played_house_id`: la casa que maneja quien creó la prueba ("jugar como").
 - `houses.is_bot`: casa de un bot. Cada bot tiene un usuario con un código que nadie conoce.
 
+Migración 0004: `houses.bot_personality`, la personalidad de cada bot (estratega, mercader, guerrero, arquitecta u oportunista; ver `packages/engine/src/ai`).
+
 Borrar una prueba elimina la partida, sus filas y los usuarios de sus bots en un solo lote.
 
 ## 8. SQL completo (migración 0001)

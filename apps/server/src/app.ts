@@ -44,7 +44,7 @@ import {
 import { notifyHouses, vapidFrom, type NotifyEnv } from "./notify";
 import { COLORS, pickShield } from "./heraldry";
 import { clockOf, runGameJobs } from "./jobs";
-import { addBots, advance, deleteTestGame, testStart } from "./pruebas";
+import { addBots, advance, botsPlayDay, deleteTestGame, testStart } from "./pruebas";
 import { acceptOffer, bundle, offerView, type OfferRow } from "./offers";
 import { ordersOpen } from "./scheduler";
 import {
@@ -389,7 +389,10 @@ app.post("/api/partidas/:id/empezar", async (c) => {
   });
   await db.batch(statements);
   // En las pruebas, el primer día empieza ya: producción del lunes.
-  if (test) await runGameJobs(c.env, (await loadGame(db, game.id))!, new Date(simNow!));
+  if (test) {
+    await runGameJobs(c.env, (await loadGame(db, game.id))!, new Date(simNow!));
+    await botsPlayDay(c.env, (await loadGame(db, game.id))!);
+  }
   return c.json({ ok: true, inicio: startDate });
 });
 
@@ -555,7 +558,13 @@ app.get("/api/partidas/:id", async (c) => {
         ? {
             ahora: now.toISOString(),
             jugandoComo: house.id,
-            casas: houses.map((h) => ({ id: h.id, nombre: h.name, color: h.color, bot: h.is_bot === 1 })),
+            casas: houses.map((h) => ({
+              id: h.id,
+              nombre: h.name,
+              color: h.color,
+              bot: h.is_bot === 1,
+              personalidad: h.is_bot === 1 ? (h.bot_personality ?? "estratega") : null,
+            })),
           }
         : null,
     casillas: projectForHouse(tiles, house.id).map((t) => ({ ...t, nombre: names.get(t.id) })),

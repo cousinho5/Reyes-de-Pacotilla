@@ -15,3 +15,4 @@ export * from "./objectives";
 export * from "./autopilot";
 export * from "./bots";
 export * from "./simulation";
+export * from "./ai";

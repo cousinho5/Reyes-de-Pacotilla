@@ -70,14 +70,14 @@ export function TestBench({
             >
               <span className="swatch" style={{ background: HOUSE_COLORS[h.color]?.hex }} />
               {h.nombre}
-              {h.bot && <small> (bot)</small>}
+              {h.bot && <small> ({h.personalidad ?? "bot"})</small>}
             </button>
           ))}
         </div>
         <p className="hint">
           «Siguiente paso» lleva a la mañana siguiente (producción) o a la resolución de las 22:00; «Resolver»
-          avanza hasta pasar la próxima resolución. Los bots que no manejas
-          construyen, reclutan, atacan casillas débiles y aceptan tus ofertas si les salen a cuenta.
+          avanza hasta pasar la próxima resolución. Cada bot tiene personalidad (entre paréntesis): construye,
+          recluta, ataca con apoyos, defiende, publica ofertas y acepta las tuyas si le salen a cuenta.
         </p>
         {confirmDelete ? (
           <div className="actions">

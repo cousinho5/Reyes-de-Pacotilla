@@ -151,7 +151,7 @@ export interface TestInfo {
   /** En juego: hora simulada y casa que manejas. */
   ahora?: string;
   jugandoComo?: number;
-  casas?: { id: number; nombre: string; color: string; bot: boolean }[];
+  casas?: { id: number; nombre: string; color: string; bot: boolean; personalidad?: string | null }[];
 }
 
 export const api = {
