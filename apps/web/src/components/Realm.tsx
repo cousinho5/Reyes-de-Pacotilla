@@ -33,7 +33,7 @@ export function Realm({ state }: { state: GameState }) {
                 <span className="swatch" style={{ background: HOUSE_COLORS[h.color]?.hex }} />
                 <span className="grow">
                   <strong>{h.nombre}</strong>
-                  {i === 0 && (h.prestigio?.total ?? 0) > (state.casas[1]?.prestigio?.total ?? 0) && (
+                  {!final && i === 0 && (h.prestigio?.total ?? 0) > (state.casas[1]?.prestigio?.total ?? 0) && (
                     <small> · favorito del cronista</small>
                   )}
                   {h.lema && (

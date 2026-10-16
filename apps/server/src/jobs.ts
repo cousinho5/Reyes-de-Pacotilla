@@ -42,8 +42,9 @@ export function isAbsent(
   game?: Pick<GameRow, "is_test" | "played_house_id">,
 ): boolean {
   if (h.vacation === 1) return true;
-  // En las pruebas el reloj salta días: solo juegan solos los bots que no estás manejando.
-  if (game?.is_test === 1) return h.is_bot === 1 && h.id !== game.played_house_id;
+  // En las pruebas el reloj salta días y los bots juegan por su cuenta (pruebas.ts):
+  // nadie pasa al piloto automático.
+  if (game?.is_test === 1) return false;
   return !h.last_seen_at || now.getTime() - Date.parse(h.last_seen_at) > ABSENT_AFTER_MS;
 }
 

@@ -82,14 +82,17 @@ En `/crear`, marca **Partida de prueba** y elige cuántos bots rivales quieres (
 - **Jugar como**: maneja cualquier casa, por ejemplo para atacarte a ti mismo o aceptar tu propia oferta.
 - **Borrar**: elimina la prueba y sus bots.
 
-Los bots construyen y reclutan con el piloto automático, atacan casillas vecinas que pueden ganar y aceptan las ofertas que les salen a cuenta. El reloj de la prueba es simulado: el cron real no la toca y las partidas de verdad no se ven afectadas.
+Los bots tienen personalidad: construyen, reclutan, fortifican, atacan con apoyos, defienden, publican ofertas y aceptan las que les convienen. El reloj de la prueba es simulado: el cron real no la toca y las partidas de verdad no se ven afectadas.
 
 ## Simular partidas entre bots
 
 ```bash
-npm run simular                                   # 500 partidas de 6 semanas con estrategias mezcladas
+npm run simular                                   # 500 partidas de 6 semanas con personalidades mezcladas
 npm run simular -- --partidas 2000 --modo espejo  # todas las casas iguales
+npm run simular -- --modo todos                   # personalidades y bots sencillos juntos
 ```
+
+Los bots tienen personalidad (estratega, mercader, guerrero, arquitecta y oportunista): valoran recursos, atacan con apoyos, defienden, comercian y persiguen su objetivo secreto, viendo solo lo que vería una persona. Son los mismos que juegan las partidas de prueba.
 
 Resume qué estrategias ganan, si las especialidades son justas, qué objetivos se cumplen y qué recursos sobran. Resultados y propuestas en [docs/simulaciones.md](docs/simulaciones.md).
 

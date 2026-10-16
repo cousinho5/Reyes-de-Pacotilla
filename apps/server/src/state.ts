@@ -60,6 +60,7 @@ export interface HouseRow extends Resources {
   objective_key: string | null;
   objective_met: number | null;
   is_bot: number;
+  bot_personality: string | null;
 }
 
 export interface TileRow {

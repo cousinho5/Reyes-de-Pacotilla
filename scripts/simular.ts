@@ -1,13 +1,18 @@
 // Simula cientos de partidas entre bots y resume los números para equilibrar
 // rules.ts. Uso:
-//   npm run simular                       # 500 partidas de 6 semanas, estrategias mezcladas
+//   npm run simular                       # 500 partidas de 6 semanas, personalidades mezcladas
 //   npm run simular -- --partidas 2000 --semanas 2
-//   npm run simular -- --modo espejo      # todas las casas igual: ¿es justo el reparto inicial?
+//   npm run simular -- --modo espejo      # todas estrategas: ¿es justo el reparto inicial?
+//   npm run simular -- --modo clasico     # los bots sencillos de antes
+//   npm run simular -- --modo todos       # personalidades y bots sencillos juntos
+//   npm run simular -- --estrategias guerrero,mercader
 //   npm run simular -- --json simulacion.json   # además, todos los datos en JSON
 
 import { writeFileSync } from "node:fs";
 import {
+  CLASSIC_STRATEGIES,
   OBJECTIVES,
+  PERSONALITY_NAMES,
   RESOURCES,
   STRATEGIES,
   seededRandom,
@@ -24,7 +29,15 @@ const games = Number(args.get("partidas") ?? 500);
 const weeks = Number(args.get("semanas") ?? 6) as 2 | 4 | 6 | 8;
 const mode = args.get("modo") ?? "mezcla";
 const [minPlayers, maxPlayers] = (args.get("jugadores") ?? "4-8").split("-").map(Number) as [number, number];
-const pool = (args.get("estrategias")?.split(",") ?? (mode === "espejo" ? ["equilibrada"] : [...STRATEGIES])) as Strategy[];
+const pools: Record<string, Strategy[]> = {
+  mezcla: [...PERSONALITY_NAMES],
+  espejo: ["estratega"],
+  clasico: [...CLASSIC_STRATEGIES],
+  todos: [...STRATEGIES],
+};
+const pool = (args.get("estrategias")?.split(",") ?? pools[mode] ?? pools.mezcla!) as Strategy[];
+const unknown = pool.filter((p) => !STRATEGIES.includes(p));
+if (unknown.length) throw new Error(`Estrategias desconocidas: ${unknown.join(", ")}. Hay: ${STRATEGIES.join(", ")}`);
 
 const rand = seededRandom(`simulacion-${games}-${weeks}-${mode}`);
 const results: SimGameResult[] = [];
@@ -126,6 +139,14 @@ table(
 const withW2 = houses.filter((h) => h.rankWeek2 != null);
 const leaders = withW2.filter((h) => h.rankWeek2 === 1);
 const helped = houses.filter((h) => h.helpWeeks > 0);
+table("Combate y comercio (por partida)", ["dato", "valor"], [
+  ["Órdenes de ataque", f1(avg(results.map((r) => r.attacks)))],
+  ["Ataques que toman la casilla", pct(results.reduce((a, r) => a + r.attacksWon, 0) / Math.max(1, results.reduce((a, r) => a + r.attacks, 0)))],
+  ["Órdenes de apoyo", f1(avg(results.map((r) => r.supports)))],
+  ["Tratos cerrados", f1(avg(results.map((r) => r.trades)))],
+  ["Socios comerciales por casa (toda la partida)", f1(avg(houses.map((h) => h.partners)))],
+]);
+
 table("Forma de la partida", ["dato", "valor"], [
   ["Diferencia media 1.º - 2.º (Prestigio)", f1(avg(results.map((r) => r.margin)))],
   ["Partidas decididas por desempate", pct(results.filter((r) => r.tiebreak).length / results.length)],
