@@ -83,7 +83,7 @@ Cinco recursos. En las reglas, la interfaz y el código se usa siempre la misma 
 | Nivel 2 | 15 Madera + 10 Piedra | 25 |
 | Nivel 3 | 30 Madera + 20 Piedra | 50 |
 | Nivel 4 | 50 Madera + 30 Piedra + 25 Hierro | 105 |
-| Nivel 5 | 75 Madera + 45 Piedra + 40 Hierro + 40 Oro | 200 |
+| Nivel 5 | 60 Madera + 35 Piedra + 30 Hierro + 30 Oro | 155 |
 
 Las mejoras piden más Madera que Piedra porque la Piedra también sirve para fortificar (ajuste tras la simulación del 16 de octubre de 2026: la Madera sobraba y la Piedra iba justa).
 
@@ -114,7 +114,7 @@ El mapa es una cuadrícula que escala con el número de jugadores, con unas 4 ca
 | Cantera | +2 Piedra | 6 | |
 | Montaña | +2 Hierro | 6 | |
 | Puerto | +2 Oro | 8 | La única casilla que produce Oro |
-| Fortaleza | Nada | 10 | El defensor tiene +50% adicional y da más Prestigio |
+| Fortaleza | Nada | 8 | El defensor tiene +50% adicional y da más Prestigio |
 
 - Las guarniciones neutrales no atacan (salvo en el evento de los bandidos) y no crecen.
 
@@ -185,7 +185,7 @@ Cada día puedes hacer, sin límite más allá de lo que puedas pagar:
 | --- | --- | --- |
 | Mejorar un edificio | Ver tabla de la sección 5 | Sube un nivel; la producción aumenta al día siguiente. |
 | Reclutar | 2 Hierro + 2 Pan por tropa | Las tropas aparecen en tu castillo y pueden recibir órdenes para la siguiente resolución. |
-| Fortificar una casilla tuya | 10 Piedra | +25% de defensa durante las dos resoluciones siguientes. |
+| Fortificar una casilla tuya | 8 Piedra | +25% de defensa durante las dos resoluciones siguientes. |
 | Dar órdenes | Gratis | Mover, atacar, apoyar o mantener (sección 8). |
 | Comerciar | Gratis | Ofertas, contraofertas y tratados (sección 9). |
 
@@ -329,7 +329,7 @@ Pocos y públicos, que dan Prestigio permanente:
 
 Al empezar, cada casa recibe dos objetivos al azar y elige uno. Nadie más lo conoce. Si al final de la partida se cumple, da **+6 de Prestigio**, y se revela en el último boletín.
 
-Catálogo actual (10, en `packages/engine/src/objectives.ts`, umbrales en `rules.ts`): controlar un puerto y una fortaleza al final; tener los 5 edificios a nivel 3 o más; terminar con 200 Oro o más; cerrar tratos válidos con 3 casas distintas; controlar una fortaleza al final; tomar 3 casillas a otras casas; terminar con 40 tropas o más; controlar 6 casillas o más al final; tener un edificio a nivel 5; cerrar 10 tratos válidos. Los umbrales se ajustaron con la simulación del 16 de octubre de 2026: con los anteriores, terminar con 100 Oro se cumplía casi siempre y controlar 2 puertos o comerciar con todas casi nunca. Con la versión 1 se añadirán los de subastas (ganar 2 Gran Subastas) y pactos (firmar 2 pactos sin romper ninguno).
+Catálogo actual (10, en `packages/engine/src/objectives.ts`, umbrales en `rules.ts`): controlar un puerto y una fortaleza al final; sumar 17 niveles entre los cinco edificios; terminar con 200 Oro o más; cerrar tratos válidos con 3 casas distintas; controlar una fortaleza al final; tomar 3 casillas a otras casas; terminar con 40 tropas o más; controlar 5 casillas o más al final; tener un edificio a nivel 5; cerrar 10 tratos válidos. Los umbrales se ajustaron con la simulación del 16 de octubre de 2026: con los anteriores, terminar con 100 Oro se cumplía casi siempre y controlar 2 puertos o comerciar con todas casi nunca. Un segundo ajuste, con los bots con personalidad, cambió "los 5 edificios a nivel 3" (se cumplía el 97%) por "17 niveles" (35%), "6 casillas" (3%) por "5 casillas" (15%), abarató el nivel 5 de los edificios (de 200 a 155 recursos), bajó la guarnición de las fortalezas de 10 a 8 y fortificar a 8 de Piedra. Con la versión 1 se añadirán los de subastas (ganar 2 Gran Subastas) y pactos (firmar 2 pactos sin romper ninguno).
 
 El objetivo se elige antes de la primera resolución; quien no elige se queda con la primera opción.
 

@@ -4,7 +4,7 @@
 import { checkFortify, recruitCost } from "../actions";
 import { defenseMultiplier } from "../combat";
 import { canAfford, upgradeCost, weeklyUpkeep } from "../economy";
-import { BUILDING_PRODUCTION, BUILDING_RESOURCE, PRESTIGE } from "../rules";
+import { BUILDING_PRODUCTION, BUILDING_RESOURCE, OBJECTIVE_TARGETS, PRESTIGE } from "../rules";
 import { BUILDINGS, RESOURCES, type BuildingKind, type Resource, type Resources, type TileId } from "../types";
 import { militaryNeed } from "./orders";
 import { PRESTIGE_UNIT, valueOf, type Situation } from "./view";
@@ -125,9 +125,9 @@ export function planDay(s: Situation): DayPlan {
 function objectiveProgress(s: Situation, levels: Record<BuildingKind, number>, b: BuildingKind, focus: BuildingKind): number {
   const objective = PRESTIGE.secretObjective;
   if (s.view.objective === "obra_maestra" && b === focus) return objective / Math.max(1, 5 - levels[b]);
-  if (s.view.objective === "edificios_nivel_3" && levels[b] < 3) {
-    const missing = BUILDINGS.reduce((a, k) => a + Math.max(0, 3 - levels[k]), 0);
-    return objective / Math.max(1, missing);
+  if (s.view.objective === "niveles_17") {
+    const missing = OBJECTIVE_TARGETS.totalLevels - BUILDINGS.reduce((a, k) => a + levels[k], 0);
+    return missing > 0 ? objective / missing : 0;
   }
   return 0;
 }

@@ -7,7 +7,7 @@
 
 import { checkOrders, defenseMultiplier } from "../combat";
 import { areAdjacent } from "../map";
-import { PRESTIGE, STRETCH_FREE_TILES, STRETCH_PAN, TILE_PRODUCTION, TROOP_COST } from "../rules";
+import { OBJECTIVE_TARGETS, PRESTIGE, STRETCH_FREE_TILES, STRETCH_PAN, TILE_PRODUCTION, TROOP_COST } from "../rules";
 import type { Order, Tile, TileId } from "../types";
 import { PRESTIGE_UNIT, valueOf, type Situation } from "./view";
 
@@ -69,8 +69,8 @@ function objectiveBonus(s: Situation, t: Tile): number {
     case "puerto_y_fortaleza":
       if (t.type === "fortaleza" && !own.some((o) => o.type === "fortaleza")) return big;
       return t.type === "puerto" && !own.some((o) => o.type === "puerto") ? big : 0;
-    case "seis_casillas":
-      return own.filter((o) => o.type !== "castillo").length < 6 ? big / 3 : 0;
+    case "cinco_casillas":
+      return own.filter((o) => o.type !== "castillo").length < OBJECTIVE_TARGETS.tiles ? big / 3 : 0;
     case "casillas_ajenas":
       return t.owner != null ? big / 2 : 0;
     default:

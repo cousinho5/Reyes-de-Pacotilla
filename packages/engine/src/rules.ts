@@ -21,7 +21,7 @@ export const UPGRADE_COST: Record<2 | 3 | 4 | 5, Partial<Resources>> = {
   2: { madera: 15, piedra: 10 },
   3: { madera: 30, piedra: 20 },
   4: { madera: 50, piedra: 30, hierro: 25 },
-  5: { madera: 75, piedra: 45, hierro: 40, oro: 40 },
+  5: { madera: 60, piedra: 35, hierro: 30, oro: 30 },
 };
 
 /** Coste de reclutar una tropa. */
@@ -30,7 +30,7 @@ export const UPGRADE_COST: Record<2 | 3 | 4 | 5, Partial<Resources>> = {
 export const TROOP_COST: Partial<Resources> = { hierro: 2, pan: 2 };
 
 /** Coste de fortificar una casilla y cuántas resoluciones dura. */
-export const FORTIFY_COST: Partial<Resources> = { piedra: 10 };
+export const FORTIFY_COST: Partial<Resources> = { piedra: 8 };
 export const FORTIFY_RESOLUTIONS = 2;
 
 /** Producción diaria que añade una casilla controlada. */
@@ -51,7 +51,7 @@ export const NEUTRAL_GARRISON: Record<Exclude<TileType, "castillo">, number> = {
   cantera: 6,
   montana: 6,
   puerto: 8,
-  fortaleza: 10,
+  fortaleza: 8,
 };
 
 /** Bonificaciones de defensa (se suman; máximo total x2). */
@@ -141,9 +141,10 @@ export const BOT = {
 export const OBJECTIVE_TARGETS = {
   gold: 200,
   troops: 40,
-  tiles: 6,
+  tiles: 5,
   tilesTakenFromHouses: 3,
   tradePartners: 3,
   validTrades: 10,
-  allBuildingsLevel: 3,
+  /** Niveles sumando los cinco edificios (se empieza con 7). */
+  totalLevels: 17,
 } as const;

@@ -56,7 +56,8 @@ describe("Objetivos secretos", () => {
     expect(objectiveMet("comercio_con_tres", { ...ctx, partnersAllGame: 3 })).toBe(true);
     // Con solo 2 rivales basta comerciar con los dos.
     expect(objectiveMet("comercio_con_tres", { ...ctx, otherHouses: 2 })).toBe(true);
-    expect(objectiveMet("edificios_nivel_3", ctx)).toBe(false);
+    expect(objectiveMet("niveles_17", ctx)).toBe(false);
+    expect(objectiveMet("niveles_17", { ...ctx, buildings: { granja: 4, aserradero: 4, cantera: 3, mina: 3, mercado: 3 } })).toBe(true);
     expect(objectiveMet("casillas_ajenas", ctx)).toBe(false);
     expect(objectiveMet("casillas_ajenas", { ...ctx, tilesTakenFromHouses: 3 })).toBe(true);
     expect(objectiveMet("dos_puertos" as never, ctx)).toBe(false); // retirado del catálogo
