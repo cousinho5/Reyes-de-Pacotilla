@@ -1,0 +1,31 @@
+{
+  "name": "reyes-de-pacotilla",
+  "private": true,
+  "type": "module",
+  "description": "Juego de estrategia asíncrono de navegador para 4-8 amigos",
+  "packageManager": "npm@11.21.1",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "build": "npm run build --workspaces --if-present",
+    "dev:web": "npm run dev -w @reyes/web",
+    "dev:server": "npm run dev -w @reyes/server"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.0",
+    "vitest": "^4.0.0"
+  },
+  "engines": {
+    "node": ">=20",
+    "npm": ">=11"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true,
+    "workerd@1.20261012.1": true
+  }
+}
