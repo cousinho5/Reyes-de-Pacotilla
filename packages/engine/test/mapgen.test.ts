@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { areAdjacent, generateMap, mapSize, neutralMix, perimeter } from "../src";
+import { areAdjacent, castleName, generateMap, mapSize, neutralMix, perimeter } from "../src";
 
 const housesFor = (n: number) => Array.from({ length: n }, (_, i) => i + 1);
 
@@ -51,5 +51,14 @@ describe("Generación del mapa", () => {
     expect(mix).toHaveLength(16);
     expect(count("campos") + count("bosque") + count("cantera") + count("montana")).toBeGreaterThanOrEqual(12);
     expect(count("fortaleza")).toBeGreaterThanOrEqual(1);
+  });
+});
+
+describe("Nombres de castillos", () => {
+  it("ponen bien la preposición", () => {
+    expect(castleName("Casa del Nabo")).toBe("Castillo de la Casa del Nabo");
+    expect(castleName("Los Pocapena")).toBe("Castillo de los Pocapena");
+    expect(castleName("El Gran Pato")).toBe("Castillo del Gran Pato");
+    expect(castleName("Gallina Bélica")).toBe("Castillo de Gallina Bélica");
   });
 });

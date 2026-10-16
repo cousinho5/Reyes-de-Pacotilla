@@ -13,6 +13,8 @@ import {
   chooseObjective,
   localDate,
   offerGain,
+  planBids,
+  planCards,
   planDay,
   planOrders,
   proposeOffer,
@@ -20,6 +22,8 @@ import {
   situation,
   zonedToUtc,
   type AiView,
+  type CardEffect,
+  type CardKey,
   type BuildingKind,
   type HouseId,
   type ObjectiveKey,
@@ -32,6 +36,7 @@ import { COLORS, pickShield } from "./heraldry";
 import { clockOf, runGameJobs } from "./jobs";
 import type { NotifyEnv } from "./notify";
 import { acceptOffer, bundle, type OfferRow } from "./offers";
+import { lotOf, openAuctionWeek, useCardStatements, type CardRow, type LotRow } from "./subasta";
 import {
   computeAllPrestige,
   gameNow,
@@ -166,18 +171,24 @@ interface BotContext {
   prestige: { house: HouseId; total: number }[];
   partners: Map<HouseId, HouseId[]>;
   day: number;
+  cards: CardRow[];
+  lotsWon: Map<HouseId, number>;
 }
 
 async function botContext(db: D1Database, game: GameRow): Promise<BotContext> {
   const now = gameNow(game);
   const since = new Date(now.getTime() - PRESTIGE.tradeWindowDays * 864e5).toISOString();
-  const [houses, tileRows, buildings, trades] = await Promise.all([
+  const [houses, tileRows, buildings, trades, cards, lots] = await Promise.all([
     loadHouses(db, game.id),
     loadTiles(db, game.id),
     loadBuildings(db, game.id),
     db.prepare("SELECT house_a, house_b FROM trades WHERE game_id = ? AND valid = 1 AND at >= ?")
       .bind(game.id, since)
       .all<{ house_a: number; house_b: number }>(),
+    db.prepare("SELECT id, house_id, card_key, used_at, used_params FROM cards WHERE game_id = ?").bind(game.id).all<CardRow>(),
+    db.prepare("SELECT winner_house_id AS house, COUNT(*) AS n FROM auction_lots WHERE game_id = ? AND winner_house_id IS NOT NULL GROUP BY winner_house_id")
+      .bind(game.id)
+      .all<{ house: number; n: number }>(),
   ]);
   const tiles = toEngineTiles(tileRows);
   const prestige = await computeAllPrestige(db, game.id, houses, tiles, now);
@@ -196,7 +207,13 @@ async function botContext(db: D1Database, game: GameRow): Promise<BotContext> {
     prestige: [...prestige].map(([house, p]) => ({ house, total: p.total })),
     partners,
     day,
+    cards: cards.results,
+    lotsWon: new Map(lots.results.map((l) => [l.house, l.n])),
   };
+}
+
+function cardEffect(c: CardRow): CardEffect {
+  return c.used_params ? ((JSON.parse(c.used_params) as { effect?: CardEffect }).effect ?? {}) : {};
 }
 
 function botView(ctx: BotContext, h: HouseRow): AiView {
@@ -214,7 +231,49 @@ function botView(ctx: BotContext, h: HouseRow): AiView {
     prestige: ctx.prestige,
     recentPartners: ctx.partners.get(h.id) ?? [],
     help: helpActive ? (h.help_resource ?? "pan") : null,
+    spied: ctx.cards
+      .filter((c) => c.house_id === h.id && c.used_at)
+      .map(cardEffect)
+      .filter((e) => e.spy && e.spy.until > g.current_resolution)
+      .map((e) => e.spy!.house),
+    attackBonus: ctx.cards
+      .filter((c) => c.house_id === h.id && c.used_at)
+      .map(cardEffect)
+      .reduce((a, e) => a + (e.drums && e.drums.resolution === g.current_resolution + 1 ? e.drums.bonus : 0), 0),
+    auctionsWon: ctx.lotsWon.get(h.id) ?? 0,
   };
+}
+
+/** Cartas en la mano de un bot. */
+function handOf(ctx: BotContext, h: HouseRow): CardRow[] {
+  return ctx.cards.filter((c) => c.house_id === h.id && !c.used_at);
+}
+
+/** El bot usa las cartas que le convienen ahora. */
+async function botPlaysCards(db: D1Database, game: GameRow, ctx: BotContext, h: HouseRow, resolutionDay: boolean): Promise<void> {
+  const hand = handOf(ctx, h);
+  if (hand.length === 0) return;
+  const s = situation(botView(ctx, h), personalityOf(h));
+  for (const { card, params } of planCards(s, hand.map((c) => c.card_key as CardKey), resolutionDay)) {
+    const row = hand.find((c) => c.card_key === card && !c.used_at);
+    if (!row) continue;
+    const prepared = useCardStatements(db, game, h, row, params, {
+      house: h.id,
+      tiles: ctx.tiles,
+      buildings: ctx.buildings.get(h.id)!,
+      resources: resourcesOf(h),
+      houses: ctx.houses.map((x) => x.id),
+      nextResolution: game.current_resolution + 1,
+    });
+    if (!prepared.ok) continue;
+    try {
+      await db.batch(prepared.statements);
+      row.used_at = "usada";
+      row.used_params = JSON.stringify({ effect: prepared.effect });
+    } catch (err) {
+      console.error(`Carta de ${h.name}:`, err);
+    }
+  }
 }
 
 /**
@@ -271,6 +330,27 @@ export async function botsPlayDay(env: NotifyEnv, game: GameRow): Promise<void> 
       console.error(`Bot ${h.name}:`, err);
       continue;
     }
+    const fresh = (await loadHouses(db, game.id)).find((x) => x.id === h.id)!;
+    await botPlaysCards(db, game, ctx, fresh, false);
+    // Pujas de la Gran Subasta (si hay lotes anunciados y sigue abierta).
+    const week = openAuctionWeek(game);
+    if (week != null) {
+      const { results: lots } = await db
+        .prepare("SELECT * FROM auction_lots WHERE game_id = ? AND week = ? ORDER BY slot")
+        .bind(game.id, week)
+        .all<LotRow>();
+      if (lots.length > 0) {
+        const after = (await loadHouses(db, game.id)).find((x) => x.id === h.id)!;
+        const bids = planBids(situation(botView(ctx, after), p), lots.map(lotOf));
+        const stmts = bids.map((b) =>
+          db.prepare(
+            `INSERT INTO bids (lot_id, house_id, amount, placed_at) VALUES (?, ?, ?, ?)
+             ON CONFLICT (lot_id, house_id) DO UPDATE SET amount = excluded.amount, placed_at = excluded.placed_at`,
+          ).bind(lots.find((l) => l.slot === b.slot)!.id, h.id, b.amount, gameNow(game).toISOString()),
+        );
+        if (stmts.length > 0) await db.batch(stmts);
+      }
+    }
     // Una oferta pública como mucho, con lo que le quede después de gastar.
     if (!open.some((o) => o.from_house_id === h.id)) {
       const left = resourcesOf(h);
@@ -306,6 +386,10 @@ async function addBotOrders(env: NotifyEnv, game: GameRow, n: number): Promise<v
       .bind(game.id, n)
       .all<{ house_id: number }>(),
   ]);
+  // Antes de dar órdenes, Tregua y Tambores de guerra.
+  for (const h of activeBots(ctx.houses, game)) {
+    if (!existing.results.some((e) => e.house_id === h.id)) await botPlaysCards(db, game, ctx, h, true);
+  }
   const statements: D1PreparedStatement[] = [];
   for (const h of activeBots(ctx.houses, game)) {
     if (existing.results.some((e) => e.house_id === h.id)) continue;
@@ -380,6 +464,10 @@ export async function deleteTestGame(env: NotifyEnv, game: GameRow): Promise<voi
     db.prepare("DELETE FROM offers WHERE game_id = ? AND parent_offer_id IS NOT NULL").bind(game.id),
     db.prepare("DELETE FROM offers WHERE game_id = ?").bind(game.id),
     db.prepare("DELETE FROM achievements WHERE game_id = ?").bind(game.id),
+    db.prepare("DELETE FROM bids WHERE lot_id IN (SELECT id FROM auction_lots WHERE game_id = ?)").bind(game.id),
+    db.prepare("DELETE FROM auction_lots WHERE game_id = ?").bind(game.id),
+    db.prepare("DELETE FROM cards WHERE game_id = ?").bind(game.id),
+    db.prepare("DELETE FROM game_events WHERE game_id = ?").bind(game.id),
     db.prepare("DELETE FROM prestige_snapshots WHERE game_id = ?").bind(game.id),
     db.prepare("DELETE FROM notifications WHERE game_id = ?").bind(game.id),
     db.prepare("DELETE FROM job_runs WHERE game_id = ?").bind(game.id),

@@ -139,7 +139,7 @@ export const BOT = {
 
 /** Umbrales de los objetivos secretos (ver objectives.ts). */
 export const OBJECTIVE_TARGETS = {
-  gold: 200,
+  gold: 150,
   troops: 40,
   tiles: 5,
   tilesTakenFromHouses: 3,
@@ -147,4 +147,26 @@ export const OBJECTIVE_TARGETS = {
   validTrades: 10,
   /** Niveles sumando los cinco edificios (se empieza con 7). */
   totalLevels: 17,
+  auctionsWon: 3,
+} as const;
+
+/**
+ * Gran Subasta (diseño, sección 9): tres lotes anunciados el martes; pujas
+ * ciegas en Oro hasta el cierre del miércoles. El Oro de las pujas sale del juego.
+ */
+export const AUCTION = {
+  lots: 3,
+  /** Lote de un recurso, o de dos recursos. */
+  singleResource: 30,
+  doubleResource: 20,
+  /** Probabilidad de que el tercer lote sea una carta (el primero es de recursos y el segundo, carta). */
+  thirdIsCard: 0.5,
+} as const;
+
+/** Efectos de las cartas de la Corona (ver cards.ts). */
+export const CARD_VALUES = {
+  mercenaries: 5,
+  cart: 20,
+  tithePerTile: 3,
+  drumsBonus: 0.25,
 } as const;

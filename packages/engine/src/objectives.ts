@@ -12,7 +12,7 @@ const T = OBJECTIVE_TARGETS;
 export const OBJECTIVES = {
   puerto_y_fortaleza: "Controlar un puerto y una fortaleza al final de la partida.",
   niveles_17: `Sumar ${T.totalLevels} niveles entre tus cinco edificios (se empieza con 7).`,
-  oro_200: `Terminar con ${T.gold} de Oro o más en el tesoro.`,
+  tesoro: `Terminar con ${T.gold} de Oro o más en el tesoro.`,
   comercio_con_tres: `Cerrar tratos válidos con ${T.tradePartners} casas distintas a lo largo de la partida.`,
   fortaleza: "Controlar una fortaleza al final de la partida.",
   casillas_ajenas: `Tomar ${T.tilesTakenFromHouses} casillas a otras casas a lo largo de la partida.`,
@@ -20,6 +20,7 @@ export const OBJECTIVES = {
   cinco_casillas: `Controlar ${T.tiles} casillas o más al final, sin contar el castillo.`,
   obra_maestra: "Tener un edificio a nivel 5.",
   diez_tratos: `Cerrar ${T.validTrades} tratos válidos a lo largo de la partida.`,
+  subastas: `Ganar ${T.auctionsWon} lotes de la Gran Subasta.`,
 };
 
 export type ObjectiveKey = keyof typeof OBJECTIVES;
@@ -38,6 +39,8 @@ export interface ObjectiveContext {
   validTradesAllGame: number;
   /** Casillas que la casa ha tomado a otras casas en toda la partida. */
   tilesTakenFromHouses: number;
+  /** Lotes de la Gran Subasta ganados en toda la partida. */
+  auctionsWon: number;
 }
 
 export function objectiveMet(key: ObjectiveKey, ctx: ObjectiveContext): boolean {
@@ -48,7 +51,7 @@ export function objectiveMet(key: ObjectiveKey, ctx: ObjectiveContext): boolean 
       return own.some((t) => t.type === "puerto") && own.some((t) => t.type === "fortaleza");
     case "niveles_17":
       return levels.reduce((a, l) => a + l, 0) >= T.totalLevels;
-    case "oro_200":
+    case "tesoro":
       return ctx.gold >= T.gold;
     case "comercio_con_tres":
       return ctx.partnersAllGame >= Math.min(T.tradePartners, ctx.otherHouses);
@@ -64,6 +67,8 @@ export function objectiveMet(key: ObjectiveKey, ctx: ObjectiveContext): boolean 
       return levels.some((l) => l === 5);
     case "diez_tratos":
       return ctx.validTradesAllGame >= T.validTrades;
+    case "subastas":
+      return ctx.auctionsWon >= T.auctionsWon;
     default:
       // Objetivos retirados del catálogo: ya no se pueden cumplir.
       return false;

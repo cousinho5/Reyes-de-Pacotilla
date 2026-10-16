@@ -1,6 +1,6 @@
 // Textos, colores y formatos de la interfaz. Todo en español.
 
-import { OBJECTIVES, type BuildingKind, type ObjectiveKey, type Resource, type TileType } from "@reyes/engine";
+import { CARDS, OBJECTIVES, type BuildingKind, type CardKey, type ObjectiveKey, type Resource, type TileType } from "@reyes/engine";
 import type { EventView, HouseInfo, TileView } from "./api";
 
 /** Paleta de las casas (diseño, sección 18.2). */
@@ -74,7 +74,9 @@ export function houseColor(houses: HouseInfo[], id: number | null): string | nul
 
 /** "Casa del Nabo" → "la Casa del Nabo" (para frases como "¡Larga vida a la Casa…!"). */
 export function withArticle(name: string): string {
-  return /^casa\b/i.test(name) ? `la ${name}` : name;
+  if (/^casa\b/i.test(name)) return `la ${name}`;
+  // "Los Pocapena" en mitad de una frase: "los Pocapena".
+  return name.replace(/^(Los|Las|El|La)\s/, (m) => m.toLowerCase());
 }
 
 export function houseName(houses: HouseInfo[], id: number | null | undefined): string {
@@ -168,6 +170,19 @@ export function describeEvent(e: EventView, houses: HouseInfo[], tiles: TileView
         d.cumplido ? "Cumplida: +6 de Prestigio." : "No la cumplió."
       }`;
     }
+    case "anuncio_subasta":
+      return `Gran Subasta de la semana ${d.week}: ${(d.lots as string[]).join(", ")}. Pujas hasta el miércoles a las 21:00.`;
+    case "subasta":
+      return d.winner != null
+        ? `Gran Subasta: ${withArticle(houseName(houses, d.winner))} se lleva ${d.lot} por ${d.price} de Oro.`
+        : `Gran Subasta: nadie se lleva ${d.lot}.`;
+    case "carta": {
+      const name = CARDS[d.card as CardKey]?.nombre ?? d.card;
+      const extra = d.params?.casa ? ` sobre ${houseName(houses, d.params.casa)}` : d.params?.casilla ? ` en ${tile(d.params.casilla)}` : "";
+      return `Usas la carta ${name}${extra}.`;
+    }
+    case "tregua":
+      return `Tregua en ${tile(d.tile)}: ${(d.houses as number[]).map((h) => houseName(houses, h)).join(" y ")} no pueden atacar y sus tropas se quedan en casa.`;
     case "fin":
       return d.winner != null ? `Fin del interregno. ¡Larga vida a ${withArticle(houseName(houses, d.winner))}!` : "Fin del interregno.";
     default:

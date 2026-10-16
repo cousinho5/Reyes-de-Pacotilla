@@ -43,4 +43,12 @@ describe("Tareas del cron horario", () => {
     expect(ordersOpen(new Date("2026-10-21T18:59:00Z"), game)).toBe(true);
     expect(ordersOpen(new Date("2026-10-21T19:00:00Z"), game)).toBe(false);
   });
+
+  it("el martes a las 22:00 se anuncian los lotes de la semana", () => {
+    expect(kinds("2026-10-20T19:00:00Z")).not.toContain("anuncio:1"); // martes 21:00 en Madrid
+    expect(kinds("2026-10-20T20:00:00Z")).toContain("anuncio:1"); // martes 22:00
+    expect(kinds("2026-10-21T08:00:00Z")).toContain("anuncio:1"); // sigue pendiente hasta que se haga
+    expect(kinds("2026-10-22T08:00:00Z", { ...game, currentResolution: 1 })).not.toContain("anuncio:1");
+    expect(kinds("2026-10-27T21:00:00Z", { ...game, currentResolution: 2 })).toContain("anuncio:2");
+  });
 });

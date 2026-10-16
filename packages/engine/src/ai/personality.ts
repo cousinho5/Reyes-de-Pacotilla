@@ -41,7 +41,7 @@ export function chooseObjective(options: readonly ObjectiveKey[], p: Personality
   const fit: Record<ObjectiveKey, number> = {
     puerto_y_fortaleza: 0.4 + 0.3 * p.houseBias,
     niveles_17: 0.4 + 0.5 * (1 - p.specialize) * (2 - p.military),
-    oro_200: 0.6 + 0.3 * p.trade,
+    tesoro: 0.6 + 0.3 * p.trade,
     comercio_con_tres: 0.3 + 0.9 * p.trade,
     fortaleza: 0.5 + 0.3 * p.military,
     casillas_ajenas: 0.2 + 0.6 * p.houseBias,
@@ -49,6 +49,7 @@ export function chooseObjective(options: readonly ObjectiveKey[], p: Personality
     cinco_casillas: 0.5 + 0.3 * p.military,
     obra_maestra: 0.1 + 0.9 * p.specialize,
     diez_tratos: 0.2 + 0.8 * p.trade,
+    subastas: 0.4 + 0.3 * p.trade,
   };
   return [...options].sort((a, b) => fit[b] - fit[a])[0]!;
 }

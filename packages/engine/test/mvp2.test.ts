@@ -25,7 +25,9 @@ describe("Objetivos secretos", () => {
     expect(dealObjectives("semilla", houses)).toEqual(a);
     for (const [x, y] of a.values()) expect(x).not.toBe(y);
     const all = [...a.values()].flat();
-    expect(new Set(all).size).toBe(OBJECTIVE_KEYS.length); // 5 casas x 2 = 10 = catálogo completo
+    // 5 casas x 2 = 10 objetivos distintos: no se repite ninguno mientras quedan en el mazo.
+    expect(new Set(all).size).toBe(10);
+    expect(OBJECTIVE_KEYS.length).toBeGreaterThanOrEqual(10);
   });
 
   it("evalúa los objetivos con el estado final", () => {
@@ -44,10 +46,11 @@ describe("Objetivos secretos", () => {
       otherHouses: 3,
       validTradesAllGame: 4,
       tilesTakenFromHouses: 2,
+      auctionsWon: 1,
     };
     expect(objectiveMet("puerto_y_fortaleza", ctx)).toBe(false);
-    expect(objectiveMet("oro_200", ctx)).toBe(false);
-    expect(objectiveMet("oro_200", { ...ctx, gold: 200 })).toBe(true);
+    expect(objectiveMet("tesoro", ctx)).toBe(false);
+    expect(objectiveMet("tesoro", { ...ctx, gold: 150 })).toBe(true);
     expect(objectiveMet("tropas_40", ctx)).toBe(false);
     expect(objectiveMet("tropas_40", { ...ctx, tiles: [...ctx.tiles, { type: "campos", owner: 1, troops: 40 }] })).toBe(true);
     expect(objectiveMet("obra_maestra", ctx)).toBe(true);
@@ -61,6 +64,8 @@ describe("Objetivos secretos", () => {
     expect(objectiveMet("casillas_ajenas", ctx)).toBe(false);
     expect(objectiveMet("casillas_ajenas", { ...ctx, tilesTakenFromHouses: 3 })).toBe(true);
     expect(objectiveMet("dos_puertos" as never, ctx)).toBe(false); // retirado del catálogo
+    expect(objectiveMet("subastas", ctx)).toBe(false);
+    expect(objectiveMet("subastas", { ...ctx, auctionsWon: 3 })).toBe(true);
   });
 });
 

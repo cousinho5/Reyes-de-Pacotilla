@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   PERSONALITIES,
+  auctionLots,
+  planBids,
+  planCards,
   checkOrders,
   chooseObjective,
   offerGain,
@@ -160,5 +163,29 @@ describe("Bots con personalidad: comercio y objetivos", () => {
     expect(chooseObjective(["casillas_ajenas", "obra_maestra"], PERSONALITIES.arquitecta)).toBe("obra_maestra");
     expect(chooseObjective(["casillas_ajenas", "obra_maestra"], PERSONALITIES.guerrero)).toBe("casillas_ajenas");
     expect(chooseObjective(["comercio_con_tres", "tropas_40"], PERSONALITIES.mercader)).toBe("comercio_con_tres");
+  });
+});
+
+describe("Bots con personalidad: subasta y cartas", () => {
+  const tiles = [
+    tile(1, 0, 0, { type: "castillo", owner: 1, castleOf: 1, troops: 6 }),
+    tile(2, 1, 0, { owner: 1, troops: 1 }),
+    tile(3, 2, 0, { owner: 2, troops: 9 }),
+  ];
+
+  it("pujan con parte de su Oro y nunca más de lo que tienen", () => {
+    const v = view(tiles, { resources: { pan: 30, madera: 30, piedra: 30, hierro: 30, oro: 60 } });
+    const bids = planBids(situation(v, PERSONALITIES.mercader), auctionLots("s", 1));
+    expect(bids.length).toBeGreaterThan(0);
+    expect(bids.reduce((a, b) => a + b.amount, 0)).toBeLessThanOrEqual(60);
+    expect(planBids(situation({ ...v, resources: { ...v.resources, oro: 0 } }, PERSONALITIES.mercader), auctionLots("s", 1))).toEqual([]);
+  });
+
+  it("usan Mercenarios al momento y guardan la Tregua para el día de la resolución", () => {
+    const s = situation(view(tiles), PERSONALITIES.estratega);
+    const now = planCards(s, ["mercenarios", "tregua"], false).map((c) => c.card);
+    expect(now).toEqual(["mercenarios"]);
+    const later = planCards(s, ["tregua"], true);
+    expect(later).toEqual([{ card: "tregua", params: { casilla: 2 } }]);
   });
 });
