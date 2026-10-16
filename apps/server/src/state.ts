@@ -29,6 +29,15 @@ export interface GameRow {
   current_resolution: number;
   invite_code: string;
   created_by: number;
+  is_test: number;
+  test_bots: number | null;
+  sim_now: string | null;
+  played_house_id: number | null;
+}
+
+/** Hora de la partida: la real, o la simulada en las partidas de prueba. */
+export function gameNow(game: Pick<GameRow, "is_test" | "sim_now">): Date {
+  return game.is_test === 1 && game.sim_now ? new Date(game.sim_now) : new Date();
 }
 
 export interface HouseRow extends Resources {
@@ -50,6 +59,7 @@ export interface HouseRow extends Resources {
   objective_options: string | null;
   objective_key: string | null;
   objective_met: number | null;
+  is_bot: number;
 }
 
 export interface TileRow {

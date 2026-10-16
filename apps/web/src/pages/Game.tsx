@@ -6,6 +6,7 @@ import { CastlePanel } from "../components/CastlePanel";
 import { MapView } from "../components/MapView";
 import { OrdersPanel } from "../components/OrdersPanel";
 import { Realm } from "../components/Realm";
+import { TestBench } from "../components/TestBench";
 import { TradePanel } from "../components/TradePanel";
 import { HOUSE_COLORS, RESOURCE_LABEL, RESOURCE_MARK, formatDay, formatWhen, timeLeft } from "../ui";
 
@@ -70,7 +71,10 @@ export function Game({ id }: { id: number }) {
     );
   }
   if (!state) return <main className="page">Cargando el reino…</main>;
-  if (state.partida.estado === "lobby") return <Lobby state={state} onStart={() => act(() => api.start(id), "¡La partida empieza el lunes!")} />;
+  if (state.partida.estado === "lobby") {
+    const ok = state.prueba ? "Empieza la prueba. El reloj solo avanza cuando tú quieras." : "¡La partida empieza el lunes!";
+    return <Lobby state={state} onStart={() => act(() => api.start(id), ok)} />;
+  }
 
   const me = state.casas.find((h) => h.id === state.yo.casa)!;
   const offersForMe = (state.ofertas ?? []).filter((o) => o.estado === "open" && o.para === state.yo.casa).length;
@@ -108,7 +112,7 @@ export function Game({ id }: { id: number }) {
             {p.haEmpezado ? (
               <>
                 Resolución {p.proximaResolucion} de {p.totalResoluciones}: {formatWhen(p.resolucion)} ·{" "}
-                <strong>{p.ordenesAbiertas ? `órdenes: ${timeLeft(p.cierre)}` : "órdenes cerradas"}</strong>
+                <strong>{p.ordenesAbiertas ? `órdenes: ${timeLeft(p.cierre, state.prueba?.ahora ? Date.parse(state.prueba.ahora) : undefined)}` : "órdenes cerradas"}</strong>
               </>
             ) : (
               <>La partida empieza el {formatDay(p.inicio)}. Ya puedes preparar tus órdenes.</>
@@ -117,6 +121,8 @@ export function Game({ id }: { id: number }) {
         )}
         {p.estado === "finished" && <div className="clock">Partida terminada. ¡Larga vida al nuevo rey!</div>}
       </header>
+
+      {state.prueba?.ahora && <TestBench state={state} gameId={id} act={act} />}
 
       <main className="game-body">
         {tab === "mapa" && <MapView state={state} draft={draft} setDraft={updateDraft} act={act} />}
@@ -209,7 +215,17 @@ function Lobby({ state, onStart }: { state: GameState; onStart: () => void }) {
           </button>
         </section>
       )}
-      {p.esCreador ? (
+      {p.esCreador && state.prueba ? (
+        <section className="card">
+          <p>
+            Partida de prueba: al empezar se añaden {state.prueba.bots} bots y el reloj solo avanza cuando tú lo
+            decidas.
+          </p>
+          <button className="primary" onClick={onStart}>
+            Empezar la prueba
+          </button>
+        </section>
+      ) : p.esCreador ? (
         <section className="card">
           <p>Hacen falta al menos 4 casas. La partida empezará el lunes siguiente.</p>
           <button className="primary" disabled={state.casas.length < 4} onClick={onStart}>

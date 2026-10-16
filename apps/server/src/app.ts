@@ -42,7 +42,11 @@ import {
   type Session,
 } from "./auth";
 import { notifyHouses, vapidFrom, type NotifyEnv } from "./notify";
-import { ordersOpen, type GameClock } from "./scheduler";
+import { COLORS, pickShield } from "./heraldry";
+import { clockOf, runGameJobs } from "./jobs";
+import { addBots, advance, deleteTestGame, testStart } from "./pruebas";
+import { acceptOffer, bundle, offerView, type OfferRow } from "./offers";
+import { ordersOpen } from "./scheduler";
 import {
   computeAllPrestige,
   loadBuildings,
@@ -51,6 +55,7 @@ import {
   loadTiles,
   resourcesOf,
   toEngineTiles,
+  gameNow,
   type GameRow,
   type HouseRow,
 } from "./state";
@@ -65,13 +70,6 @@ export interface Env extends NotifyEnv {
 
 type Vars = { session: Session | null };
 type Ctx = Context<{ Bindings: Env; Variables: Vars }>;
-
-export const COLORS = ["gules", "azur", "sinople", "sable", "purpura", "naranjado", "aguamarina", "leonado"] as const;
-const SHAPES = ["espanol", "apuntado", "almendrado", "rodela", "estandarte"] as const;
-const SYMBOLS = [
-  "leon", "aguila", "torre", "espada", "corona", "llave", "lobo", "dragon",
-  "gallina", "cerdo", "nabo", "caracol", "pato", "queso", "bota", "cuchara",
-] as const;
 
 export const app = new Hono<{ Bindings: Env; Variables: Vars }>();
 
@@ -133,14 +131,21 @@ app.get("/api/yo", async (c) => {
     .bind(s.userId)
     .first<{ id: number; display_name: string }>();
   const { results } = await c.env.DB.prepare(
-    `SELECT g.id, g.name, g.status, h.name AS casa, h.color FROM houses h JOIN games g ON g.id = h.game_id
+    `SELECT g.id, g.name, g.status, g.is_test, h.name AS casa, h.color FROM houses h JOIN games g ON g.id = h.game_id
      WHERE h.user_id = ? ORDER BY g.id DESC`,
   )
     .bind(s.userId)
-    .all<{ id: number; name: string; status: string; casa: string; color: string }>();
+    .all<{ id: number; name: string; status: string; is_test: number; casa: string; color: string }>();
   return c.json({
     usuario: user ? { id: user.id, nombre: user.display_name } : null,
-    partidas: results.map((g) => ({ id: g.id, nombre: g.name, estado: g.status, casa: g.casa, color: g.color })),
+    partidas: results.map((g) => ({
+      id: g.id,
+      nombre: g.name,
+      estado: g.status,
+      prueba: g.is_test === 1,
+      casa: g.casa,
+      color: g.color,
+    })),
   });
 });
 
@@ -216,7 +221,12 @@ app.post("/api/push/prueba", async (c) => {
 /** Crear partida: protegido con la clave de administración. Crea también al creador. */
 app.post("/api/partidas", async (c) => {
   if (c.req.header("x-admin") !== c.env.ADMIN_SECRET) return fail(c, 403, "Hace falta la clave de administración.");
-  const body = await c.req.json<{ nombre?: string; semanas?: number; creador?: string }>().catch(() => ({}) as never);
+  const body = await c.req
+    .json<{ nombre?: string; semanas?: number; creador?: string; prueba?: boolean; bots?: number }>()
+    .catch(() => ({}) as never);
+  const prueba = body.prueba === true;
+  const bots = Number(body.bots ?? 3);
+  if (prueba && !(Number.isInteger(bots) && bots >= 3 && bots <= 7)) return fail(c, 400, "Una prueba lleva de 3 a 7 bots.");
   const nombre = (body.nombre ?? "").trim();
   const semanas = body.semanas ?? 6;
   if (!nombre) return fail(c, 400, "La partida necesita un nombre.");
@@ -237,9 +247,9 @@ app.post("/api/partidas", async (c) => {
   }
   const invite = randomCode(8);
   const game = await c.env.DB.prepare(
-    "INSERT INTO games (name, weeks, seed, invite_code, created_by) VALUES (?, ?, ?, ?, ?) RETURNING id",
+    "INSERT INTO games (name, weeks, seed, invite_code, created_by, is_test, test_bots) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id",
   )
-    .bind(nombre, semanas, randomCode(12), invite, userId)
+    .bind(nombre, semanas, randomCode(12), invite, userId, prueba ? 1 : 0, prueba ? bots : null)
     .first<{ id: number }>();
   return c.json({ id: game!.id, codigoInvitacion: invite, codigoAcceso });
 });
@@ -294,12 +304,7 @@ app.post("/api/invitacion/:codigo/unirse", async (c) => {
     await startSession(c, s.userId, 1);
   }
 
-  // Escudo provisional (el creador de escudos llega en la versión 1): la primera combinación libre.
-  const used = new Set(houses.map((h) => `${h.shield_shape}:${h.symbol}`));
-  const i = houses.length;
-  let shape: string = SHAPES[i % SHAPES.length]!;
-  let symbol: string = SYMBOLS[(i * 3) % SYMBOLS.length]!;
-  for (let k = 0; used.has(`${shape}:${symbol}`); k++) symbol = SYMBOLS[k % SYMBOLS.length]!;
+  const { shape, symbol } = pickShield(houses);
 
   try {
     await db.prepare(
@@ -324,7 +329,12 @@ app.post("/api/partidas/:id/empezar", async (c) => {
   if (!game) return fail(c, 404, "Esa partida no existe.");
   if (!s || s.userId !== game.created_by) return fail(c, 403, "Solo quien creó la partida puede empezarla.");
   if (game.status !== "lobby") return fail(c, 409, "La partida ya ha empezado.");
-  const houses = await loadHouses(db, game.id);
+  const test = game.is_test === 1;
+  if (test && !(await loadHouses(db, game.id)).some((h) => h.user_id === s.userId)) {
+    return fail(c, 409, "Elige primero tu casa.");
+  }
+  // Las pruebas se rellenan con bots; las de verdad necesitan 4 personas.
+  const houses = test ? await addBots(c.env, game.id, game.test_bots ?? 3) : await loadHouses(db, game.id);
   if (houses.length < 4) return fail(c, 409, "Hacen falta al menos 4 casas para empezar.");
 
   const body = await c.req.json<{ inicio?: string }>().catch(() => ({}) as { inicio?: string });
@@ -333,12 +343,15 @@ app.post("/api/partidas/:id/empezar", async (c) => {
     return fail(c, 400, "La partida empieza un lunes (AAAA-MM-DD).");
   }
 
+  const simNow = test ? testStart(startDate, game.timezone).toISOString() : null;
+  const mine = houses.find((h) => h.user_id === s.userId);
   const map = generateMap(game.seed, houses.map((h) => h.id));
   const objectives = dealObjectives(game.seed, houses.map((h) => h.id));
   const statements: D1PreparedStatement[] = [
     db.prepare(
-      "UPDATE games SET status = 'active', start_date = ?, map_cols = ?, map_rows = ?, started_at = ? WHERE id = ? AND status = 'lobby'",
-    ).bind(startDate, map.cols, map.rows, new Date().toISOString(), game.id),
+      `UPDATE games SET status = 'active', start_date = ?, map_cols = ?, map_rows = ?, started_at = ?,
+         sim_now = ?, played_house_id = ? WHERE id = ? AND status = 'lobby'`,
+    ).bind(startDate, map.cols, map.rows, new Date().toISOString(), simNow, test ? (mine?.id ?? null) : null, game.id),
   ];
   for (const t of map.tiles) {
     const name = t.type === "castillo" ? `Castillo de la ${houses.find((h) => h.id === t.castleOf)!.name}` : t.name;
@@ -375,6 +388,8 @@ app.post("/api/partidas/:id/empezar", async (c) => {
     );
   });
   await db.batch(statements);
+  // En las pruebas, el primer día empieza ya: producción del lunes.
+  if (test) await runGameJobs(c.env, (await loadGame(db, game.id))!, new Date(simNow!));
   return c.json({ ok: true, inicio: startDate });
 });
 
@@ -394,23 +409,16 @@ async function membership(c: Ctx): Promise<Membership | Response> {
   const game = await loadGame(c.env.DB, Number(c.req.param("id")));
   if (!game) return fail(c, 404, "Esa partida no existe.");
   const houses = await loadHouses(c.env.DB, game.id);
-  const house = houses.find((h) => h.user_id === s.userId);
+  // En las pruebas, quien las creó puede manejar cualquier casa ("jugar como").
+  const playing =
+    game.is_test === 1 && game.created_by === s.userId && game.played_house_id != null
+      ? houses.find((h) => h.id === game.played_house_id)
+      : undefined;
+  const house = playing ?? houses.find((h) => h.user_id === s.userId);
   if (!house) return fail(c, 403, "No tienes casa en esta partida.");
   // Cuenta como visita para el piloto automático.
   await c.env.DB.prepare("UPDATE houses SET last_seen_at = ? WHERE id = ?").bind(new Date().toISOString(), house.id).run();
   return { game, house, houses };
-}
-
-function clockOf(game: GameRow): GameClock | null {
-  if (!game.start_date) return null;
-  return {
-    timezone: game.timezone,
-    closeTime: game.close_time,
-    resolveTime: game.resolve_time,
-    startDate: game.start_date,
-    weeks: game.weeks,
-    currentResolution: game.current_resolution,
-  };
 }
 
 app.get("/api/partidas/:id", async (c) => {
@@ -418,7 +426,7 @@ app.get("/api/partidas/:id", async (c) => {
   if (m instanceof Response) return m;
   const { game, house, houses } = m;
   const db = c.env.DB;
-  const now = new Date();
+  const now = gameNow(game);
   const s = c.get("session")!;
 
   const base = {
@@ -441,6 +449,7 @@ app.get("/api/partidas/:id", async (c) => {
       ...base,
       yo: { casa: house.id },
       casas: houses.map((h) => ({ id: h.id, nombre: h.name, color: h.color, lema: h.motto })),
+      prueba: game.is_test === 1 ? { bots: game.test_bots ?? 3 } : null,
     });
   }
 
@@ -541,6 +550,14 @@ app.get("/api/partidas/:id", async (c) => {
         objetivo: finished ? { ...objectiveView(h.objective_key), cumplido: h.objective_met === 1 } : null,
       }))
       .sort((a, b) => (b.prestigio?.total ?? 0) - (a.prestigio?.total ?? 0)),
+    prueba:
+      game.is_test === 1 && game.created_by === s.userId
+        ? {
+            ahora: now.toISOString(),
+            jugandoComo: house.id,
+            casas: houses.map((h) => ({ id: h.id, nombre: h.name, color: h.color, bot: h.is_bot === 1 })),
+          }
+        : null,
     casillas: projectForHouse(tiles, house.id).map((t) => ({ ...t, nombre: names.get(t.id) })),
     ordenes: orders.results.map((o) => ({
       id: o.id,
@@ -714,7 +731,7 @@ app.put("/api/partidas/:id/ordenes", async (c) => {
   const m = await activeMembership(c);
   if (m instanceof Response) return m;
   const clock = clockOf(m.game)!;
-  if (!ordersOpen(new Date(), clock)) return fail(c, 409, "Las órdenes ya están cerradas para esta resolución.");
+  if (!ordersOpen(gameNow(m.game), clock)) return fail(c, 409, "Las órdenes ya están cerradas para esta resolución.");
   const { ordenes } = await c.req.json<{ ordenes?: OrderInput[] }>().catch(() => ({ ordenes: undefined }));
   if (!Array.isArray(ordenes) || ordenes.length > 60) return fail(c, 400, "Lista de órdenes no válida.");
 
@@ -759,41 +776,6 @@ app.put("/api/partidas/:id/ordenes", async (c) => {
 // ---------------------------------------------------------------------------
 // Comercio (diseño, sección 9)
 // ---------------------------------------------------------------------------
-
-interface OfferRow {
-  id: number;
-  game_id: number;
-  from_house_id: number;
-  to_house_id: number | null;
-  parent_offer_id: number | null;
-  give_pan: number; give_madera: number; give_piedra: number; give_hierro: number; give_oro: number;
-  want_pan: number; want_madera: number; want_piedra: number; want_hierro: number; want_oro: number;
-  status: "open" | "accepted" | "rejected" | "cancelled" | "countered";
-  accepted_by: number | null;
-  accept_token: string | null;
-  created_at: string;
-  closed_at: string | null;
-}
-
-function bundle(o: OfferRow, side: "give" | "want"): Resources {
-  const out = {} as Resources;
-  for (const r of RESOURCES) out[r] = o[`${side}_${r}` as keyof OfferRow] as number;
-  return out;
-}
-
-export function offerView(o: OfferRow) {
-  return {
-    id: o.id,
-    de: o.from_house_id,
-    para: o.to_house_id,
-    da: bundle(o, "give"),
-    pide: bundle(o, "want"),
-    estado: o.status,
-    aceptadaPor: o.accepted_by,
-    contraofertaDe: o.parent_offer_id,
-    creada: o.created_at,
-  };
-}
 
 async function loadOffer(c: Ctx, gameId: number): Promise<OfferRow | null> {
   return c.env.DB.prepare("SELECT * FROM offers WHERE id = ? AND game_id = ?")
@@ -854,7 +836,7 @@ app.post("/api/partidas/:id/ofertas", async (c) => {
   if (parent && parent.to_house_id === m.house.id) {
     statements.push(
       c.env.DB.prepare("UPDATE offers SET status = 'countered', closed_at = ? WHERE id = ? AND status = 'open'").bind(
-        new Date().toISOString(),
+        gameNow(m.game).toISOString(),
         parent.id,
       ),
     );
@@ -884,48 +866,8 @@ app.post("/api/partidas/:id/ofertas/:oid/aceptar", async (c) => {
   if (!offer || offer.status !== "open") return fail(c, 409, "Esa oferta ya no está disponible.");
   if (offer.from_house_id === m.house.id) return fail(c, 400, "No puedes aceptar tu propia oferta.");
   if (offer.to_house_id != null && offer.to_house_id !== m.house.id) return fail(c, 403, "Esa oferta no era para ti.");
-  const give = bundle(offer, "give");
-  const want = bundle(offer, "want");
-  if (RESOURCES.some((r) => m.house[r] < want[r])) return fail(c, 409, "No tienes lo que te piden.");
-
-  const db = c.env.DB;
-  const token = randomCode(16);
-  const now = new Date().toISOString();
-  const mine = `(SELECT accept_token FROM offers WHERE id = ${offer.id}) = ?`;
-  const delta = (sign: 1 | -1) =>
-    RESOURCES.map((r) => sign * (give[r] - want[r])) as [number, number, number, number, number];
-  try {
-    await db.batch([
-      db.prepare(
-        "UPDATE offers SET status = 'accepted', accepted_by = ?, accept_token = ?, closed_at = ? WHERE id = ? AND status = 'open'",
-      ).bind(m.house.id, token, now, offer.id),
-      // Quien ofreció entrega "da" y recibe "pide".
-      db.prepare(
-        `UPDATE houses SET pan = pan + ?, madera = madera + ?, piedra = piedra + ?, hierro = hierro + ?, oro = oro + ? WHERE id = ? AND ${mine}`,
-      ).bind(...delta(-1), offer.from_house_id, token),
-      // Quien acepta entrega "pide" y recibe "da".
-      db.prepare(
-        `UPDATE houses SET pan = pan + ?, madera = madera + ?, piedra = piedra + ?, hierro = hierro + ?, oro = oro + ? WHERE id = ? AND ${mine}`,
-      ).bind(...delta(1), m.house.id, token),
-      db.prepare(
-        `INSERT INTO trades (game_id, house_a, house_b, offer_id, amount_a, amount_b, at) SELECT ?, ?, ?, ?, ?, ?, ? WHERE ${mine}`,
-      ).bind(m.game.id, offer.from_house_id, m.house.id, offer.id, totalOf(give), totalOf(want), now, token),
-    ]);
-  } catch (err) {
-    if (err instanceof Error && /CHECK constraint failed/.test(err.message)) {
-      return fail(c, 409, "A alguna de las dos casas le faltan recursos: el trato no se ha hecho.");
-    }
-    throw err;
-  }
-  const after = await db.prepare("SELECT accept_token FROM offers WHERE id = ?").bind(offer.id).first<{ accept_token: string }>();
-  if (after?.accept_token !== token) return fail(c, 409, "Otra casa se te adelantó.");
-  await notifyHouses(c.env, [offer.from_house_id], {
-    kind: "trato",
-    title: "Trato cerrado",
-    body: `${m.house.name} ha aceptado tu oferta. Ambas partes creen haber ganado.`,
-    url: `/partida/${m.game.id}`,
-    dedupe: `trato:${offer.id}`,
-  });
+  const result = await acceptOffer(c.env, m.game, offer, m.house);
+  if (result) return fail(c, 409, result);
   return c.json({ ok: true });
 });
 
@@ -936,7 +878,7 @@ app.post("/api/partidas/:id/ofertas/:oid/rechazar", async (c) => {
   if (!offer || offer.status !== "open") return fail(c, 409, "Esa oferta ya no está abierta.");
   if (offer.to_house_id !== m.house.id) return fail(c, 403, "Solo se rechazan las ofertas dirigidas a ti.");
   await c.env.DB.prepare("UPDATE offers SET status = 'rejected', closed_at = ? WHERE id = ? AND status = 'open'")
-    .bind(new Date().toISOString(), offer.id)
+    .bind(gameNow(m.game).toISOString(), offer.id)
     .run();
   return c.json({ ok: true });
 });
@@ -948,8 +890,51 @@ app.post("/api/partidas/:id/ofertas/:oid/retirar", async (c) => {
   if (!offer || offer.status !== "open") return fail(c, 409, "Esa oferta ya no está abierta.");
   if (offer.from_house_id !== m.house.id) return fail(c, 403, "Solo puedes retirar tus ofertas.");
   await c.env.DB.prepare("UPDATE offers SET status = 'cancelled', closed_at = ? WHERE id = ? AND status = 'open'")
-    .bind(new Date().toISOString(), offer.id)
+    .bind(gameNow(m.game).toISOString(), offer.id)
     .run();
+  return c.json({ ok: true });
+});
+
+// ---------------------------------------------------------------------------
+// Partidas de prueba (solo quien las creó)
+// ---------------------------------------------------------------------------
+
+async function testGame(c: Ctx): Promise<GameRow | Response> {
+  const s = c.get("session");
+  if (!s) return fail(c, 401, "Primero hay que entrar.");
+  const game = await loadGame(c.env.DB, Number(c.req.param("id")));
+  if (!game) return fail(c, 404, "Esa partida no existe.");
+  if (game.is_test !== 1) return fail(c, 409, "Esto solo se puede hacer en una partida de prueba.");
+  if (game.created_by !== s.userId) return fail(c, 403, "Solo quien creó la prueba puede manejarla.");
+  return game;
+}
+
+/** Avanza el reloj simulado: un paso (mañana o resolución) o hasta la próxima resolución. */
+app.post("/api/partidas/:id/prueba/avanzar", async (c) => {
+  const game = await testGame(c);
+  if (game instanceof Response) return game;
+  if (game.status !== "active") return fail(c, 409, "La partida no está en juego.");
+  const { hasta } = await c.req.json<{ hasta?: string }>().catch(() => ({ hasta: undefined }));
+  if (hasta !== "paso" && hasta !== "resolucion") return fail(c, 400, "Se avanza un paso o hasta la resolución.");
+  const after = await advance(c.env, game.id, hasta);
+  return c.json({ ok: true, ahora: after.sim_now, resolucion: after.current_resolution, estado: after.status });
+});
+
+/** Manejar otra casa de la prueba (los bots que no manejas siguen jugando solos). */
+app.post("/api/partidas/:id/prueba/jugar-como", async (c) => {
+  const game = await testGame(c);
+  if (game instanceof Response) return game;
+  const { casa } = await c.req.json<{ casa?: number }>().catch(() => ({ casa: undefined }));
+  const houses = await loadHouses(c.env.DB, game.id);
+  if (!houses.some((h) => h.id === Number(casa))) return fail(c, 404, "Esa casa no está en la partida.");
+  await c.env.DB.prepare("UPDATE games SET played_house_id = ? WHERE id = ?").bind(Number(casa), game.id).run();
+  return c.json({ ok: true });
+});
+
+app.delete("/api/partidas/:id", async (c) => {
+  const game = await testGame(c);
+  if (game instanceof Response) return game;
+  await deleteTestGame(c.env, game);
   return c.json({ ok: true });
 });
 
