@@ -73,6 +73,8 @@ Para desarrollar el cliente con recarga en caliente: `npm run dev:web` (en otra 
 
 ## Crear una partida
 
+Lo más fácil: abrir `https://TU-DOMINIO/crear`, escribir la clave de administración (`ADMIN_SECRET`), el nombre de la partida, tu nombre y la duración. Después eliges tu casa y compartes la invitación. También se puede con la API:
+
 ```bash
 curl -X POST https://TU-DOMINIO/api/partidas \
   -H "x-admin: TU_ADMIN_SECRET" -H "content-type: application/json" \
