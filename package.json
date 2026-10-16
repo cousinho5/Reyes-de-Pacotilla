@@ -14,7 +14,8 @@
     "typecheck": "npm run typecheck --workspaces --if-present",
     "build": "npm run build --workspaces --if-present",
     "dev:web": "npm run dev -w @reyes/web",
-    "dev:server": "npm run dev -w @reyes/server"
+    "dev:server": "npm run build -w @reyes/web && npm run dev -w @reyes/server",
+    "prueba-humo": "node apps/server/scripts/prueba-humo.mjs"
   },
   "devDependencies": {
     "typescript": "^5.9.0",
