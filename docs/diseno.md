@@ -327,7 +327,9 @@ Pocos y públicos, que dan Prestigio permanente:
 
 Al empezar, cada casa recibe dos objetivos al azar y elige uno. Nadie más lo conoce. Si al final de la partida se cumple, da **+6 de Prestigio**, y se revela en el último boletín.
 
-Ejemplos: controlar 2 puertos al final; tener los 5 edificios a nivel 3 o más; terminar con 100 Oro o más; haber cerrado tratos válidos con todas las casas a lo largo de la partida; controlar una fortaleza al final; ganar 2 Gran Subastas; firmar 2 pactos y no romper ninguno; tomar al menos una casilla a otra casa; terminar con 30 tropas o más; controlar 6 casillas o más al final.
+Catálogo actual (10, en `packages/engine/src/objectives.ts`): controlar 2 puertos al final; tener los 5 edificios a nivel 3 o más; terminar con 100 Oro o más; cerrar tratos válidos con todas las demás casas; controlar una fortaleza al final; tomar al menos una casilla a otra casa; terminar con 30 tropas o más; controlar 6 casillas o más al final; tener un edificio a nivel 5; cerrar 10 tratos válidos. Con la versión 1 se añadirán los de subastas (ganar 2 Gran Subastas) y pactos (firmar 2 pactos sin romper ninguno).
+
+El objetivo se elige antes de la primera resolución; quien no elige se queda con la primera opción.
 
 El objetivo secreto da una meta propia a quien va detrás y hace que el marcador nunca sea del todo seguro, lo que reduce el kingmaking: es difícil decidir quién gana desde abajo si no sabes quién va de verdad primero.
 
@@ -615,7 +617,7 @@ Pixel art en lo jugable, interfaz plana y limpia en lo informativo y un toque de
 1. **Prototipo sin código:** una mini-partida con los amigos usando una hoja de cálculo, resolviendo a mano dos resoluciones y escribiendo a mano un boletín en la voz de Fray Abundio.
 2. **Script de simulación:** partidas con jugadores ficticios para afinar costes, guarniciones y Prestigio. Comparte el motor con el juego.
 3. **MVP 1 (hecho):** cuentas por invitación y código, casa (nombre, color y lema), mapa justo con niebla de guerra, producción, construir, reclutar, fortificar, órdenes de mover y apoyar con simulación, resolución con rebotes, mantenimiento con deserciones, ayuda al último y Prestigio en vivo.
-4. **MVP 2:** comercio (ofertas y aceptación atómica), apoyos, fortificar, objetivos secretos, logros, piloto automático y notificaciones push.
+4. **MVP 2 (hecho):** comercio (ofertas públicas y dirigidas, contraofertas y aceptación atómica sin dobles aceptaciones), objetivos secretos, logros de primera fortaleza y obra maestra, piloto automático y modo vacaciones, notificaciones push y final de partida con revelación de objetivos y coronación.
 5. **Partida piloto de 2 semanas** con los amigos.
 6. **Versión 1:** Gran Subasta y cartas, eventos, boletín con Fray Abundio (incluido el soborno), creador de escudos y lemas, y botón de compartir en WhatsApp.
 7. **Primera partida completa de 6 semanas.**
@@ -686,10 +688,10 @@ Todos son valores de partida, comprobados con una simulación sencilla. Se afina
 
 **Próximos pasos**
 
-1. Publicar el MVP 1 en Cloudflare y hacer una prueba con el grupo.
-2. Completar los catálogos de eventos, cartas y objetivos secretos.
+1. Publicar en Cloudflare y jugar la partida piloto de 2 semanas con el grupo.
+2. Completar los catálogos de eventos y cartas, y los objetivos secretos de subastas y pactos.
 3. Script de simulación para afinar los números.
-4. MVP 2: comercio, apoyos en la interfaz, objetivos secretos, logros, piloto automático y notificaciones push.
+4. Versión 1: Gran Subasta y cartas, eventos, boletín de Fray Abundio con soborno, creador de escudos, pixel art y botón de compartir en WhatsApp.
 
 ## 24. Fuentes consultadas
 

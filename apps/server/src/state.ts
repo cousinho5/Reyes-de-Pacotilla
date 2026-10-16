@@ -45,6 +45,11 @@ export interface HouseRow extends Resources {
   help_until_resolution: number | null;
   vacation: number;
   last_seen_at: string | null;
+  autopilot_template: string | null;
+  autopilot_ran_on: string | null;
+  objective_options: string | null;
+  objective_key: string | null;
+  objective_met: number | null;
 }
 
 export interface TileRow {

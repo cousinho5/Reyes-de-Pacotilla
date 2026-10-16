@@ -35,12 +35,39 @@ export interface Invitation {
   yaDentro: boolean;
 }
 
+export interface ObjectiveView {
+  clave: string;
+  texto: string;
+}
+
 export interface HouseInfo {
   id: number;
   nombre: string;
   color: string;
   lema: string | null;
   prestigio?: PrestigeBreakdown;
+  logros?: { clave: string; veces: number }[];
+  objetivo?: (ObjectiveView & { cumplido: boolean }) | null;
+}
+
+export interface OfferInfo {
+  id: number;
+  de: number;
+  para: number | null;
+  da: Resources;
+  pide: Resources;
+  estado: "open" | "accepted" | "rejected" | "cancelled" | "countered";
+  aceptadaPor: number | null;
+  contraofertaDe: number | null;
+  creada: string;
+}
+
+export interface TradeInfo {
+  id: number;
+  casas: [number, number];
+  valido: boolean;
+  cantidades: [number, number] | null;
+  cuando: string;
 }
 
 export interface TileView {
@@ -90,6 +117,7 @@ export interface GameState {
     resolucion?: string | null;
     ordenesAbiertas?: boolean;
     haEmpezado?: boolean;
+    final?: { ranking: { house: number; total: number }[]; winner: number | null } | null;
   };
   yo: {
     casa: number;
@@ -99,11 +127,20 @@ export interface GameState {
     mantenimientoSemanal?: number;
     ayudaAlUltimo?: Resource | null;
     recursoAyuda?: Resource;
+    objetivo?: {
+      opciones: ObjectiveView[];
+      elegido: ObjectiveView | null;
+      puedeElegir: boolean;
+      cumplido: boolean | null;
+    };
+    ausencia?: { vacaciones: boolean; plantilla: "defensiva" | "economica" | "equilibrada" };
   };
   casas: HouseInfo[];
   casillas?: TileView[];
   ordenes?: OrderView[];
   eventos?: EventView[];
+  ofertas?: OfferInfo[];
+  tratos?: TradeInfo[];
 }
 
 export const api = {
@@ -121,4 +158,16 @@ export const api = {
   setHelp: (id: number, recurso: Resource) => call<{ ok: true }>("POST", `/partidas/${id}/ayuda`, { recurso }),
   saveOrders: (id: number, ordenes: OrderView[]) => call<{ ok: true }>("PUT", `/partidas/${id}/ordenes`, { ordenes }),
   newCode: () => call<{ codigoAcceso: string }>("POST", "/codigo-nuevo"),
+  createOffer: (id: number, body: { para: number | null; da: Partial<Resources>; pide: Partial<Resources>; contraofertaDe?: number }) =>
+    call<{ ok: true }>("POST", `/partidas/${id}/ofertas`, body),
+  acceptOffer: (id: number, oferta: number) => call<{ ok: true }>("POST", `/partidas/${id}/ofertas/${oferta}/aceptar`),
+  rejectOffer: (id: number, oferta: number) => call<{ ok: true }>("POST", `/partidas/${id}/ofertas/${oferta}/rechazar`),
+  cancelOffer: (id: number, oferta: number) => call<{ ok: true }>("POST", `/partidas/${id}/ofertas/${oferta}/retirar`),
+  chooseObjective: (id: number, clave: string) => call<{ ok: true }>("POST", `/partidas/${id}/objetivo`, { clave }),
+  setAbsence: (id: number, body: { vacaciones?: boolean; plantilla?: string }) =>
+    call<{ ok: true }>("POST", `/partidas/${id}/ausencia`, body),
+  pushKey: () => call<{ clave: string | null }>("GET", "/push/clave"),
+  pushSubscribe: (sub: PushSubscriptionJSON) => call<{ ok: true }>("POST", "/push/suscribir", sub),
+  pushUnsubscribe: (endpoint: string) => call<{ ok: true }>("POST", "/push/baja", { endpoint }),
+  pushTest: () => call<{ ok: true }>("POST", "/push/prueba"),
 };

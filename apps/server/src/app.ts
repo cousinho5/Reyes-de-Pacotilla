@@ -11,7 +11,15 @@ import {
   checkOrders,
   checkRecruit,
   checkUpgrade,
+  checkOffer,
+  cleanBundle,
+  dealObjectives,
+  OBJECTIVES,
+  type ObjectiveKey,
   dailyProduction,
+  MAX_OPEN_PUBLIC_OFFERS,
+  RESOURCES,
+  totalOf,
   generateMap,
   localDate,
   localParts,
@@ -33,6 +41,7 @@ import {
   verifySession,
   type Session,
 } from "./auth";
+import { notifyHouses, vapidFrom, type NotifyEnv } from "./notify";
 import { ordersOpen, type GameClock } from "./scheduler";
 import {
   computeAllPrestige,
@@ -46,7 +55,7 @@ import {
   type HouseRow,
 } from "./state";
 
-export interface Env {
+export interface Env extends NotifyEnv {
   DB: D1Database;
   /** Clave para firmar sesiones y códigos (wrangler secret put SESSION_SECRET). */
   SESSION_SECRET: string;
@@ -148,6 +157,56 @@ app.post("/api/codigo-nuevo", async (c) => {
     .first<{ token_version: number }>();
   await startSession(c, s.userId, user!.token_version);
   return c.json({ codigoAcceso: code });
+});
+
+// ---------------------------------------------------------------------------
+// Notificaciones push
+// ---------------------------------------------------------------------------
+
+app.get("/api/push/clave", (c) => c.json({ clave: c.env.VAPID_PUBLIC_KEY ?? null }));
+
+app.post("/api/push/suscribir", async (c) => {
+  const s = c.get("session");
+  if (!s) return fail(c, 401, "Primero hay que entrar.");
+  const body = await c.req
+    .json<{ endpoint?: string; keys?: { p256dh?: string; auth?: string } }>()
+    .catch(() => ({}) as never);
+  if (!body.endpoint?.startsWith("https://") || !body.keys?.p256dh || !body.keys?.auth) {
+    return fail(c, 400, "Suscripción no válida.");
+  }
+  await c.env.DB.prepare(
+    `INSERT INTO push_subscriptions (user_id, endpoint, keys_json) VALUES (?, ?, ?)
+     ON CONFLICT (endpoint) DO UPDATE SET user_id = excluded.user_id, keys_json = excluded.keys_json`,
+  )
+    .bind(s.userId, body.endpoint, JSON.stringify({ p256dh: body.keys.p256dh, auth: body.keys.auth }))
+    .run();
+  return c.json({ ok: true });
+});
+
+app.post("/api/push/baja", async (c) => {
+  const s = c.get("session");
+  if (!s) return fail(c, 401, "Primero hay que entrar.");
+  const { endpoint } = await c.req.json<{ endpoint?: string }>().catch(() => ({ endpoint: undefined }));
+  await c.env.DB.prepare("DELETE FROM push_subscriptions WHERE endpoint = ? AND user_id = ?").bind(endpoint, s.userId).run();
+  return c.json({ ok: true });
+});
+
+app.post("/api/push/prueba", async (c) => {
+  const s = c.get("session");
+  if (!s) return fail(c, 401, "Primero hay que entrar.");
+  if (!vapidFrom(c.env)) return fail(c, 409, "El servidor aún no tiene configuradas las notificaciones.");
+  const house = await c.env.DB.prepare("SELECT id FROM houses WHERE user_id = ? ORDER BY id DESC LIMIT 1")
+    .bind(s.userId)
+    .first<{ id: number }>();
+  if (!house) return fail(c, 404, "Aún no tienes casa en ninguna partida.");
+  await notifyHouses(c.env, [house.id], {
+    kind: "prueba",
+    title: "Reyes de Pacotilla",
+    body: "Fray Abundio comprueba que le oyes. Te oye.",
+    url: "/",
+    dedupe: `prueba:${Date.now()}`,
+  });
+  return c.json({ ok: true });
 });
 
 // ---------------------------------------------------------------------------
@@ -275,6 +334,7 @@ app.post("/api/partidas/:id/empezar", async (c) => {
   }
 
   const map = generateMap(game.seed, houses.map((h) => h.id));
+  const objectives = dealObjectives(game.seed, houses.map((h) => h.id));
   const statements: D1PreparedStatement[] = [
     db.prepare(
       "UPDATE games SET status = 'active', start_date = ?, map_cols = ?, map_rows = ?, started_at = ? WHERE id = ? AND status = 'lobby'",
@@ -300,13 +360,16 @@ app.post("/api/partidas/:id/empezar", async (c) => {
       );
     }
     statements.push(
-      db.prepare("UPDATE houses SET pan = ?, madera = ?, piedra = ?, hierro = ?, oro = ?, last_seen_at = ? WHERE id = ?").bind(
+      db.prepare(
+        "UPDATE houses SET pan = ?, madera = ?, piedra = ?, hierro = ?, oro = ?, last_seen_at = ?, objective_options = ? WHERE id = ?",
+      ).bind(
         STARTING_RESOURCES,
         STARTING_RESOURCES,
         STARTING_RESOURCES,
         STARTING_RESOURCES,
         STARTING_RESOURCES,
         new Date().toISOString(),
+        JSON.stringify(objectives.get(h.id)),
         h.id,
       ),
     );
@@ -383,7 +446,7 @@ app.get("/api/partidas/:id", async (c) => {
 
   const tileRows = await loadTiles(db, game.id);
   const tiles = toEngineTiles(tileRows);
-  const [buildings, prestige, orders, events] = await Promise.all([
+  const [buildings, prestige, orders, events, offers, trades, achievements, ending] = await Promise.all([
     loadBuildings(db, game.id),
     computeAllPrestige(db, game.id, houses, tiles, now),
     db.prepare(
@@ -394,11 +457,39 @@ app.get("/api/partidas/:id", async (c) => {
     db.prepare(
       `SELECT e.id, e.type, e.payload, e.at, r.number AS resolucion FROM event_log e LEFT JOIN resolutions r ON r.id = e.resolution_id
        WHERE e.game_id = ? AND (e.visible_to IS NULL OR e.visible_to = ?)
-       ORDER BY COALESCE(r.number, 0) DESC, e.id ASC LIMIT 40`,
+       -- Por resolución (la más reciente arriba) y, dentro, en orden. Lo que no
+       -- pertenece a una resolución (logros, piloto, final) va con la siguiente.
+       ORDER BY COALESCE(r.number, (SELECT current_resolution + 1 FROM games WHERE id = e.game_id)) DESC, e.id ASC LIMIT 40`,
     )
       .bind(game.id, house.id)
       .all<{ id: number; type: string; payload: string; at: string; resolucion: number | null }>(),
+    db.prepare(
+      `SELECT * FROM offers WHERE game_id = ? AND (
+         (status = 'open' AND (to_house_id IS NULL OR to_house_id = ? OR from_house_id = ?))
+         OR (status <> 'open' AND (from_house_id = ? OR to_house_id = ? OR accepted_by = ?) AND closed_at >= ?)
+       ) ORDER BY id DESC LIMIT 50`,
+    )
+      .bind(game.id, house.id, house.id, house.id, house.id, house.id, new Date(now.getTime() - 3 * 864e5).toISOString())
+      .all<OfferRow>(),
+    db.prepare(
+      `SELECT t.id, t.house_a, t.house_b, t.amount_a, t.amount_b, t.valid, t.at,
+              CASE WHEN o.to_house_id IS NULL THEN 1 ELSE 0 END AS public_offer
+       FROM trades t LEFT JOIN offers o ON o.id = t.offer_id WHERE t.game_id = ? ORDER BY t.id DESC LIMIT 15`,
+    )
+      .bind(game.id)
+      .all<{ id: number; house_a: number; house_b: number; amount_a: number; amount_b: number; valid: number; at: string; public_offer: number }>(),
+    db.prepare("SELECT house_id, achievement_key, times FROM achievements WHERE game_id = ?")
+      .bind(game.id)
+      .all<{ house_id: number; achievement_key: string; times: number }>(),
+    game.status === "finished"
+      ? db.prepare("SELECT payload FROM event_log WHERE game_id = ? AND type = 'fin' ORDER BY id DESC LIMIT 1")
+          .bind(game.id)
+          .first<{ payload: string }>()
+      : Promise.resolve(null),
   ]);
+  const finished = game.status === "finished";
+  const objectiveView = (key: string | null) =>
+    key ? { clave: key, texto: OBJECTIVES[key as ObjectiveKey] ?? key } : null;
 
   const clock = clockOf(game)!;
   const next = game.current_resolution + 1;
@@ -417,6 +508,7 @@ app.get("/api/partidas/:id", async (c) => {
       resolucion: next <= total ? resolutionInstant(clock.startDate, next, clock.resolveTime, clock.timezone).toISOString() : null,
       ordenesAbiertas: game.status === "active" && ordersOpen(now, clock),
       haEmpezado: now >= zonedToUtc(clock.startDate, "00:00", clock.timezone),
+      final: ending ? (JSON.parse(ending.payload) as { ranking: { house: number; total: number }[]; winner: number | null }) : null,
     },
     yo: {
       casa: house.id,
@@ -426,9 +518,28 @@ app.get("/api/partidas/:id", async (c) => {
       mantenimientoSemanal: weeklyUpkeep(own.reduce((a, t) => a + t.troops, 0), own.filter((t) => t.type !== "castillo").length),
       ayudaAlUltimo: helpActive ? (house.help_resource ?? "pan") : null,
       recursoAyuda: house.help_resource ?? "pan",
+      objetivo: {
+        opciones: (JSON.parse(house.objective_options ?? "[]") as string[]).map(objectiveView),
+        elegido: objectiveView(house.objective_key),
+        puedeElegir: game.status === "active" && game.current_resolution === 0,
+        cumplido: house.objective_met == null ? null : house.objective_met === 1,
+      },
+      ausencia: {
+        vacaciones: house.vacation === 1,
+        plantilla: house.autopilot_template ?? "equilibrada",
+      },
     },
     casas: houses
-      .map((h) => ({ id: h.id, nombre: h.name, color: h.color, lema: h.motto, prestigio: prestige.get(h.id) }))
+      .map((h) => ({
+        id: h.id,
+        nombre: h.name,
+        color: h.color,
+        lema: h.motto,
+        prestigio: prestige.get(h.id),
+        logros: achievements.results.filter((a) => a.house_id === h.id).map((a) => ({ clave: a.achievement_key, veces: a.times })),
+        // Los objetivos secretos solo se revelan al final.
+        objetivo: finished ? { ...objectiveView(h.objective_key), cumplido: h.objective_met === 1 } : null,
+      }))
       .sort((a, b) => (b.prestigio?.total ?? 0) - (a.prestigio?.total ?? 0)),
     casillas: projectForHouse(tiles, house.id).map((t) => ({ ...t, nombre: names.get(t.id) })),
     ordenes: orders.results.map((o) => ({
@@ -440,6 +551,15 @@ app.get("/api/partidas/:id", async (c) => {
       tropas: o.troops,
     })),
     eventos: events.results.map((e) => ({ id: e.id, tipo: e.type, resolucion: e.resolucion, datos: JSON.parse(e.payload) })),
+    ofertas: offers.results.map(offerView),
+    tratos: trades.results.map((t) => ({
+      id: t.id,
+      casas: [t.house_a, t.house_b],
+      valido: t.valid === 1,
+      // Las cantidades de los tratos dirigidos solo las ven sus dos casas.
+      cantidades: t.public_offer === 1 || t.house_a === house.id || t.house_b === house.id ? [t.amount_a, t.amount_b] : null,
+      cuando: t.at,
+    })),
   });
 });
 
@@ -481,15 +601,31 @@ app.post("/api/partidas/:id/mejorar", async (c) => {
   const levels = (await loadBuildings(c.env.DB, m.game.id)).get(m.house.id)!;
   const check = checkUpgrade(levels, edificio, resourcesOf(m.house));
   if (!check.ok) return fail(c, 409, check.error);
-  const err = await runPaid(c, [
-    payStatement(c.env.DB, m.house.id, check.value.cost),
-    c.env.DB.prepare("UPDATE buildings SET level = ? WHERE house_id = ? AND kind = ? AND level = ?").bind(
+  const db = c.env.DB;
+  const statements = [
+    payStatement(db, m.house.id, check.value.cost),
+    db.prepare("UPDATE buildings SET level = ? WHERE house_id = ? AND kind = ? AND level = ?").bind(
       check.value.newLevel,
       m.house.id,
       edificio,
       levels[edificio],
     ),
-  ]);
+  ];
+  if (check.value.newLevel === 5) {
+    // Logro "Obra maestra": solo la primera casa con un edificio a nivel 5.
+    statements.push(
+      db.prepare(
+        `INSERT INTO achievements (game_id, house_id, achievement_key) SELECT ?, ?, 'obra_maestra'
+         WHERE NOT EXISTS (SELECT 1 FROM achievements WHERE game_id = ? AND achievement_key = 'obra_maestra')`,
+      ).bind(m.game.id, m.house.id, m.game.id),
+      db.prepare(
+        `INSERT INTO event_log (game_id, type, visible_to, payload) SELECT ?, 'logro', NULL, ?
+         WHERE EXISTS (SELECT 1 FROM achievements WHERE game_id = ? AND achievement_key = 'obra_maestra' AND house_id = ?)
+           AND NOT EXISTS (SELECT 1 FROM event_log WHERE game_id = ? AND type = 'logro' AND json_extract(payload, '$.logro') = 'obra_maestra')`,
+      ).bind(m.game.id, JSON.stringify({ house: m.house.id, logro: "obra_maestra", edificio }), m.game.id, m.house.id, m.game.id),
+    );
+  }
+  const err = await runPaid(c, statements);
   return err ?? c.json({ ok: true, nivel: check.value.newLevel });
 });
 
@@ -536,6 +672,32 @@ app.post("/api/partidas/:id/ayuda", async (c) => {
   const { recurso } = await c.req.json<{ recurso?: string }>().catch(() => ({ recurso: undefined }));
   if (!["pan", "madera", "piedra", "hierro", "oro"].includes(recurso ?? "")) return fail(c, 400, "Ese recurso no existe.");
   await c.env.DB.prepare("UPDATE houses SET help_resource = ? WHERE id = ?").bind(recurso, m.house.id).run();
+  return c.json({ ok: true });
+});
+
+app.post("/api/partidas/:id/objetivo", async (c) => {
+  const m = await activeMembership(c);
+  if (m instanceof Response) return m;
+  if (m.game.current_resolution > 0) return fail(c, 409, "El objetivo se elige antes de la primera resolución.");
+  const { clave } = await c.req.json<{ clave?: string }>().catch(() => ({ clave: undefined }));
+  const options = JSON.parse(m.house.objective_options ?? "[]") as string[];
+  if (!clave || !options.includes(clave)) return fail(c, 400, "Ese objetivo no está entre tus opciones.");
+  await c.env.DB.prepare("UPDATE houses SET objective_key = ? WHERE id = ?").bind(clave, m.house.id).run();
+  return c.json({ ok: true });
+});
+
+app.post("/api/partidas/:id/ausencia", async (c) => {
+  const m = await membership(c);
+  if (m instanceof Response) return m;
+  const body = await c.req.json<{ vacaciones?: boolean; plantilla?: string }>().catch(() => ({}) as never);
+  if (body.plantilla != null && !["defensiva", "economica", "equilibrada"].includes(body.plantilla)) {
+    return fail(c, 400, "Esa plantilla no existe.");
+  }
+  await c.env.DB.prepare(
+    "UPDATE houses SET vacation = COALESCE(?, vacation), autopilot_template = COALESCE(?, autopilot_template) WHERE id = ?",
+  )
+    .bind(body.vacaciones == null ? null : body.vacaciones ? 1 : 0, body.plantilla ?? null, m.house.id)
+    .run();
   return c.json({ ok: true });
 });
 
@@ -592,6 +754,203 @@ app.put("/api/partidas/:id/ordenes", async (c) => {
   ];
   await c.env.DB.batch(statements);
   return c.json({ ok: true, ordenes: orders.length });
+});
+
+// ---------------------------------------------------------------------------
+// Comercio (diseño, sección 9)
+// ---------------------------------------------------------------------------
+
+interface OfferRow {
+  id: number;
+  game_id: number;
+  from_house_id: number;
+  to_house_id: number | null;
+  parent_offer_id: number | null;
+  give_pan: number; give_madera: number; give_piedra: number; give_hierro: number; give_oro: number;
+  want_pan: number; want_madera: number; want_piedra: number; want_hierro: number; want_oro: number;
+  status: "open" | "accepted" | "rejected" | "cancelled" | "countered";
+  accepted_by: number | null;
+  accept_token: string | null;
+  created_at: string;
+  closed_at: string | null;
+}
+
+function bundle(o: OfferRow, side: "give" | "want"): Resources {
+  const out = {} as Resources;
+  for (const r of RESOURCES) out[r] = o[`${side}_${r}` as keyof OfferRow] as number;
+  return out;
+}
+
+export function offerView(o: OfferRow) {
+  return {
+    id: o.id,
+    de: o.from_house_id,
+    para: o.to_house_id,
+    da: bundle(o, "give"),
+    pide: bundle(o, "want"),
+    estado: o.status,
+    aceptadaPor: o.accepted_by,
+    contraofertaDe: o.parent_offer_id,
+    creada: o.created_at,
+  };
+}
+
+async function loadOffer(c: Ctx, gameId: number): Promise<OfferRow | null> {
+  return c.env.DB.prepare("SELECT * FROM offers WHERE id = ? AND game_id = ?")
+    .bind(Number(c.req.param("oid")), gameId)
+    .first<OfferRow>();
+}
+
+/** Crear una oferta pública (sin "para") o dirigida; también contraofertas. */
+app.post("/api/partidas/:id/ofertas", async (c) => {
+  const m = await activeMembership(c);
+  if (m instanceof Response) return m;
+  const body = await c.req
+    .json<{ para?: number | null; da?: unknown; pide?: unknown; contraofertaDe?: number }>()
+    .catch(() => ({}) as never);
+  const give = cleanBundle(body.da);
+  const want = cleanBundle(body.pide);
+  const check = checkOffer(give, want, resourcesOf(m.house));
+  if (!check.ok) return fail(c, 400, check.error);
+
+  let to = body.para == null ? null : Number(body.para);
+  let parent: OfferRow | null = null;
+  if (body.contraofertaDe != null) {
+    parent = await c.env.DB.prepare("SELECT * FROM offers WHERE id = ? AND game_id = ?")
+      .bind(Number(body.contraofertaDe), m.game.id)
+      .first<OfferRow>();
+    if (!parent || parent.status !== "open") return fail(c, 409, "Esa oferta ya no está abierta.");
+    if (parent.to_house_id != null && parent.to_house_id !== m.house.id) return fail(c, 403, "Esa oferta no era para ti.");
+    if (parent.from_house_id === m.house.id) return fail(c, 400, "No puedes contraofertarte a ti mismo.");
+    to = parent.from_house_id;
+  }
+  if (to != null) {
+    if (to === m.house.id) return fail(c, 400, "No puedes comerciar contigo mismo.");
+    if (!m.houses.some((h) => h.id === to)) return fail(c, 404, "Esa casa no está en la partida.");
+  } else {
+    const open = await c.env.DB.prepare(
+      "SELECT COUNT(*) AS n FROM offers WHERE game_id = ? AND from_house_id = ? AND to_house_id IS NULL AND status = 'open'",
+    )
+      .bind(m.game.id, m.house.id)
+      .first<{ n: number }>();
+    if ((open?.n ?? 0) >= MAX_OPEN_PUBLIC_OFFERS) {
+      return fail(c, 409, `Como mucho ${MAX_OPEN_PUBLIC_OFFERS} ofertas públicas abiertas. Retira alguna antes.`);
+    }
+  }
+
+  const statements = [
+    c.env.DB.prepare(
+      `INSERT INTO offers (game_id, from_house_id, to_house_id, parent_offer_id,
+         give_pan, give_madera, give_piedra, give_hierro, give_oro,
+         want_pan, want_madera, want_piedra, want_hierro, want_oro)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).bind(
+      m.game.id, m.house.id, to, parent?.id ?? null,
+      give!.pan ?? 0, give!.madera ?? 0, give!.piedra ?? 0, give!.hierro ?? 0, give!.oro ?? 0,
+      want!.pan ?? 0, want!.madera ?? 0, want!.piedra ?? 0, want!.hierro ?? 0, want!.oro ?? 0,
+    ),
+  ];
+  // Una contraoferta a una oferta dirigida la cierra; las públicas siguen abiertas para los demás.
+  if (parent && parent.to_house_id === m.house.id) {
+    statements.push(
+      c.env.DB.prepare("UPDATE offers SET status = 'countered', closed_at = ? WHERE id = ? AND status = 'open'").bind(
+        new Date().toISOString(),
+        parent.id,
+      ),
+    );
+  }
+  await c.env.DB.batch(statements);
+  if (to != null) {
+    await notifyHouses(c.env, [to], {
+      kind: "oferta",
+      title: "Te han hecho una oferta",
+      body: `${m.house.name} quiere comerciar contigo.`,
+      url: `/partida/${m.game.id}`,
+      dedupe: `oferta:${m.game.id}:${Date.now()}:${to}`,
+    });
+  }
+  return c.json({ ok: true });
+});
+
+/**
+ * Aceptar: todo en un lote atómico. Primero se marca la oferta con un token
+ * único; los recursos y el trato solo se aplican si el token es el nuestro.
+ * Si a alguien le faltan recursos, la restricción CHECK deshace el lote entero.
+ */
+app.post("/api/partidas/:id/ofertas/:oid/aceptar", async (c) => {
+  const m = await activeMembership(c);
+  if (m instanceof Response) return m;
+  const offer = await loadOffer(c, m.game.id);
+  if (!offer || offer.status !== "open") return fail(c, 409, "Esa oferta ya no está disponible.");
+  if (offer.from_house_id === m.house.id) return fail(c, 400, "No puedes aceptar tu propia oferta.");
+  if (offer.to_house_id != null && offer.to_house_id !== m.house.id) return fail(c, 403, "Esa oferta no era para ti.");
+  const give = bundle(offer, "give");
+  const want = bundle(offer, "want");
+  if (RESOURCES.some((r) => m.house[r] < want[r])) return fail(c, 409, "No tienes lo que te piden.");
+
+  const db = c.env.DB;
+  const token = randomCode(16);
+  const now = new Date().toISOString();
+  const mine = `(SELECT accept_token FROM offers WHERE id = ${offer.id}) = ?`;
+  const delta = (sign: 1 | -1) =>
+    RESOURCES.map((r) => sign * (give[r] - want[r])) as [number, number, number, number, number];
+  try {
+    await db.batch([
+      db.prepare(
+        "UPDATE offers SET status = 'accepted', accepted_by = ?, accept_token = ?, closed_at = ? WHERE id = ? AND status = 'open'",
+      ).bind(m.house.id, token, now, offer.id),
+      // Quien ofreció entrega "da" y recibe "pide".
+      db.prepare(
+        `UPDATE houses SET pan = pan + ?, madera = madera + ?, piedra = piedra + ?, hierro = hierro + ?, oro = oro + ? WHERE id = ? AND ${mine}`,
+      ).bind(...delta(-1), offer.from_house_id, token),
+      // Quien acepta entrega "pide" y recibe "da".
+      db.prepare(
+        `UPDATE houses SET pan = pan + ?, madera = madera + ?, piedra = piedra + ?, hierro = hierro + ?, oro = oro + ? WHERE id = ? AND ${mine}`,
+      ).bind(...delta(1), m.house.id, token),
+      db.prepare(
+        `INSERT INTO trades (game_id, house_a, house_b, offer_id, amount_a, amount_b, at) SELECT ?, ?, ?, ?, ?, ?, ? WHERE ${mine}`,
+      ).bind(m.game.id, offer.from_house_id, m.house.id, offer.id, totalOf(give), totalOf(want), now, token),
+    ]);
+  } catch (err) {
+    if (err instanceof Error && /CHECK constraint failed/.test(err.message)) {
+      return fail(c, 409, "A alguna de las dos casas le faltan recursos: el trato no se ha hecho.");
+    }
+    throw err;
+  }
+  const after = await db.prepare("SELECT accept_token FROM offers WHERE id = ?").bind(offer.id).first<{ accept_token: string }>();
+  if (after?.accept_token !== token) return fail(c, 409, "Otra casa se te adelantó.");
+  await notifyHouses(c.env, [offer.from_house_id], {
+    kind: "trato",
+    title: "Trato cerrado",
+    body: `${m.house.name} ha aceptado tu oferta. Ambas partes creen haber ganado.`,
+    url: `/partida/${m.game.id}`,
+    dedupe: `trato:${offer.id}`,
+  });
+  return c.json({ ok: true });
+});
+
+app.post("/api/partidas/:id/ofertas/:oid/rechazar", async (c) => {
+  const m = await activeMembership(c);
+  if (m instanceof Response) return m;
+  const offer = await loadOffer(c, m.game.id);
+  if (!offer || offer.status !== "open") return fail(c, 409, "Esa oferta ya no está abierta.");
+  if (offer.to_house_id !== m.house.id) return fail(c, 403, "Solo se rechazan las ofertas dirigidas a ti.");
+  await c.env.DB.prepare("UPDATE offers SET status = 'rejected', closed_at = ? WHERE id = ? AND status = 'open'")
+    .bind(new Date().toISOString(), offer.id)
+    .run();
+  return c.json({ ok: true });
+});
+
+app.post("/api/partidas/:id/ofertas/:oid/retirar", async (c) => {
+  const m = await activeMembership(c);
+  if (m instanceof Response) return m;
+  const offer = await loadOffer(c, m.game.id);
+  if (!offer || offer.status !== "open") return fail(c, 409, "Esa oferta ya no está abierta.");
+  if (offer.from_house_id !== m.house.id) return fail(c, 403, "Solo puedes retirar tus ofertas.");
+  await c.env.DB.prepare("UPDATE offers SET status = 'cancelled', closed_at = ? WHERE id = ? AND status = 'open'")
+    .bind(new Date().toISOString(), offer.id)
+    .run();
+  return c.json({ ok: true });
 });
 
 /** Lunes siguiente (nunca hoy) en la zona horaria de la partida. */

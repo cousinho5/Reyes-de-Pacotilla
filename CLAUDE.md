@@ -15,7 +15,8 @@ Juego de estrategia asíncrono de navegador para 4-8 amigos. El diseño completo
 - `npm test`: todas las pruebas (Vitest).
 - `npm run typecheck`: TypeScript en todos los paquetes.
 - `npm run dev:server`: compila el cliente y arranca el Worker en http://localhost:8787 (necesita `apps/server/.dev.vars` con `SESSION_SECRET` y `ADMIN_SECRET`, y `npm run db:migrate:local -w @reyes/server`).
-- `npm run prueba-humo`: prueba de la API de punta a punta contra el servidor local.
+- `npm run prueba-humo`: prueba de la API de punta a punta contra el servidor local (40 comprobaciones, incluidas dos aceptaciones simultáneas de una oferta).
+- `node apps/server/scripts/claves-vapid.mjs`: genera las claves VAPID de las notificaciones push.
 - Cron en local: `POST /cdn-cgi/local/explorer/api/local/scheduled?worker=reyes-de-pacotilla` con `{"cron":"0 * * * *"}`. La ruta `/__scheduled` no sirve porque la atienden los archivos estáticos.
 - Para comprobar la interfaz, si el entorno tiene Chromium (por ejemplo en `/opt/pw-browsers`), usar Playwright con un viewport de móvil de 390x844.
 
