@@ -1,0 +1,17 @@
+name = "reyes-de-pacotilla"
+main = "src/index.ts"
+compatibility_date = "2026-10-01"
+
+# Base de datos D1. Crear una vez con:
+#   npx wrangler d1 create reyes
+# y pegar aquí el database_id que devuelve.
+[[d1_databases]]
+binding = "DB"
+database_name = "reyes"
+database_id = "PENDIENTE-crear-con-wrangler-d1-create"
+migrations_dir = "migrations"
+
+# Los cron de Cloudflare van en UTC. Se ejecuta cada hora y el código decide,
+# en la hora local de cada partida, si toca producción, cierre o resolución.
+[triggers]
+crons = ["0 * * * *"]

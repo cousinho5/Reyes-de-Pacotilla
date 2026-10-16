@@ -1,0 +1,43 @@
+:root {
+  --pergamino: #f4ead5;
+  --tinta: #2b2118;
+  --sable: #1e1e24;
+  --oro: #e8b83a;
+  --gules: #b3291d;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: var(--tinta);
+  background: var(--pergamino);
+}
+
+body {
+  margin: 0;
+}
+
+.pergamino {
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 3rem;
+  line-height: 1.5;
+}
+
+h1 {
+  margin-bottom: 0;
+  font-family: Georgia, "Times New Roman", serif;
+}
+
+.subtitulo {
+  margin-top: 0.25rem;
+  font-style: italic;
+}
+
+.cronica {
+  border: 2px solid var(--tinta);
+  padding: 0.75rem 1rem;
+  background: #fbf5e6;
+}
+
+.margen {
+  font-size: 0.85rem;
+  font-style: italic;
+  color: var(--gules);
+}

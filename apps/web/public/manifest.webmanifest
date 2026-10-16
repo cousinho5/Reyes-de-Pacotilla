@@ -1,0 +1,10 @@
+{
+  "name": "Reyes de Pacotilla",
+  "short_name": "Pacotilla",
+  "lang": "es",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f4ead5",
+  "theme_color": "#1e1e24",
+  "icons": []
+}

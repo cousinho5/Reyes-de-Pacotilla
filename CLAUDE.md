@@ -1,0 +1,29 @@
+# Reyes de Pacotilla: guía para Claude
+
+Juego de estrategia asíncrono de navegador para 4-8 amigos. El diseño completo está en `docs/diseno.md` (versión 2); el banco de frases del cronista en `docs/banco-de-frases.md`; el esquema de la base de datos en `docs/esquema-bd.md`.
+
+## Estructura
+
+- `packages/engine`: motor puro en TypeScript (reglas, combate, economía, Prestigio, calendario). Sin dependencias ni efectos secundarios. Lo usan el servidor y el cliente (botón Simular).
+- `apps/server`: Cloudflare Worker con Hono y D1. `src/scheduler.ts` decide qué tareas tocan cada hora; `src/jobs.ts` las ejecuta en lotes atómicos.
+- `apps/server/migrations`: migraciones SQL de D1. Nunca editar una migración ya aplicada: añadir una nueva.
+- `apps/web`: cliente React + Vite, PWA.
+
+## Comandos
+
+- `npm install` (requiere npm 11: con npm 10 falla la instalación).
+- `npm test`: todas las pruebas (Vitest).
+- `npm run typecheck`: TypeScript en todos los paquetes.
+- `npm run dev:web` y `npm run dev:server`: desarrollo local.
+
+## Reglas del proyecto
+
+- Todo el texto que ve el jugador va en español. El recurso se llama **Pan**, nunca "Comida".
+- El motor es determinista y puro: misma entrada, misma salida; no modifica la entrada; nada de `Date.now()` ni azar dentro de `packages/engine` (el azar del mapa llega como semilla).
+- Las reglas de combate siguen la sección 8 del diseño. Cualquier cambio de reglas va acompañado de su prueba y de la actualización de `docs/diseno.md`.
+- Los valores ajustables viven en `packages/engine/src/rules.ts`, no repartidos por el código.
+- Los recursos nunca pueden ser negativos: la base de datos lo impide con `CHECK`; las operaciones con dinero van en `db.batch()` (D1 no admite `BEGIN`/`COMMIT`).
+- Las tareas programadas son idempotentes: cada una registra una clave única (`job_runs` o `resolutions`) en el mismo lote que sus cambios.
+- Los cron de Cloudflare van en UTC: toda la lógica horaria pasa por `schedule.ts` con la zona horaria de la partida.
+- Los textos de Fray Abundio salen del banco de frases; las cifras siempre exactas, el humor en los adjetivos.
+- El servidor nunca envía al cliente información fuera de la niebla de guerra de esa casa.
