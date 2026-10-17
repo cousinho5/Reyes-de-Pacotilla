@@ -31,5 +31,6 @@ Juego de estrategia asíncrono de navegador para 4-8 amigos. El diseño completo
 - Los recursos nunca pueden ser negativos: la base de datos lo impide con `CHECK`; las operaciones con dinero van en `db.batch()` (D1 no admite `BEGIN`/`COMMIT`).
 - Las tareas programadas son idempotentes: cada una registra una clave única (`job_runs` o `resolutions`) en el mismo lote que sus cambios.
 - Los cron de Cloudflare van en UTC: toda la lógica horaria pasa por `schedule.ts` con la zona horaria de la partida.
+- El pixel art vive en `apps/web/src/art` como rejillas de texto con paleta (nada de imágenes). Las reglas de los escudos, en `packages/engine/src/heraldry.ts`.
 - Los textos de Fray Abundio salen del banco de frases; las cifras siempre exactas, el humor en los adjetivos.
 - El servidor nunca envía al cliente información fuera de la niebla de guerra de esa casa.

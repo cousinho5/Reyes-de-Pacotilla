@@ -392,33 +392,53 @@ legend {
     animation: none;
   }
 }
-.tile-mark {
-  font-size: 1.1rem;
-  line-height: 1;
-  opacity: 0.75;
+.tile {
+  overflow: hidden;
+}
+.tile-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.tile-owner {
+  position: absolute;
+  inset: 0;
+  border-radius: 5px;
+  pointer-events: none;
 }
 .tile-troops {
+  position: relative;
   font-weight: 800;
-  font-size: 1.05rem;
+  font-size: 1rem;
+  line-height: 1;
   font-variant-numeric: tabular-nums;
+  min-width: 1.5em;
+  padding: 0.12em 0.3em;
+  border-radius: 999px;
+  color: #fff;
+  background: rgba(20, 16, 12, 0.72);
 }
 .tile-fort {
   position: absolute;
+  z-index: 1;
   top: 2px;
   left: 4px;
   font-size: 0.8rem;
 }
 .tile-banner {
   position: absolute;
-  top: 3px;
-  right: 3px;
-  width: 10px;
-  height: 14px;
-  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 75%, 0 100%);
-  border: none;
+  z-index: 1;
+  top: 2px;
+  right: 2px;
+  line-height: 0;
+  filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.4));
 }
 .tile-orders {
   position: absolute;
+  z-index: 1;
+  text-shadow: 0 0 2px #fff, 0 0 2px #fff;
   bottom: 1px;
   right: 4px;
   font-size: 0.8rem;
@@ -744,7 +764,10 @@ label.check input {
   line-height: 1.5;
 }
 .parchment header {
-  text-align: center;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  text-align: left;
   border-bottom: 2px double #a07d42;
   margin-bottom: 0.8rem;
   padding-bottom: 0.6rem;
@@ -802,6 +825,10 @@ label.check input {
   font-style: italic;
   font-size: 0.85rem;
 }
+.sponsors .fray {
+  float: left;
+  margin: 0 0.5rem 0.2rem 0;
+}
 .sponsors p {
   margin: 0 0 0.3rem;
 }
@@ -815,4 +842,96 @@ label.check input {
 .parchment .share {
   display: block;
   text-align: center;
+}
+
+/* Pixel art */
+svg.shield,
+svg.fray,
+svg.res-icon {
+  display: inline-block;
+  vertical-align: middle;
+  flex: none;
+}
+.res-icon {
+  margin-right: 0.1rem;
+}
+.event-line {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.topbar-title .shield {
+  margin-right: 0.15rem;
+}
+.coronation .shield {
+  display: block;
+  margin: 0 auto 0.5rem;
+}
+
+/* Creador de escudos */
+.house-editor fieldset {
+  border: none;
+  padding: 0;
+  margin: 0.75rem 0 0;
+}
+.house-editor legend {
+  font-weight: 700;
+  margin-bottom: 0.35rem;
+}
+.shield-preview {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.6rem;
+  margin-bottom: 0.6rem;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #f3e2b8, #e7cf98);
+}
+.shield-preview > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+.shield-preview strong {
+  font-size: 1.1rem;
+}
+.shield-options,
+.symbol-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(4.2rem, 1fr));
+  gap: 0.35rem;
+}
+.shield-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.35rem 0.2rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  min-height: 0;
+  background: var(--card);
+  border: 2px solid transparent;
+}
+.shield-option.selected {
+  border-color: var(--ink);
+  background: #f3e2b8;
+}
+.shield-option:disabled {
+  opacity: 0.3;
+}
+.segmented {
+  display: flex;
+  gap: 0.35rem;
+}
+.segmented button {
+  flex: 1;
+}
+.segmented button.chosen {
+  background: var(--ink);
+  color: var(--card);
+}
+.chip .shield {
+  margin-right: 0.15rem;
 }

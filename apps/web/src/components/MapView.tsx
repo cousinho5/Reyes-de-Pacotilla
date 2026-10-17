@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
 import { FORTIFY_COST, TILE_NAMES, areAdjacent } from "@reyes/engine";
 import { api, type GameState, type OrderView, type TileView } from "../api";
-import { TILE_LABEL, TILE_MARK, houseColor, houseName } from "../ui";
+import { ShieldIcon, TileArt } from "../art";
+import { TILE_LABEL, houseColor, houseName } from "../ui";
 
 interface Props {
   state: GameState;
@@ -48,6 +49,7 @@ export function MapView({ state, draft, setDraft, act }: Props) {
       <div className="map" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
         {tiles.map((t) => {
           const owner = houseColor(state.casas, t.owner);
+          const house = t.owner != null ? state.casas.find((h) => h.id === t.owner) : undefined;
           const classes = [
             "tile",
             `tile-${t.type}`,
@@ -60,22 +62,24 @@ export function MapView({ state, draft, setDraft, act }: Props) {
             <button
               key={t.id}
               className={classes}
-              style={owner ? { boxShadow: `inset 0 0 0 4px ${owner}` } : undefined}
               onClick={() => onTile(t)}
               aria-label={`${t.nombre}, ${TILE_LABEL[t.type]}, ${t.owner ? houseName(state.casas, t.owner) : "neutral"}, ${
                 t.troops == null ? "tropas desconocidas" : `${t.troops} tropas`
               }`}
             >
-              <span className="tile-mark" aria-hidden>
-                {TILE_MARK[t.type]}
-              </span>
+              <TileArt type={t.type} flag={owner} className="tile-art" />
+              {owner && <span className="tile-owner" style={{ boxShadow: `inset 0 0 0 4px ${owner}` }} aria-hidden />}
               <span className="tile-troops">{t.troops == null ? "?" : t.troops}</span>
               {t.fortifiedUntil != null && t.fortifiedUntil > state.partida.resolucionActual && (
                 <span className="tile-fort" aria-hidden>
                   ⛨
                 </span>
               )}
-              {owner && <span className="tile-banner" style={{ background: owner }} aria-hidden />}
+              {house && t.type !== "castillo" && (
+                <span className="tile-banner" aria-hidden>
+                  <ShieldIcon color={house.color} escudo={house.escudo} size={16} title="" />
+                </span>
+              )}
               {outgoing(t).length > 0 && (
                 <span className="tile-orders" aria-hidden>
                   {outgoing(t).map((o) => arrow(t, byId.get(o.hacia)!)).join("")}

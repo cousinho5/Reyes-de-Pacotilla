@@ -610,6 +610,7 @@ Opcional, con sugerencias en latín macarrónico ("Nabus Vincit", "Ora et Comerc
 - **Se guarda en el perfil:** se puede cambiar entre partidas, pero no durante una.
 - **Dónde aparece:** en el mapa (tinte y banderines), la clasificación, las ofertas, el boletín, la Crónica Definitiva y el ranking de temporadas. El primer boletín presenta a todas las casas.
 - **Técnica:** el escudo se guarda como unos pocos campos y el cliente lo compone. Las piezas son plantillas que se tiñen con cambio de paleta (unos 25 sprites).
+- **Cómo está hecho (versión 1):** el creador de escudos aparece al unirse y en la sala de espera (se puede retocar hasta que empieza la partida). Las reglas viven en el motor (`packages/engine/src/heraldry.ts`: `checkShield` y `blazon`) y el servidor las comprueba al unirse y al retocar (`PUT /api/partidas/:id/casa`). El escudo es una rejilla de 16x18: la forma sale de una máscara, la división reparte los dos colores y el símbolo (rejilla de hasta 10x10) se pinta encima en oro o plata. Los bots reciben escudos variados con `freeShield`. En el boletín, "partido de gules y azur con nabo de oro".
 
 ## 19. Dirección artística
 
@@ -629,6 +630,7 @@ Pixel art en lo jugable, interfaz plana y limpia en lo informativo y un toque de
 - Escalado siempre en números enteros (x2, x3, x4).
 - Los textos y los números van siempre en HTML, nunca dentro de un sprite.
 - **Primera versión:** unos 90-110 sprites (6 tipos de casilla, 5 recursos, 5 edificios con 2-3 aspectos por nivel, tropas, castillo, fortaleza, 5 retratos de Fray Abundio y unas 25 piezas de escudo).
+- **Hecho en la versión 1** (`apps/web/src/art`): 7 casillas de 16x16 compuestas con sellos (árboles, rocas, barca, castillo con la bandera de su dueño), 5 iconos de recursos de 9x9, los escudos (5 formas, 4 divisiones, 16 símbolos) y Fray Abundio de 24x24 con sus 5 caras. Se pintan como SVG nítido a cualquier tamaño. En el mapa, cada casilla controlada lleva un banderín con el escudo de su casa. El boletín elige la cara del cronista según lo que cuenta: escandalizado si se roban casillas, adulador con favorito nuevo o en la coronación, dormido si no pasa nada y solemne en el resto; el pie de patrocinio cuenta monedas. Quedan para más adelante los edificios por nivel y las tropas.
 - **Quién dibuja y cómo:** Claude, como pixel art hecho con código. Cada sprite es una rejilla de texto en la que cada letra es un color de la paleta y se convierte en imagen automáticamente. Así todo es coherente, se versiona en el repositorio y se retoca con facilidad. Será sencillo y funcional; si se quiere algo más trabajado, se sustituye sprite a sprite. No se usan imágenes generadas por IA, que salen poco consistentes entre sí.
 
 ## 20. Arquitectura técnica
@@ -669,7 +671,7 @@ Pixel art en lo jugable, interfaz plana y limpia en lo informativo y un toque de
 3. **MVP 1 (hecho):** cuentas por invitación y código, casa (nombre, color y lema), mapa justo con niebla de guerra, producción, construir, reclutar, fortificar, órdenes de mover y apoyar con simulación, resolución con rebotes, mantenimiento con deserciones, ayuda al último y Prestigio en vivo.
 4. **MVP 2 (hecho):** comercio (ofertas públicas y dirigidas, contraofertas y aceptación atómica sin dobles aceptaciones), objetivos secretos, logros de primera fortaleza y obra maestra, piloto automático y modo vacaciones, notificaciones push y final de partida con revelación de objetivos y coronación.
 5. **Partida piloto de 4 semanas** con los amigos (en la simulación, las partidas de 2 semanas las gana casi siempre quien va primero en la segunda semana). Antes, partidas de prueba contra bots y el simulador (`npm run simular`, resultados en `docs/simulaciones.md`).
-6. **Versión 1:** Gran Subasta y cartas (hecho), eventos (hecho), boletín con Fray Abundio (incluido el soborno; hecho), creador de escudos y lemas, y botón de compartir en WhatsApp.
+6. **Versión 1:** Gran Subasta y cartas (hecho), eventos (hecho), boletín con Fray Abundio (incluido el soborno y el botón de compartir en WhatsApp; hecho), creador de escudos y lemas (hecho) y pixel art de casillas, recursos, escudos y Fray Abundio (hecho).
 7. **Primera partida completa de 6 semanas.**
 8. **Versión 2:** tratados comerciales, mensajes privados, temporadas, títulos y la Crónica Definitiva.
 
@@ -741,7 +743,7 @@ Todos son valores de partida. El simulador (`npm run simular`) ya ajustó el cos
 1. Publicar en Cloudflare (hecho) y jugar la partida piloto de 4 semanas con el grupo.
 2. Completar los catálogos de eventos y cartas, y los objetivos secretos de subastas y pactos.
 3. Script de simulación para afinar los números.
-4. Versión 1: Gran Subasta y cartas, eventos, boletín de Fray Abundio con soborno, creador de escudos, pixel art y botón de compartir en WhatsApp.
+4. Versión 1 (hecha): Gran Subasta y cartas, eventos, boletín de Fray Abundio con soborno, creador de escudos, pixel art y botón de compartir en WhatsApp.
 
 ## 24. Fuentes consultadas
 

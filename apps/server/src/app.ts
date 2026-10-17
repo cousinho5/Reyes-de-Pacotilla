@@ -38,6 +38,8 @@ import {
   EVENTS,
   eventLine,
   eventText,
+  checkShield,
+  freeShield,
   type Order,
   type Resources,
 } from "@reyes/engine";
@@ -52,7 +54,7 @@ import {
   type Session,
 } from "./auth";
 import { notifyHouses, vapidFrom, type NotifyEnv } from "./notify";
-import { COLORS, pickShield } from "./heraldry";
+import { COLORS, shieldOf, shieldView } from "./heraldry";
 import { clockOf, runGameJobs } from "./jobs";
 import { bribeView, type StoredBulletin } from "./boletin";
 import { auctionView, handView, openAuctionWeek, spiedHouses, useCardStatements, type CardRow } from "./subasta";
@@ -275,11 +277,48 @@ app.get("/api/invitacion/:codigo", async (c) => {
   const s = c.get("session");
   return c.json({
     partida: { id: game.id, nombre: game.name, estado: game.status, semanas: game.weeks },
-    casas: houses.map((h) => ({ nombre: h.name, color: h.color })),
+    casas: houses.map((h) => ({ nombre: h.name, color: h.color, escudo: shieldView(h) })),
     coloresLibres: COLORS.filter((col) => !houses.some((h) => h.color === col)),
     yaDentro: s ? houses.some((h) => h.user_id === s.userId) : false,
   });
 });
+
+
+type HouseBody = {
+  casa?: string;
+  color?: string;
+  lema?: string;
+  forma?: string;
+  division?: string;
+  color2?: string | null;
+  simbolo?: string;
+  metal?: string;
+};
+
+/**
+ * Nombre, lema y escudo de una casa, validados frente a las demás. Si el
+ * cliente no manda escudo (versiones antiguas), se propone el primero libre.
+ */
+function parseHouse(body: HouseBody, others: HouseRow[]) {
+  const casa = (body.casa ?? "").trim();
+  if (casa.length < 1 || casa.length > 20) return { error: "El nombre de la casa tiene entre 1 y 20 caracteres.", status: 400 as const };
+  const lema = (body.lema ?? "").trim() || null;
+  if (lema && lema.length > 40) return { error: "El lema tiene como máximo 40 caracteres.", status: 400 as const };
+  const fallback = freeShield(others.map(shieldOf));
+  const division = body.division ?? "pleno";
+  const shield = {
+    color: body.color,
+    shape: body.forma ?? fallback.shape,
+    division,
+    color2: division === "pleno" ? (body.color2 ?? null) : body.color2,
+    symbol: body.simbolo ?? fallback.symbol,
+    metal: body.metal ?? "oro",
+  };
+  const error = checkShield(shield, others.map(shieldOf));
+  // 409 si choca con otra casa; 400 si el escudo no vale por sí mismo.
+  if (error) return { error, status: (checkShield(shield, []) ? 400 : 409) as 400 | 409 };
+  return { casa, lema, shield: shield as ReturnType<typeof shieldOf> };
+}
 
 app.post("/api/invitacion/:codigo/unirse", async (c) => {
   const db = c.env.DB;
@@ -289,18 +328,12 @@ app.post("/api/invitacion/:codigo/unirse", async (c) => {
   if (!game) return fail(c, 404, "Esa invitación no existe.");
   if (game.status !== "lobby") return fail(c, 409, "La partida ya ha empezado.");
 
-  const body = await c.req
-    .json<{ nombre?: string; casa?: string; color?: string; lema?: string }>()
-    .catch(() => ({}) as never);
-  const casa = (body.casa ?? "").trim();
-  if (casa.length < 1 || casa.length > 20) return fail(c, 400, "El nombre de la casa tiene entre 1 y 20 caracteres.");
-  if (!COLORS.includes(body.color as (typeof COLORS)[number])) return fail(c, 400, "Ese color no existe.");
-  const lema = (body.lema ?? "").trim() || null;
-  if (lema && lema.length > 40) return fail(c, 400, "El lema tiene como máximo 40 caracteres.");
-
+  const body = await c.req.json<HouseBody & { nombre?: string }>().catch(() => ({}) as never);
   const houses = await loadHouses(db, game.id);
   if (houses.length >= 8) return fail(c, 409, "La partida ya tiene 8 casas.");
-  if (houses.some((h) => h.color === body.color)) return fail(c, 409, "Ese color ya está cogido.");
+  const parsed = parseHouse(body, houses);
+  if ("error" in parsed) return fail(c, parsed.status ?? 400, parsed.error!);
+  const { casa, lema, shield } = parsed;
 
   let s = c.get("session");
   let codigoAcceso: string | null = null;
@@ -316,18 +349,38 @@ app.post("/api/invitacion/:codigo/unirse", async (c) => {
     await startSession(c, s.userId, 1);
   }
 
-  const { shape, symbol } = pickShield(houses);
-
   try {
     await db.prepare(
-      "INSERT INTO houses (game_id, user_id, name, color, shield_shape, symbol, motto) VALUES (?, ?, ?, ?, ?, ?, ?)",
+      "INSERT INTO houses (game_id, user_id, name, color, shield_shape, shield_division, color2, symbol, metal, motto) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     )
-      .bind(game.id, s.userId, casa, body.color, shape, symbol, lema)
+      .bind(game.id, s.userId, casa, shield.color, shield.shape, shield.division, shield.color2, shield.symbol, shield.metal, lema)
       .run();
   } catch {
-    return fail(c, 409, "Ese color acaba de cogerlo otra casa. Elige otro.");
+    return fail(c, 409, "Otra casa acaba de coger ese color o ese escudo. Elige otro.");
   }
   return c.json({ ok: true, partida: game.id, codigoAcceso });
+});
+
+// En la sala de espera cada casa puede retocar su nombre, lema y escudo.
+app.put("/api/partidas/:id/casa", async (c) => {
+  const m = await membership(c);
+  if (m instanceof Response) return m;
+  const { game, house, houses } = m;
+  if (game.status !== "lobby") return fail(c, 409, "El escudo no se cambia con la partida empezada.");
+  const body = await c.req.json<HouseBody>().catch(() => ({}) as HouseBody);
+  const parsed = parseHouse(body, houses.filter((h) => h.id !== house.id));
+  if ("error" in parsed) return fail(c, parsed.status ?? 400, parsed.error!);
+  const { casa, lema, shield } = parsed;
+  try {
+    await c.env.DB.prepare(
+      "UPDATE houses SET name = ?, motto = ?, color = ?, shield_shape = ?, shield_division = ?, color2 = ?, symbol = ?, metal = ? WHERE id = ?",
+    )
+      .bind(casa, lema, shield.color, shield.shape, shield.division, shield.color2, shield.symbol, shield.metal, house.id)
+      .run();
+  } catch {
+    return fail(c, 409, "Otra casa acaba de coger ese color o ese escudo. Elige otro.");
+  }
+  return c.json({ ok: true });
 });
 
 // ---------------------------------------------------------------------------
@@ -463,7 +516,7 @@ app.get("/api/partidas/:id", async (c) => {
     return c.json({
       ...base,
       yo: { casa: house.id },
-      casas: houses.map((h) => ({ id: h.id, nombre: h.name, color: h.color, lema: h.motto })),
+      casas: houses.map((h) => ({ id: h.id, nombre: h.name, color: h.color, lema: h.motto, escudo: shieldView(h) })),
       prueba: game.is_test === 1 ? { bots: game.test_bots ?? 3 } : null,
     });
   }
@@ -561,6 +614,7 @@ app.get("/api/partidas/:id", async (c) => {
         nombre: h.name,
         color: h.color,
         lema: h.motto,
+        escudo: shieldView(h),
         prestigio: prestige.get(h.id),
         logros: achievements.results.filter((a) => a.house_id === h.id).map((a) => ({ clave: a.achievement_key, veces: a.times })),
         // Los objetivos secretos solo se revelan al final.

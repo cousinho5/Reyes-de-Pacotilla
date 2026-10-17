@@ -96,7 +96,7 @@ export async function addBots(env: BotEnv, gameId: number, count: number): Promi
       motto: "",
       personality: "estratega" as const,
     };
-    const { shape, symbol } = pickShield(houses);
+    const shield = pickShield(houses);
     // Cada bot es un usuario con un código que nadie conoce: no se puede entrar con él.
     const user = await db
       .prepare("INSERT INTO users (display_name, login_code_hash) VALUES (?, ?) RETURNING id")
@@ -104,9 +104,21 @@ export async function addBots(env: BotEnv, gameId: number, count: number): Promi
       .first<{ id: number }>();
     await db
       .prepare(
-        "INSERT INTO houses (game_id, user_id, name, color, shield_shape, symbol, motto, is_bot, bot_personality) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)",
+        "INSERT INTO houses (game_id, user_id, name, color, shield_shape, shield_division, color2, symbol, metal, motto, is_bot, bot_personality) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)",
       )
-      .bind(gameId, user!.id, who.name, color, shape, symbol, who.motto || null, who.personality)
+      .bind(
+        gameId,
+        user!.id,
+        who.name,
+        color,
+        shield.shape,
+        shield.division,
+        shield.division === "pleno" ? null : shield.color2 === color ? COLORS.find((c) => c !== color)! : shield.color2,
+        shield.symbol,
+        shield.metal,
+        who.motto || null,
+        who.personality,
+      )
       .run();
     houses = await loadHouses(db, gameId);
   }

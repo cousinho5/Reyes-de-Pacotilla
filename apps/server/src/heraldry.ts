@@ -1,20 +1,28 @@
-// Colores, formas y símbolos de los escudos (diseño, sección 4).
+// Escudos en D1: de la fila de la casa al escudo del motor y al JSON del cliente.
 
+import { HOUSE_COLORS, freeShield, type Shield } from "@reyes/engine";
 import type { HouseRow } from "./state";
 
-export const COLORS = ["gules", "azur", "sinople", "sable", "purpura", "naranjado", "aguamarina", "leonado"] as const;
-export const SHAPES = ["espanol", "apuntado", "almendrado", "rodela", "estandarte"] as const;
-export const SYMBOLS = [
-  "leon", "aguila", "torre", "espada", "corona", "llave", "lobo", "dragon",
-  "gallina", "cerdo", "nabo", "caracol", "pato", "queso", "bota", "cuchara",
-] as const;
+export const COLORS = HOUSE_COLORS;
 
-/** Escudo provisional (el creador de escudos llega en la versión 1): la primera combinación libre. */
-export function pickShield(houses: Pick<HouseRow, "shield_shape" | "symbol">[]): { shape: string; symbol: string } {
-  const used = new Set(houses.map((h) => `${h.shield_shape}:${h.symbol}`));
-  const i = houses.length;
-  const shape: string = SHAPES[i % SHAPES.length]!;
-  let symbol: string = SYMBOLS[(i * 3) % SYMBOLS.length]!;
-  for (let k = 0; used.has(`${shape}:${symbol}`); k++) symbol = SYMBOLS[k % SYMBOLS.length]!;
-  return { shape, symbol };
+export function shieldOf(h: HouseRow): Shield {
+  return {
+    color: h.color as Shield["color"],
+    shape: h.shield_shape as Shield["shape"],
+    division: (h.shield_division ?? "pleno") as Shield["division"],
+    color2: (h.color2 ?? null) as Shield["color2"],
+    symbol: h.symbol as Shield["symbol"],
+    metal: (h.metal ?? "oro") as Shield["metal"],
+  };
+}
+
+/** El escudo tal como lo recibe el cliente. */
+export function shieldView(h: HouseRow) {
+  const s = shieldOf(h);
+  return { forma: s.shape, division: s.division, color2: s.color2, simbolo: s.symbol, metal: s.metal };
+}
+
+/** Primer escudo libre, para los bots. */
+export function pickShield(houses: HouseRow[]): Shield {
+  return freeShield(houses.map(shieldOf));
 }

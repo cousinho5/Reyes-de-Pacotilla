@@ -3,44 +3,10 @@
 // (texts/cronista.ts) y no se repiten en la partida hasta agotar su tipo. Las
 // cifras siempre son exactas; el humor va en los adjetivos.
 
+import { blazon } from "./heraldry";
 import { seededRandom } from "./random";
 import { PHRASES, type PhraseKey } from "./texts/cronista";
 import type { HouseId, TileId } from "./types";
-
-export const HERALDIC_COLOR: Record<string, string> = {
-  gules: "gules",
-  azur: "azur",
-  sinople: "sinople",
-  sable: "sable",
-  purpura: "púrpura",
-  naranjado: "naranjado",
-  aguamarina: "aguamarina",
-  leonado: "leonado",
-};
-
-export const SYMBOL_NAME: Record<string, string> = {
-  leon: "león",
-  aguila: "águila",
-  torre: "torre",
-  espada: "espada",
-  corona: "corona",
-  llave: "llave",
-  lobo: "lobo",
-  dragon: "dragón",
-  gallina: "gallina",
-  cerdo: "cerdo",
-  nabo: "nabo",
-  caracol: "caracol",
-  pato: "pato",
-  queso: "queso",
-  bota: "bota",
-  cuchara: "cuchara",
-};
-
-/** "de azur con nabo de oro" */
-export function blazon(color: string, symbol: string, metal = "oro"): string {
-  return `de ${HERALDIC_COLOR[color] ?? color} con ${SYMBOL_NAME[symbol] ?? symbol} de ${metal}`;
-}
 
 /** Nombre de una casa en mitad de una frase: "la Casa del Nabo", "los Pocapena". */
 export function houseInSentence(name: string): string {
@@ -55,6 +21,8 @@ export interface BulletinHouse {
   color: string;
   symbol: string;
   metal?: string;
+  division?: string;
+  color2?: string | null;
   prestige: number;
 }
 
@@ -98,9 +66,14 @@ export interface Bulletin {
   margin: string[];
   sponsors: string[];
   leader: HouseId | null;
+  /** Cara de Fray Abundio en la cabecera (la del pie de patrocinio siempre cuenta monedas). */
+  mood?: BulletinMood;
   /** Frases usadas en este boletín, para no repetirlas. */
   used: string[];
 }
+
+/** Las cinco caras del cronista (diseño, sección 17). */
+export type BulletinMood = "solemne" | "adulador" | "escandalizado" | "dormido" | "monedas";
 
 const MAX_HOUSE_BATTLES = 5;
 const MAX_NEUTRAL_BATTLES = 3;
@@ -148,7 +121,7 @@ export function writeBulletin(input: BulletinInput): Bulletin {
     const lines = input.houses.map((h) =>
       say(
         "casas.presentacion",
-        { jugador: name(h.id), escudo: blazon(h.color, h.symbol, h.metal), lema: h.motto ?? "" },
+        { jugador: name(h.id), escudo: blazon(h.color, h.symbol, h.metal, h.division, h.color2), lema: h.motto ?? "" },
         (t) => !!h.motto || !t.includes("{lema}"),
       ),
     );
@@ -310,9 +283,21 @@ export function writeBulletin(input: BulletinInput): Bulletin {
             ? "EL REINO SE EXPANDE"
             : "SEMANA TRANQUILA EN ALDRICIA";
 
+  // Escandalizado con casillas robadas, adulador con favorito nuevo (o al coronarlo),
+  // dormido si no pasa nada y solemne en el resto.
+  const newLeader = input.previousLeader != null && leader != null && input.previousLeader !== leader.id;
+  const mood: BulletinMood = isFinal || newLeader
+    ? "adulador"
+    : houseConquests > 0
+      ? "escandalizado"
+      : combats.length === 0 && input.trades.length === 0
+        ? "dormido"
+        : "solemne";
+
   return {
     week: input.week,
     headline: headline.toUpperCase(),
+    mood,
     sections: sections.map((s) => ({ ...s, lines: s.lines.map(capitalize) })),
     margin,
     sponsors: sponsors.map(capitalize),
@@ -380,8 +365,9 @@ function withBuilding(line: string, kind: string): string {
     .replaceAll("{edificio}", label);
 }
 
+/** Mayúscula inicial, saltando los signos de apertura ("¡cerrar…" → "¡Cerrar…"). */
 function capitalize(s: string): string {
-  return s.charAt(0).toUpperCase() + s.slice(1);
+  return s.replace(/^([¡¿«"'(\s]*)(\p{L})/u, (_, lead: string, c: string) => lead + c.toUpperCase());
 }
 
 function lowerFirst(s: string): string {
