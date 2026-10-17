@@ -16,12 +16,16 @@ import { computePrestige, isValidTrade, type AchievementKey, type PrestigeBreakd
 import { resolveCampaign } from "./combat";
 import { PRESTIGE, SPECIALTY_PAIRS, STARTING_RESOURCES } from "./rules";
 import { totalOf } from "./trade";
+import { auctionLots, resolveAuction, type Bid } from "./auction";
+import { checkCard, type CardKey, type CardParams } from "./cards";
 import { BUILDINGS, RESOURCES, type BuildingKind, type HouseId, type Order, type Resource, type Resources, type Tile } from "./types";
 import {
   PERSONALITIES,
   PERSONALITY_NAMES,
   chooseObjective,
   offerGain,
+  planBids,
+  planCards,
   planDay,
   planOrders,
   proposeOffer,
@@ -62,7 +66,7 @@ const ORDERS: Record<ClassicStrategy, Parameters<typeof planBotOrders>[0]["margi
 };
 
 const PREFERRED_OBJECTIVES: Partial<Record<ClassicStrategy, ObjectiveKey[]>> = {
-  constructora: ["niveles_17", "obra_maestra", "oro_200"],
+  constructora: ["niveles_17", "obra_maestra", "tesoro"],
   conquistadora: ["casillas_ajenas", "cinco_casillas", "fortaleza", "tropas_40", "puerto_y_fortaleza"],
   comerciante: ["comercio_con_tres", "diez_tratos"],
 };
@@ -91,6 +95,8 @@ export interface SimHouseResult {
   deserted: number;
   validTrades: number;
   partners: number;
+  /** Lotes de la Gran Subasta ganados. */
+  auctionsWon: number;
   /** Semanas que recibió la ayuda al último. */
   helpWeeks: number;
   /** Puesto tras el domingo de la semana 2 (1 = primero). */
@@ -121,6 +127,9 @@ export interface SimGameResult {
   supports: number;
   /** Tratos cerrados (válidos o no). */
   trades: number;
+  /** Oro gastado en la Gran Subasta y cartas usadas. */
+  auctionGold: number;
+  cardsPlayed: number;
   /** Mapa al final de la partida. */
   finalTiles: Tile[];
 }
@@ -140,6 +149,11 @@ interface HouseState {
   prestigeBySunday: number[];
   /** Recurso que pide como ayuda al último. */
   helpChoice: Resource | null;
+  hand: CardKey[];
+  auctionsWon: number;
+  spies: { house: HouseId; until: number }[];
+  truces: { tile: number; resolution: number }[];
+  drums: { resolution: number; bonus: number }[];
 }
 
 export function simulateGame(opts: SimOptions): SimGameResult {
@@ -176,6 +190,11 @@ export function simulateGame(opts: SimOptions): SimGameResult {
       achievements: {},
       prestigeBySunday: [],
       helpChoice: null,
+      hand: [],
+      auctionsWon: 0,
+      spies: [],
+      truces: [],
+      drums: [],
     };
   });
   const byId = new Map(houses.map((h) => [h.id, h]));
@@ -191,6 +210,8 @@ export function simulateGame(opts: SimOptions): SimGameResult {
   let attacks = 0;
   let attacksWon = 0;
   let supports = 0;
+  let auctionGold = 0;
+  let cardsPlayed = 0;
   let rankWeek2: Map<HouseId, number> | null = null;
 
   const prestigeOf = (h: HouseState, day: number, objectiveMet?: boolean) => {
@@ -231,7 +252,38 @@ export function simulateGame(opts: SimOptions): SimGameResult {
       ),
     ],
     help: h.helpUntil != null && h.helpUntil > resolution ? (h.helpChoice ?? "pan") : null,
+    spied: h.spies.filter((x) => x.until > resolution).map((x) => x.house),
+    attackBonus: h.drums.find((d) => d.resolution === resolution + 1)?.bonus ?? 0,
+    auctionsWon: h.auctionsWon,
   });
+
+  /** Usa una carta de la mano (si es válida) y aplica su efecto. */
+  const playCard = (h: HouseState, card: CardKey, params: CardParams) => {
+    const i = h.hand.indexOf(card);
+    if (i < 0) return;
+    const check = checkCard(card, params, {
+      house: h.id,
+      tiles,
+      buildings: h.levels,
+      resources: h.res,
+      houses: houses.map((o) => o.id),
+      nextResolution: resolution + 1,
+    });
+    if (!check.ok) return;
+    const e = check.effect;
+    h.hand.splice(i, 1);
+    cardsPlayed++;
+    for (const [r, v] of Object.entries(e.resources ?? {}) as [Resource, number][]) h.res[r] += v;
+    if (e.castleTroops) tiles = tiles.map((t) => (t.castleOf === h.id ? { ...t, troops: t.troops + e.castleTroops! } : t));
+    if (e.fortify) tiles = tiles.map((t) => (t.id === e.fortify!.tile ? { ...t, fortifiedUntil: e.fortify!.until } : t));
+    if (e.upgrade) {
+      h.levels[e.upgrade]++;
+      if (h.levels[e.upgrade] === 5 && !houses.some((o) => o.achievements.obra_maestra)) h.achievements.obra_maestra = 1;
+    }
+    if (e.spy) h.spies.push(e.spy);
+    if (e.truce) h.truces.push(e.truce);
+    if (e.drums) h.drums.push(e.drums);
+  };
   const ranking = (day: number) => houses.map((h) => ({ house: h.id, total: prestigeOf(h, day).total }));
 
   for (let day = 0; day < totalDays; day++) {
@@ -256,6 +308,9 @@ export function simulateGame(opts: SimOptions): SimGameResult {
         for (const f of plan.fortify) tiles = tiles.map((t) => (t.id === f.tile ? { ...t, fortifiedUntil: f.until } : t));
         if (plan.recruit > 0) tiles = tiles.map((t) => (t.castleOf === h.id ? { ...t, troops: t.troops + plan.recruit } : t));
         h.helpChoice = plan.help;
+        // Cartas de efecto inmediato (Tregua y Tambores esperan al día de la resolución).
+        const cards = planCards(situation(viewOf(h, day, morning), PERSONALITIES[h.strategy]), h.hand, false);
+        for (const c of cards) playCard(h, c.card, c.params);
         continue;
       }
       const plan = dailyPlan(h as HouseState & { strategy: ClassicStrategy }, day, tiles, resolution + 1);
@@ -311,12 +366,45 @@ export function simulateGame(opts: SimOptions): SimGameResult {
     // 4. Resolución el miércoles (día 2) y el domingo (día 6).
     const weekday = day % 7;
     if (weekday !== 2 && weekday !== 6) continue;
+
+    // 4a. Miércoles: Gran Subasta (antes de la campaña). Solo pujan las personalidades.
+    if (weekday === 2) {
+      const week = Math.floor(day / 7) + 1;
+      const lots = auctionLots(opts.seed, week);
+      const bids: Bid[] = [];
+      const pre = ranking(day);
+      for (const h of houses) {
+        if (!isSmart(h.strategy)) continue;
+        for (const b of planBids(situation(viewOf(h, day, pre), PERSONALITIES[h.strategy]), lots)) {
+          bids.push({ slot: b.slot, house: h.id, amount: b.amount, placedAt: `${String(day).padStart(3, "0")}:${h.id}` });
+        }
+      }
+      const results = resolveAuction(lots, bids, new Map(houses.map((h) => [h.id, h.res.oro])));
+      for (const r of results) {
+        if (r.winner == null) continue;
+        const h = byId.get(r.winner)!;
+        const lot = lots.find((l) => l.slot === r.slot)!;
+        h.res.oro -= r.price;
+        auctionGold += r.price;
+        h.auctionsWon++;
+        h.achievements.ganador_subasta = Math.min(PRESTIGE.auctionAchievementMax, (h.achievements.ganador_subasta ?? 0) + 1);
+        if (lot.kind === "card") h.hand.push(lot.card);
+        else for (const [res, v] of Object.entries(lot.resources) as [Resource, number][]) h.res[res] += v;
+      }
+    }
+
     resolution++;
     const orders: Order[] = [];
     const evening = ranking(day);
     for (const h of houses) {
       if (isSmart(h.strategy)) {
-        orders.push(...planOrders(situation(viewOf(h, day, evening), PERSONALITIES[h.strategy])));
+        // Antes de dar órdenes: Tregua y Tambores (la resolución que viene es `resolution`).
+        resolution--;
+        const cards = planCards(situation(viewOf(h, day, evening), PERSONALITIES[h.strategy]), h.hand, true);
+        for (const c of cards) playCard(h, c.card, c.params);
+        const plan = planOrders(situation(viewOf(h, day, evening), PERSONALITIES[h.strategy]));
+        resolution++;
+        orders.push(...plan);
         continue;
       }
       const margins = ORDERS[h.strategy];
@@ -337,7 +425,16 @@ export function simulateGame(opts: SimOptions): SimGameResult {
       if (o.kind === "support") supports++;
       else if (before.get(o.to)?.owner !== o.house) attacks++;
     }
-    const result = resolveCampaign({ resolution, tiles, orders, absentHouses: absent });
+    const result = resolveCampaign({
+      resolution,
+      tiles,
+      orders,
+      absentHouses: absent,
+      truceTiles: houses.flatMap((h) => h.truces.filter((t) => t.resolution === resolution).map((t) => t.tile)),
+      attackBonus: Object.fromEntries(
+        houses.flatMap((h) => h.drums.filter((d) => d.resolution === resolution).map((d) => [h.id, d.bonus] as const)),
+      ),
+    });
     tiles = result.tiles;
     for (const e of result.events) {
       if (e.type === "rebote") bounces++;
@@ -397,6 +494,7 @@ export function simulateGame(opts: SimOptions): SimGameResult {
       otherHouses: houses.length - 1,
       validTradesAllGame: valid,
       tilesTakenFromHouses: h.takenFromHouses,
+      auctionsWon: h.auctionsWon,
     });
     const own = tiles.filter((t) => t.owner === h.id);
     return {
@@ -427,6 +525,8 @@ export function simulateGame(opts: SimOptions): SimGameResult {
     attacksWon,
     supports,
     trades: trades.length,
+    auctionGold,
+    cardsPlayed,
     finalTiles: tiles,
     houses: final.map((f, i) => ({
       house: f.h.id,
@@ -443,6 +543,7 @@ export function simulateGame(opts: SimOptions): SimGameResult {
       leftover: { ...f.h.res },
       deserted: f.h.deserted,
       validTrades: f.valid,
+      auctionsWon: f.h.auctionsWon,
       partners: f.partners,
       helpWeeks: f.h.helpWeeks,
       rankWeek2: rankWeek2?.get(f.h.id) ?? null,

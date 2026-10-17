@@ -48,7 +48,7 @@ Todos los horarios son en hora de Madrid y se pueden ajustar por partida.
 | --- | --- |
 | **Cada día, a las 00:00** | Producción diaria de recursos. |
 | **Cada día** | Entras, construyes, reclutas, fortificas, das o cambias órdenes, comercias y negocias. |
-| **Martes, 22:00** | Se anuncian el evento del miércoles y los lotes de la Gran Subasta. |
+| **Martes, 22:00** | Se anuncian los lotes de la Gran Subasta (y, cuando lleguen, el evento del miércoles). |
 | **Miércoles, 21:00** | Cierre de órdenes y de pujas. |
 | **Miércoles, 22:00** | **Resolución 1:** subasta, evento y campaña (movimientos y combates). |
 | **Domingo, 21:00** | Cierre de órdenes y de sobornos al cronista. |
@@ -277,9 +277,25 @@ El comercio es la mitad del juego, así que tiene que ser excelente:
 
 - **Trato válido para el Prestigio:** al menos 10 recursos por cada lado. Así no valen los intercambios vacíos para sumar puntos.
 
-- **Gran Subasta del miércoles.** Tres lotes anunciados el martes: paquetes de recursos o **cartas de la Corona** de un solo uso. Pujas ciegas en Oro; gana la más alta y, en empate, la más temprana. El Oro de las pujas sale del juego.
+- **Gran Subasta del miércoles** (hecha en la versión 1).
+  - **Lotes:** tres, anunciados el martes a las 22:00 y reproducibles a partir de la semilla de la partida. El primero es de recursos (30 de uno o 20 + 20 de dos), el segundo es una carta y el tercero es una cosa u otra.
+  - **Pujas:** ciegas en Oro, una por lote y casa, cambiables hasta el cierre del miércoles (21:00). No se puede pujar más Oro del que se tiene.
+  - **Adjudicación:** en la resolución del miércoles, antes de la campaña y lote a lote. Gana la puja más alta y, en empate, la más temprana. Si al ganador ya no le llega el Oro (por haber ganado otro lote), el lote pasa a la siguiente puja.
+  - **El Oro de las pujas sale del juego.** En la simulación se pagan unos 450 de Oro por partida, que de otro modo se acumulaban sin uso.
+  - **Logro:** cada lote ganado da +2 de Prestigio, hasta 3 veces.
 
-- **Cartas de la Corona (ejemplos):** Espía (ves las tropas de una casa durante una resolución), Muralla (una fortificación gratis), Mercenarios (5 tropas en tu castillo), Carreta (traslada 20 recursos de un tipo a otro).
+- **Cartas de la Corona** (8, en `packages/engine/src/cards.ts`). Se usan una vez, desde el castillo:
+
+| Carta | Efecto |
+| --- | --- |
+| Espía | Ves todas las casillas y tropas de una casa hasta la próxima resolución. |
+| Muralla | Fortifica gratis una casilla tuya durante dos resoluciones. |
+| Mercenarios | 5 tropas en tu castillo. |
+| Carreta | Cambia 20 de un recurso por 20 de otro. |
+| Maestro de obras | Sube gratis un nivel un edificio de nivel 1, 2 o 3. |
+| Diezmo | 3 de Oro por cada casilla que controles (sin el castillo). |
+| Tregua | En la próxima resolución nadie puede atacar una casilla tuya: los ataques no salen y las tropas se quedan en casa. |
+| Tambores de guerra | En la próxima resolución tus ataques tienen +25% de fuerza. |
 
 - **Tratados comerciales** (versión 2): intercambios semanales automáticos (por ejemplo, 10 Madera por 6 Hierro durante 4 semanas) que ejecuta el servidor. Se pueden cancelar avisando con una resolución de antelación.
 
@@ -329,7 +345,7 @@ Pocos y públicos, que dan Prestigio permanente:
 
 Al empezar, cada casa recibe dos objetivos al azar y elige uno. Nadie más lo conoce. Si al final de la partida se cumple, da **+6 de Prestigio**, y se revela en el último boletín.
 
-Catálogo actual (10, en `packages/engine/src/objectives.ts`, umbrales en `rules.ts`): controlar un puerto y una fortaleza al final; sumar 17 niveles entre los cinco edificios; terminar con 200 Oro o más; cerrar tratos válidos con 3 casas distintas; controlar una fortaleza al final; tomar 3 casillas a otras casas; terminar con 40 tropas o más; controlar 5 casillas o más al final; tener un edificio a nivel 5; cerrar 10 tratos válidos. Los umbrales se ajustaron con la simulación del 16 de octubre de 2026: con los anteriores, terminar con 100 Oro se cumplía casi siempre y controlar 2 puertos o comerciar con todas casi nunca. Un segundo ajuste, con los bots con personalidad, cambió "los 5 edificios a nivel 3" (se cumplía el 97%) por "17 niveles" (35%), "6 casillas" (3%) por "5 casillas" (15%), abarató el nivel 5 de los edificios (de 200 a 155 recursos), bajó la guarnición de las fortalezas de 10 a 8 y fortificar a 8 de Piedra. Con la versión 1 se añadirán los de subastas (ganar 2 Gran Subastas) y pactos (firmar 2 pactos sin romper ninguno).
+Catálogo actual (10, en `packages/engine/src/objectives.ts`, umbrales en `rules.ts`): controlar un puerto y una fortaleza al final; sumar 17 niveles entre los cinco edificios; terminar con 150 Oro o más (antes 200: con la subasta, el Oro se gasta); cerrar tratos válidos con 3 casas distintas; controlar una fortaleza al final; tomar 3 casillas a otras casas; terminar con 40 tropas o más; controlar 5 casillas o más al final; tener un edificio a nivel 5; cerrar 10 tratos válidos; ganar 3 lotes de la Gran Subasta (añadido en la versión 1). Los umbrales se ajustaron con la simulación del 16 de octubre de 2026: con los anteriores, terminar con 100 Oro se cumplía casi siempre y controlar 2 puertos o comerciar con todas casi nunca. Un segundo ajuste, con los bots con personalidad, cambió "los 5 edificios a nivel 3" (se cumplía el 97%) por "17 niveles" (35%), "6 casillas" (3%) por "5 casillas" (15%), abarató el nivel 5 de los edificios (de 200 a 155 recursos), bajó la guarnición de las fortalezas de 10 a 8 y fortificar a 8 de Piedra. Con la versión 1 se añadirán los de subastas (ganar 2 Gran Subastas) y pactos (firmar 2 pactos sin romper ninguno).
 
 El objetivo se elige antes de la primera resolución; quien no elige se queda con la primera opción.
 
@@ -621,7 +637,7 @@ Pixel art en lo jugable, interfaz plana y limpia en lo informativo y un toque de
 3. **MVP 1 (hecho):** cuentas por invitación y código, casa (nombre, color y lema), mapa justo con niebla de guerra, producción, construir, reclutar, fortificar, órdenes de mover y apoyar con simulación, resolución con rebotes, mantenimiento con deserciones, ayuda al último y Prestigio en vivo.
 4. **MVP 2 (hecho):** comercio (ofertas públicas y dirigidas, contraofertas y aceptación atómica sin dobles aceptaciones), objetivos secretos, logros de primera fortaleza y obra maestra, piloto automático y modo vacaciones, notificaciones push y final de partida con revelación de objetivos y coronación.
 5. **Partida piloto de 4 semanas** con los amigos (en la simulación, las partidas de 2 semanas las gana casi siempre quien va primero en la segunda semana). Antes, partidas de prueba contra bots y el simulador (`npm run simular`, resultados en `docs/simulaciones.md`).
-6. **Versión 1:** Gran Subasta y cartas, eventos, boletín con Fray Abundio (incluido el soborno), creador de escudos y lemas, y botón de compartir en WhatsApp.
+6. **Versión 1:** Gran Subasta y cartas (hecho), eventos, boletín con Fray Abundio (incluido el soborno), creador de escudos y lemas, y botón de compartir en WhatsApp.
 7. **Primera partida completa de 6 semanas.**
 8. **Versión 2:** tratados comerciales, mensajes privados, temporadas, títulos y la Crónica Definitiva.
 

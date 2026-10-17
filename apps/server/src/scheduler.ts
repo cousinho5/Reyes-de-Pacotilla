@@ -2,7 +2,7 @@
 // Es pura: el cron horario la llama y luego ejecuta las tareas contra D1.
 // Cada tarea tiene una clave única, así que repetirla no tiene efecto.
 
-import { localDate, resolutionInstant, zonedToUtc } from "@reyes/engine";
+import { announceInstant, localDate, resolutionInstant, zonedToUtc } from "@reyes/engine";
 
 export interface GameClock {
   timezone: string;
@@ -17,6 +17,7 @@ export interface GameClock {
 
 export type Job =
   | { kind: "produccion"; key: string; date: string }
+  | { kind: "anuncio"; key: string; week: number }
   | { kind: "aviso_cierre"; key: string; resolution: number }
   | { kind: "resolucion"; key: string; resolution: number }
   | { kind: "fin"; key: string };
@@ -38,6 +39,14 @@ export function dueJobs(now: Date, game: GameClock): Job[] {
 
   const date = localDate(now, game.timezone);
   jobs.push({ kind: "produccion", key: `produccion:${date}`, date });
+
+  // Martes a la hora de resolución: lotes de la Gran Subasta del miércoles.
+  if (next % 2 === 1) {
+    const week = (next + 1) / 2;
+    if (now >= announceInstant(game.startDate, week, game.resolveTime, game.timezone)) {
+      jobs.push({ kind: "anuncio", key: `anuncio:${week}`, week });
+    }
+  }
 
   const close = resolutionInstant(game.startDate, next, game.closeTime, game.timezone);
   if (now.getTime() >= close.getTime() - TWO_HOURS && now < close) {

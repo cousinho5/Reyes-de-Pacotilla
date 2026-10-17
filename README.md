@@ -25,6 +25,11 @@ Ya se puede jugar una partida completa:
 - Notificaciones push (ofertas, cierre de órdenes, resultados y fin) e instalación como app en el móvil.
 - Crónica sencilla de lo ocurrido (el boletín de Fray Abundio llega en la versión 1).
 
+Versión 1 (en curso):
+
+- Gran Subasta del miércoles: tres lotes anunciados el martes, pujas ciegas en Oro y logro de ganador de subasta.
+- Cartas de la Corona: Espía, Muralla, Mercenarios, Carreta, Maestro de obras, Diezmo, Tregua y Tambores de guerra.
+
 ## Desarrollo en local
 
 Requisitos: Node 20 o superior y npm 11.

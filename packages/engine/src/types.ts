@@ -64,6 +64,10 @@ export interface CampaignInput {
   orders: Order[];
   /** Casas en piloto automático: sus casillas tienen +25% de defensa. */
   absentHouses?: HouseId[];
+  /** Carta Tregua: casillas que nadie puede atacar en esta resolución. */
+  truceTiles?: TileId[];
+  /** Carta Tambores de guerra: bonificación de ataque por casa (0,25 = +25%). */
+  attackBonus?: Partial<Record<HouseId, number>>;
 }
 
 export type CampaignEvent =
@@ -94,6 +98,12 @@ export type CampaignEvent =
       conquered: boolean;
       survivors: number;
       sides: { house: HouseId | null; role: "defensa" | "ataque"; strength: number; troops: number; supporters: HouseId[] }[];
+    }
+  | {
+      type: "tregua";
+      tile: TileId;
+      /** Casas cuyo ataque se detuvo (sus tropas no se movieron). */
+      houses: HouseId[];
     }
   | {
       type: "rebote";

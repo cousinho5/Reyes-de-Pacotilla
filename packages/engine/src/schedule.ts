@@ -82,6 +82,14 @@ export function resolutionInstant(
   return zonedToUtc(date, resolveTime, timeZone);
 }
 
+/** Anuncio de la semana (lotes de la Gran Subasta y evento): el martes a `time`. */
+export function announceInstant(startMonday: string, week: number, time: string, timeZone: string): Date {
+  const [y, m, d] = startMonday.split("-").map(Number) as [number, number, number];
+  const day = new Date(Date.UTC(y, m - 1, d + (week - 1) * 7 + 1));
+  const date = `${day.getUTCFullYear()}-${pad(day.getUTCMonth() + 1)}-${pad(day.getUTCDate())}`;
+  return zonedToUtc(date, time, timeZone);
+}
+
 function pad(n: number): string {
   return String(n).padStart(2, "0");
 }

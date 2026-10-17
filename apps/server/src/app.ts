@@ -7,6 +7,7 @@ import {
   BUILDINGS,
   SPECIALTY_PAIRS,
   STARTING_RESOURCES,
+  castleName,
   checkFortify,
   checkOrders,
   checkRecruit,
@@ -28,6 +29,7 @@ import {
   weeklyUpkeep,
   zonedToUtc,
   type BuildingKind,
+  type CardParams,
   type Order,
   type Resources,
 } from "@reyes/engine";
@@ -44,6 +46,7 @@ import {
 import { notifyHouses, vapidFrom, type NotifyEnv } from "./notify";
 import { COLORS, pickShield } from "./heraldry";
 import { clockOf, runGameJobs } from "./jobs";
+import { auctionView, handView, openAuctionWeek, spiedHouses, useCardStatements, type CardRow } from "./subasta";
 import { addBots, advance, botsPlayDay, deleteTestGame, testStart } from "./pruebas";
 import { acceptOffer, bundle, offerView, type OfferRow } from "./offers";
 import { ordersOpen } from "./scheduler";
@@ -354,7 +357,7 @@ app.post("/api/partidas/:id/empezar", async (c) => {
     ).bind(startDate, map.cols, map.rows, new Date().toISOString(), simNow, test ? (mine?.id ?? null) : null, game.id),
   ];
   for (const t of map.tiles) {
-    const name = t.type === "castillo" ? `Castillo de la ${houses.find((h) => h.id === t.castleOf)!.name}` : t.name;
+    const name = t.type === "castillo" ? castleName(houses.find((h) => h.id === t.castleOf)!.name) : t.name;
     statements.push(
       db.prepare(
         "INSERT INTO tiles (game_id, x, y, type, name, castle_of, owner_house_id, troops) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
@@ -458,6 +461,8 @@ app.get("/api/partidas/:id", async (c) => {
 
   const tileRows = await loadTiles(db, game.id);
   const tiles = toEngineTiles(tileRows);
+  // Carta Espía: casas que esta casa ve enteras hasta la próxima resolución.
+  const spied = await spiedHouses(db, game, house.id);
   const [buildings, prestige, orders, events, offers, trades, achievements, ending] = await Promise.all([
     loadBuildings(db, game.id),
     computeAllPrestige(db, game.id, houses, tiles, now),
@@ -567,7 +572,10 @@ app.get("/api/partidas/:id", async (c) => {
             })),
           }
         : null,
-    casillas: projectForHouse(tiles, house.id).map((t) => ({ ...t, nombre: names.get(t.id) })),
+    subasta: game.status === "active" ? await auctionView(db, game, house.id) : null,
+    cartas: await handView(db, game.id, house.id),
+    vigiladas: spied,
+    casillas: projectForHouse(tiles, house.id, spied).map((t) => ({ ...t, nombre: names.get(t.id) })),
     ordenes: orders.results.map((o) => ({
       id: o.id,
       tipo: o.kind === "move" ? "mover" : "apoyar",
@@ -901,6 +909,66 @@ app.post("/api/partidas/:id/ofertas/:oid/retirar", async (c) => {
   await c.env.DB.prepare("UPDATE offers SET status = 'cancelled', closed_at = ? WHERE id = ? AND status = 'open'")
     .bind(gameNow(m.game).toISOString(), offer.id)
     .run();
+  return c.json({ ok: true });
+});
+
+// ---------------------------------------------------------------------------
+// Gran Subasta y cartas de la Corona (diseño, sección 9)
+// ---------------------------------------------------------------------------
+
+/** Pujar (o cambiar la puja) por un lote. Cantidad 0 retira la puja. */
+app.put("/api/partidas/:id/subasta/:lote", async (c) => {
+  const m = await activeMembership(c);
+  if (m instanceof Response) return m;
+  const week = openAuctionWeek(m.game);
+  const clock = clockOf(m.game)!;
+  if (week == null || !ordersOpen(gameNow(m.game), clock)) return fail(c, 409, "La subasta está cerrada.");
+  const lot = await c.env.DB.prepare("SELECT id FROM auction_lots WHERE game_id = ? AND week = ? AND slot = ?")
+    .bind(m.game.id, week, Number(c.req.param("lote")))
+    .first<{ id: number }>();
+  if (!lot) return fail(c, 404, "Ese lote no existe o aún no se ha anunciado.");
+  const { cantidad } = await c.req.json<{ cantidad?: number }>().catch(() => ({ cantidad: undefined }));
+  const amount = Number(cantidad);
+  if (!Number.isInteger(amount) || amount < 0) return fail(c, 400, "La puja es un número entero de Oro.");
+  if (amount === 0) {
+    await c.env.DB.prepare("DELETE FROM bids WHERE lot_id = ? AND house_id = ?").bind(lot.id, m.house.id).run();
+    return c.json({ ok: true });
+  }
+  if (amount > m.house.oro) return fail(c, 409, "No puedes pujar más Oro del que tienes.");
+  await c.env.DB.prepare(
+    `INSERT INTO bids (lot_id, house_id, amount, placed_at) VALUES (?, ?, ?, ?)
+     ON CONFLICT (lot_id, house_id) DO UPDATE SET amount = excluded.amount, placed_at = excluded.placed_at`,
+  )
+    .bind(lot.id, m.house.id, amount, gameNow(m.game).toISOString())
+    .run();
+  return c.json({ ok: true });
+});
+
+/** Usar una carta de la Corona. */
+app.post("/api/partidas/:id/cartas/:carta/usar", async (c) => {
+  const m = await activeMembership(c);
+  if (m instanceof Response) return m;
+  const db = c.env.DB;
+  const card = await db.prepare("SELECT id, house_id, card_key, used_at, used_params FROM cards WHERE id = ? AND game_id = ? AND house_id = ?")
+    .bind(Number(c.req.param("carta")), m.game.id, m.house.id)
+    .first<CardRow>();
+  if (!card) return fail(c, 404, "Esa carta no es tuya.");
+  if (card.used_at) return fail(c, 409, "Esa carta ya se usó.");
+  const params = await c.req.json<CardParams>().catch(() => ({}) as CardParams);
+  const [tileRows, buildings] = await Promise.all([loadTiles(db, m.game.id), loadBuildings(db, m.game.id)]);
+  const prepared = useCardStatements(db, m.game, m.house, card, params, {
+    house: m.house.id,
+    tiles: toEngineTiles(tileRows),
+    buildings: buildings.get(m.house.id)!,
+    resources: resourcesOf(m.house),
+    houses: m.houses.map((h) => h.id),
+    nextResolution: m.game.current_resolution + 1,
+  });
+  if (!prepared.ok) return fail(c, 400, prepared.error);
+  const err = await runPaid(c, prepared.statements);
+  if (err) return err;
+  const after = await db.prepare("SELECT used_at FROM cards WHERE id = ?").bind(card.id).first<{ used_at: string | null }>();
+  if (!after?.used_at) return fail(c, 409, "Esa carta ya se usó.");
   return c.json({ ok: true });
 });
 

@@ -53,6 +53,21 @@ npm run simular -- --semanas 4                    # duración de la partida
 npm run simular -- --json datos.json              # además, todos los datos
 ```
 
+## Gran Subasta y cartas (versión 1, 16 de octubre de 2026)
+
+Los bots con personalidad pujan con parte de su Oro según lo que vale cada lote para ellos (más el Prestigio del logro y su objetivo secreto). Usan las cartas de efecto inmediato al momento, y la Tregua y los Tambores el día de la resolución.
+
+| Dato (1000 partidas mezcladas de 6 semanas) | Sin subasta | Con subasta |
+| --- | --- | --- |
+| Oro sin gastar al final | ~200 | ~130 |
+| Oro gastado en la subasta por partida | — | ~457 |
+| Lotes ganados por casa | — | 2,0 |
+| Cartas usadas por partida | — | 4,9 |
+| Prestigio por logros | ~0,3 | ~4 |
+| Personalidades (x lo esperado) | 0,7-1,3 | 0,7-1,4 |
+
+Con el Oro gastándose, terminar con 200 de Oro pasó a cumplirse solo el 12% de las veces. Se bajó a 150 (42%). El objetivo nuevo, ganar lotes de la subasta, se cumplía el 63% con 2 lotes y el 35% con 3, que es el que queda.
+
 ## Segundo ajuste, con bots con personalidad (16 de octubre de 2026, aplicado)
 
 | Valor | Antes | Ahora | Resultado (1000 partidas mezcladas) |

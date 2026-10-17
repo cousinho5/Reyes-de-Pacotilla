@@ -31,6 +31,12 @@ export interface AiView {
   recentPartners: HouseId[];
   /** Ayuda al último activa (recurso), si la hay. */
   help?: Resource | null;
+  /** Casas que vigila con la carta Espía. */
+  spied?: HouseId[];
+  /** Bonificación de ataque activa para la próxima resolución (Tambores de guerra). */
+  attackBonus?: number;
+  /** Lotes de la Gran Subasta ganados hasta ahora. */
+  auctionsWon?: number;
 }
 
 export interface Situation {
@@ -63,7 +69,7 @@ export function focusBuilding(levels: Record<BuildingKind, number>): BuildingKin
 }
 
 export function situation(view: AiView, p: Personality): Situation {
-  const visible = visibleTileIds(view.tiles, view.house);
+  const visible = visibleTileIds(view.tiles, view.house, view.spied ?? []);
   const seen = view.tiles.filter((t) => visible.has(t.id));
   const own = seen.filter((t) => t.owner === view.house);
   const sorted = [...view.prestige].sort((a, b) => b.total - a.total || a.house - b.house);

@@ -145,6 +145,9 @@ table("Combate y comercio (por partida)", ["dato", "valor"], [
   ["Órdenes de apoyo", f1(avg(results.map((r) => r.supports)))],
   ["Tratos cerrados", f1(avg(results.map((r) => r.trades)))],
   ["Socios comerciales por casa (toda la partida)", f1(avg(houses.map((h) => h.partners)))],
+  ["Oro gastado en la Gran Subasta", f1(avg(results.map((r) => r.auctionGold)))],
+  ["Cartas usadas", f1(avg(results.map((r) => r.cardsPlayed)))],
+  ["Lotes ganados por casa", f1(avg(houses.map((h) => h.auctionsWon)))],
 ]);
 
 table("Forma de la partida", ["dato", "valor"], [
