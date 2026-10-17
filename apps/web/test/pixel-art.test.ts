@@ -43,7 +43,7 @@ describe("Pixel art", () => {
       expect(s.grid.every((r) => r.length === w)).toBe(true);
       for (const c of s.grid.join("")) if (c !== ".") expect(s.palette[c], `color «${c}»`).toBeDefined();
     }
-    expect(tiles.every((s) => s.grid.length === 32 && s.grid[0]!.length === 32)).toBe(true);
+    expect(tiles.every((s) => s.grid.length === 64 && s.grid[0]!.length === 64)).toBe(true);
     expect(Object.values(RESOURCE_SPRITES).every((s) => s.grid.length === 16 && s.grid[0]!.length === 16)).toBe(true);
     expect(Object.values(FRAY_SPRITES).every((s) => s.grid.length === 32 && s.grid[0]!.length === 32)).toBe(true);
   });
@@ -55,7 +55,7 @@ describe("Pixel art", () => {
     const a = renderWorld({ cols: 5, rows: 4, cells, seed: 3 });
     const b = renderWorld({ cols: 5, rows: 4, cells, seed: 3 });
     expect(a.pixels).toEqual(b.pixels);
-    expect(a.width).toBe(5 * 32 + 24);
+    expect(a.width).toBe(5 * 64 + 40);
     const fogged = renderWorld({ cols: 5, rows: 4, cells: cells.map((c) => ({ ...c, fogged: true })), seed: 3 });
     expect(fogged.pixels).toEqual(a.pixels);
     for (const c of a.pixels.join("")) expect(a.palette[c], `color «${c}»`).toBeDefined();

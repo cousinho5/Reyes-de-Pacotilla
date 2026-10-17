@@ -2,13 +2,13 @@ import { useEffect, useState } from "react";
 import { api, type Me } from "../api";
 import { navigate } from "../App";
 import { FrayAbundio, ShieldIcon } from "../art";
-import { WorldCanvas } from "../components/WorldCanvas";
+import { StaticWorld } from "../components/WorldCanvas";
 
 // Un trocito de Aldricia para la portada.
 const HERO = {
   cols: 5,
   rows: 2,
-  margin: 6,
+  margin: 10,
   seed: 3,
   cells: (
     [
@@ -41,7 +41,7 @@ export function Home() {
     <main className="page">
       <header className="hero">
         <div className="hero-art board" aria-hidden>
-          <WorldCanvas opts={HERO} />
+          <StaticWorld opts={HERO} />
         </div>
         <h1>Reyes de Pacotilla</h1>
         <p className="subtitle">Aldricia, el Reino Más o Menos Unido</p>

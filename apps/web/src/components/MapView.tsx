@@ -1,9 +1,9 @@
-import { useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { FORTIFY_COST, TILE_NAMES, areAdjacent } from "@reyes/engine";
 import { api, type GameState, type OrderView, type TileView } from "../api";
 import { Icon, ShieldIcon, TileArt } from "../art";
 import { CELL } from "../art/world";
-import { WorldCanvas } from "./WorldCanvas";
+import { WorldCanvas, useWorld } from "./WorldCanvas";
 import { HOUSE_COLORS, TERRITORY, TILE_LABEL, houseName } from "../ui";
 
 interface Props {
@@ -64,9 +64,47 @@ export function MapView({ state, draft, setDraft, act }: Props) {
     const ownerAt = (x: number, y: number) => tiles.find((n) => n.x === x && n.y === y)?.owner;
     return ownerAt(t.x - 1, t.y) !== t.owner && ownerAt(t.x, t.y - 1) !== t.owner;
   };
-  const M = 12;
-  const W = cols * CELL + 2 * M;
-  const H = rows * CELL + 2 * M;
+  const img = useWorld(world);
+  const M = img.margin;
+  const W = img.width;
+  const H = img.height;
+
+  // Zoom: de cerca (2 px de pantalla por píxel del dibujo, unas 3 casillas de ancho
+  // en un móvil) o el reino entero ajustado al ancho.
+  const viewport = useRef<HTMLDivElement>(null);
+  const [viewW, setViewW] = useState(360);
+  const [close, setClose] = useState(true);
+  useEffect(() => {
+    const el = viewport.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setViewW(el.clientWidth));
+    ro.observe(el);
+    setViewW(el.clientWidth);
+    return () => ro.disconnect();
+  }, []);
+  const fit = viewW / W;
+  const scale = close ? Math.max(2, fit) : fit;
+  const focus = useRef<{ x: number; y: number } | null>(null);
+  const centerOn = (x: number, y: number) => {
+    const el = viewport.current;
+    if (!el) return;
+    el.scrollLeft = (M + (x + 0.5) * CELL) * scale - el.clientWidth / 2;
+    el.scrollTop = (M + (y + 0.5) * CELL) * scale - el.clientHeight / 2;
+  };
+  // Al abrir, el mapa se centra en tu castillo.
+  const myCastle = tiles.find((t) => t.type === "castillo" && t.castleOf === me) ?? tiles.find((t) => t.owner === me);
+  const centered = useRef(false);
+  useLayoutEffect(() => {
+    if (focus.current) {
+      centerOn(focus.current.x, focus.current.y);
+      focus.current = null;
+    } else if (!centered.current && myCastle) {
+      centerOn(myCastle.x, myCastle.y);
+      centered.current = true;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scale, myCastle?.id]);
+
   const overlayBox = {
     left: `${(M / W) * 100}%`,
     top: `${(M / H) * 100}%`,
@@ -87,6 +125,13 @@ export function MapView({ state, draft, setDraft, act }: Props) {
   };
 
   const onTile = (t: TileView) => {
+    // En la vista de todo el reino, tocar una casilla acerca el mapa a ella.
+    if (!close) {
+      focus.current = { x: t.x, y: t.y };
+      setClose(true);
+      setSelected(t.id);
+      return;
+    }
     if (compose && compose.target == null && isTarget(t)) {
       setCompose({ ...compose, target: t.id });
       return;
@@ -116,8 +161,12 @@ export function MapView({ state, draft, setDraft, act }: Props) {
   return (
     <div>
       <div className="board">
-        <div className="world-wrap">
-          <WorldCanvas opts={world} label="Mapa de Aldricia" />
+        <button className="zoom" onClick={() => setClose(!close)} aria-pressed={!close}>
+          {close ? "Ver todo el reino" : "Acercar"}
+        </button>
+        <div className={`map-viewport ${close ? "close" : "whole"}`} ref={viewport}>
+        <div className="world-wrap" style={{ width: W * scale, height: H * scale }}>
+          <WorldCanvas img={img} label="Mapa de Aldricia" />
           <div className="world-overlay" style={overlayBox}>
             <div
               className="map"
@@ -194,6 +243,7 @@ export function MapView({ state, draft, setDraft, act }: Props) {
               })}
             </svg>
           </div>
+        </div>
         </div>
       </div>
       {(battles.size > 0 || lastMoves.length > 0) && (
@@ -276,12 +326,12 @@ function Arrow({
   const d = `M${sx},${sy} Q${mx},${my} ${ex},${ey}`;
   return (
     <g className={past ? "arrow past" : "arrow"}>
-      <path d={d} stroke="#1c1410" strokeWidth={width + 2} fill="none" strokeLinecap="round" strokeDasharray={dashed ? "4 3" : undefined} />
-      <path d={d} stroke={color} strokeWidth={width} fill="none" strokeLinecap="round" strokeDasharray={dashed ? "4 3" : undefined} markerEnd="url(#punta)" />
+      <path d={d} stroke="#1c1410" strokeWidth={width * 2 + 3} fill="none" strokeLinecap="round" strokeDasharray={dashed ? "8 6" : undefined} />
+      <path d={d} stroke={color} strokeWidth={width * 2} fill="none" strokeLinecap="round" strokeDasharray={dashed ? "8 6" : undefined} markerEnd="url(#punta)" />
       {label != null && (
         <g transform={`translate(${mx},${my})`}>
-          <rect x={-5} y={-4.5} width={10} height={9} rx={1.5} fill="#1c1410" />
-          <text x={0} y={2.6} textAnchor="middle" className="arrow-label">
+          <rect x={-9} y={-8} width={18} height={16} rx={3} fill="#1c1410" />
+          <text x={0} y={4.5} textAnchor="middle" className="arrow-label">
             {label}
           </text>
         </g>
