@@ -196,6 +196,8 @@ Lo que lleva al jugador a entrar a diario no es una obligación, sino que cada d
 
 ## 8. Órdenes y combate
 
+> **En preparación: sistema de guerra v3** (decidido el 17 de octubre de 2026). Casillas hexagonales, una resolución cada día a las 22:00, tres tipos de tropa (Mesnada, Jinetes y Catapultas), terreno que cambia el combate, flanqueo, asedios de varios días (el asedio a un castillo da Prestigio), un Capitán por casa que se puede capturar y rescatar, Gloria por ganar batallas y repetición animada de cada noche. La propuesta completa está en el documento "Reyes de Pacotilla: propuesta del nuevo sistema de guerra". Primeros resultados del simulador en `docs/simulaciones.md`. Hasta que esté hecho, rige lo que sigue.
+
 ### 8.1 Órdenes
 
 Cada grupo de tropas recibe una orden por resolución. Puedes dividir las tropas de una casilla en varios grupos con órdenes distintas.

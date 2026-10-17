@@ -1,11 +1,16 @@
 // Compara tamaños de mapa y páramos para cada número de casas. Uso:
 //   npm run simular-mapa -- [partidas por variante] [casas,separadas]   (SEMANAS=4, TODAS=1 para más variantes)
+//   HEX=1: compara el juego de ahora (cuadrado, 2 resoluciones por semana) con
+//   hexágonos y una resolución diaria en varios tamaños (HEX_TAMANOS="5x4+1,6x5+2"
+//   para elegir otros; DIAS="2,6" para otro ritmo con hexágonos).
 // Resume, por variante: distancia entre castillos, casillas por casa, cuándo
 // llega el primer choque entre casas, cuántos hay, si el buen sitio de salida
 // decide la partida y cómo queda el Prestigio.
 
 import {
   MAP_LAYOUT,
+  distance,
+  GRID,
   NEUTRAL_GARRISON,
   PERSONALITY_NAMES,
   PRESTIGE,
@@ -23,13 +28,45 @@ const WEEKS = Number(process.env.SEMANAS ?? 6) as 2 | 4 | 6 | 8;
 interface Variant {
   name: string;
   layout: MapLayoutOverride;
+  grid?: "square" | "hex";
+  days?: number[];
+  fortify?: number;
   /** Prestigio de un páramo y su guarnición. */
   wasteland?: { prestige: number; garrison: number };
 }
 
 // Tamaños anteriores (antes de los páramos) frente a los de MAP_LAYOUT.
 const BEFORE: Record<number, [number, number]> = { 4: [5, 4], 5: [6, 4], 6: [6, 5], 7: [6, 5], 8: [6, 6] };
-const VARIANTS: Record<number, Variant[]> = Object.fromEntries(
+const DAILY = [0, 1, 2, 3, 4, 5, 6];
+const HEX_DAYS = process.env.DIAS ? process.env.DIAS.split(",").map(Number) : DAILY;
+/** Tamaños hexagonales candidatos por número de casas ("colsxrows+páramos"). */
+const HEX_SIZES: Record<number, string[]> = {
+  4: ["5x4+1", "6x5+2"],
+  5: ["6x5+2", "7x5+3"],
+  6: ["7x6+4", "8x6+6"],
+  7: ["8x7+8", "9x7+10"],
+  8: ["9x8+12", "10x8+14"],
+};
+const parseSize = (s: string): MapLayoutOverride => {
+  const m = /^(\d+)x(\d+)\+(\d+)$/.exec(s.trim());
+  if (!m) throw new Error(`Tamaño no válido: ${s}`);
+  return { cols: Number(m[1]), rows: Number(m[2]), paramos: Number(m[3]) };
+};
+const HEX_VARIANTS: Record<number, Variant[]> = Object.fromEntries(
+  [4, 5, 6, 7, 8].map((n) => {
+    const now = MAP_LAYOUT[n as 4 | 5 | 6 | 7 | 8];
+    const sizes = process.env.HEX_TAMANOS ? process.env.HEX_TAMANOS.split(",") : HEX_SIZES[n]!;
+    const rhythm = HEX_DAYS.length === 7 ? "diaria" : `${HEX_DAYS.length}/sem`;
+    return [
+      n,
+      [
+        { name: `ahora: cuadrado ${now.cols}x${now.rows}+${now.paramos}, 2/sem`, layout: now, grid: "square", days: [2, 6], fortify: 2 },
+        ...sizes.map((sz): Variant => ({ name: `hex ${sz}, ${rhythm}`, layout: parseSize(sz), grid: "hex", days: HEX_DAYS, fortify: 4 })),
+      ],
+    ];
+  }),
+);
+const VARIANTS: Record<number, Variant[]> = process.env.HEX ? HEX_VARIANTS : Object.fromEntries(
   [4, 5, 6, 7, 8].map((n) => {
     const now = MAP_LAYOUT[n as 4 | 5 | 6 | 7 | 8];
     const [c, r] = BEFORE[n]!;
@@ -64,8 +101,9 @@ for (const n of COUNTS) {
     "productivas/casa",
     "castillos a ≤2",
     "dist. vecino",
-    "1.er choque (res.)",
+    "1.er choque (día)",
     "choques casa/partida",
+    "choques casa/semana",
     "robadas/casa",
     "neutrales tomadas",
     "páramos tomados",
@@ -81,6 +119,7 @@ for (const n of COUNTS) {
     PRESTIGE.perWasteland = v.wasteland?.prestige ?? basePrestige;
     NEUTRAL_GARRISON.paramo = v.wasteland?.garrison ?? baseGarrison;
     const rand = seededRandom(`mapa-${n}-${v.name}`);
+    GRID.kind = v.grid ?? "square";
     const near: number[] = [];
     let closePairs = 0;
     let pairs = 0;
@@ -107,13 +146,13 @@ for (const n of COUNTS) {
       const castles = map.tiles.filter((t) => t.type === "castillo");
       // Distancia (en pasos) de cada castillo al castillo más cercano.
       for (const c of castles) {
-        const d = Math.min(...castles.filter((o) => o !== c).map((o) => Math.abs(o.x - c.x) + Math.abs(o.y - c.y)));
+        const d = Math.min(...castles.filter((o) => o !== c).map((o) => distance(o, c)));
         near.push(d);
       }
       for (let i = 0; i < castles.length; i++) {
         for (let j = i + 1; j < castles.length; j++) {
           pairs++;
-          if (Math.abs(castles[i]!.x - castles[j]!.x) + Math.abs(castles[i]!.y - castles[j]!.y) <= 2) closePairs++;
+          if (distance(castles[i]!, castles[j]!) <= 2) closePairs++;
         }
       }
       // Valor de los alrededores de cada castillo (lo productivo a 1 o 2 pasos).
@@ -121,15 +160,16 @@ for (const n of COUNTS) {
       for (const c of castles) {
         let val = 0;
         for (const t of map.tiles) {
-          const d = Math.abs(t.x - c.x) + Math.abs(t.y - c.y);
+          const d = distance(t, c);
           if (d === 0 || d > 2 || t.type === "castillo" || t.type === "paramo") continue;
           val += d === 1 ? 1 : 0.5;
         }
         value.set(c.castleOf!, val);
       }
-      const res = simulateGame({ seed, strategies, weeks: WEEKS, layout: v.layout });
-      if (res.firstHouseCombat == null) noContact++;
-      else first.push(res.firstHouseCombat);
+      const res = simulateGame({ seed, strategies, weeks: WEEKS, layout: v.layout, grid: v.grid, resolutionDays: v.days, fortify: v.fortify });
+      GRID.kind = v.grid ?? "square";
+      if (res.firstHouseCombatDay == null) noContact++;
+      else first.push(res.firstHouseCombatDay);
       houseCombats.push(res.combatsVsHouse);
       stolen.push(res.conquestsFromHouses / n);
       neutralTaken.push((res.neutralTotal - res.neutralLeft) / res.neutralTotal);
@@ -158,6 +198,7 @@ for (const n of COUNTS) {
       f1(avg(near)),
       `${median(first)}${noContact ? ` (${pct(noContact / GAMES)} sin)` : ""}`,
       f1(avg(houseCombats)),
+      f1(avg(houseCombats) / WEEKS),
       f1(avg(stolen)),
       pct(avg(neutralTaken)),
       paramoTaken.length ? pct(avg(paramoTaken)) : "—",
@@ -171,6 +212,7 @@ for (const n of COUNTS) {
   }
   PRESTIGE.perWasteland = basePrestige;
   NEUTRAL_GARRISON.paramo = baseGarrison;
+  GRID.kind = "square";
   const all = [head, ...rows];
   const widths = head.map((_, c) => Math.max(...all.map((row) => row[c]!.length)));
   all.forEach((row, i) => {

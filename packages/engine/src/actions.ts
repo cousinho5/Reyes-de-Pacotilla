@@ -2,7 +2,8 @@
 // servidor las usa para validar y calcular, y luego escribe en un lote atómico.
 
 import { canAfford, upgradeCost, weeklyUpkeep } from "./economy";
-import { FORTIFY_COST, FORTIFY_RESOLUTIONS, TROOP_COST, TROOPS_PER_PAN } from "./rules";
+import { distance } from "./map";
+import { FORTIFY_COST, RHYTHM, TROOP_COST, TROOPS_PER_PAN } from "./rules";
 import type { BuildingKind, HouseId, Resources, Tile } from "./types";
 
 export type ActionResult<T> = { ok: true; value: T } | { ok: false; error: string };
@@ -33,7 +34,7 @@ export function checkRecruit(count: number, have: Resources): ActionResult<{ cos
 }
 
 /**
- * Fortificar dura las dos resoluciones siguientes. `nextResolution` es la
+ * Fortificar dura RHYTHM.fortify resoluciones. `nextResolution` es la
  * próxima resolución que se va a ejecutar.
  */
 export function checkFortify(
@@ -44,7 +45,7 @@ export function checkFortify(
 ): ActionResult<{ cost: Partial<Resources>; fortifiedUntil: number }> {
   if (tile.owner !== house) return { ok: false, error: "Solo puedes fortificar tus casillas." };
   if (tile.type === "castillo") return { ok: false, error: "Los castillos no necesitan fortificarse." };
-  const until = nextResolution + FORTIFY_RESOLUTIONS - 1;
+  const until = nextResolution + RHYTHM.fortify - 1;
   if ((tile.fortifiedUntil ?? 0) >= until) return { ok: false, error: "Esta casilla ya está fortificada." };
   if (!canAfford(have, FORTIFY_COST)) return { ok: false, error: "Hace falta Piedra para fortificar." };
   return { ok: true, value: { cost: FORTIFY_COST, fortifiedUntil: until } };
@@ -78,8 +79,8 @@ export function applyUpkeep(tiles: Tile[], house: HouseId, pan: number, factor =
   let toDesert = Math.min(totalTroops, shortfall * TROOPS_PER_PAN);
   const deserted = toDesert;
   const order = [...own].sort((a, b) => {
-    const da = castle ? Math.abs(a.x - castle.x) + Math.abs(a.y - castle.y) : 0;
-    const db = castle ? Math.abs(b.x - castle.x) + Math.abs(b.y - castle.y) : 0;
+    const da = castle ? distance(a, castle) : 0;
+    const db = castle ? distance(b, castle) : 0;
     return db - da || a.id - b.id;
   });
   const updated = new Map(tiles.map((t) => [t.id, { ...t }]));

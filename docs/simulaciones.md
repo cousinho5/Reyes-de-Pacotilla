@@ -53,6 +53,32 @@ npm run simular -- --semanas 4                    # duración de la partida
 npm run simular -- --json datos.json              # además, todos los datos
 ```
 
+## Hexágonos y una resolución al día (17 de octubre de 2026, fase 0 del sistema de guerra v3)
+
+Primera prueba del nuevo sistema de guerra (`docs/diseno.md`, propuesta v3): casillas hexagonales con 6 vecinas y una resolución cada día en vez de dos por semana. Fortificar dura 4 resoluciones. Las tropas, el terreno y los asedios nuevos aún no están en el simulador; esto solo mide la forma del mapa y el ritmo. Se lanza con `HEX=1 npm run simular-mapa -- 150`.
+
+**Resultado: con resolución diaria hay unas 2,5 veces más batallas entre casas y unas 3 veces más casillas robadas.** El primer choque llega entre el día 6 y el 9, cuando ahora llega el 10 o el 14. Con hexágonos, el mismo mapa deja los castillos a 2 pasos, así que hace falta en torno a un 50% más de casillas para mantenerlos a 3.
+
+| Casas | Ahora (cuadrado, 2/sem) | Hexágonos elegidos (`MAP_LAYOUT_HEX`) | Castillos a ≤2 | 1.er choque (día) | Choques entre casas por semana | Casillas robadas por casa | Líder de la semana 2 gana | Casas con deserciones |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 4 | 5x4 + 1 | 6x5 + 2 | 0% | 14 → 9 | 2,6 → 6,6 | 1,9 → 6,2 | 41% → 45% | 9% → 19% |
+| 5 | 6x4 + 1 | 7x5 + 3 | 0% | 10 → 7 | 3,3 → 9,5 | 2,0 → 7,7 | 32% → 31% | 7% → 15% |
+| 6 | 6x5 + 2 | 8x6 + 6 | 0% | 10 → 6 | 4,4 → 11,2 | 2,3 → 7,2 | 35% → 33% | 5% → 18% |
+| 7 | 7x6 + 5 | 9x7 + 10 | 0% | 10 → 7 | 5,0 → 11,8 | 2,3 → 6,8 | 28% → 27% | 6% → 22% |
+| 8 | 7x7 + 7 | 10x8 + 14 | 0% | 10 → 6 | 6,1 → 11,1 | 2,5 → 5,4 | 32% → 30% | 6% → 19% |
+
+Tamaños descartados (150 partidas por variante):
+
+- **El mismo mapa en hexágonos** (por ejemplo 5x4 con 4 casas): el 33% de los castillos queda a 2 pasos y el primer choque llega el día 3.
+- **Un paso menos** (7x6 con 6 casas, 8x7 con 7, 9x8 con 8): entre un 2% y un 7% de castillos a 2 pasos y choque el día 4 o 5.
+- **Más grandes aún** (9x8 con 7 casas, 10x9 con 8): más Prestigio por territorio y más deserciones, sin mejorar el choque.
+
+Lo que queda por ajustar antes de jugar con hexágonos:
+
+- **Deserciones: suben del 5-9% al 15-22% de las casas.** Con más batallas se pierden casillas y Pan a mitad de semana. Empezar a cobrar el coste de estirarse a partir de la 7.ª casilla en vez de la 5.ª las baja al 12-14% (probado con 4, 6 y 8 casas). Se decidirá junto con las tropas nuevas, que cambian el mantenimiento.
+- **El Prestigio del ganador sube de unos 51 a 58-68** porque hay más territorio. No cambia quién gana, pero el territorio pesa más que construir; habrá que revisar `PRESTIGE.perTile`.
+- El juego de verdad sigue con cuadrícula y dos resoluciones por semana (`GRID` y `RHYTHM` en `rules.ts`) hasta que el mapa hexagonal esté dibujado.
+
 ## Mapas más grandes con 7 y 8 casas, y páramos (17 de octubre de 2026, aplicado)
 
 **El problema.** Con 7 y 8 casas el mapa era 6x5 y 6x6. Los castillos quedaban a 2 pasos del vecino (con 4-6 casas, a 3), el 14% de las parejas de castillos estaban a 2 pasos o menos, el primer choque entre casas llegaba una resolución antes y cada casa tenía 3,3-3,5 casillas productivas (con 4-6 casas, unas 4). En la partida de prueba de 8 casas se veían castillos casi pegados.
