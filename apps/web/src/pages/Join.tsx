@@ -1,19 +1,15 @@
 import { useEffect, useState } from "react";
-import { api, type Invitation, type Me } from "../api";
+import { api, type HouseForm, type Invitation, type Me } from "../api";
 import { navigate } from "../App";
-import { HOUSE_COLORS } from "../ui";
-
-const SUGERENCIAS = ["Casa del Nabo Altivo", "Casa de los Siete Primos", "Casa del Pato Valiente", "Casa de la Bota Rota"];
-const LEMAS = ["Nabus Vincit", "Ora et Comercia", "Veni, Vidi, Negocié"];
+import { ShieldIcon } from "../art";
+import { HouseEditor, initialForm } from "../components/HouseEditor";
 
 export function Join({ code }: { code: string }) {
   const [inv, setInv] = useState<Invitation | null>(null);
   const [me, setMe] = useState<Me | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [nombre, setNombre] = useState("");
-  const [casa, setCasa] = useState("");
-  const [color, setColor] = useState("");
-  const [lema, setLema] = useState("");
+  const [form, setForm] = useState<HouseForm | null>(null);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<{ partida: number; codigo: string | null } | null>(null);
 
@@ -21,7 +17,7 @@ export function Join({ code }: { code: string }) {
     api.invitation(code).then(
       (i) => {
         setInv(i);
-        setColor(i.coloresLibres[0] ?? "");
+        setForm(initialForm(i.casas));
       },
       (e) => setError((e as Error).message),
     );
@@ -62,7 +58,7 @@ export function Join({ code }: { code: string }) {
       </main>
     );
   }
-  if (!inv) return <main className="page">Cargando…</main>;
+  if (!inv || !form) return <main className="page">Cargando…</main>;
   if (inv.yaDentro) {
     return (
       <main className="page">
@@ -94,8 +90,8 @@ export function Join({ code }: { code: string }) {
         <p>
           Ya en la corte:{" "}
           {inv.casas.map((h) => (
-            <span key={h.nombre} className="chip" style={{ borderColor: HOUSE_COLORS[h.color]?.hex }}>
-              {h.nombre}
+            <span key={h.nombre} className="chip">
+              <ShieldIcon color={h.color} escudo={h.escudo} size={16} title="" /> {h.nombre}
             </span>
           ))}
         </p>
@@ -107,7 +103,7 @@ export function Join({ code }: { code: string }) {
           setBusy(true);
           setError(null);
           try {
-            const r = await api.join(code, { nombre: logged ? undefined : nombre, casa, color, lema: lema || undefined });
+            const r = await api.join(code, { ...form, nombre: logged ? undefined : nombre, lema: form.lema || undefined });
             setDone({ partida: r.partida, codigo: r.codigoAcceso });
           } catch (err) {
             setError((err as Error).message);
@@ -122,48 +118,9 @@ export function Join({ code }: { code: string }) {
             <input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Como te llaman los amigos" required />
           </label>
         )}
-        <label>
-          Nombre de tu casa
-          <input value={casa} maxLength={20} onChange={(e) => setCasa(e.target.value)} placeholder="Casa de…" required />
-        </label>
-        <button
-          type="button"
-          className="link"
-          onClick={() => setCasa(SUGERENCIAS[Math.floor(Math.random() * SUGERENCIAS.length)]!)}
-        >
-          Sugiéreme un nombre
-        </button>
-        <fieldset>
-          <legend>Color de tu casa</legend>
-          <div className="colors">
-            {Object.entries(HOUSE_COLORS).map(([key, c]) => {
-              const free = inv.coloresLibres.includes(key);
-              return (
-                <button
-                  type="button"
-                  key={key}
-                  className={`color ${color === key ? "selected" : ""}`}
-                  style={{ background: c.hex }}
-                  disabled={!free}
-                  aria-pressed={color === key}
-                  aria-label={`${c.nombre}${free ? "" : " (ocupado)"}`}
-                  onClick={() => setColor(key)}
-                >
-                  {!free && "✕"}
-                </button>
-              );
-            })}
-          </div>
-        </fieldset>
-        <label>
-          Lema (opcional)
-          <input value={lema} maxLength={40} onChange={(e) => setLema(e.target.value)} placeholder="Nabus Vincit" />
-        </label>
-        <button type="button" className="link" onClick={() => setLema(LEMAS[Math.floor(Math.random() * LEMAS.length)]!)}>
-          Sugiéreme un lema
-        </button>
+        <HouseEditor value={form} onChange={setForm} taken={inv.casas} />
         {error && <p className="error">{error}</p>}
-        <button className="primary" type="submit" disabled={busy || !color}>
+        <button className="primary" type="submit" disabled={busy || !form.color}>
           Unirme a la partida
         </button>
       </form>

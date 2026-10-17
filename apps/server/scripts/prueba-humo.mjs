@@ -39,8 +39,44 @@ const gameId = created.data.id;
 const info = await pablo("GET", `/api/invitacion/${invite}`);
 check("la invitación muestra 8 colores libres", info.data.coloresLibres?.length === 8, info.data);
 
-const joinPablo = await pablo("POST", `/api/invitacion/${invite}/unirse`, { casa: "Casa del Nabo", color: "azur", lema: "Nabus Vincit" });
-check("Pablo se une con su sesión", joinPablo.status === 200, joinPablo);
+const joinPablo = await pablo("POST", `/api/invitacion/${invite}/unirse`, {
+  casa: "Casa del Nabo",
+  color: "azur",
+  lema: "Nabus Vincit",
+  forma: "espanol",
+  division: "partido",
+  color2: "gules",
+  simbolo: "nabo",
+  metal: "plata",
+});
+check("Pablo se une con su sesión y su escudo", joinPablo.status === 200, joinPablo);
+const copion = await client("Copión")("POST", `/api/invitacion/${invite}/unirse`, {
+  nombre: "Copión",
+  casa: "Casa Copia",
+  color: "leonado",
+  forma: "espanol",
+  division: "pleno",
+  color2: null,
+  simbolo: "nabo",
+  metal: "oro",
+});
+check("no se puede repetir forma y símbolo", copion.status === 409 && /símbolo/.test(copion.data.error ?? ""), copion);
+const retoque = await pablo("PUT", `/api/partidas/${gameId}/casa`, {
+  casa: "Casa del Nabo",
+  color: "azur",
+  lema: "Nabus Vincit",
+  forma: "rodela",
+  division: "tronchado",
+  color2: "sinople",
+  simbolo: "nabo",
+  metal: "oro",
+});
+const lobby = await pablo("GET", `/api/partidas/${gameId}`);
+check(
+  "en la sala de espera se retoca el escudo",
+  retoque.status === 200 && lobby.data.casas?.[0]?.escudo?.forma === "rodela" && lobby.data.casas[0].escudo.division === "tronchado",
+  { retoque, casas: lobby.data.casas },
+);
 
 const others = [
   ["Marta", "Casa Roca", "gules"],

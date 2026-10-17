@@ -47,6 +47,8 @@ export interface HouseRow extends Resources {
   name: string;
   color: string;
   shield_shape: string;
+  shield_division: string;
+  color2: string | null;
   symbol: string;
   metal: string;
   motto: string | null;

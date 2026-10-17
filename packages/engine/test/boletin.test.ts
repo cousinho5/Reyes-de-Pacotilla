@@ -91,6 +91,23 @@ describe("Boletín de Fray Abundio", () => {
     expect(changed.headline).toMatch(/^NUEVO FAVORITO/);
   });
 
+  it("la cara de Fray Abundio va con lo que cuenta", () => {
+    expect(writeBulletin(base).mood).toBe("escandalizado");
+    expect(writeBulletin({ ...base, previousLeader: 2 }).mood).toBe("adulador");
+    expect(writeBulletin({ ...base, facts: [], trades: [] }).mood).toBe("dormido");
+    expect(writeBulletin({ ...base, facts: base.facts.slice(1) }).mood).toBe("solemne");
+  });
+
+  it("presenta los escudos con su división", () => {
+    const b = writeBulletin({
+      ...base,
+      week: 1,
+      previousLeader: null,
+      houses: [{ ...houses[0]!, division: "partido", color2: "gules" }, houses[1]!, houses[2]!],
+    });
+    expect(b.sections.flatMap((s) => s.lines).join("\n")).toContain("partido de azur y gules con nabo de oro");
+  });
+
   it("el último boletín revela los objetivos y el Mecenas de la Mentira", () => {
     const b = writeBulletin({
       ...base,

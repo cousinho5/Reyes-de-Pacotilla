@@ -28,9 +28,29 @@ export interface Me {
   partidas: { id: number; nombre: string; estado: string; prueba?: boolean; casa: string; color: string }[];
 }
 
+export interface ShieldView {
+  forma: string;
+  division: string;
+  color2: string | null;
+  simbolo: string;
+  metal: string;
+}
+
+/** Nombre, lema y escudo, tal como se mandan al unirse o al retocar la casa. */
+export interface HouseForm {
+  casa: string;
+  color: string;
+  lema?: string;
+  forma: string;
+  division: string;
+  color2: string | null;
+  simbolo: string;
+  metal: string;
+}
+
 export interface Invitation {
   partida: { id: number; nombre: string; estado: string; semanas: number };
-  casas: { nombre: string; color: string }[];
+  casas: { nombre: string; color: string; escudo?: ShieldView }[];
   coloresLibres: string[];
   yaDentro: boolean;
 }
@@ -45,6 +65,7 @@ export interface HouseInfo {
   nombre: string;
   color: string;
   lema: string | null;
+  escudo?: ShieldView;
   prestigio?: PrestigeBreakdown;
   logros?: { clave: string; veces: number }[];
   objetivo?: (ObjectiveView & { cumplido: boolean }) | null;
@@ -196,9 +217,10 @@ export const api = {
   login: (codigo: string) => call<{ ok: true }>("POST", "/entrar", { codigo }),
   logout: () => call<{ ok: true }>("POST", "/salir"),
   invitation: (codigo: string) => call<Invitation>("GET", `/invitacion/${encodeURIComponent(codigo)}`),
-  join: (codigo: string, body: { nombre?: string; casa: string; color: string; lema?: string }) =>
+  join: (codigo: string, body: { nombre?: string } & HouseForm) =>
     call<{ ok: true; partida: number; codigoAcceso: string | null }>("POST", `/invitacion/${encodeURIComponent(codigo)}/unirse`, body),
   game: (id: number) => call<GameState>("GET", `/partidas/${id}`),
+  editHouse: (id: number, body: HouseForm) => call<{ ok: true }>("PUT", `/partidas/${id}/casa`, body),
   start: (id: number, inicio?: string) => call<{ ok: true; inicio: string }>("POST", `/partidas/${id}/empezar`, inicio ? { inicio } : {}),
   upgrade: (id: number, edificio: BuildingKind) => call<{ ok: true }>("POST", `/partidas/${id}/mejorar`, { edificio }),
   recruit: (id: number, cantidad: number) => call<{ ok: true }>("POST", `/partidas/${id}/reclutar`, { cantidad }),

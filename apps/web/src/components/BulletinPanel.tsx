@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { bulletinText, type Bulletin } from "@reyes/engine";
 import { api, type GameState } from "../api";
+import { FrayAbundio } from "../art";
 
 /** Boletín semanal de Fray Abundio, en pergamino, y el soborno al cronista. */
 export function BulletinPanel({
@@ -62,8 +63,11 @@ function Parchment({ bulletin: b, gameName }: { bulletin: Bulletin; gameName: st
   return (
     <article className="parchment">
       <header>
-        <p className="parchment-kicker">Boletín del Reino · {gameName} · semana {b.week}</p>
-        <h2>{b.headline}</h2>
+        <FrayAbundio mood={b.mood ?? "solemne"} size={64} />
+        <div>
+          <p className="parchment-kicker">Boletín del Reino · {gameName} · semana {b.week}</p>
+          <h2>{b.headline}</h2>
+        </div>
       </header>
       {b.margin.length > 0 && (
         <aside className="margin-notes" aria-label="Notas al margen">
@@ -82,6 +86,7 @@ function Parchment({ bulletin: b, gameName }: { bulletin: Bulletin; gameName: st
       ))}
       {b.sponsors.length > 0 && (
         <footer className="sponsors">
+          <FrayAbundio mood="monedas" size={40} />
           {b.sponsors.map((s, i) => (
             <p key={i}>{s}</p>
           ))}

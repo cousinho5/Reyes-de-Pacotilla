@@ -1,8 +1,9 @@
+import { ResourceIcon } from "../art";
 import { AuctionPanel } from "./AuctionPanel";
 import { useState } from "react";
 import { RESOURCES, type Resources } from "@reyes/engine";
 import { api, type GameState, type OfferInfo } from "../api";
-import { HOUSE_COLORS, RESOURCE_LABEL, RESOURCE_MARK, houseName } from "../ui";
+import { HOUSE_COLORS, RESOURCE_LABEL, houseName } from "../ui";
 
 interface Props {
   state: GameState;
@@ -16,7 +17,7 @@ function Bundle({ r }: { r: Partial<Resources> }) {
     <>
       {items.map((k) => (
         <span key={k} className={`res res-${k}`}>
-          <span aria-hidden>{RESOURCE_MARK[k]}</span> {r[k]} <span className="sr-only">{RESOURCE_LABEL[k]}</span>
+          <ResourceIcon r={k} size={14} /> {r[k]} <span className="sr-only">{RESOURCE_LABEL[k]}</span>
         </span>
       ))}
     </>
@@ -214,7 +215,7 @@ function OfferForm({
   const row = (side: "da" | "pide", r: keyof Resources) => (
     <div className="stepper" key={`${side}-${r}`}>
       <span className={`res res-${r}`}>
-        <span aria-hidden>{RESOURCE_MARK[r]}</span> {RESOURCE_LABEL[r]}
+        <ResourceIcon r={r} size={14} /> {RESOURCE_LABEL[r]}
       </span>
       <button aria-label={`Menos ${RESOURCE_LABEL[r]}`} onClick={() => set(side, r, draft[side][r] - 5)}>
         −

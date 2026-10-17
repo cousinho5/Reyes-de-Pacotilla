@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { BulletinPanel } from "./BulletinPanel";
 import type { GameState } from "../api";
-import { ACHIEVEMENT_LABEL, HOUSE_COLORS, describeEvent, withArticle } from "../ui";
+import { ShieldIcon } from "../art";
+import { ACHIEVEMENT_LABEL, describeEvent, withArticle } from "../ui";
 
 export function Realm({
   state,
@@ -27,6 +28,7 @@ export function Realm({
       <BulletinPanel state={state} act={act} />
       {winner && (
         <section className="card coronation">
+          <ShieldIcon color={winner.color} escudo={winner.escudo} size={72} />
           <h2>¡Larga vida a {withArticle(winner.nombre)}!</h2>
           <p>Fin del interregno. Fray Abundio, que siempre creyó en {withArticle(winner.nombre)}, ya ha corregido sus crónicas.</p>
         </section>
@@ -38,7 +40,7 @@ export function Realm({
             <li key={h.id} className={h.id === state.yo.casa ? "me" : ""}>
               <button className="row-button" onClick={() => setOpen(open === h.id ? null : h.id)} aria-expanded={open === h.id}>
                 <span className="rank">{i + 1}</span>
-                <span className="swatch" style={{ background: HOUSE_COLORS[h.color]?.hex }} />
+                <ShieldIcon color={h.color} escudo={h.escudo} size={28} />
                 <span className="grow">
                   <strong>{h.nombre}</strong>
                   {!final && i === 0 && (h.prestigio?.total ?? 0) > (state.casas[1]?.prestigio?.total ?? 0) && (

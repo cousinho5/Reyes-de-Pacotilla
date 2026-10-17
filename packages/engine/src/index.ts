@@ -21,3 +21,4 @@ export * from "./auction";
 export * from "./events";
 export * from "./bulletin";
 export { PHRASES, type PhraseKey } from "./texts/cronista";
+export * from "./heraldry";

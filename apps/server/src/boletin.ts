@@ -78,6 +78,8 @@ export async function publishBulletin(env: NotifyEnv, game: GameRow, week: numbe
       color: h.color,
       symbol: h.symbol,
       metal: h.metal,
+      division: h.shield_division,
+      color2: h.color2,
       prestige: ranking?.find((r) => r.house === h.id)?.total ?? prestige.get(h.id)?.total ?? 0,
     })),
     previousLeader: previous?.leader ?? null,

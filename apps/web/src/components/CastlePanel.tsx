@@ -1,7 +1,8 @@
+import { ResourceIcon } from "../art";
 import { useState } from "react";
 import { BUILDINGS, RESOURCES, TROOP_COST, canAfford, upgradeCost, type Resource, type Resources } from "@reyes/engine";
 import { api, type GameState } from "../api";
-import { BUILDING_LABEL, RESOURCE_LABEL, RESOURCE_MARK } from "../ui";
+import { BUILDING_LABEL, RESOURCE_LABEL } from "../ui";
 import { CardsPanel } from "./CardsPanel";
 import { HouseSettings } from "./HouseSettings";
 
@@ -16,7 +17,7 @@ function Cost({ cost }: { cost: Partial<Resources> }) {
     <>
       {RESOURCES.filter((r) => cost[r]).map((r) => (
         <span key={r} className={`res res-${r}`}>
-          <span aria-hidden>{RESOURCE_MARK[r]}</span> {cost[r]} <span className="sr-only">{RESOURCE_LABEL[r]}</span>
+          <ResourceIcon r={r} size={14} /> {cost[r]} <span className="sr-only">{RESOURCE_LABEL[r]}</span>
         </span>
       ))}
     </>
@@ -52,9 +53,7 @@ export function CastlePanel({ state, gameId, act }: Props) {
             {RESOURCES.map((r) => (
               <tr key={r}>
                 <td>
-                  <span className={`res res-${r}`} aria-hidden>
-                    {RESOURCE_MARK[r]}
-                  </span>{" "}
+                  <ResourceIcon r={r} size={16} />{" "}
                   {RESOURCE_LABEL[r]}
                 </td>
                 <td>{res[r]}</td>
