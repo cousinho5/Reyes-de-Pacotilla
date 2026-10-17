@@ -29,9 +29,27 @@ export const UPGRADE_COST: Record<2 | 3 | 4 | 5, Partial<Resources>> = {
 // Con 1 Hierro + 2 Pan pasaba lo contrario; 2 + 2 deja los dos justos (simulación del 16-10-2026).
 export const TROOP_COST: Partial<Resources> = { hierro: 2, pan: 2 };
 
-/** Coste de fortificar una casilla y cuántas resoluciones dura. */
+/** Coste de fortificar una casilla. Lo que dura va en RHYTHM. */
 export const FORTIFY_COST: Partial<Resources> = { piedra: 8 };
-export const FORTIFY_RESOLUTIONS = 2;
+
+/**
+ * Forma de las casillas (diseño v3, propuesta del nuevo sistema de guerra).
+ * - "square": cuadrícula con 4 vecinas (el juego de ahora).
+ * - "hex": hexágonos con el pico arriba y las filas impares desplazadas media
+ *   casilla a la derecha ("odd-r"): 6 vecinas. Las casillas guardan su (x, y)
+ *   de columna y fila igual que ahora.
+ * Es un objeto para que el simulador pueda comparar las dos.
+ */
+export const GRID: { kind: "square" | "hex" } = { kind: "square" };
+
+/**
+ * Ritmo de la campaña.
+ * - `days`: días de la semana con resolución (0 = lunes, 2 = miércoles, 6 = domingo).
+ *   La Gran Subasta sigue el miércoles y el mantenimiento el domingo.
+ * - `fortify`: resoluciones que dura una fortificación.
+ * Diseño v3: una resolución al día y fortificar 4 resoluciones.
+ */
+export const RHYTHM: { days: number[]; fortify: number } = { days: [2, 6], fortify: 2 };
 
 /** Producción diaria que añade una casilla controlada. */
 export const TILE_PRODUCTION: Record<TileType, Partial<Resources>> = {
@@ -138,6 +156,24 @@ export const MAP_LAYOUT: Record<4 | 5 | 6 | 7 | 8, { cols: number; rows: number;
   7: { cols: 7, rows: 6, paramos: 5 },
   8: { cols: 7, rows: 7, paramos: 7 },
 };
+
+/**
+ * Tamaños con hexágonos (GRID.kind = "hex"). Con 6 vecinas los castillos
+ * quedan más cerca, así que hace falta en torno a un 50% más de casillas para
+ * mantenerlos a 3 pasos. Elegidos con `HEX=1 npm run simular-mapa` (simulaciones.md).
+ */
+export const MAP_LAYOUT_HEX: Record<4 | 5 | 6 | 7 | 8, { cols: number; rows: number; paramos: number }> = {
+  4: { cols: 6, rows: 5, paramos: 2 },
+  5: { cols: 7, rows: 5, paramos: 3 },
+  6: { cols: 8, rows: 6, paramos: 6 },
+  7: { cols: 9, rows: 7, paramos: 10 },
+  8: { cols: 10, rows: 8, paramos: 14 },
+};
+
+/** Tamaño y páramos del mapa según la forma de las casillas. */
+export function mapLayout(houses: 4 | 5 | 6 | 7 | 8): { cols: number; rows: number; paramos: number } {
+  return (GRID.kind === "hex" ? MAP_LAYOUT_HEX : MAP_LAYOUT)[houses];
+}
 
 /** Días sin entrar a partir de los que se activa el piloto automático. */
 export const ABSENT_AFTER_DAYS = 3;

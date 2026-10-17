@@ -15,7 +15,7 @@ import { dealObjectives, objectiveMet, type ObjectiveKey } from "./objectives";
 import { computePrestige, isValidTrade, type AchievementKey, type PrestigeBreakdown } from "./prestige";
 import { resolveCampaign } from "./combat";
 import type { MapLayoutOverride } from "./mapgen";
-import { PRESTIGE, SPECIALTY_PAIRS, STARTING_RESOURCES } from "./rules";
+import { GRID, PRESTIGE, RHYTHM, SPECIALTY_PAIRS, STARTING_RESOURCES } from "./rules";
 import { totalOf } from "./trade";
 import { auctionLots, doubleLot, resolveAuction, type Bid } from "./auction";
 import {
@@ -92,6 +92,12 @@ export interface SimOptions {
   events?: boolean;
   /** Tamaño del mapa y páramos (para probar alternativas). */
   layout?: MapLayoutOverride;
+  /** Forma de las casillas (por defecto, la de GRID). */
+  grid?: "square" | "hex";
+  /** Días con resolución, 0 = lunes (por defecto, los de RHYTHM). */
+  resolutionDays?: number[];
+  /** Resoluciones que dura fortificar (por defecto, la de RHYTHM). */
+  fortify?: number;
 }
 
 export interface SimHouseResult {
@@ -133,6 +139,8 @@ export interface SimGameResult {
   neutralTotal: number;
   /** Primera resolución con combate entre casas (null si no hubo). */
   firstHouseCombat: number | null;
+  /** Día (desde 1) de ese primer combate entre casas. */
+  firstHouseCombatDay: number | null;
   neutralLeft: number;
   combatsVsNeutral: number;
   combatsVsHouse: number;
@@ -177,6 +185,27 @@ interface HouseState {
 }
 
 export function simulateGame(opts: SimOptions): SimGameResult {
+  // Las opciones de forma y ritmo cambian GRID y RHYTHM solo durante esta partida.
+  const saved = { grid: GRID.kind, days: RHYTHM.days, fortify: RHYTHM.fortify };
+  GRID.kind = opts.grid ?? GRID.kind;
+  RHYTHM.days = opts.resolutionDays ?? RHYTHM.days;
+  RHYTHM.fortify = opts.fortify ?? RHYTHM.fortify;
+  try {
+    return runGame(opts);
+  } finally {
+    GRID.kind = saved.grid;
+    RHYTHM.days = saved.days;
+    RHYTHM.fortify = saved.fortify;
+  }
+}
+
+/** Día de la semana de la próxima resolución vista desde `day` (la de hoy cuenta). */
+function nextResolutionWeekday(day: number): number {
+  const w = day % 7;
+  return RHYTHM.days.find((d) => d >= w) ?? RHYTHM.days[0]!;
+}
+
+function runGame(opts: SimOptions): SimGameResult {
   const ids = opts.strategies.map((_, i) => i + 1);
   const map = generateMap(opts.seed, ids, opts.layout);
   let tiles: Tile[] = map.tiles.map((t, i) => ({
@@ -221,7 +250,7 @@ export function simulateGame(opts: SimOptions): SimGameResult {
   const trades: { a: HouseId; b: HouseId; day: number; valid: boolean }[] = [];
   const absent = houses.filter((h) => h.strategy === "ausente").map((h) => h.id);
   const neutralTotal = tiles.filter((t) => t.owner == null).length;
-  const totalResolutions = opts.weeks * 2;
+  const totalResolutions = opts.weeks * RHYTHM.days.length;
   let resolution = 0;
   let combatsVsNeutral = 0;
   let combatsVsHouse = 0;
@@ -234,6 +263,7 @@ export function simulateGame(opts: SimOptions): SimGameResult {
   let cardsPlayed = 0;
   let rankWeek2: Map<HouseId, number> | null = null;
   let firstHouseCombat: number | null = null;
+  let firstHouseCombatDay: number | null = null;
 
   const prestigeOf = (h: HouseState, day: number, objectiveMet?: boolean) => {
     const partners = new Set<HouseId>();
@@ -286,7 +316,7 @@ export function simulateGame(opts: SimOptions): SimGameResult {
     attackBonus: h.drums.find((d) => d.resolution === resolution + 1)?.bonus ?? 0,
     auctionsWon: h.auctionsWon,
     // Lo anunciado el martes: combate del miércoles y mantenimiento del domingo.
-    combat: (resolution + 1) % 2 === 1 && day % 7 >= 1 && weekEvents[Math.floor(day / 7)] ? eventCombat(weekEvents[Math.floor(day / 7)]!) : undefined,
+    combat: nextResolutionWeekday(day) === 2 && day % 7 >= 1 && day % 7 <= 2 && weekEvents[Math.floor(day / 7)] ? eventCombat(weekEvents[Math.floor(day / 7)]!) : undefined,
     upkeepFactor: day % 7 >= 1 && weekEvents[Math.floor(day / 7)] ? eventUpkeepFactor(weekEvents[Math.floor(day / 7)]!) : 1,
   });
 
@@ -396,10 +426,11 @@ export function simulateGame(opts: SimOptions): SimGameResult {
       trades.push({ a: h.id, b: best.o.id, day, valid: isValidTrade(totalOf(offer.give), totalOf(offer.want)) });
     }
 
-    // 4. Resolución el miércoles (día 2) y el domingo (día 6).
+    // 4. Resolución los días de RHYTHM (miércoles y domingo, o cada día).
+    // La subasta va el miércoles y el mantenimiento el domingo.
     const weekday = day % 7;
     const week0 = Math.floor(day / 7) + 1;
-    if (weekday !== 2 && weekday !== 6) continue;
+    if (!RHYTHM.days.includes(weekday)) continue;
 
     // 4a. Miércoles: Gran Subasta (antes de la campaña). Solo pujan las personalidades.
     if (weekday === 2) {
@@ -498,6 +529,7 @@ export function simulateGame(opts: SimOptions): SimGameResult {
       else {
         combatsVsHouse++;
         firstHouseCombat ??= resolution;
+        firstHouseCombatDay ??= day + 1;
       }
       if (e.conquered) attacksWon++;
       if (e.conquered && e.winner != null && e.previousOwner != null) {
@@ -524,11 +556,11 @@ export function simulateGame(opts: SimOptions): SimGameResult {
       }
       const totals = houses.map((h) => ({ house: h.id, total: prestigeOf(h, day).total }));
       totals.forEach((t) => byId.get(t.house)!.prestigeBySunday.push(t.total));
-      if (resolution === 4) rankWeek2 = ranks(totals);
+      if (day === 13) rankWeek2 = ranks(totals);
       for (const h of houses) h.helpUntil = null;
       const last = lastPlace(totals);
       if (last != null && resolution < totalResolutions) {
-        byId.get(last)!.helpUntil = resolution + 2;
+        byId.get(last)!.helpUntil = resolution + RHYTHM.days.length;
         byId.get(last)!.helpWeeks++;
       }
     }
@@ -576,6 +608,7 @@ export function simulateGame(opts: SimOptions): SimGameResult {
     tiebreak: final.length > 1 && final[0]!.prestige.total === final[1]!.prestige.total,
     neutralTotal,
     firstHouseCombat,
+    firstHouseCombatDay,
     neutralLeft: tiles.filter((t) => t.owner == null).length,
     combatsVsNeutral,
     combatsVsHouse,

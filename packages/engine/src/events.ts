@@ -12,6 +12,7 @@
 import { lastPlace } from "./actions";
 import { defenseMultiplier, survivors } from "./combat";
 import type { ProductionModifiers } from "./economy";
+import { distance } from "./map";
 import { seededRandom, shuffle } from "./random";
 import { EVENT_VALUES as V } from "./rules";
 import { RESOURCES, type BuildingKind, type HouseId, type Resource, type Resources, type Tile, type TileId } from "./types";
@@ -303,7 +304,7 @@ export function applyEventNow(e: WeekEvent, tiles: Tile[], houses: EventHouse[],
         break;
       }
       const castle = tiles.find((t) => t.castleOf === victim.house);
-      const dist = (t: Tile) => (castle ? Math.abs(t.x - castle.x) + Math.abs(t.y - castle.y) : 0);
+      const dist = (t: Tile) => (castle ? distance(t, castle) : 0);
       const target = tiles
         .filter((t) => t.owner === victim.house && t.type !== "castillo")
         .sort((a, b) => dist(b) - dist(a) || a.id - b.id)[0]!;

@@ -4,10 +4,10 @@
 // - Se prueban muchas colocaciones y se elige la más justa: cada castillo debe
 //   tener alrededor un valor parecido y la mayor variedad de recursos posible.
 
-import { mapSize } from "./map";
+import { distance, mapSize } from "./map";
 import { TILE_NAMES } from "./names";
 import { seededRandom, shuffle } from "./random";
-import { MAP_LAYOUT, NEUTRAL_GARRISON, STARTING_TROOPS, TILE_MIX } from "./rules";
+import { mapLayout, NEUTRAL_GARRISON, STARTING_TROOPS, TILE_MIX } from "./rules";
 import type { HouseId, Tile, TileType } from "./types";
 
 export type NeutralType = Exclude<TileType, "castillo">;
@@ -61,7 +61,7 @@ export function neutralMix(count: number): NeutralType[] {
   return bag;
 }
 
-/** Tamaño y páramos de un mapa (por defecto, los de MAP_LAYOUT). */
+/** Tamaño y páramos de un mapa (por defecto, los de MAP_LAYOUT o MAP_LAYOUT_HEX). */
 export interface MapLayoutOverride {
   cols: number;
   rows: number;
@@ -70,7 +70,7 @@ export interface MapLayoutOverride {
 
 export function generateMap(seed: string, houses: HouseId[], layout?: MapLayoutOverride): GeneratedMap {
   const { cols, rows } = layout ?? mapSize(houses.length);
-  const paramos = layout?.paramos ?? MAP_LAYOUT[houses.length as 4 | 5 | 6 | 7 | 8]?.paramos ?? 0;
+  const paramos = layout?.paramos ?? (houses.length >= 4 && houses.length <= 8 ? mapLayout(houses.length as 4 | 5 | 6 | 7 | 8).paramos : 0);
   const rand = seededRandom(seed);
   const ring = perimeter(cols, rows);
 
@@ -89,7 +89,7 @@ export function generateMap(seed: string, houses: HouseId[], layout?: MapLayoutO
     const free: [number, number][] = [];
     for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) if (!castleKey.has(`${x},${y}`)) free.push([x, y]);
     const nearCastle = (x: number, y: number) =>
-      castlePos.some(([cx, cy]) => Math.abs(cx - x) + Math.abs(cy - y) === 1);
+      castlePos.some(([cx, cy]) => distance({ x: cx, y: cy }, { x, y }) === 1);
     // Fortalezas y páramos nunca junto a un castillo (los páramos quedan entre
     // castillos, como tierra de nadie, sin castigar ninguna salida): se colocan
     // primero en huecos lejos de los castillos y el resto se reparte al azar.
@@ -144,7 +144,7 @@ function unfairness(
     let value = 0;
     const seen = new Set<NeutralType>();
     free.forEach(([x, y], i) => {
-      const d = Math.abs(cx - x) + Math.abs(cy - y);
+      const d = distance({ x: cx, y: cy }, { x, y });
       if (d > 2) return;
       const t = types[i]!;
       value += TYPE_VALUE[t] * (d === 1 ? 1 : 0.5);
