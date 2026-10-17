@@ -68,6 +68,10 @@ export interface CampaignInput {
   truceTiles?: TileId[];
   /** Carta Tambores de guerra: bonificación de ataque por casa (0,25 = +25%). */
   attackBonus?: Partial<Record<HouseId, number>>;
+  /** Eventos: bonificación de ataque para todos, de defensa para todos y Paz del Rey. */
+  attackBonusAll?: number;
+  defenseBonus?: number;
+  peace?: boolean;
 }
 
 export type CampaignEvent =
@@ -103,6 +107,11 @@ export type CampaignEvent =
       type: "tregua";
       tile: TileId;
       /** Casas cuyo ataque se detuvo (sus tropas no se movieron). */
+      houses: HouseId[];
+    }
+  | {
+      type: "paz";
+      tile: TileId;
       houses: HouseId[];
     }
   | {

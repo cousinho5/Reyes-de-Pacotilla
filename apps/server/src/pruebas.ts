@@ -11,6 +11,9 @@ import {
   PERSONALITIES,
   PRESTIGE,
   chooseObjective,
+  eventCombat,
+  eventOfWeek,
+  eventUpkeepFactor,
   localDate,
   offerGain,
   planBids,
@@ -241,6 +244,16 @@ function botView(ctx: BotContext, h: HouseRow): AiView {
       .map(cardEffect)
       .reduce((a, e) => a + (e.drums && e.drums.resolution === g.current_resolution + 1 ? e.drums.bonus : 0), 0),
     auctionsWon: ctx.lotsWon.get(h.id) ?? 0,
+    // Evento anunciado el martes por la noche: combate del miércoles y mantenimiento del domingo.
+    ...(() => {
+      const week = Math.floor(ctx.day / 7) + 1;
+      if (ctx.day % 7 < 2 || week > g.weeks) return {};
+      const ev = eventOfWeek(g.seed, week);
+      return {
+        combat: (g.current_resolution + 1) % 2 === 1 ? eventCombat(ev) : undefined,
+        upkeepFactor: eventUpkeepFactor(ev),
+      };
+    })(),
   };
 }
 

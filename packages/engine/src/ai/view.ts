@@ -37,6 +37,10 @@ export interface AiView {
   attackBonus?: number;
   /** Lotes de la Gran Subasta ganados hasta ahora. */
   auctionsWon?: number;
+  /** Evento que afecta al combate de la próxima resolución. */
+  combat?: { defenseBonus?: number; attackBonusAll?: number; peace?: boolean };
+  /** Factor del mantenimiento del próximo domingo (evento de la semana). */
+  upkeepFactor?: number;
 }
 
 export interface Situation {
@@ -113,7 +117,7 @@ export function situation(view: AiView, p: Personality): Situation {
     keep,
     income,
     values: { pan: 1, madera: 1, piedra: 1, hierro: 1, oro: 1 },
-    panReserve: Math.max(0, Math.ceil((upkeep - income.pan * daysToSunday) * 1.2)),
+    panReserve: Math.max(0, Math.ceil((upkeep * (view.upkeepFactor ?? 1) - income.pan * daysToSunday) * 1.2)),
     sustainableTroops: Math.max(0, Math.floor((income.pan * 7 * 0.8 - stretch) * TROOPS_PER_PAN)),
     focus,
     savingFor: saving ? upgradeCost(view.buildings[focus]) : null,

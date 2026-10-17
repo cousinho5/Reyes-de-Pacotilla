@@ -170,3 +170,21 @@ export const CARD_VALUES = {
   tithePerTile: 3,
   drumsBonus: 0.25,
 } as const;
+
+/** Valores de los eventos de la semana (ver events.ts). */
+export const EVENT_VALUES = {
+  plague: 0.75,
+  harvest: 1.25,
+  goldFever: 2,
+  feast: 2,
+  mud: 0.25,
+  fervor: 0.25,
+  bandits: 6,
+  tributeShare: 0.2,
+  keysGold: 15,
+  tournamentGold: 20,
+  levies: 3,
+  carnivalPan: 10,
+  almsEach: 10,
+  lateWages: 2,
+} as const;

@@ -139,6 +139,7 @@ export interface GameState {
   /** Solo en partidas de prueba (y solo para quien las creó, en juego). */
   prueba?: TestInfo | null;
   subasta?: AuctionInfo | null;
+  evento?: { semana: number; clave: string; nombre: string; texto: string; linea: string; aplicado: boolean } | null;
   cartas?: CardInfo[];
   /** Casas que vigilas con la carta Espía. */
   vigiladas?: number[];

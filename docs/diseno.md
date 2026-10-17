@@ -48,9 +48,9 @@ Todos los horarios son en hora de Madrid y se pueden ajustar por partida.
 | --- | --- |
 | **Cada día, a las 00:00** | Producción diaria de recursos. |
 | **Cada día** | Entras, construyes, reclutas, fortificas, das o cambias órdenes, comercias y negocias. |
-| **Martes, 22:00** | Se anuncian los lotes de la Gran Subasta (y, cuando lleguen, el evento del miércoles). |
+| **Martes, 22:00** | Se anuncian el evento de la semana y los lotes de la Gran Subasta. |
 | **Miércoles, 21:00** | Cierre de órdenes y de pujas. |
-| **Miércoles, 22:00** | **Resolución 1:** subasta, evento y campaña (movimientos y combates). |
+| **Miércoles, 22:00** | **Resolución 1:** subasta, campaña (con el efecto de combate del evento, si lo tiene) y efectos del evento. |
 | **Domingo, 21:00** | Cierre de órdenes y de sobornos al cronista. |
 | **Domingo, 22:00** | **Resolución 2:** campaña, mantenimiento, ayuda al último y boletín semanal de Fray Abundio. |
 
@@ -303,19 +303,32 @@ El comercio es la mitad del juego, así que tiene que ser excelente:
 
 ## 10. Eventos
 
-Un evento cada miércoles, anunciado el martes por la noche para que nadie se lleve sorpresas. Son de efecto claro y se aplican a todos o a quien cumpla una condición pública.
+Un evento cada semana, anunciado el martes a las 22:00 junto con los lotes de la Gran Subasta, para que nadie se lleve sorpresas. Son de efecto claro y se aplican a todos o a quien cumpla una condición pública. Cada evento sale una sola vez por partida, en un orden fijado por la semilla. Catálogo de 20 en `packages/engine/src/events.ts` (valores en `rules.ts`, hecho en la versión 1):
 
-| Evento | Efecto |
-| --- | --- |
-| La Gran Plaga de Ratas | -25% de producción de Pan para todos durante una semana. |
-| Cosecha Gloriosa | +25% de producción de un recurso para todos durante una semana. |
-| Los Bandidos del Camino | 6 bandidos atacan la casilla más alejada del castillo de la casa con más casillas. |
-| El Tributo del Rey | Las dos casas con más Oro pagan el 20% de su Oro, que se reparte entre las demás. |
-| La Fiesta de San Aldric | Ese día la producción es doble para todos. |
-| El Rey Ha Perdido las Llaves | Quien tenga más tratos válidos esa semana encuentra las llaves: +15 Oro. |
-| El Mercado Enloquece | Los lotes de la subasta de esa semana son dobles. |
+| Evento | Efecto | Cuándo |
+| --- | --- | --- |
+| La Gran Plaga de Ratas | -25% de Pan para todos | 7 días, de jueves a miércoles |
+| Cosecha Gloriosa | +25% de un recurso (sale al azar) para todos | 7 días |
+| La Fiebre del Oro | Los mercados producen el doble | 7 días |
+| Tormenta en la Costa | Los puertos no producen | 7 días |
+| El Gran Derrumbe | Canteras y montañas no producen | 7 días |
+| La Fiesta de San Aldric | Toda la producción es doble | El jueves |
+| Caminos Embarrados | +25% de defensa en todas las casillas | Resolución del miércoles |
+| Fervor Guerrero | +25% de fuerza en todos los ataques | Resolución del miércoles |
+| La Paz del Rey | Nadie puede atacar casillas de otras casas (las neutrales sí); esos ataques no salen | Resolución del miércoles |
+| Los Bandidos del Camino | 6 bandidos atacan la casilla más alejada del castillo de la casa con más casillas. Si ganan, la casilla pasa a ser neutral | Tras la campaña del miércoles |
+| El Tributo del Rey | Las dos casas con más Oro pagan el 20% de su Oro, que se reparte a partes iguales entre las demás | Miércoles |
+| El Rey Ha Perdido las Llaves | +15 de Oro a quien más tratos válidos haya cerrado en los últimos 7 días (si empatan, a todas) | Miércoles |
+| El Torneo Real | +20 de Oro a la casa con más tropas | Miércoles |
+| Levas Reales | +3 tropas en el castillo de cada casa | Miércoles |
+| Carnaval | +10 de Pan para todas las casas | Miércoles |
+| La Limosna Real | +10 de cada recurso para la casa con menos Prestigio | Miércoles |
+| Paga Atrasada | El mantenimiento del domingo cuesta el doble | Domingo |
+| Indulgencia Real | El mantenimiento del domingo es gratis | Domingo |
+| El Mercado Enloquece | Los lotes de la Gran Subasta de ese miércoles son dobles (el doble de recursos, o dos cartas) | Miércoles |
+| Semana Tranquila | No pasa nada | — |
 
-Un catálogo de unos 20 eventos da variedad sin añadir complejidad. Fray Abundio narra cada uno (ver el banco de frases).
+Varios eventos frenan al que va delante (Bandidos, Tributo) o ayudan al último (Limosna). En la simulación, los eventos no cambian el equilibrio: las personalidades siguen entre 0,7 y 1,3 veces lo esperado y el líder de la semana 2 gana igual (34-35%). El único efecto claro es la Paga Atrasada: con ella las deserciones pasan del 1% al 5% de las casas. Fray Abundio narra cada evento (banco de frases, sección 10).
 
 ## 11. Prestigio y victoria
 
@@ -637,7 +650,7 @@ Pixel art en lo jugable, interfaz plana y limpia en lo informativo y un toque de
 3. **MVP 1 (hecho):** cuentas por invitación y código, casa (nombre, color y lema), mapa justo con niebla de guerra, producción, construir, reclutar, fortificar, órdenes de mover y apoyar con simulación, resolución con rebotes, mantenimiento con deserciones, ayuda al último y Prestigio en vivo.
 4. **MVP 2 (hecho):** comercio (ofertas públicas y dirigidas, contraofertas y aceptación atómica sin dobles aceptaciones), objetivos secretos, logros de primera fortaleza y obra maestra, piloto automático y modo vacaciones, notificaciones push y final de partida con revelación de objetivos y coronación.
 5. **Partida piloto de 4 semanas** con los amigos (en la simulación, las partidas de 2 semanas las gana casi siempre quien va primero en la segunda semana). Antes, partidas de prueba contra bots y el simulador (`npm run simular`, resultados en `docs/simulaciones.md`).
-6. **Versión 1:** Gran Subasta y cartas (hecho), eventos, boletín con Fray Abundio (incluido el soborno), creador de escudos y lemas, y botón de compartir en WhatsApp.
+6. **Versión 1:** Gran Subasta y cartas (hecho), eventos (hecho), boletín con Fray Abundio (incluido el soborno), creador de escudos y lemas, y botón de compartir en WhatsApp.
 7. **Primera partida completa de 6 semanas.**
 8. **Versión 2:** tratados comerciales, mensajes privados, temporadas, títulos y la Crónica Definitiva.
 

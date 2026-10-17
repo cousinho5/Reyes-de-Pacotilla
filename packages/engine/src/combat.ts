@@ -41,8 +41,8 @@ interface Move {
   failed: boolean;
 }
 
-export function defenseMultiplier(tile: Tile, resolution: number, absent: boolean): number {
-  let bonus = DEFENSE_BONUS.base;
+export function defenseMultiplier(tile: Tile, resolution: number, absent: boolean, extra = 0): number {
+  let bonus = DEFENSE_BONUS.base + extra;
   if (tile.fortifiedUntil != null && tile.fortifiedUntil >= resolution) bonus += DEFENSE_BONUS.fortified;
   if (tile.type === "fortaleza") bonus += DEFENSE_BONUS.fortress;
   if (absent) bonus += DEFENSE_BONUS.absent;
@@ -68,11 +68,18 @@ export function resolveCampaign(input: CampaignInput): CampaignResult {
   const checked = checkOrders(input.tiles, input.orders);
   for (const { order, reason } of checked.invalid) events.push({ type: "orden_invalida", order, reason });
   // Tregua: los ataques contra esas casillas no salen (las tropas se quedan donde estaban).
+  // La Paz del Rey hace lo mismo con todos los ataques a casillas de otras casas.
   const truce = new Set(input.truceTiles ?? []);
   const stopped = new Map<TileId, Set<HouseId>>();
+  const peaceStopped = new Map<TileId, Set<HouseId>>();
   for (const order of checked.valid) {
-    if (order.kind === "move" && truce.has(order.to) && tiles.get(order.to)!.owner !== order.house) {
+    const target = order.kind === "move" ? tiles.get(order.to)! : null;
+    if (order.kind === "move" && truce.has(order.to) && target!.owner !== order.house) {
       stopped.set(order.to, (stopped.get(order.to) ?? new Set()).add(order.house));
+      continue;
+    }
+    if (order.kind === "move" && input.peace && target!.owner != null && target!.owner !== order.house) {
+      peaceStopped.set(order.to, (peaceStopped.get(order.to) ?? new Set()).add(order.house));
       continue;
     }
     if (order.kind === "move") {
@@ -87,6 +94,9 @@ export function resolveCampaign(input: CampaignInput): CampaignResult {
 
   for (const [tile, houses] of [...stopped.entries()].sort((a, b) => a[0] - b[0])) {
     events.push({ type: "tregua", tile, houses: [...houses].sort((a, b) => a - b) });
+  }
+  for (const [tile, houses] of [...peaceStopped.entries()].sort((a, b) => a[0] - b[0])) {
+    events.push({ type: "paz", tile, houses: [...houses].sort((a, b) => a - b) });
   }
 
   // 2. Las tropas que salen dejan su casilla (si fallan, vuelven al final).
@@ -103,7 +113,8 @@ export function resolveCampaign(input: CampaignInput): CampaignResult {
     activeSupports.filter((s) => s.target === m.to && s.supportedFrom === m.from && !isOwnTileAgainst(s, m, tiles));
   // Tambores de guerra: la fuerza de los ataques de esa casa sube un porcentaje.
   const attackStrength = (m: Move) =>
-    (m.troops + sum(attackSupport(m).map((s) => s.troops))) * (1 + (input.attackBonus?.[m.house] ?? 0));
+    (m.troops + sum(attackSupport(m).map((s) => s.troops))) *
+    (1 + (input.attackBonus?.[m.house] ?? 0) + (input.attackBonusAll ?? 0));
 
   // 4. Choques frontales: dos casas que se cambian de casilla.
   for (const a of moves) {
@@ -161,7 +172,7 @@ export function resolveCampaign(input: CampaignInput): CampaignResult {
       (s) => s.target === tileId && s.supportedFrom === null && !hostile.some((m) => m.house === s.house),
     );
     const defStrength =
-      defTroops * defenseMultiplier(tile, resolution, owner !== null && absent.has(owner)) +
+      defTroops * defenseMultiplier(tile, resolution, owner !== null && absent.has(owner), input.defenseBonus ?? 0) +
       sum(defSupports.map((s) => s.troops));
 
     // Agrupar los ataques por casa.

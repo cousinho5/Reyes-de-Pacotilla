@@ -688,3 +688,22 @@ label.check input {
 .card-row .actions select {
   max-width: 100%;
 }
+
+/* Evento de la semana, bajo el reloj */
+.event-banner {
+  margin-top: 0.25rem;
+  font-size: 0.82rem;
+  color: var(--ink);
+}
+.event-banner summary {
+  cursor: pointer;
+  list-style: none;
+}
+.event-banner summary::before {
+  content: "✦ ";
+  color: var(--oro);
+}
+.event-banner p {
+  margin: 0.25rem 0 0;
+  color: var(--muted);
+}

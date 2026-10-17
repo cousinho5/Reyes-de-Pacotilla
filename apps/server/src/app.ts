@@ -30,6 +30,11 @@ import {
   zonedToUtc,
   type BuildingKind,
   type CardParams,
+  type EventKey,
+  type WeekEvent,
+  EVENTS,
+  eventLine,
+  eventText,
   type Order,
   type Resources,
 } from "@reyes/engine";
@@ -573,6 +578,7 @@ app.get("/api/partidas/:id", async (c) => {
           }
         : null,
     subasta: game.status === "active" ? await auctionView(db, game, house.id) : null,
+    evento: game.status === "active" ? await eventView(db, game) : null,
     cartas: await handView(db, game.id, house.id),
     vigiladas: spied,
     casillas: projectForHouse(tiles, house.id, spied).map((t) => ({ ...t, nombre: names.get(t.id) })),
@@ -911,6 +917,23 @@ app.post("/api/partidas/:id/ofertas/:oid/retirar", async (c) => {
     .run();
   return c.json({ ok: true });
 });
+
+/** Último evento anunciado (el de la semana en curso). */
+async function eventView(db: D1Database, game: GameRow) {
+  const row = await db.prepare("SELECT week, event_key, params, applied_at FROM game_events WHERE game_id = ? ORDER BY week DESC LIMIT 1")
+    .bind(game.id)
+    .first<{ week: number; event_key: EventKey; params: string; applied_at: string | null }>();
+  if (!row) return null;
+  const e = JSON.parse(row.params) as WeekEvent;
+  return {
+    semana: row.week,
+    clave: row.event_key,
+    nombre: EVENTS[row.event_key]?.nombre ?? row.event_key,
+    texto: eventText(e),
+    linea: eventLine(game.seed, row.week, e),
+    aplicado: row.applied_at != null,
+  };
+}
 
 // ---------------------------------------------------------------------------
 // Gran Subasta y cartas de la Corona (diseño, sección 9)

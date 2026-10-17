@@ -3,6 +3,15 @@
 // la restricción UNIQUE hace fallar el lote entero y no se repite nada.
 
 import {
+  EVENTS,
+  applyEventNow,
+  eventCombat,
+  eventLine,
+  eventOfWeek,
+  eventProduction,
+  eventText,
+  eventUpkeepFactor,
+  productionEventWeek,
   ABSENT_AFTER_DAYS,
   BUILDINGS,
   PRESTIGE,
@@ -100,13 +109,17 @@ export async function runProduction(env: NotifyEnv, game: GameRow, key: string, 
     loadTiles(db, game.id),
   ]);
   const statements = [db.prepare("INSERT INTO job_runs (game_id, job_key) VALUES (?, ?)").bind(game.id, key)];
+  const day = Math.round((Date.parse(`${date}T12:00:00Z`) - Date.parse(`${game.start_date}T12:00:00Z`)) / 864e5);
+  // Evento que afecta a la producción de hoy (de jueves a miércoles tras anunciarse).
+  const eventWeek = productionEventWeek(day);
+  const mods = eventWeek != null && eventWeek <= game.weeks ? eventProduction(eventOfWeek(game.seed, eventWeek), eventWeek, day) : null;
   const produced = new Map<number, ReturnType<typeof dailyProduction>>();
   for (const house of houses) {
     const levels = buildings.get(house.id);
     if (!levels) continue;
     const owned = tileRows.filter((t) => t.owner_house_id === house.id).map((t) => ({ type: t.type }));
     const helpActive = house.help_until_resolution != null && house.help_until_resolution > game.current_resolution;
-    const p = dailyProduction(levels, owned, helpActive ? (house.help_resource ?? "pan") : null);
+    const p = dailyProduction(levels, owned, helpActive ? (house.help_resource ?? "pan") : null, mods);
     produced.set(house.id, p);
     statements.push(
       db.prepare(
@@ -118,7 +131,6 @@ export async function runProduction(env: NotifyEnv, game: GameRow, key: string, 
 
   // Piloto automático: una vez al día, con los recursos ya producidos.
   const tiles = toEngineTiles(tileRows);
-  const day = Math.round((Date.parse(`${date}T12:00:00Z`) - Date.parse(`${game.start_date}T12:00:00Z`)) / 864e5);
   for (const house of houses) {
     if (!isAbsent(house, now, game) || house.autopilot_ran_on === date) continue;
     const levels = buildings.get(house.id);
@@ -239,7 +251,16 @@ export async function runResolution(env: NotifyEnv, game: GameRow, n: number, no
   const { week, kind } = resolutionInfo(n);
   // Cartas que actúan en esta resolución (Tregua y Tambores de guerra).
   const cardEffects = await cardsForResolution(db, game.id, n);
-  const result = resolveCampaign({ resolution: n, tiles, orders, absentHouses, ...cardEffects });
+  // Evento de la semana: lo que afecta al combate del miércoles.
+  const event = eventOfWeek(game.seed, week);
+  const result = resolveCampaign({
+    resolution: n,
+    tiles,
+    orders,
+    absentHouses,
+    ...cardEffects,
+    ...(kind === "miercoles" ? eventCombat(event) : {}),
+  });
   let finalTiles: Tile[] = result.tiles;
   const extraEvents: { type: string; visibleTo: number | null; payload: unknown }[] = [];
   const extraStatements: D1PreparedStatement[] = [];
@@ -258,6 +279,56 @@ export async function runResolution(env: NotifyEnv, game: GameRow, n: number, no
       );
       extraEvents.push({ type: "logro", visibleTo: null, payload: { house: first.winner, logro: "primera_fortaleza" } });
     }
+  }
+
+  // Miércoles: efectos al momento del evento (repartos, bandidos), tras la campaña.
+  if (kind === "miercoles") {
+    const since = new Date(now.getTime() - 7 * 864e5).toISOString();
+    const [weekTrades, prestigeNow] = await Promise.all([
+      db.prepare("SELECT house_a, house_b FROM trades WHERE game_id = ? AND valid = 1 AND at >= ?")
+        .bind(game.id, since)
+        .all<{ house_a: number; house_b: number }>(),
+      computeAllPrestige(db, game.id, houses, finalTiles, now),
+    ]);
+    const outcome = applyEventNow(
+      event,
+      finalTiles,
+      houses.map((h) => ({
+        house: h.id,
+        resources: resourcesOf(h),
+        prestige: prestigeNow.get(h.id)?.total ?? 0,
+        validTradesWeek: weekTrades.results.filter((t) => t.house_a === h.id || t.house_b === h.id).length,
+      })),
+      n,
+    );
+    finalTiles = outcome.tiles.map((t) => {
+      const extra = t.castleOf != null ? outcome.castleTroops.get(t.castleOf) : undefined;
+      return extra ? { ...t, troops: t.troops + extra } : t;
+    });
+    for (const [hid, d] of outcome.resources) {
+      // Nunca por debajo de cero (el tributo se calcula sobre lo que hay).
+      extraStatements.push(
+        db.prepare(
+          "UPDATE houses SET pan = MAX(0, pan + ?), madera = MAX(0, madera + ?), piedra = MAX(0, piedra + ?), hierro = MAX(0, hierro + ?), oro = MAX(0, oro + ?) WHERE id = ?",
+        ).bind(d.pan ?? 0, d.madera ?? 0, d.piedra ?? 0, d.hierro ?? 0, d.oro ?? 0, hid),
+      );
+    }
+    extraStatements.push(
+      db.prepare("UPDATE game_events SET applied_at = ? WHERE game_id = ? AND week = ?").bind(now.toISOString(), game.id, week),
+    );
+    const victim = (outcome.log as { house?: number }).house;
+    extraEvents.push({
+      type: "evento",
+      visibleTo: null,
+      payload: {
+        ...outcome.log,
+        week,
+        nombre: EVENTS[event.key].nombre,
+        texto: eventText(event),
+        linea: eventLine(game.seed, week, event, victim != null ? houses.find((h) => h.id === victim)?.name : undefined),
+        resources: Object.fromEntries(outcome.resources),
+      },
+    });
   }
 
   // Miércoles: la Gran Subasta se adjudica antes de la campaña.
@@ -279,7 +350,7 @@ export async function runResolution(env: NotifyEnv, game: GameRow, n: number, no
   if (kind === "domingo") {
     // Mantenimiento: Pan por tropas y por estirarse; si no llega, deserciones.
     for (const h of houses) {
-      const upkeep = applyUpkeep(finalTiles, h.id, h.pan);
+      const upkeep = applyUpkeep(finalTiles, h.id, h.pan, eventUpkeepFactor(event));
       finalTiles = upkeep.tiles;
       if (upkeep.paid > 0) extraStatements.push(db.prepare("UPDATE houses SET pan = pan - ? WHERE id = ?").bind(upkeep.paid, h.id));
       extraEvents.push({ type: "mantenimiento", visibleTo: h.id, payload: { house: h.id, ...upkeep, tiles: undefined } });

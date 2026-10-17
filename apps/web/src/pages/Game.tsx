@@ -126,6 +126,16 @@ export function Game({ id }: { id: number }) {
           </div>
         )}
         {p.estado === "finished" && <div className="clock">Partida terminada. ¡Larga vida al nuevo rey!</div>}
+        {p.estado === "active" && state.evento && (
+          <details className="event-banner">
+            <summary>
+              <strong>{state.evento.nombre}</strong> · {state.evento.texto}
+            </summary>
+            <p>
+              <em>«{state.evento.linea}»</em> — Fray Abundio
+            </p>
+          </details>
+        )}
       </header>
 
       {state.prueba?.ahora && <TestBench state={state} gameId={id} act={act} />}
