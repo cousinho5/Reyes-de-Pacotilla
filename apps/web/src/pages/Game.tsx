@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { RESOURCES } from "@reyes/engine";
 import { api, ApiError, type GameState, type HouseForm, type OrderView } from "../api";
-import { FrayAbundio, ResourceIcon, ShieldIcon } from "../art";
+import { FrayAbundio, Icon, ResourceIcon, ShieldIcon } from "../art";
 import { HouseEditor } from "../components/HouseEditor";
 import { navigate } from "../App";
 import { CastlePanel } from "../components/CastlePanel";
@@ -10,7 +10,7 @@ import { OrdersPanel } from "../components/OrdersPanel";
 import { Realm } from "../components/Realm";
 import { TestBench } from "../components/TestBench";
 import { TradePanel } from "../components/TradePanel";
-import { HOUSE_COLORS, RESOURCE_LABEL, formatDay, formatWhen, timeLeft } from "../ui";
+import { RESOURCE_LABEL, formatDay, formatShort, timeLeft } from "../ui";
 
 type Tab = "mapa" | "castillo" | "ordenes" | "comercio" | "reino";
 
@@ -80,6 +80,9 @@ export function Game({ id }: { id: number }) {
   const me = state.casas.find((h) => h.id === state.yo.casa)!;
   const offersForMe = (state.ofertas ?? []).filter((o) => o.estado === "open" && o.para === state.yo.casa).length;
   const p = state.partida;
+  const rank = [...state.casas]
+    .sort((x, y) => (y.prestigio?.total ?? 0) - (x.prestigio?.total ?? 0))
+    .findIndex((h) => h.id === me.id) + 1;
 
   // Cada cambio de órdenes se guarda al momento (no hay que "sellar").
   const updateDraft = async (orders: OrderView[]) => {
@@ -99,32 +102,49 @@ export function Game({ id }: { id: number }) {
 
   return (
     <div className="game">
-      <header className="topbar" style={{ borderColor: HOUSE_COLORS[me.color]?.hex }}>
+      <header className="topbar">
         <div className="topbar-title">
-          <button className="link" onClick={() => navigate("/")} aria-label="Volver al inicio">
+          <button className="back" onClick={() => navigate("/")} aria-label="Volver al inicio">
             ‹
           </button>
-          <ShieldIcon color={me.color} escudo={me.escudo} size={22} />
-          <strong>{me.nombre}</strong>
-          <span className="muted">· {me.prestigio?.total ?? 0} de Prestigio</span>
+          <ShieldIcon color={me.color} escudo={me.escudo} size={34} />
+          <div className="grow">
+            <strong>{me.nombre}</strong>
+            <span className="standing">
+              <Icon name="corona" size={16} color="#d6a64b" />
+              <b>{me.prestigio?.total ?? 0}</b> de Prestigio
+              {rank > 0 && <> · {rank}.º de {state.casas.length}</>}
+            </span>
+          </div>
         </div>
         <div className="resources" aria-label="Recursos">
           {RESOURCES.map((r) => (
-            <span key={r} className={`res res-${r}`} title={RESOURCE_LABEL[r]}>
-              <ResourceIcon r={r} /> {state.yo.recursos?.[r] ?? 0}
+            <span key={r} className="res" title={RESOURCE_LABEL[r]}>
+              <ResourceIcon r={r} size={20} />
+              {state.yo.recursos?.[r] ?? 0}
               <span className="sr-only"> de {RESOURCE_LABEL[r]}</span>
             </span>
           ))}
         </div>
+      </header>
+
+      <div className="status">
         {p.estado === "active" && p.proximaResolucion && (
           <div className="clock">
+            <Icon name="reloj" size={18} color="#d6a64b" />
             {p.haEmpezado ? (
               <>
-                Resolución {p.proximaResolucion} de {p.totalResoluciones}: {formatWhen(p.resolucion)} ·{" "}
-                <strong>{p.ordenesAbiertas ? `órdenes: ${timeLeft(p.cierre, state.prueba?.ahora ? Date.parse(state.prueba.ahora) : undefined)}` : "órdenes cerradas"}</strong>
+                <span>
+                  Resolución {p.proximaResolucion} de {p.totalResoluciones}: <strong>{formatShort(p.resolucion)}</strong>
+                </span>
+                <span className={`countdown ${p.ordenesAbiertas ? "" : "closed"}`} title="Tiempo para dar órdenes">
+                  {p.ordenesAbiertas
+                    ? timeLeft(p.cierre, state.prueba?.ahora ? Date.parse(state.prueba.ahora) : undefined).replace("faltan ", "")
+                    : "cerradas"}
+                </span>
               </>
             ) : (
-              <>La partida empieza el {formatDay(p.inicio)}. Ya puedes preparar tus órdenes.</>
+              <span>La partida empieza el {formatDay(p.inicio)}. Ya puedes preparar tus órdenes.</span>
             )}
           </div>
         )}
@@ -132,17 +152,17 @@ export function Game({ id }: { id: number }) {
         {p.estado === "active" && state.evento && (
           <details className="event-banner">
             <summary>
-              <strong>{state.evento.nombre}</strong> · {state.evento.texto}
+              <strong>{state.evento.nombre}.</strong> {state.evento.texto}
             </summary>
             <p className="event-line">
-              <FrayAbundio mood="solemne" size={40} />
+              <FrayAbundio mood="solemne" size={44} />
               <span>
-                <em>«{state.evento.linea}»</em> — Fray Abundio
+                <em>«{state.evento.linea}»</em>
               </span>
             </p>
           </details>
         )}
-      </header>
+      </div>
 
       {state.prueba?.ahora && <TestBench state={state} gameId={id} act={act} />}
 
@@ -165,15 +185,21 @@ export function Game({ id }: { id: number }) {
       <nav className="tabs" aria-label="Secciones">
         {(
           [
-            ["mapa", "Mapa"],
-            ["castillo", "Castillo"],
-            ["ordenes", draft.length > 0 ? `Órdenes (${draft.length})` : "Órdenes"],
-            ["comercio", offersForMe > 0 ? `Comercio (${offersForMe})` : "Comercio"],
-            ["reino", "Reino"],
-          ] as [Tab, string][]
-        ).map(([key, label]) => (
+            ["mapa", "Mapa", 0],
+            ["castillo", "Castillo", 0],
+            ["ordenes", "Órdenes", draft.length],
+            ["comercio", "Comercio", offersForMe],
+            ["reino", "Reino", 0],
+          ] as [Tab, string, number][]
+        ).map(([key, label, count]) => (
           <button key={key} className={tab === key ? "active" : ""} onClick={() => setTab(key)} aria-current={tab === key}>
+            <Icon name={key} size={28} color={tab === key ? "#d6a64b" : "#8a7560"} />
             {label}
+            {count > 0 && (
+              <span className="badge" aria-label={`(${count})`}>
+                {count}
+              </span>
+            )}
           </button>
         ))}
       </nav>

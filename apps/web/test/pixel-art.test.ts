@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { SHIELD_DIVISIONS, SHIELD_SHAPES, SHIELD_SYMBOLS } from "@reyes/engine";
 import { SHIELD_H, SHIELD_W, SYMBOL_ART, shieldGrid } from "../src/art/shield";
-import { FRAY_SPRITES, RESOURCE_SPRITES, TILE_SPRITES } from "../src/art/sprites";
+import { FRAY_SPRITES, RESOURCE_SPRITES } from "../src/art/sprites";
+import { TILE_ART, WORLD } from "../src/art/tiles";
 
 const count = (rows: string[], chars: string) => rows.join("").split("").filter((c) => chars.includes(c)).length;
 
@@ -31,13 +32,15 @@ describe("Pixel art", () => {
   });
 
   it("todos los sprites son rectangulares y solo usan colores de su paleta", () => {
-    const all = [...Object.values(TILE_SPRITES), ...Object.values(RESOURCE_SPRITES), ...Object.values(FRAY_SPRITES)];
+    const tiles = Object.values(TILE_ART).map((grid) => ({ grid, palette: WORLD }));
+    const all = [...tiles, ...Object.values(RESOURCE_SPRITES), ...Object.values(FRAY_SPRITES)];
     for (const s of all) {
       const w = s.grid[0]!.length;
       expect(s.grid.every((r) => r.length === w)).toBe(true);
       for (const c of s.grid.join("")) if (c !== ".") expect(s.palette[c], `color «${c}»`).toBeDefined();
     }
-    expect(Object.values(TILE_SPRITES).every((s) => s.grid.length === 16 && s.grid[0]!.length === 16)).toBe(true);
-    expect(Object.values(FRAY_SPRITES).every((s) => s.grid.length === 24 && s.grid[0]!.length === 24)).toBe(true);
+    expect(tiles.every((s) => s.grid.length === 32 && s.grid[0]!.length === 32)).toBe(true);
+    expect(Object.values(RESOURCE_SPRITES).every((s) => s.grid.length === 16 && s.grid[0]!.length === 16)).toBe(true);
+    expect(Object.values(FRAY_SPRITES).every((s) => s.grid.length === 32 && s.grid[0]!.length === 32)).toBe(true);
   });
 });

@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
 import { FORTIFY_COST, TILE_NAMES, areAdjacent } from "@reyes/engine";
 import { api, type GameState, type OrderView, type TileView } from "../api";
-import { ShieldIcon, TileArt } from "../art";
-import { TILE_LABEL, houseColor, houseName } from "../ui";
+import { Icon, ShieldIcon, TileArt } from "../art";
+import { HOUSE_COLORS, TERRITORY, TILE_LABEL, houseName } from "../ui";
 
 interface Props {
   state: GameState;
@@ -44,50 +44,70 @@ export function MapView({ state, draft, setDraft, act }: Props) {
 
   const outgoing = (t: TileView) => draft.filter((o) => o.desde === t.id);
 
+  // Frontera de cada casa: una línea de su color (con un filo claro por dentro)
+  // solo en los lados donde la casilla vecina es de otro dueño.
+  const frontier = (t: TileView, color: string) => {
+    const other = (dx: number, dy: number) => tiles.find((n) => n.x === t.x + dx && n.y === t.y + dy)?.owner !== t.owner;
+    const sides: [number, number, (w: number) => string][] = [
+      [0, -1, (w) => `0 ${w}px`],
+      [0, 1, (w) => `0 -${w}px`],
+      [-1, 0, (w) => `${w}px 0`],
+      [1, 0, (w) => `-${w}px 0`],
+    ];
+    const lines = sides.filter(([dx, dy]) => other(dx, dy));
+    return [
+      ...lines.map(([, , off]) => `inset ${off(3)} 0 ${color}`),
+      ...lines.map(([, , off]) => `inset ${off(4)} 0 rgba(255, 255, 255, 0.55)`),
+    ].join(", ");
+  };
+
   return (
     <div>
-      <div className="map" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
-        {tiles.map((t) => {
-          const owner = houseColor(state.casas, t.owner);
-          const house = t.owner != null ? state.casas.find((h) => h.id === t.owner) : undefined;
-          const classes = [
-            "tile",
-            `tile-${t.type}`,
-            t.visible ? "" : "fogged",
-            selected === t.id ? "selected" : "",
-            isTarget(t) ? "target" : "",
-            compose?.from === t.id ? "source" : "",
-          ].join(" ");
-          return (
-            <button
-              key={t.id}
-              className={classes}
-              onClick={() => onTile(t)}
-              aria-label={`${t.nombre}, ${TILE_LABEL[t.type]}, ${t.owner ? houseName(state.casas, t.owner) : "neutral"}, ${
-                t.troops == null ? "tropas desconocidas" : `${t.troops} tropas`
-              }`}
-            >
-              <TileArt type={t.type} flag={owner} className="tile-art" />
-              {owner && <span className="tile-owner" style={{ boxShadow: `inset 0 0 0 4px ${owner}` }} aria-hidden />}
-              <span className="tile-troops">{t.troops == null ? "?" : t.troops}</span>
-              {t.fortifiedUntil != null && t.fortifiedUntil > state.partida.resolucionActual && (
-                <span className="tile-fort" aria-hidden>
-                  ⛨
-                </span>
-              )}
-              {house && t.type !== "castillo" && (
-                <span className="tile-banner" aria-hidden>
-                  <ShieldIcon color={house.color} escudo={house.escudo} size={16} title="" />
-                </span>
-              )}
-              {outgoing(t).length > 0 && (
-                <span className="tile-orders" aria-hidden>
-                  {outgoing(t).map((o) => arrow(t, byId.get(o.hacia)!)).join("")}
-                </span>
-              )}
-            </button>
-          );
-        })}
+      <div className="board">
+        <div className="map" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
+          {tiles.map((t) => {
+            const house = t.owner != null ? state.casas.find((h) => h.id === t.owner) : undefined;
+            const border = house ? TERRITORY[house.color] ?? "#fff" : null;
+            const classes = [
+              "tile",
+              `tile-${t.type}`,
+              t.visible ? "" : "fogged",
+              selected === t.id ? "selected" : "",
+              isTarget(t) ? "target" : "",
+              compose?.from === t.id ? "source" : "",
+            ].join(" ");
+            const fortified = t.fortifiedUntil != null && t.fortifiedUntil > state.partida.resolucionActual;
+            return (
+              <button
+                key={t.id}
+                className={classes}
+                onClick={() => onTile(t)}
+                aria-label={`${t.nombre}, ${TILE_LABEL[t.type]}, ${t.owner ? houseName(state.casas, t.owner) : "neutral"}, ${
+                  t.troops == null ? "tropas desconocidas" : `${t.troops} tropas`
+                }`}
+              >
+                <TileArt type={t.type} flag={house ? HOUSE_COLORS[house.color]?.hex : null} className="tile-art" />
+                {border && <span className="tile-owner" style={{ boxShadow: frontier(t, border) }} aria-hidden />}
+                {house && t.type !== "castillo" && (
+                  <span className="tile-banner" aria-hidden>
+                    <ShieldIcon color={house.color} escudo={house.escudo} size={15} title="" />
+                  </span>
+                )}
+                {fortified && (
+                  <span className="tile-fort" aria-hidden>
+                    <Icon name="muralla" size={16} color="#aaa5b1" />
+                  </span>
+                )}
+                {t.troops != null && <span className="tile-troops">{t.troops}</span>}
+                {outgoing(t).length > 0 && (
+                  <span className="tile-orders" aria-hidden>
+                    {outgoing(t).map((o) => arrow(t, byId.get(o.hacia)!)).join("")}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {compose ? (
@@ -116,7 +136,9 @@ export function MapView({ state, draft, setDraft, act }: Props) {
           />
         )
       )}
-      {!tile && !compose && <p className="hint">Toca una casilla tuya (las de borde de tu color; al principio, tu castillo) para mover o atacar con sus tropas.</p>}
+      {!tile && !compose && (
+        <p className="hint">Toca una casilla con la frontera de tu color (al principio, tu castillo) para mover o atacar con sus tropas.</p>
+      )}
     </div>
   );
 }
@@ -144,27 +166,39 @@ function TilePanel({
   onFortify: () => void;
 }) {
   const mine = tile.owner === state.yo.casa;
+  const owner = tile.owner != null ? state.casas.find((h) => h.id === tile.owner) : undefined;
   const note =
     tile.type === "castillo" ? null : TILE_NAMES[tile.type]?.find((n) => tile.nombre.startsWith(n.name))?.note ?? null;
   const fortified = tile.fortifiedUntil != null && tile.fortifiedUntil > state.partida.resolucionActual;
   return (
     <section className="card tile-panel">
-      <h2>{tile.nombre}</h2>
-      <p className="muted">
-        {TILE_LABEL[tile.type]} · {tile.owner ? houseName(state.casas, tile.owner) : "Neutral"}
-        {fortified && " · fortificada"}
-      </p>
+      <div className="tile-head">
+        <TileArt type={tile.type} flag={owner ? HOUSE_COLORS[owner.color]?.hex : null} className="thumb" />
+        <div className="grow">
+          <h2>{tile.nombre}</h2>
+          <p className="muted">
+            {TILE_LABEL[tile.type]} · {mine ? "tuya" : tile.owner ? houseName(state.casas, tile.owner) : "neutral"}
+            {fortified && " · fortificada"}
+          </p>
+        </div>
+        <div className="troop-count">
+          {tile.troops ?? "?"}
+          <small>{tile.troops == null ? "sin ver" : tile.troops === 1 ? "tropa" : "tropas"}</small>
+        </div>
+      </div>
       {note && <p className="note">«{note}»</p>}
-      <p>{tile.troops == null ? "No sabes cuántas tropas hay: está fuera de tu vista." : `Tropas: ${tile.troops}`}</p>
+      {tile.troops == null && <p className="muted">No sabes cuántas tropas hay: está fuera de tu vista.</p>}
       {mine && open && available > 0 && (
         <div className="actions">
-          <button onClick={() => onOrder("mover")}>Mover / atacar</button>
+          <button className="primary grow" onClick={() => onOrder("mover")}>
+            Mover o atacar
+          </button>
           <button onClick={() => onOrder("apoyar")}>Apoyar</button>
         </div>
       )}
       {mine && tile.type !== "castillo" && !fortified && (
-        <button className="secondary" onClick={onFortify}>
-          Fortificar ({FORTIFY_COST.piedra} de Piedra, +25% de defensa dos resoluciones)
+        <button className="secondary wide" onClick={onFortify}>
+          <Icon name="muralla" size={18} color="#827d8a" /> Fortificar: {FORTIFY_COST.piedra} de Piedra, +25% de defensa dos resoluciones
         </button>
       )}
     </section>

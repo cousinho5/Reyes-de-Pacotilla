@@ -1,4 +1,4 @@
-import { ResourceIcon } from "../art";
+import { ResourceIcon, ShieldIcon } from "../art";
 import { AuctionPanel } from "./AuctionPanel";
 import { useState } from "react";
 import { RESOURCES, type Resources } from "@reyes/engine";
@@ -37,26 +37,28 @@ export function TradePanel({ state, act }: Props) {
   const closed = offers.filter((o) => o.estado !== "open");
   const [draft, setDraft] = useState<{ para: number | null; da: Record<keyof Resources, number>; pide: Record<keyof Resources, number>; contra?: OfferInfo } | null>(null);
   const active = state.partida.estado === "active";
-  const color = (id: number) => HOUSE_COLORS[state.casas.find((h) => h.id === id)?.color ?? ""]?.hex;
+  const house = (id: number) => state.casas.find((h) => h.id === id);
 
   const startCounter = (o: OfferInfo) =>
     setDraft({ para: o.de, da: { ...o.pide }, pide: { ...o.da }, contra: o });
 
   const OfferCard = ({ o, children }: { o: OfferInfo; children?: React.ReactNode }) => (
     <li className="offer">
-      <div>
-        <span className="swatch small" style={{ background: color(o.de) }} />{" "}
-        <strong>{o.de === me ? "Tú" : houseName(state.casas, o.de)}</strong>
-        {o.para != null && o.de === me && <> → {houseName(state.casas, o.para)}</>}
-        {o.contraofertaDe != null && <small className="muted"> · contraoferta</small>}
-        <div className="offer-terms">
-          <span>
-            Da: <Bundle r={o.da} />
-          </span>
-          <span>
-            Pide: <Bundle r={o.pide} />
-          </span>
-        </div>
+      <div className="offer-who">
+        <ShieldIcon color={house(o.de)?.color ?? ""} escudo={house(o.de)?.escudo} size={26} />
+        <span>
+          <strong>{o.de === me ? "Tú" : houseName(state.casas, o.de)}</strong>
+          {o.para != null && o.de === me && <> a {houseName(state.casas, o.para)}</>}
+          {o.contraofertaDe != null && <small className="muted"> · contraoferta</small>}
+        </span>
+      </div>
+      <div className="offer-terms">
+        <span>
+          <em>{o.de === me ? "Das" : "Te da"}</em> <Bundle r={o.da} />
+        </span>
+        <span>
+          <em>{o.de === me ? "Pides" : "A cambio de"}</em> <Bundle r={o.pide} />
+        </span>
       </div>
       {active && <div className="actions">{children}</div>}
     </li>

@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { api, type GameState } from "../api";
 import { navigate } from "../App";
-import { HOUSE_COLORS, formatWhen } from "../ui";
+import { ShieldIcon } from "../art";
+import { formatShort } from "../ui";
 
 /**
  * Mesa de pruebas: solo aparece en las partidas de prueba, para quien las creó.
@@ -40,25 +41,10 @@ export function TestBench({
 
   return (
     <section className="testbench" aria-label="Mesa de pruebas">
-      <div className="testbench-head">
-        <strong>Prueba</strong>
-        <span>{formatWhen(t.ahora)}</span>
-      </div>
-      {active && (
-        <div className="testbench-buttons">
-          <button disabled={busy} onClick={() => run(() => api.testAdvance(gameId, "paso"))}>
-            Siguiente paso
-          </button>
-          <button disabled={busy} onClick={() => run(() => api.testAdvance(gameId, "resolucion"), "Resolución hecha. Mira la crónica en Reino.")}>
-            Resolver
-          </button>
-          <button disabled={busy} onClick={() => run(toEnd, "Fin de la prueba. Clasificación final en Reino.")}>
-            Hasta el final
-          </button>
-        </div>
-      )}
       <details>
-        <summary>Jugar como otra casa · borrar</summary>
+        <summary>
+          <strong>Prueba</strong> · ahora es <span className="when">{formatShort(t.ahora)}</span> · más opciones
+        </summary>
         <div className="testbench-houses">
           {(t.casas ?? []).map((h) => (
             <button
@@ -68,7 +54,7 @@ export function TestBench({
               disabled={busy}
               onClick={() => run(() => api.testPlayAs(gameId, h.id), `Ahora juegas como ${h.nombre}.`)}
             >
-              <span className="swatch" style={{ background: HOUSE_COLORS[h.color]?.hex }} />
+              <ShieldIcon color={h.color} escudo={h.escudo} size={18} title="" />
               {h.nombre}
               {h.bot && <small> ({h.personalidad ?? "bot"})</small>}
             </button>
@@ -101,6 +87,19 @@ export function TestBench({
           </button>
         )}
       </details>
+      {active && (
+        <div className="testbench-buttons">
+          <button disabled={busy} onClick={() => run(() => api.testAdvance(gameId, "paso"))}>
+            Siguiente paso
+          </button>
+          <button disabled={busy} onClick={() => run(() => api.testAdvance(gameId, "resolucion"), "Resolución hecha. Mira la crónica en Reino.")}>
+            Resolver
+          </button>
+          <button disabled={busy} onClick={() => run(toEnd, "Fin de la prueba. Clasificación final en Reino.")}>
+            Hasta el final
+          </button>
+        </div>
+      )}
     </section>
   );
 }
