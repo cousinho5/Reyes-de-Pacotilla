@@ -53,6 +53,24 @@ npm run simular -- --semanas 4                    # duración de la partida
 npm run simular -- --json datos.json              # además, todos los datos
 ```
 
+## Tipos de tropa (18 de octubre de 2026, fase 3 del sistema de guerra v3, aplicado)
+
+Con hexágonos, resolución diaria y terreno en las dos columnas; la segunda añade Jinetes y Catapultas (`UNITS` en `rules.ts`). Se lanza con `npm run simular -- --partidas 300` y `--tropas no` para comparar.
+
+| Dato (por partida) | Solo Mesnada | Con tipos de tropa |
+| --- | --- | --- |
+| Reclutadas: Mesnada / Jinetes / Catapultas | 738 / 0 / 0 | 649 / 67 / 15 |
+| Combates entre casas (4 / 6 / 8 casas) | 35,4 / 54,6 / 58,9 | 37,8 / 58,1 / 65,8 |
+| Ataques que toman la casilla | 80% | 77% |
+| Guerrero, veces lo esperado | 1,4 | 1,3 |
+| Casas con deserciones | 11% | 13% |
+| Prestigio medio del ganador | 63,9 | 62,4 |
+
+- **Los bots reclutan pocos jinetes y catapultas** (9% y 2% de las tropas): eligen por reglas sencillas. Lo que importa es que ningún tipo desequilibre la partida, y no lo hace. En una primera prueba con la mitad de jinetes el resultado fue el mismo.
+- **Hay algo más de guerra entre casas** (+6%), sobre todo con 8 casas, porque los jinetes hacen rentables ataques que antes no salían.
+- **Las catapultas abren las fortalezas:** el objetivo "puerto y fortaleza" se cumple un poco más (15% → 18%).
+- Las deserciones suben un poco (11% → 13%) porque las catapultas comen doble.
+
 ## Terreno que cuenta (17 de octubre de 2026, fase 2 del sistema de guerra v3, aplicado)
 
 Hexágonos y resolución diaria en las dos columnas; la segunda añade el terreno (`TERRAIN` en `rules.ts`): bosque y cantera +25% de defensa, montaña +50%, emboscada en el bosque, atalaya en la montaña, caminos de dos casillas por noche y travesía de puerto a puerto. Se lanza con `npm run simular -- --partidas 300` y `--terreno no` para comparar.

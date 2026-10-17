@@ -4,6 +4,7 @@
 import { defenseMultiplier } from "../combat";
 import { dailyProduction, upgradeCost, weeklyUpkeep } from "../economy";
 import { ambushed, visibleTileIds } from "../fog";
+import { upkeepTroops } from "../units";
 import { areAdjacent } from "../map";
 import type { ObjectiveKey } from "../objectives";
 import { FORTIFY_COST, PRESTIGE, SPECIALTY_PAIRS, TROOP_COST, TROOPS_PER_PAN } from "../rules";
@@ -108,7 +109,7 @@ export function situation(view: AiView, p: Personality): Situation {
   const troops = own.reduce((a, t) => a + t.troops, 0);
   const controlled = own.filter((t) => t.type !== "castillo").length;
   const daysToSunday = 6 - (view.day % 7);
-  const upkeep = weeklyUpkeep(troops, controlled);
+  const upkeep = weeklyUpkeep(upkeepTroops(own), controlled);
   const stretch = upkeep - weeklyUpkeep(troops, 0);
   const focus = focusBuilding(view.buildings);
   // Ahorra para la mejora de su especialidad si su objetivo secreto es la obra maestra.

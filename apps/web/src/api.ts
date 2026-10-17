@@ -98,6 +98,9 @@ export interface TileView {
   type: TileType;
   owner: number | null;
   troops: number | null;
+  /** De esas tropas, Jinetes y Catapultas (el resto, Mesnada). Solo si se ven. */
+  jinetes?: number;
+  catapultas?: number;
   fortifiedUntil: number | null;
   castleOf?: number | null;
   visible: boolean;
@@ -113,6 +116,9 @@ export interface OrderView {
   hacia: number;
   apoyaDesde: number | null;
   tropas: number;
+  /** De esas tropas, Jinetes y Catapultas (el resto, Mesnada). */
+  jinetes?: number;
+  catapultas?: number;
 }
 
 export interface EventView {
@@ -229,7 +235,8 @@ export const api = {
   editHouse: (id: number, body: HouseForm) => call<{ ok: true }>("PUT", `/partidas/${id}/casa`, body),
   start: (id: number, inicio?: string) => call<{ ok: true; inicio: string }>("POST", `/partidas/${id}/empezar`, inicio ? { inicio } : {}),
   upgrade: (id: number, edificio: BuildingKind) => call<{ ok: true }>("POST", `/partidas/${id}/mejorar`, { edificio }),
-  recruit: (id: number, cantidad: number) => call<{ ok: true }>("POST", `/partidas/${id}/reclutar`, { cantidad }),
+  recruit: (id: number, cantidad: number, tipo: "mesnada" | "jinetes" | "catapultas" = "mesnada") =>
+    call<{ ok: true }>("POST", `/partidas/${id}/reclutar`, { cantidad, tipo }),
   fortify: (id: number, casilla: number) => call<{ ok: true }>("POST", `/partidas/${id}/fortificar`, { casilla }),
   setHelp: (id: number, recurso: Resource) => call<{ ok: true }>("POST", `/partidas/${id}/ayuda`, { recurso }),
   saveOrders: (id: number, ordenes: OrderView[]) => call<{ ok: true }>("PUT", `/partidas/${id}/ordenes`, { ordenes }),

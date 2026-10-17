@@ -2,17 +2,21 @@
 // entre mejoras y reclutamiento según lo que rinde cada cosa.
 
 import { checkFortify, recruitCost } from "../actions";
-import { defenseMultiplier } from "../combat";
+import { defenseMultiplier, walled } from "../combat";
 import { canAfford, upgradeCost, weeklyUpkeep } from "../economy";
-import { BUILDING_PRODUCTION, BUILDING_RESOURCE, OBJECTIVE_TARGETS, PRESTIGE } from "../rules";
+import { BUILDING_PRODUCTION, BUILDING_RESOURCE, OBJECTIVE_TARGETS, PRESTIGE, UNITS } from "../rules";
+import { unitsOf } from "../units";
 import { BUILDINGS, RESOURCES, type BuildingKind, type Resource, type Resources, type TileId } from "../types";
-import { militaryNeed } from "./orders";
+import { militaryNeed, targets } from "./orders";
 import { PRESTIGE_UNIT, valueOf, type Situation } from "./view";
 
 export interface DayPlan {
   /** Mejoras en orden (puede haber varias el mismo día). */
   upgrades: BuildingKind[];
+  /** Tropas nuevas en el castillo: Mesnada, Jinetes y Catapultas. */
   recruit: number;
+  riders: number;
+  engines: number;
   fortify: { tile: TileId; until: number }[];
   /** Coste total de todo lo anterior. */
   cost: Resources;
@@ -27,7 +31,15 @@ export function planDay(s: Situation): DayPlan {
   const { view, p, own } = s;
   const res = { ...view.resources };
   const levels = { ...view.buildings };
-  const plan: DayPlan = { upgrades: [], recruit: 0, fortify: [], cost: { pan: 0, madera: 0, piedra: 0, hierro: 0, oro: 0 }, help: "pan" };
+  const plan: DayPlan = {
+    upgrades: [],
+    recruit: 0,
+    riders: 0,
+    engines: 0,
+    fortify: [],
+    cost: { pan: 0, madera: 0, piedra: 0, hierro: 0, oro: 0 },
+    help: "pan",
+  };
   const spend = (cost: Partial<Resources>) => {
     for (const [r, v] of Object.entries(cost) as [Resource, number][]) {
       res[r] -= v;
@@ -92,18 +104,48 @@ export function planDay(s: Situation): DayPlan {
       }
     }
 
-    const missing = need - plan.recruit;
+    const missing = need - plan.recruit - plan.riders;
     if (missing > 0) {
       let n = Math.min(missing, RECRUIT_CHUNK);
-      while (n > 0 && (!canAfford(res, recruitCost(n)) || res.pan - (recruitCost(n).pan ?? 0) < reservePan(plan.recruit + n))) n--;
+      while (n > 0 && (!canAfford(res, recruitCost(n)) || res.pan - (recruitCost(n).pan ?? 0) < reservePan(plan.recruit + plan.riders + n))) n--;
       if (n > 0 && (urgent || !blocked(recruitCost(n), false))) {
         const score = p.military * (urgent ? 2.2 : 1.3);
+        // Una parte, jinetes: más cuantas más ganas de atacar a otras casas (si llega el Oro).
+        let k = UNITS.enabled ? Math.floor(n * Math.max(0, Math.min(0.6, 0.25 + 0.3 * (p.houseBias - 0.3)))) : 0;
+        const mix = (k: number) => {
+          const a = recruitCost(n - k);
+          const b = recruitCost(k, "jinetes");
+          const out: Partial<Resources> = { ...a };
+          for (const [r, v] of Object.entries(b) as [Resource, number][]) out[r] = (out[r] ?? 0) + v;
+          return out;
+        };
+        while (k > 0 && (!canAfford(res, mix(k)) || blocked(mix(k), false))) k--;
         if (!best || score > best.score) {
           best = {
             score,
             apply: () => {
-              spend(recruitCost(n));
-              plan.recruit += n;
+              spend(mix(k));
+              plan.recruit += n - k;
+              plan.riders += k;
+            },
+          };
+        }
+      }
+    }
+
+    // Catapultas: un par si hay a tiro una casilla con murallas que valga la pena.
+    const engines = own.reduce((a, t) => a + unitsOf(t).catapultas, 0) + plan.engines;
+    if (UNITS.enabled && engines < 2) {
+      const cost = recruitCost(1, "catapultas");
+      const walledTarget = targets(s).slice(0, 3).some((t) => walled(t.tile, view.nextResolution));
+      if (walledTarget && canAfford(res, cost) && !blocked(cost, false)) {
+        const score = p.military * 1.4;
+        if (!best || score > best.score) {
+          best = {
+            score,
+            apply: () => {
+              spend(cost);
+              plan.engines += 1;
             },
           };
         }

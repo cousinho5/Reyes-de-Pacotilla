@@ -3,7 +3,8 @@
 // rules.ts (TERRAIN).
 
 import { areAdjacent, distance } from "./map";
-import { TERRAIN } from "./rules";
+import { TERRAIN, UNITS } from "./rules";
+import { isPlain, type Units } from "./units";
 import type { HouseId, Tile, TileType } from "./types";
 
 type Cell = Pick<Tile, "x" | "y" | "type">;
@@ -80,16 +81,17 @@ export function roadSet(cells: Cell[]): Set<string> {
   return set;
 }
 
-export type MarchKind = "vecina" | "camino" | "mar";
+export type MarchKind = "vecina" | "camino" | "mar" | "carga";
 
 /**
  * Cómo puede llegar un grupo de `house` de `from` a `to` en una noche:
  * - "vecina": casillas que se tocan.
  * - "camino": dos tramos de camino seguidos con la casilla de en medio propia.
  * - "mar": de un puerto propio a otro puerto.
- * null si no puede.
+ * - "carga": un grupo solo de jinetes cruza dos casillas llanas, la de en medio propia.
+ * null si no puede. `units`: composición del grupo (si falta, se mira solo el terreno).
  */
-export function marchKind(from: Tile, to: Tile, tiles: Tile[], house: HouseId): MarchKind | null {
+export function marchKind(from: Tile, to: Tile, tiles: Tile[], house: HouseId, units?: Units): MarchKind | null {
   if (from.id === to.id) return null;
   if (areAdjacent(from, to)) return "vecina";
   if (TERRAIN.sea && from.type === "puerto" && to.type === "puerto" && from.owner === house) return "mar";
@@ -99,6 +101,11 @@ export function marchKind(from: Tile, to: Tile, tiles: Tile[], house: HouseId): 
       (m) => m.owner === house && areAdjacent(from, m) && areAdjacent(m, to) && roads.has(pairKey(from, m)) && roads.has(pairKey(m, to)),
     );
     if (mid) return "camino";
+    const riders = units && UNITS.enabled && units.jinetes > 0 && units.mesnada === 0 && units.catapultas === 0;
+    if (riders && isPlain(to.type)) {
+      const plain = tiles.find((m) => m.owner === house && isPlain(m.type) && areAdjacent(from, m) && areAdjacent(m, to));
+      if (plain) return "carga";
+    }
   }
   return null;
 }

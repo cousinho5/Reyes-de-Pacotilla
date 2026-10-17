@@ -200,7 +200,7 @@ Lo que lleva al jugador a entrar a diario no es una obligación, sino que cada d
 
 ## 8. Órdenes y combate
 
-> **Sistema de guerra v3** (decidido el 17 de octubre de 2026). **Ya hecho:** casillas hexagonales, una resolución cada día a las 22:00 y terreno que cuenta (sección 8.8). **Pendiente:** tres tipos de tropa (Mesnada, Jinetes y Catapultas), terreno que cambia el combate, flanqueo, asedios de varios días (el asedio a un castillo da Prestigio), un Capitán por casa que se puede capturar y rescatar, Gloria por ganar batallas y repetición animada de cada noche. La propuesta completa está en el documento "Reyes de Pacotilla: propuesta del nuevo sistema de guerra". Primeros resultados del simulador en `docs/simulaciones.md`. Hasta que esté hecho, rige lo que sigue.
+> **Sistema de guerra v3** (decidido el 17 de octubre de 2026). **Ya hecho:** casillas hexagonales, una resolución cada día a las 22:00, terreno que cuenta (sección 8.8) y tres tipos de tropa (sección 8.9). **Pendiente:** terreno que cambia el combate, flanqueo, asedios de varios días (el asedio a un castillo da Prestigio), un Capitán por casa que se puede capturar y rescatar, Gloria por ganar batallas y repetición animada de cada noche. La propuesta completa está en el documento "Reyes de Pacotilla: propuesta del nuevo sistema de guerra". Primeros resultados del simulador en `docs/simulaciones.md`. Hasta que esté hecho, rige lo que sigue.
 
 ### 8.1 Órdenes
 
@@ -290,6 +290,21 @@ El terreno se suma a las demás bonificaciones del defensor y el tope sigue en x
 - **Travesía.** Desde un puerto tuyo, un grupo llega a **cualquier otro puerto en una noche**, también para atacarlo. Tampoco admite apoyos. La propuesta decía dos noches, pero eso exigía guardar tropas "en el mar" entre resoluciones; con una noche y sin apoyos el puerto ya gana valor sin complicar las reglas.
 
 Simulación (300 partidas de 6 semanas, `docs/simulaciones.md`): con terreno hay un 15% menos de batallas entre casas (aún unas 2,5 veces más que con dos resoluciones por semana), y las casas con deserciones bajan del 20% al 11%. Los bots marchan por camino unas 21 veces por partida y casi no usan el mar (0,6 travesías): queda para las personas.
+
+### 8.9 Tipos de tropa (diseño v3, fase 3)
+
+| Tropa | Coste | Fuerza | Movimiento | Notas |
+| --- | --- | --- | --- | --- |
+| **Mesnada** | 2 Hierro + 2 Pan | 1 | Una casilla | La única que sube a la montaña. |
+| **Jinetes** | 3 Hierro + 2 Pan + 1 Oro | 1; **2 al atacar una casilla llana** (campos o páramo) sin murallas; 0,5 en el bosque | Una casilla, o **dos por lo llano** si el grupo es solo de jinetes y la de en medio es tuya | No suben a la montaña. |
+| **Catapultas** | 4 Madera + 2 Hierro | 0 | Una casilla | Cada una que ataca quita **25%** al bono de fortificación o de fortaleza (nunca al resto). Si el ataque fracasa, se pierden. No suben a la montaña. Comen como dos tropas. |
+
+- Cada casilla guarda cuántas tropas tiene y, de ellas, cuántas son Jinetes y Catapultas. Cada orden dice lo mismo.
+- **Bajas:** el ganador pierde tropas en proporción y, al redondear, caen antes Catapultas y Jinetes que Mesnada. En un repliegue vuelve la mitad de la Mesnada y de los Jinetes. Si el Pan no llega el domingo, desertan primero los de la Mesnada.
+- En un choque frontal no hay terreno: cada tropa cuenta 1 (las catapultas, 0).
+- La niebla esconde también de qué tipo son las tropas que no se ven.
+
+Simulación (300 partidas de 6 semanas, `docs/simulaciones.md`): los bots reclutan un 9% de jinetes y un 2% de catapultas. Hay un 6% más de batallas entre casas y la ventaja del guerrero baja de 1,4 a 1,3 veces lo esperado.
 
 ## 9. Comercio, subasta y pactos
 

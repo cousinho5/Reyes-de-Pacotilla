@@ -362,8 +362,12 @@ export async function botsPlayDay(env: NotifyEnv, game: GameRow): Promise<void> 
     for (const f of plan.fortify) {
       st.push(db.prepare("UPDATE tiles SET fortified_until = ? WHERE id = ? AND owner_house_id = ?").bind(f.until, f.tile, h.id));
     }
-    if (plan.recruit > 0) {
-      st.push(db.prepare("UPDATE tiles SET troops = troops + ? WHERE game_id = ? AND castle_of = ?").bind(plan.recruit, game.id, h.id));
+    if (plan.recruit + plan.riders + plan.engines > 0) {
+      st.push(
+        db.prepare(
+          "UPDATE tiles SET troops = troops + ?, jinetes = jinetes + ?, catapultas = catapultas + ? WHERE game_id = ? AND castle_of = ?",
+        ).bind(plan.recruit + plan.riders + plan.engines, plan.riders, plan.engines, game.id, h.id),
+      );
     }
     try {
       await db.batch(st);
@@ -454,7 +458,7 @@ async function addBotOrders(env: NotifyEnv, game: GameRow, n: number): Promise<v
     for (const o of orders) {
       statements.push(
         db.prepare(
-          "INSERT INTO orders (game_id, house_id, resolution_no, kind, from_tile_id, troops, target_tile_id, supported_from_tile_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+          "INSERT INTO orders (game_id, house_id, resolution_no, kind, from_tile_id, troops, jinetes, catapultas, target_tile_id, supported_from_tile_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         ).bind(
           game.id,
           h.id,
@@ -462,6 +466,8 @@ async function addBotOrders(env: NotifyEnv, game: GameRow, n: number): Promise<v
           o.kind,
           o.from,
           o.troops,
+          o.jinetes ?? 0,
+          o.catapultas ?? 0,
           o.kind === "move" ? o.to : o.target,
           o.kind === "support" ? o.supportedFrom : null,
         ),

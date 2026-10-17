@@ -13,6 +13,7 @@ import { lastPlace } from "./actions";
 import { defenseMultiplier, survivors } from "./combat";
 import type { ProductionModifiers } from "./economy";
 import { distance } from "./map";
+import { clampUnits } from "./units";
 import { seededRandom, shuffle } from "./random";
 import { EVENT_VALUES as V } from "./rules";
 import { RESOURCES, type BuildingKind, type HouseId, type Resource, type Resources, type Tile, type TileId } from "./types";
@@ -312,7 +313,11 @@ export function applyEventNow(e: WeekEvent, tiles: Tile[], houses: EventHouse[],
       const won = V.bandits > defense;
       const left = won ? survivors(V.bandits, V.bandits, defense) : survivors(target.troops, defense, V.bandits);
       out.tiles = tiles.map((t) =>
-        t.id === target.id ? (won ? { ...t, owner: null, troops: left, fortifiedUntil: null } : { ...t, troops: left }) : t,
+        t.id === target.id
+          ? won
+            ? { ...t, owner: null, troops: left, fortifiedUntil: null, jinetes: undefined, catapultas: undefined }
+            : clampUnits({ ...t, troops: left })
+          : t,
       );
       out.log = { ...out.log, house: victim.house, tile: target.id as TileId, won, left };
       break;

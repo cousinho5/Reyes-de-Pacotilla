@@ -260,6 +260,8 @@ CREATE TABLE tiles (
   castle_of       INTEGER REFERENCES houses(id),     -- solo en castillos; nunca cambia
   owner_house_id  INTEGER REFERENCES houses(id),     -- NULL = neutral
   troops          INTEGER NOT NULL DEFAULT 0 CHECK (troops >= 0),
+  jinetes         INTEGER NOT NULL DEFAULT 0 CHECK (jinetes >= 0),     -- de esas tropas (0007)
+  catapultas      INTEGER NOT NULL DEFAULT 0 CHECK (catapultas >= 0),  -- de esas tropas (0007)
   fortified_until INTEGER,                           -- número de resolución hasta la que dura
   UNIQUE (game_id, x, y),
   CHECK (type <> 'castillo' OR (castle_of IS NOT NULL AND owner_house_id = castle_of))
@@ -276,6 +278,8 @@ CREATE TABLE orders (
   kind            TEXT    NOT NULL CHECK (kind IN ('move','support')),
   from_tile_id    INTEGER NOT NULL REFERENCES tiles(id),
   troops          INTEGER NOT NULL CHECK (troops > 0),
+  jinetes         INTEGER NOT NULL DEFAULT 0 CHECK (jinetes >= 0),     -- de esas tropas (0007)
+  catapultas      INTEGER NOT NULL DEFAULT 0 CHECK (catapultas >= 0),  -- de esas tropas (0007)
   target_tile_id  INTEGER NOT NULL REFERENCES tiles(id), -- destino (move) o casilla apoyada (support)
   supported_from_tile_id INTEGER REFERENCES tiles(id),   -- support: origen del ataque apoyado; NULL = apoyar la defensa
   updated_at      TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),

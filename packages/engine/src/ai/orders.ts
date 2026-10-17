@@ -5,11 +5,12 @@
 // 2. Defensa: las tropas sobrantes refuerzan o apoyan las casillas amenazadas.
 // 3. Avance: lo que queda en el interior se acerca a la frontera.
 
-import { checkOrders, defenseMultiplier } from "../combat";
+import { checkOrders, defenseMultiplier, walled } from "../combat";
 import { areAdjacent } from "../map";
 import { marchKind } from "../terrain";
 import { tilePrestige } from "../prestige";
-import { OBJECTIVE_TARGETS, PRESTIGE, STRETCH_FREE_TILES, STRETCH_PAN, TILE_PRODUCTION, TROOP_COST } from "../rules";
+import { OBJECTIVE_TARGETS, PRESTIGE, STRETCH_FREE_TILES, STRETCH_PAN, TILE_PRODUCTION, TROOP_COST, UNITS } from "../rules";
+import { isPlain, totalUnits, unitFields, unitsOf, type UnitKind, type Units } from "../units";
 import type { Order, Tile, TileId } from "../types";
 import { PRESTIGE_UNIT, valueOf, type Situation } from "./view";
 
@@ -41,7 +42,10 @@ export function targets(s: Situation): Target[] {
     const from = own.filter((o) => areAdjacent(o, t));
     const reach = own.filter((o) => !areAdjacent(o, t) && marchKind(o, t, view.tiles, view.house) != null);
     if (from.length === 0 && reach.length === 0) continue;
-    let defense = t.troops * defenseMultiplier(t, view.nextResolution, false, view.combat?.defenseBonus ?? 0);
+    // Las catapultas propias que pueden ir al ataque abren brecha en las murallas.
+    const cats = UNITS.enabled ? [...from, ...reach].reduce((a, o) => a + unitsOf(o).catapultas, 0) : 0;
+    let defense =
+      t.troops * defenseMultiplier(t, view.nextResolution, false, view.combat?.defenseBonus ?? 0, cats * UNITS.catapultas.breach);
     if (t.owner != null) {
       // Puede recibir apoyos de sus casillas vecinas.
       const helpers = seen.filter((o) => o.owner === t.owner && o.id !== t.id && areAdjacent(o, t));
@@ -206,7 +210,56 @@ export function planOrders(s: Situation): Order[] {
   }
 
   // Por si acaso: nunca dar órdenes inválidas.
-  return checkOrders(view.tiles, orders).valid;
+  return checkOrders(view.tiles, assignUnits(orders, s)).valid;
+}
+
+/**
+ * Elige qué tropas van en cada orden: los jinetes cargan contra lo llano sin
+ * murallas, la Mesnada va al bosque y a la montaña (los jinetes no suben) y
+ * las catapultas acompañan los ataques contra murallas y los avances.
+ */
+function assignUnits(orders: Order[], s: Situation): Order[] {
+  if (!UNITS.enabled) return orders;
+  const byId = new Map(s.view.tiles.map((t) => [t.id, t]));
+  const pool = new Map<TileId, Units>(s.own.map((t) => [t.id, unitsOf(t)]));
+  const res = s.view.nextResolution;
+  const out: Order[] = [];
+  const take = (from: TileId, kind: UnitKind, n: number) => {
+    const u = pool.get(from)!;
+    const k = Math.min(u[kind], n);
+    u[kind] -= k;
+    return k;
+  };
+  // Primero los ataques (lo más importante), luego apoyos y el resto.
+  const ranked = orders
+    .map((o, i) => ({ o, i, rank: o.kind === "move" && byId.get(o.to)?.owner !== s.view.house ? 0 : o.kind === "support" ? 1 : 2 }))
+    .sort((a, b) => a.rank - b.rank || a.i - b.i);
+  for (const { o } of ranked) {
+    if (!pool.has(o.from)) continue;
+    const dest = byId.get(o.kind === "move" ? o.to : o.target)!;
+    const hostile = o.kind === "move" && dest.owner !== s.view.house;
+    const charge = hostile && isPlain(dest.type) && !walled(dest, res);
+    const order: UnitKind[] =
+      o.kind === "move" && dest.type === "montana"
+        ? ["mesnada"]
+        : charge || (o.kind === "move" && !hostile && dest.type !== "bosque")
+          ? ["jinetes", "mesnada"]
+          : ["mesnada", "jinetes"];
+    const u: Units = { mesnada: 0, jinetes: 0, catapultas: 0 };
+    let left = o.troops;
+    for (const kind of order) {
+      const k = take(o.from, kind, left);
+      u[kind] += k;
+      left -= k;
+    }
+    // Catapultas: con los ataques a casillas con murallas y con los avances (no a la montaña).
+    if (o.kind === "move" && dest.type !== "montana" && (!hostile || walled(dest, res))) {
+      u.catapultas += take(o.from, "catapultas", Infinity);
+    }
+    if (totalUnits(u) === 0) continue;
+    out.push({ ...o, ...unitFields(u) } as Order);
+  }
+  return out;
 }
 
 /** Distancia (en casillas propias) a la frontera: casillas propias junto a algo atacable o amenazadas. */

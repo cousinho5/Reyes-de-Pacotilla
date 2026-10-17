@@ -31,6 +31,12 @@ export interface Tile {
   owner: HouseId | null;
   /** Tropas del dueño, o guarnición neutral si no tiene dueño. */
   troops: number;
+  /**
+   * Cuántas de esas tropas son Jinetes y cuántas Catapultas (diseño v3); el
+   * resto es Mesnada. Si faltan, todo es Mesnada.
+   */
+  jinetes?: number;
+  catapultas?: number;
   /** Número de resolución hasta la que dura la fortificación (incluida). */
   fortifiedUntil?: number | null;
   /** Solo en castillos: la casa a la que pertenece. Nunca cambia. */
@@ -43,6 +49,9 @@ export interface MoveOrder {
   from: TileId;
   to: TileId;
   troops: number;
+  /** De esas tropas, cuántas son Jinetes y cuántas Catapultas (el resto, Mesnada). */
+  jinetes?: number;
+  catapultas?: number;
 }
 
 export interface SupportOrder {
@@ -54,6 +63,8 @@ export interface SupportOrder {
   /** Origen del ataque apoyado; null = se apoya la defensa de `target`. */
   supportedFrom: TileId | null;
   troops: number;
+  jinetes?: number;
+  catapultas?: number;
 }
 
 export type Order = MoveOrder | SupportOrder;

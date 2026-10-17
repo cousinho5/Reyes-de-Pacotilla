@@ -6,7 +6,7 @@
 //
 // Si cambia el orden de las tareas en jobs.ts, hay que cambiarlo aquí también.
 
-import { applyUpkeep, lastPlace } from "./actions";
+import { addRecruits, applyUpkeep, lastPlace } from "./actions";
 import { planAutopilot, type AutopilotPlan, type AutopilotTemplate } from "./autopilot";
 import { botAcceptsOffer, planBotOrders } from "./bots";
 import { dailyProduction } from "./economy";
@@ -16,7 +16,7 @@ import { computePrestige, isValidTrade, type AchievementKey, type PrestigeBreakd
 import { resolveCampaign } from "./combat";
 import { marchKind } from "./terrain";
 import type { MapLayoutOverride } from "./mapgen";
-import { GRID, PRESTIGE, RHYTHM, SPECIALTY_PAIRS, STARTING_RESOURCES, TERRAIN, TERRAIN_OFF } from "./rules";
+import { GRID, PRESTIGE, RHYTHM, SPECIALTY_PAIRS, STARTING_RESOURCES, TERRAIN, TERRAIN_OFF, UNITS } from "./rules";
 import { totalOf } from "./trade";
 import { auctionLots, doubleLot, resolveAuction, type Bid } from "./auction";
 import {
@@ -101,6 +101,8 @@ export interface SimOptions {
   fortify?: number;
   /** Terreno que cuenta en la guerra (por defecto, sí: TERRAIN); false para el diseño v2. */
   terrain?: boolean;
+  /** Tipos de tropa (por defecto, sí); false: solo Mesnada, como en el diseño v2. */
+  units?: boolean;
 }
 
 export interface SimHouseResult {
@@ -154,6 +156,8 @@ export interface SimGameResult {
   attacksWon: number;
   /** Órdenes de apoyo (a ataques o a defensas). */
   supports: number;
+  /** Tropas reclutadas de cada tipo (bots con personalidad). */
+  recruited: { mesnada: number; jinetes: number; catapultas: number };
   /** Movimientos por camino (dos casillas) y travesías por mar. */
   roadMoves: number;
   seaMoves: number;
@@ -192,7 +196,8 @@ interface HouseState {
 
 export function simulateGame(opts: SimOptions): SimGameResult {
   // Las opciones de forma y ritmo cambian GRID y RHYTHM solo durante esta partida.
-  const saved = { grid: GRID.kind, days: RHYTHM.days, fortify: RHYTHM.fortify, terrain: { ...TERRAIN } };
+  const saved = { grid: GRID.kind, days: RHYTHM.days, fortify: RHYTHM.fortify, terrain: { ...TERRAIN }, units: UNITS.enabled };
+  if (opts.units === false) UNITS.enabled = false;
   GRID.kind = opts.grid ?? GRID.kind;
   RHYTHM.days = opts.resolutionDays ?? RHYTHM.days;
   RHYTHM.fortify = opts.fortify ?? RHYTHM.fortify;
@@ -204,6 +209,7 @@ export function simulateGame(opts: SimOptions): SimGameResult {
     RHYTHM.days = saved.days;
     RHYTHM.fortify = saved.fortify;
     Object.assign(TERRAIN, saved.terrain);
+    UNITS.enabled = saved.units;
   }
 }
 
@@ -268,6 +274,7 @@ function runGame(opts: SimOptions): SimGameResult {
   let attacksWon = 0;
   let supports = 0;
   let roadMoves = 0;
+  const recruited = { mesnada: 0, jinetes: 0, catapultas: 0 };
   let seaMoves = 0;
   let auctionGold = 0;
   let cardsPlayed = 0;
@@ -380,6 +387,11 @@ function runGame(opts: SimOptions): SimGameResult {
         }
         for (const f of plan.fortify) tiles = tiles.map((t) => (t.id === f.tile ? { ...t, fortifiedUntil: f.until } : t));
         if (plan.recruit > 0) tiles = tiles.map((t) => (t.castleOf === h.id ? { ...t, troops: t.troops + plan.recruit } : t));
+        if (plan.riders > 0) tiles = tiles.map((t) => (t.castleOf === h.id ? addRecruits(t, plan.riders, "jinetes") : t));
+        if (plan.engines > 0) tiles = tiles.map((t) => (t.castleOf === h.id ? addRecruits(t, plan.engines, "catapultas") : t));
+        recruited.jinetes += plan.riders;
+        recruited.catapultas += plan.engines;
+        recruited.mesnada += plan.recruit;
         h.helpChoice = plan.help;
         // Cartas de efecto inmediato (Tregua y Tambores esperan al día de la resolución).
         const cards = planCards(situation(viewOf(h, day, morning), PERSONALITIES[h.strategy]), h.hand, false);
@@ -632,6 +644,7 @@ function runGame(opts: SimOptions): SimGameResult {
     attacks,
     attacksWon,
     supports,
+    recruited,
     roadMoves,
     seaMoves,
     trades: trades.length,

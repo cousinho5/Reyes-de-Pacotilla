@@ -2,6 +2,7 @@ export * from "./types";
 export * from "./rules";
 export * from "./map";
 export * from "./terrain";
+export * from "./units";
 export * from "./combat";
 export * from "./economy";
 export * from "./prestige";

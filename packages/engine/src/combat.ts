@@ -17,7 +17,21 @@
 // - Dos grupos que se cambian de casilla chocan a medio camino sin
 //   bonificación; el ganador sigue y el perdedor se repliega.
 
-import { DEFENSE_BONUS } from "./rules";
+import { DEFENSE_BONUS, UNITS } from "./rules";
+import {
+  addUnits,
+  canEnter,
+  isPlain,
+  keepUnits,
+  orderUnits,
+  rawStrength,
+  retreatUnits,
+  setUnits,
+  subUnits,
+  totalUnits,
+  unitsOf,
+  type Units,
+} from "./units";
 import { areAdjacent } from "./map";
 import { marchKind, terrainDefense } from "./terrain";
 import type {
@@ -39,13 +53,25 @@ interface Move {
   from: TileId;
   to: TileId;
   troops: number;
+  units: Units;
   failed: boolean;
 }
 
-export function defenseMultiplier(tile: Tile, resolution: number, absent: boolean, extra = 0): number {
+/** La casilla tiene murallas: fortificada o fortaleza (ahí no cargan los jinetes). */
+export function walled(tile: Tile, resolution: number): boolean {
+  return tile.type === "fortaleza" || (tile.fortifiedUntil != null && tile.fortifiedUntil >= resolution);
+}
+
+/**
+ * Multiplicador de defensa. `breach`: lo que las catapultas del atacante quitan
+ * al bono de fortificación y de fortaleza (nunca a lo demás).
+ */
+export function defenseMultiplier(tile: Tile, resolution: number, absent: boolean, extra = 0, breach = 0): number {
   let bonus = DEFENSE_BONUS.base + extra;
-  if (tile.fortifiedUntil != null && tile.fortifiedUntil >= resolution) bonus += DEFENSE_BONUS.fortified;
-  if (tile.type === "fortaleza") bonus += DEFENSE_BONUS.fortress;
+  let walls = 0;
+  if (tile.fortifiedUntil != null && tile.fortifiedUntil >= resolution) walls += DEFENSE_BONUS.fortified;
+  if (tile.type === "fortaleza") walls += DEFENSE_BONUS.fortress;
+  bonus += Math.max(0, walls - breach);
   // Terreno (diseño v3): bosque y cantera +25%, montaña +50%.
   bonus += terrainDefense(tile.type);
   if (absent) bonus += DEFENSE_BONUS.absent;
@@ -62,6 +88,12 @@ export function survivors(troops: number, own: number, rival: number): number {
 export function resolveCampaign(input: CampaignInput): CampaignResult {
   const { resolution } = input;
   const tiles = new Map<TileId, Tile>(input.tiles.map((t) => [t.id, { ...t }]));
+  // Composición de cada casilla (Mesnada, Jinetes, Catapultas); al final se escribe en la casilla.
+  const comp = new Map<TileId, Units>(input.tiles.map((t) => [t.id, unitsOf(t)]));
+  const setComp = (id: TileId, u: Units) => {
+    comp.set(id, u);
+    tiles.get(id)!.troops = totalUnits(u);
+  };
   const absent = new Set(input.absentHouses ?? []);
   const events: CampaignEvent[] = [];
 
@@ -88,8 +120,11 @@ export function resolveCampaign(input: CampaignInput): CampaignResult {
     if (order.kind === "move") {
       // Varias órdenes iguales de la misma casa se agrupan.
       const same = moves.find((m) => m.house === order.house && m.from === order.from && m.to === order.to);
-      if (same) same.troops += order.troops;
-      else moves.push({ house: order.house, from: order.from, to: order.to, troops: order.troops, failed: false });
+      const u = orderUnits(order);
+      if (same) {
+        same.troops += order.troops;
+        same.units = addUnits(same.units, u);
+      } else moves.push({ house: order.house, from: order.from, to: order.to, troops: order.troops, units: u, failed: false });
     } else {
       supports.push(order);
     }
@@ -103,7 +138,7 @@ export function resolveCampaign(input: CampaignInput): CampaignResult {
   }
 
   // 2. Las tropas que salen dejan su casilla (si fallan, vuelven al final).
-  for (const m of moves) tiles.get(m.from)!.troops -= m.troops;
+  for (const m of moves) setComp(m.from, subUnits(comp.get(m.from)!, m.units));
 
   // 3. Apoyos cortados.
   const activeSupports = supports.filter((s) => {
@@ -115,27 +150,37 @@ export function resolveCampaign(input: CampaignInput): CampaignResult {
   const attackSupport = (m: Move) =>
     activeSupports.filter((s) => s.target === m.to && s.supportedFrom === m.from && !isOwnTileAgainst(s, m, tiles));
   // Tambores de guerra: la fuerza de los ataques de esa casa sube un porcentaje.
-  const attackStrength = (m: Move) =>
-    (m.troops + sum(attackSupport(m).map((s) => s.troops))) *
-    (1 + (input.attackBonus?.[m.house] ?? 0) + (input.attackBonusAll ?? 0));
+  // Los jinetes cargan (fuerza 2) contra una casilla llana sin murallas.
+  const attackStrength = (m: Move) => {
+    const target = tiles.get(m.to)!;
+    const charge = isPlain(target.type) && !walled(target, resolution);
+    const own = rawStrength(m.units, target, { charge });
+    const helped = sum(attackSupport(m).map((s) => rawStrength(orderUnits(s), target)));
+    return (own + helped) * (1 + (input.attackBonus?.[m.house] ?? 0) + (input.attackBonusAll ?? 0));
+  };
+  // En un choque frontal no hay terreno: cada tropa vale lo suyo sin cargas.
+  const clashStrength = (m: Move) =>
+    rawStrength(m.units, { type: "campos" }) * (1 + (input.attackBonus?.[m.house] ?? 0) + (input.attackBonusAll ?? 0));
 
   // 4. Choques frontales: dos casas que se cambian de casilla.
   for (const a of moves) {
     for (const b of moves) {
       if (a === b || a.failed || b.failed || a.house === b.house) continue;
       if (a.from !== b.to || a.to !== b.from || a.from > b.from) continue;
-      const sa = attackStrength(a);
-      const sb = attackStrength(b);
+      const sa = clashStrength(a);
+      const sb = clashStrength(b);
       let winner: HouseId | null = null;
       if (Math.abs(sa - sb) <= EPS) {
         a.failed = true;
         b.failed = true;
       } else if (sa > sb) {
-        a.troops = survivors(a.troops, sa, sb);
+        a.units = keepUnits(a.units, survivors(a.troops, sa, sb));
+        a.troops = totalUnits(a.units);
         b.failed = true;
         winner = a.house;
       } else {
-        b.troops = survivors(b.troops, sb, sa);
+        b.units = keepUnits(b.units, survivors(b.troops, sb, sa));
+        b.troops = totalUnits(b.units);
         a.failed = true;
         winner = b.house;
       }
@@ -161,22 +206,26 @@ export function resolveCampaign(input: CampaignInput): CampaignResult {
     // Refuerzos propios: llegan siempre y se suman a la defensa.
     const reinforcements = incoming.filter((m) => owner !== null && m.house === owner);
     const hostile = incoming.filter((m) => !(owner !== null && m.house === owner));
-    const defTroops = tile.troops + sum(reinforcements.map((m) => m.troops));
+    const defUnits = reinforcements.reduce((u, m) => addUnits(u, m.units), comp.get(tileId)!);
+    const defTroops = totalUnits(defUnits);
     for (const r of reinforcements) {
       events.push({ type: "movimiento", house: r.house, from: r.from, to: r.to, troops: r.troops });
     }
 
     if (hostile.length === 0) {
-      tile.troops = defTroops;
+      setComp(tileId, defUnits);
       continue;
     }
 
     const defSupports = activeSupports.filter(
       (s) => s.target === tileId && s.supportedFrom === null && !hostile.some((m) => m.house === s.house),
     );
+    // Las catapultas de los atacantes abren brecha en las murallas.
+    const breach = UNITS.enabled ? sum(hostile.map((m) => m.units.catapultas)) * UNITS.catapultas.breach : 0;
     const defStrength =
-      defTroops * defenseMultiplier(tile, resolution, owner !== null && absent.has(owner), input.defenseBonus ?? 0) +
-      sum(defSupports.map((s) => s.troops));
+      rawStrength(defUnits, tile) *
+        defenseMultiplier(tile, resolution, owner !== null && absent.has(owner), input.defenseBonus ?? 0, breach) +
+      sum(defSupports.map((s) => rawStrength(orderUnits(s), tile)));
 
     // Agrupar los ataques por casa.
     const byHouse = new Map<HouseId, Move[]>();
@@ -184,6 +233,7 @@ export function resolveCampaign(input: CampaignInput): CampaignResult {
     const attackers = [...byHouse.entries()].map(([house, ms]) => ({
       house,
       moves: ms,
+      units: ms.reduce((u, m) => addUnits(u, m.units), { mesnada: 0, jinetes: 0, catapultas: 0 } as Units),
       troops: sum(ms.map((m) => m.troops)),
       strength: sum(ms.map(attackStrength)),
       supporters: unique(ms.flatMap((m) => attackSupport(m).map((s) => s.house))),
@@ -213,7 +263,7 @@ export function resolveCampaign(input: CampaignInput): CampaignResult {
     if (defenderOnTop) {
       // Gana el defensor (también en empate).
       const rival = Math.max(...attackers.map((a) => a.strength));
-      tile.troops = survivors(defTroops, defStrength, rival);
+      setComp(tileId, keepUnits(defUnits, survivors(defTroops, defStrength, rival)));
       for (const a of attackers) a.moves.forEach((m) => (m.failed = true));
       events.push({
         type: "combate",
@@ -226,7 +276,7 @@ export function resolveCampaign(input: CampaignInput): CampaignResult {
       });
     } else if (topAttackers.length > 1) {
       // Rebote: nadie entra y el defensor no sufre bajas.
-      tile.troops = defTroops;
+      setComp(tileId, defUnits);
       for (const a of attackers) a.moves.forEach((m) => (m.failed = true));
       events.push({ type: "rebote", tile: tileId, houses: topAttackers.map((a) => a.house), strength: top });
     } else {
@@ -244,7 +294,7 @@ export function resolveCampaign(input: CampaignInput): CampaignResult {
         sides,
       });
       tile.owner = winner.house;
-      tile.troops = kept;
+      setComp(tileId, keepUnits(winner.units, kept));
       tile.fortifiedUntil = null;
     }
   }
@@ -252,15 +302,17 @@ export function resolveCampaign(input: CampaignInput): CampaignResult {
   // 6. Repliegues: la mitad de las tropas vuelve a su origen, si sigue siendo suyo.
   for (const m of moves) {
     if (!m.failed) continue;
-    const back = Math.floor(m.troops / 2);
+    // Vuelve la mitad de la Mesnada y de los Jinetes; las Catapultas se pierden.
+    const backUnits = retreatUnits(m.units);
+    const back = totalUnits(backUnits);
     const origin = tiles.get(m.from)!;
     const arrived = origin.owner === m.house;
-    if (arrived) origin.troops += back;
+    if (arrived) setComp(m.from, addUnits(comp.get(m.from)!, backUnits));
     events.push({ type: "repliegue", house: m.house, from: m.to, to: m.from, troops: back, arrived });
   }
 
   return {
-    tiles: input.tiles.map((t) => tiles.get(t.id)!),
+    tiles: input.tiles.map((t) => setUnits(tiles.get(t.id)!, comp.get(t.id)!)),
     events,
   };
 }
@@ -274,7 +326,7 @@ export function checkOrders(
   orders: Order[],
 ): { valid: Order[]; invalid: { order: Order; reason: string }[] } {
   const tiles = new Map<TileId, Tile>(tileList.map((t) => [t.id, t]));
-  const committed = new Map<TileId, number>();
+  const committed = new Map<TileId, Units>();
   const valid: Order[] = [];
   const invalid: { order: Order; reason: string }[] = [];
   for (const order of orders) {
@@ -284,12 +336,13 @@ export function checkOrders(
       continue;
     }
     const from = tiles.get(order.from)!;
-    const used = committed.get(order.from) ?? 0;
-    if (used + order.troops > from.troops) {
+    const used = addUnits(committed.get(order.from) ?? { mesnada: 0, jinetes: 0, catapultas: 0 }, orderUnits(order));
+    const have = unitsOf(from);
+    if (used.mesnada > have.mesnada || used.jinetes > have.jinetes || used.catapultas > have.catapultas) {
       invalid.push({ order, reason: "no hay tropas suficientes en la casilla" });
       continue;
     }
-    committed.set(order.from, used + order.troops);
+    committed.set(order.from, used);
     valid.push(order);
   }
   return { valid, invalid };
@@ -297,6 +350,10 @@ export function checkOrders(
 
 function validate(order: Order, tiles: Map<TileId, Tile>): string | null {
   if (!Number.isInteger(order.troops) || order.troops <= 0) return "el número de tropas debe ser un entero positivo";
+  const j = order.jinetes ?? 0;
+  const c = order.catapultas ?? 0;
+  if (!Number.isInteger(j) || !Number.isInteger(c) || j < 0 || c < 0 || j + c > order.troops) return "los tipos de tropa no cuadran con el total";
+  if (!UNITS.enabled && j + c > 0) return "no hay tipos de tropa en esta partida";
   const from = tiles.get(order.from);
   if (!from) return "la casilla de origen no existe";
   if (from.owner !== order.house) return "la casilla de origen no es de esa casa";
@@ -307,7 +364,9 @@ function validate(order: Order, tiles: Map<TileId, Tile>): string | null {
 function validateMove(order: MoveOrder, from: Tile, tiles: Map<TileId, Tile>): string | null {
   const to = tiles.get(order.to);
   if (!to) return "la casilla de destino no existe";
-  if (!marchKind(from, to, [...tiles.values()], order.house)) return "el destino no es adyacente ni se llega por camino o por mar";
+  const units = orderUnits(order);
+  if (!canEnter(units, to.type)) return "los jinetes y las catapultas no suben a la montaña";
+  if (!marchKind(from, to, [...tiles.values()], order.house, units)) return "el destino no es adyacente ni se llega por camino, por mar o a la carga";
   if (to.type === "castillo" && to.castleOf !== order.house) return "los castillos no se pueden atacar";
   return null;
 }

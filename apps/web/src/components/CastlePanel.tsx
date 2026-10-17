@@ -1,8 +1,8 @@
 import { ResourceIcon } from "../art";
 import { useState } from "react";
-import { BUILDINGS, RESOURCES, TROOP_COST, canAfford, upgradeCost, type Resource, type Resources } from "@reyes/engine";
+import { BUILDINGS, RESOURCES, UNIT_KINDS, canAfford, recruitCost as costOf, upgradeCost, unitsOf, type Resource, type Resources, type UnitKind } from "@reyes/engine";
 import { api, type GameState } from "../api";
-import { BUILDING_LABEL, RESOURCE_LABEL } from "../ui";
+import { BUILDING_LABEL, RESOURCE_LABEL, UNIT_LABEL, UNIT_NOTE, UNIT_ONE } from "../ui";
 import { CardsPanel } from "./CardsPanel";
 import { HouseSettings } from "./HouseSettings";
 
@@ -29,13 +29,17 @@ export function CastlePanel({ state, gameId, act }: Props) {
   const prod = state.yo.produccionDiaria!;
   const levels = state.yo.edificios!;
   const [recruit, setRecruit] = useState(5);
-  const recruitCost: Partial<Resources> = { hierro: (TROOP_COST.hierro ?? 0) * recruit, pan: (TROOP_COST.pan ?? 0) * recruit };
+  const [kind, setKind] = useState<UnitKind>("mesnada");
+  const one = costOf(1, kind);
   const myCastle = state.casillas?.find((t) => t.type === "castillo" && t.owner === state.yo.casa);
   const active = state.partida.estado === "active";
   const maxRecruit = Math.max(
     1,
-    Math.min(50, ...(Object.entries(TROOP_COST) as [Resource, number][]).map(([r, v]) => Math.floor(res[r] / v))),
+    Math.min(50, ...(Object.entries(one) as [Resource, number][]).map(([r, v]) => Math.floor(res[r] / v))),
   );
+  const count = Math.min(recruit, maxRecruit);
+  const recruitCost: Partial<Resources> = costOf(count, kind);
+  const garrison = myCastle && myCastle.troops != null ? unitsOf({ ...myCastle, troops: myCastle.troops }) : null;
 
   return (
     <div>
@@ -122,11 +126,24 @@ export function CastlePanel({ state, gameId, act }: Props) {
       <section className="card">
         <h2>Reclutar</h2>
         <p className="muted">
-          Las tropas aparecen en tu castillo ({myCastle?.troops ?? 0} ahora). Cada una cuesta {TROOP_COST.hierro} de Hierro y {TROOP_COST.pan} de Pan.
+          Las tropas aparecen en tu castillo
+          {garrison
+            ? ` (ahora: ${garrison.mesnada} de Mesnada, ${garrison.jinetes} ${garrison.jinetes === 1 ? "jinete" : "jinetes"} y ${garrison.catapultas} ${garrison.catapultas === 1 ? "catapulta" : "catapultas"}).`
+            : "."}
+        </p>
+        <div className="unit-picker" role="radiogroup" aria-label="Tipo de tropa">
+          {UNIT_KINDS.map((k) => (
+            <button key={k} role="radio" aria-checked={kind === k} className={kind === k ? "chosen" : ""} onClick={() => setKind(k)}>
+              {UNIT_LABEL[k]}
+            </button>
+          ))}
+        </div>
+        <p className="muted unit-note">
+          {UNIT_NOTE[kind]} Cada {UNIT_ONE[kind]}: <Cost cost={one} />
         </p>
         <label>
-          Tropas: <strong>{recruit}</strong>
-          <input type="range" min={1} max={maxRecruit} value={Math.min(recruit, maxRecruit)} onChange={(e) => setRecruit(Number(e.target.value))} />
+          {UNIT_LABEL[kind]}: <strong>{count}</strong>
+          <input type="range" min={1} max={maxRecruit} value={count} onChange={(e) => setRecruit(Number(e.target.value))} />
         </label>
         <p>
           Coste: <Cost cost={recruitCost} />
@@ -134,7 +151,16 @@ export function CastlePanel({ state, gameId, act }: Props) {
         <button
           className="primary"
           disabled={!canAfford(res, recruitCost) || !active}
-          onClick={() => act(() => api.recruit(gameId, recruit), `${recruit} tropas se presentan en el castillo.`)}
+          onClick={() =>
+            act(
+              () => api.recruit(gameId, count, kind),
+              kind === "mesnada"
+                ? `${count} ${count === 1 ? "soldado se presenta" : "soldados se presentan"} en el castillo.`
+                : kind === "jinetes"
+                  ? `${count} ${count === 1 ? "jinete llega" : "jinetes llegan"} al castillo.`
+                  : `${count} ${count === 1 ? "catapulta llega" : "catapultas llegan"} al castillo, crujiendo.`,
+            )
+          }
         >
           Reclutar
         </button>
