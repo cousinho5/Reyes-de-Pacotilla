@@ -53,6 +53,29 @@ npm run simular -- --semanas 4                    # duración de la partida
 npm run simular -- --json datos.json              # además, todos los datos
 ```
 
+## Asedios (18 de octubre de 2026, fase 3b del sistema de guerra v3, aplicado)
+
+600 partidas de 6 semanas con hexágonos, resolución diaria, terreno y tipos de tropa en ambas columnas (`npm run simular -- --partidas 600`, `--asedios no` para comparar).
+
+| Dato (por partida) | Sin asedios | Con asedios |
+| --- | --- | --- |
+| Órdenes de asedio | — | 124,7 |
+| Noches de asedio (a castillos) | — | 86,9 (4,5) |
+| Ataques que toman la casilla | 78% | 79% |
+| Combates entre casas (4 / 6 / 8 casas) | 31,1 / 57,6 / 65,6 | 30,9 / 59,3 / 65,2 |
+| Objetivo fortaleza / puerto y fortaleza | 29% / 15% | 30% / 17% |
+| Casas con deserciones | 13% | 14% |
+| El líder de la semana 2 gana | 30% | 29% |
+| Prestigio medio del ganador | 62,6 | 64,8 |
+
+Variantes probadas y descartadas:
+
+- **Sitiar también casillas fortificadas, y que dejen de producir** (la propuesta original): la arquitecta, que se defiende fortificando, bajaba de 0,7 a 0,5 veces lo esperado y el guerrero subía a 1,4-1,5. Las deserciones subían del 13% al 16%.
+- **Murallas que caen más despacio** (12,5% por noche): el mismo desequilibrio. El problema era qué se podía sitiar, no la velocidad.
+- **Sin asedio a castillos:** apenas cambia nada (los bots rodean castillos 4,5 noches por partida). Se mantiene porque es lo que más presión pone entre personas.
+
+Lo que queda: la arquitecta sigue algo por debajo (0,5-0,6 frente a 0,7 sin asedios) y el guerrero ronda 1,3. Son bots con reglas sencillas; lo veremos en la partida piloto.
+
 ## Tipos de tropa (18 de octubre de 2026, fase 3 del sistema de guerra v3, aplicado)
 
 Con hexágonos, resolución diaria y terreno en las dos columnas; la segunda añade Jinetes y Catapultas (`UNITS` en `rules.ts`). Se lanza con `npm run simular -- --partidas 300` y `--tropas no` para comparar.

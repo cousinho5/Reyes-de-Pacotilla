@@ -231,7 +231,8 @@ CREATE TABLE houses (
   joined_at       TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
   UNIQUE (game_id, user_id),
   UNIQUE (game_id, color),
-  UNIQUE (game_id, shield_shape, symbol)
+  UNIQUE (game_id, shield_shape, symbol),
+  siege_nights    INTEGER NOT NULL DEFAULT 0      -- noches rodeando castillos ajenos: Prestigio (0008)
 );
 
 -- Cinco edificios por casa, dentro del castillo. Nunca se pierden.
@@ -262,6 +263,8 @@ CREATE TABLE tiles (
   troops          INTEGER NOT NULL DEFAULT 0 CHECK (troops >= 0),
   jinetes         INTEGER NOT NULL DEFAULT 0 CHECK (jinetes >= 0),     -- de esas tropas (0007)
   catapultas      INTEGER NOT NULL DEFAULT 0 CHECK (catapultas >= 0),  -- de esas tropas (0007)
+  besieged_by     INTEGER REFERENCES houses(id),  -- asedio: casa que la sitia (0008)
+  siege_nights    INTEGER NOT NULL DEFAULT 0,     -- noches de asedio (0008)
   fortified_until INTEGER,                           -- número de resolución hasta la que dura
   UNIQUE (game_id, x, y),
   CHECK (type <> 'castillo' OR (castle_of IS NOT NULL AND owner_house_id = castle_of))
@@ -275,7 +278,7 @@ CREATE TABLE orders (
   game_id         INTEGER NOT NULL REFERENCES games(id) ON DELETE CASCADE,
   house_id        INTEGER NOT NULL REFERENCES houses(id) ON DELETE CASCADE,
   resolution_no   INTEGER NOT NULL,                  -- resolución a la que van dirigidas
-  kind            TEXT    NOT NULL CHECK (kind IN ('move','support')),
+  kind            TEXT    NOT NULL CHECK (kind IN ('move','support','siege')),  -- 'siege' desde 0008
   from_tile_id    INTEGER NOT NULL REFERENCES tiles(id),
   troops          INTEGER NOT NULL CHECK (troops > 0),
   jinetes         INTEGER NOT NULL DEFAULT 0 CHECK (jinetes >= 0),     -- de esas tropas (0007)

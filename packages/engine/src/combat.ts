@@ -17,7 +17,7 @@
 // - Dos grupos que se cambian de casilla chocan a medio camino sin
 //   bonificación; el ganador sigue y el perdedor se repliega.
 
-import { DEFENSE_BONUS, UNITS } from "./rules";
+import { DEFENSE_BONUS, SIEGE, UNITS } from "./rules";
 import {
   addUnits,
   canEnter,
@@ -41,6 +41,7 @@ import type {
   HouseId,
   MoveOrder,
   Order,
+  SiegeOrder,
   SupportOrder,
   Tile,
   TileId,
@@ -100,7 +101,8 @@ export function resolveCampaign(input: CampaignInput): CampaignResult {
   // 1. Validar órdenes y repartir las tropas de cada casilla.
   const moves: Move[] = [];
   const supports: SupportOrder[] = [];
-  const checked = checkOrders(input.tiles, input.orders);
+  const sieges: SiegeOrder[] = [];
+  const checked = checkOrders(input.tiles, input.orders, resolution);
   for (const { order, reason } of checked.invalid) events.push({ type: "orden_invalida", order, reason });
   // Tregua: los ataques contra esas casillas no salen (las tropas se quedan donde estaban).
   // La Paz del Rey hace lo mismo con todos los ataques a casillas de otras casas.
@@ -125,6 +127,8 @@ export function resolveCampaign(input: CampaignInput): CampaignResult {
         same.troops += order.troops;
         same.units = addUnits(same.units, u);
       } else moves.push({ house: order.house, from: order.from, to: order.to, troops: order.troops, units: u, failed: false });
+    } else if (order.kind === "siege") {
+      sieges.push(order);
     } else {
       supports.push(order);
     }
@@ -220,8 +224,11 @@ export function resolveCampaign(input: CampaignInput): CampaignResult {
     const defSupports = activeSupports.filter(
       (s) => s.target === tileId && s.supportedFrom === null && !hostile.some((m) => m.house === s.house),
     );
-    // Las catapultas de los atacantes abren brecha en las murallas.
-    const breach = UNITS.enabled ? sum(hostile.map((m) => m.units.catapultas)) * UNITS.catapultas.breach : 0;
+    // Las catapultas de los atacantes abren brecha en las murallas, y cada noche
+    // de asedio las debilita un poco más.
+    const breach =
+      (UNITS.enabled ? sum(hostile.map((m) => m.units.catapultas)) * UNITS.catapultas.breach : 0) +
+      (tile.besiegedBy != null ? (tile.siegeNights ?? 0) * SIEGE.wallsPerNight : 0);
     const defStrength =
       rawStrength(defUnits, tile) *
         defenseMultiplier(tile, resolution, owner !== null && absent.has(owner), input.defenseBonus ?? 0, breach) +
@@ -311,6 +318,9 @@ export function resolveCampaign(input: CampaignInput): CampaignResult {
     events.push({ type: "repliegue", house: m.house, from: m.to, to: m.from, troops: back, arrived });
   }
 
+  // 7. Asedios: siguen si quien sitia conserva su casilla y nadie la ha atacado.
+  resolveSieges(input.tiles, tiles, sieges, moves, events);
+
   return {
     tiles: input.tiles.map((t) => setUnits(tiles.get(t.id)!, comp.get(t.id)!)),
     events,
@@ -324,13 +334,15 @@ export function resolveCampaign(input: CampaignInput): CampaignResult {
 export function checkOrders(
   tileList: Tile[],
   orders: Order[],
+  /** Resolución que se va a ejecutar (para saber qué casillas siguen fortificadas). */
+  resolution?: number,
 ): { valid: Order[]; invalid: { order: Order; reason: string }[] } {
   const tiles = new Map<TileId, Tile>(tileList.map((t) => [t.id, t]));
   const committed = new Map<TileId, Units>();
   const valid: Order[] = [];
   const invalid: { order: Order; reason: string }[] = [];
   for (const order of orders) {
-    const reason = validate(order, tiles);
+    const reason = validate(order, tiles, resolution);
     if (reason) {
       invalid.push({ order, reason });
       continue;
@@ -348,7 +360,75 @@ export function checkOrders(
   return { valid, invalid };
 }
 
-function validate(order: Order, tiles: Map<TileId, Tile>): string | null {
+/**
+ * Asedios de la noche. Un asedio se corta si atacan la casilla desde la que se
+ * sitia (aunque el ataque fracase) o si se pierde. Una casilla sigue sitiada
+ * mientras alguien la siga rodeando; un castillo, solo si lo rodean desde
+ * SIEGE.castleSides casillas de la misma casa. Si la casilla cambia de manos,
+ * el asedio se acaba.
+ */
+function resolveSieges(
+  before: Tile[],
+  tiles: Map<TileId, Tile>,
+  sieges: SiegeOrder[],
+  moves: Move[],
+  events: CampaignEvent[],
+): void {
+  if (!SIEGE.enabled) return;
+  const active: SiegeOrder[] = [];
+  for (const s of sieges) {
+    const from = tiles.get(s.from)!;
+    const attacked = moves.some((m) => m.to === s.from && m.house !== s.house);
+    if (from.owner !== s.house || attacked) {
+      events.push({ type: "asedio_roto", house: s.house, tile: s.target, reason: "cortado" });
+      continue;
+    }
+    active.push(s);
+  }
+  const ids = new Set<TileId>([...before.filter((t) => t.besiegedBy != null).map((t) => t.id), ...sieges.map((s) => s.target)]);
+  for (const id of [...ids].sort((a, b) => a - b)) {
+    const old = before.find((t) => t.id === id)!;
+    const tile = tiles.get(id)!;
+    const prev = old.besiegedBy ?? null;
+    if (tile.owner !== old.owner) {
+      if (prev != null) events.push({ type: "asedio_roto", house: prev, tile: id, reason: "tomada" });
+      tile.besiegedBy = null;
+      tile.siegeNights = 0;
+      continue;
+    }
+    const castle = tile.type === "castillo";
+    const byHouse = new Map<HouseId, SiegeOrder[]>();
+    for (const s of active.filter((x) => x.target === id && x.house !== tile.owner)) {
+      byHouse.set(s.house, [...(byHouse.get(s.house) ?? []), s]);
+    }
+    const eligible = [...byHouse.entries()]
+      .filter(([, ss]) => !castle || new Set(ss.map((x) => x.from)).size >= SIEGE.castleSides)
+      .map(([house, ss]) => ({ house, ss, troops: sum(ss.map((x) => x.troops)) }))
+      .sort((a, b) => Number(b.house === prev) - Number(a.house === prev) || b.troops - a.troops || a.house - b.house);
+    const winner = eligible[0];
+    if (!winner) {
+      if (prev != null && !events.some((e) => e.type === "asedio_roto" && e.tile === id && e.house === prev)) {
+        events.push({ type: "asedio_roto", house: prev, tile: id, reason: "levantado" });
+      }
+      tile.besiegedBy = null;
+      tile.siegeNights = 0;
+      continue;
+    }
+    const nights = winner.house === prev ? (old.siegeNights ?? 0) + 1 : 1;
+    tile.besiegedBy = winner.house;
+    tile.siegeNights = nights;
+    events.push({
+      type: "asedio",
+      house: winner.house,
+      tile: id,
+      nights,
+      castle,
+      from: unique(winner.ss.map((x) => x.from)).sort((a, b) => a - b),
+    });
+  }
+}
+
+function validate(order: Order, tiles: Map<TileId, Tile>, resolution?: number): string | null {
   if (!Number.isInteger(order.troops) || order.troops <= 0) return "el número de tropas debe ser un entero positivo";
   const j = order.jinetes ?? 0;
   const c = order.catapultas ?? 0;
@@ -358,6 +438,7 @@ function validate(order: Order, tiles: Map<TileId, Tile>): string | null {
   if (!from) return "la casilla de origen no existe";
   if (from.owner !== order.house) return "la casilla de origen no es de esa casa";
   if (order.kind === "move") return validateMove(order, from, tiles);
+  if (order.kind === "siege") return validateSiege(order, from, tiles, resolution);
   return validateSupport(order, from, tiles);
 }
 
@@ -368,6 +449,23 @@ function validateMove(order: MoveOrder, from: Tile, tiles: Map<TileId, Tile>): s
   if (!canEnter(units, to.type)) return "los jinetes y las catapultas no suben a la montaña";
   if (!marchKind(from, to, [...tiles.values()], order.house, units)) return "el destino no es adyacente ni se llega por camino, por mar o a la carga";
   if (to.type === "castillo" && to.castleOf !== order.house) return "los castillos no se pueden atacar";
+  return null;
+}
+
+function validateSiege(order: SiegeOrder, from: Tile, tiles: Map<TileId, Tile>, resolution?: number): string | null {
+  if (!SIEGE.enabled) return "no hay asedios en esta partida";
+  const target = tiles.get(order.target);
+  if (!target) return "la casilla sitiada no existe";
+  if (!areAdjacent(from, target)) return "solo se puede sitiar una casilla vecina";
+  if (target.owner === order.house) return "no puedes sitiar tu propia casilla";
+  if (order.troops < SIEGE.minTroops) return `para sitiar hacen falta al menos ${SIEGE.minTroops} tropas`;
+  const fortified = target.fortifiedUntil != null && (resolution == null || target.fortifiedUntil >= resolution);
+  const walls =
+    target.type === "fortaleza" ||
+    target.type === "castillo" ||
+    (SIEGE.fortifiedTargets && (fortified || target.besiegedBy === order.house));
+  if (!walls) return SIEGE.fortifiedTargets ? "solo se sitian castillos, fortalezas y casillas fortificadas" : "solo se sitian castillos y fortalezas";
+  if (target.type === "castillo" && target.castleOf == null) return "ese castillo no es de nadie";
   return null;
 }
 

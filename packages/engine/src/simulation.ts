@@ -16,7 +16,7 @@ import { computePrestige, isValidTrade, type AchievementKey, type PrestigeBreakd
 import { resolveCampaign } from "./combat";
 import { marchKind } from "./terrain";
 import type { MapLayoutOverride } from "./mapgen";
-import { GRID, PRESTIGE, RHYTHM, SPECIALTY_PAIRS, STARTING_RESOURCES, TERRAIN, TERRAIN_OFF, UNITS } from "./rules";
+import { GRID, PRESTIGE, RHYTHM, SPECIALTY_PAIRS, STARTING_RESOURCES, SIEGE, TERRAIN, TERRAIN_OFF, UNITS } from "./rules";
 import { totalOf } from "./trade";
 import { auctionLots, doubleLot, resolveAuction, type Bid } from "./auction";
 import {
@@ -103,6 +103,8 @@ export interface SimOptions {
   terrain?: boolean;
   /** Tipos de tropa (por defecto, sí); false: solo Mesnada, como en el diseño v2. */
   units?: boolean;
+  /** Asedios (por defecto, sí). */
+  sieges?: boolean;
 }
 
 export interface SimHouseResult {
@@ -158,6 +160,10 @@ export interface SimGameResult {
   supports: number;
   /** Tropas reclutadas de cada tipo (bots con personalidad). */
   recruited: { mesnada: number; jinetes: number; catapultas: number };
+  /** Órdenes de asedio, noches de asedio (todas) y noches de asedio a castillos. */
+  siegeOrders: number;
+  siegeNights: number;
+  castleSiegeNights: number;
   /** Movimientos por camino (dos casillas) y travesías por mar. */
   roadMoves: number;
   seaMoves: number;
@@ -192,12 +198,16 @@ interface HouseState {
   spies: { house: HouseId; until: number }[];
   truces: { tile: number; resolution: number }[];
   drums: { resolution: number; bonus: number }[];
+  /** Noches que ha tenido rodeado el castillo de otra casa (Prestigio). */
+  siegeNights: number;
 }
 
 export function simulateGame(opts: SimOptions): SimGameResult {
   // Las opciones de forma y ritmo cambian GRID y RHYTHM solo durante esta partida.
   const saved = { grid: GRID.kind, days: RHYTHM.days, fortify: RHYTHM.fortify, terrain: { ...TERRAIN }, units: UNITS.enabled };
   if (opts.units === false) UNITS.enabled = false;
+  const savedSiege = SIEGE.enabled;
+  if (opts.sieges === false) SIEGE.enabled = false;
   GRID.kind = opts.grid ?? GRID.kind;
   RHYTHM.days = opts.resolutionDays ?? RHYTHM.days;
   RHYTHM.fortify = opts.fortify ?? RHYTHM.fortify;
@@ -210,6 +220,7 @@ export function simulateGame(opts: SimOptions): SimGameResult {
     RHYTHM.fortify = saved.fortify;
     Object.assign(TERRAIN, saved.terrain);
     UNITS.enabled = saved.units;
+    SIEGE.enabled = savedSiege;
   }
 }
 
@@ -258,6 +269,7 @@ function runGame(opts: SimOptions): SimGameResult {
       spies: [],
       truces: [],
       drums: [],
+      siegeNights: 0,
     };
   });
   const byId = new Map(houses.map((h) => [h.id, h]));
@@ -274,6 +286,9 @@ function runGame(opts: SimOptions): SimGameResult {
   let attacksWon = 0;
   let supports = 0;
   let roadMoves = 0;
+  let siegeOrders = 0;
+  let siegeNightsTotal = 0;
+  let castleSiegeNights = 0;
   const recruited = { mesnada: 0, jinetes: 0, catapultas: 0 };
   let seaMoves = 0;
   let auctionGold = 0;
@@ -297,6 +312,7 @@ function runGame(opts: SimOptions): SimGameResult {
       tradePartners: partners.size,
       achievements: h.achievements,
       secretObjectiveMet: objectiveMet,
+      siegeNights: h.siegeNights,
     });
   };
 
@@ -511,6 +527,7 @@ function runGame(opts: SimOptions): SimGameResult {
     const before = new Map(tiles.map((t) => [t.id, t]));
     for (const o of orders) {
       if (o.kind === "support") supports++;
+      else if (o.kind === "siege") siegeOrders++;
       else {
         if (before.get(o.to)?.owner !== o.house) attacks++;
         const how = marchKind(before.get(o.from)!, before.get(o.to)!, tiles, o.house);
@@ -550,6 +567,13 @@ function runGame(opts: SimOptions): SimGameResult {
       for (const [hid, n] of outcome.castleTroops) tiles = tiles.map((t) => (t.castleOf === hid ? { ...t, troops: t.troops + n } : t));
     }
     for (const e of result.events) {
+      if (e.type === "asedio") {
+        siegeNightsTotal++;
+        if (e.castle) {
+          castleSiegeNights++;
+          byId.get(e.house)!.siegeNights++;
+        }
+      }
       if (e.type === "rebote") bounces++;
       if (e.type !== "combate") continue;
       if (e.previousOwner == null) combatsVsNeutral++;
@@ -645,6 +669,9 @@ function runGame(opts: SimOptions): SimGameResult {
     attacksWon,
     supports,
     recruited,
+    siegeOrders,
+    siegeNights: siegeNightsTotal,
+    castleSiegeNights,
     roadMoves,
     seaMoves,
     trades: trades.length,

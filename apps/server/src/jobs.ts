@@ -252,7 +252,7 @@ export async function runResolution(env: NotifyEnv, game: GameRow, n: number, no
       .bind(game.id, n)
       .all<{
         house_id: number;
-        kind: "move" | "support";
+        kind: "move" | "support" | "siege";
         from_tile_id: number;
         troops: number;
         jinetes: number;
@@ -268,7 +268,9 @@ export async function runResolution(env: NotifyEnv, game: GameRow, n: number, no
   const orders: Order[] = orderRows.results.map((o) =>
     o.kind === "move"
       ? { kind: "move", house: o.house_id, from: o.from_tile_id, to: o.target_tile_id, troops: o.troops, ...typesOf(o) }
-      : {
+      : o.kind === "siege"
+        ? { kind: "siege", house: o.house_id, from: o.from_tile_id, target: o.target_tile_id, troops: o.troops, ...typesOf(o) }
+        : {
           kind: "support",
           house: o.house_id,
           from: o.from_tile_id,
@@ -404,19 +406,31 @@ export async function runResolution(env: NotifyEnv, game: GameRow, n: number, no
       old.troops === t.troops &&
       old.fortifiedUntil === t.fortifiedUntil &&
       (old.jinetes ?? 0) === (t.jinetes ?? 0) &&
-      (old.catapultas ?? 0) === (t.catapultas ?? 0)
+      (old.catapultas ?? 0) === (t.catapultas ?? 0) &&
+      (old.besiegedBy ?? null) === (t.besiegedBy ?? null) &&
+      (old.siegeNights ?? 0) === (t.siegeNights ?? 0)
     )
       continue;
     statements.push(
-      db.prepare("UPDATE tiles SET owner_house_id = ?, troops = ?, jinetes = ?, catapultas = ?, fortified_until = ? WHERE id = ?").bind(
+      db.prepare(
+        "UPDATE tiles SET owner_house_id = ?, troops = ?, jinetes = ?, catapultas = ?, fortified_until = ?, besieged_by = ?, siege_nights = ? WHERE id = ?",
+      ).bind(
         t.owner,
         t.troops,
         t.jinetes ?? 0,
         t.catapultas ?? 0,
         t.fortifiedUntil ?? null,
+        t.besiegedBy ?? null,
+        t.siegeNights ?? 0,
         t.id,
       ),
     );
+  }
+  // Asedio a un castillo: una noche más de Prestigio para quien lo rodea.
+  for (const e of result.events) {
+    if (e.type === "asedio" && e.castle) {
+      statements.push(db.prepare("UPDATE houses SET siege_nights = siege_nights + 1 WHERE id = ?").bind(e.house));
+    }
   }
   statements.push(...extraStatements);
 

@@ -41,6 +41,9 @@ export interface Tile {
   fortifiedUntil?: number | null;
   /** Solo en castillos: la casa a la que pertenece. Nunca cambia. */
   castleOf?: HouseId | null;
+  /** Asedio (diseño v3): casa que tiene sitiada la casilla y noches que lleva. */
+  besiegedBy?: HouseId | null;
+  siegeNights?: number;
 }
 
 export interface MoveOrder {
@@ -67,7 +70,23 @@ export interface SupportOrder {
   catapultas?: number;
 }
 
-export type Order = MoveOrder | SupportOrder;
+/**
+ * Sitiar (diseño v3): el grupo se queda en su casilla, rodeando la vecina. Cada
+ * noche de asedio la casilla sitiada pierde murallas y deja de producir; un
+ * castillo rodeado desde dos casillas produce la mitad y da Prestigio a quien
+ * lo sitia. Las tropas que sitian siguen defendiendo su casilla.
+ */
+export interface SiegeOrder {
+  kind: "siege";
+  house: HouseId;
+  from: TileId;
+  target: TileId;
+  troops: number;
+  jinetes?: number;
+  catapultas?: number;
+}
+
+export type Order = MoveOrder | SupportOrder | SiegeOrder;
 
 export interface CampaignInput {
   /** Número de la resolución que se está ejecutando (1, 2, ...). */
@@ -138,6 +157,22 @@ export type CampaignEvent =
       from: TileId;
       to: TileId;
       troops: number;
+    }
+  | {
+      type: "asedio";
+      house: HouseId;
+      tile: TileId;
+      /** Noches que lleva sitiada (1 = la primera). */
+      nights: number;
+      castle: boolean;
+      from: TileId[];
+    }
+  | {
+      type: "asedio_roto";
+      house: HouseId;
+      tile: TileId;
+      /** "cortado": atacaron a quien sitiaba; "levantado": ya nadie sitia; "tomada": la casilla cambió de manos. */
+      reason: "cortado" | "levantado" | "tomada";
     }
   | {
       type: "repliegue";

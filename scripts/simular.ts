@@ -9,9 +9,11 @@
 //   npm run simular -- --eventos no       # sin los eventos de la semana, para comparar
 //   npm run simular -- --terreno no       # sin los efectos del terreno (diseño v2), para comparar
 //   npm run simular -- --tropas no        # solo Mesnada (sin Jinetes ni Catapultas), para comparar
+//   npm run simular -- --asedios no       # sin asedios, para comparar
 //   npm run simular -- --json simulacion.json   # además, todos los datos en JSON
 
 import { writeFileSync } from "node:fs";
+import { SIEGE } from "../packages/engine/src";
 import {
   CLASSIC_STRATEGIES,
   OBJECTIVES,
@@ -29,6 +31,14 @@ import {
 const args = new Map<string, string>();
 for (let i = 2; i < process.argv.length; i += 2) args.set(process.argv[i]!.replace(/^--/, ""), process.argv[i + 1] ?? "");
 const games = Number(args.get("partidas") ?? 500);
+// Para probar variantes de los asedios: --asedio-produce si (la casilla sitiada sigue produciendo).
+if (args.get("asedio-produce") === "si") SIEGE.stopsProduction = false;
+// --muralla-noche 0.125: cuánto quita cada noche de asedio a las murallas.
+if (args.has("muralla-noche")) SIEGE.wallsPerNight = Number(args.get("muralla-noche"));
+// --asedio-fortificadas no: solo se sitian fortalezas y castillos.
+if (args.get("asedio-fortificadas") === "no") SIEGE.fortifiedTargets = false;
+// --asedio-castillo no: no se pueden rodear castillos.
+if (args.get("asedio-castillo") === "no") SIEGE.castleSides = 99;
 const weeks = Number(args.get("semanas") ?? 6) as 2 | 4 | 6 | 8;
 const mode = args.get("modo") ?? "mezcla";
 const [minPlayers, maxPlayers] = (args.get("jugadores") ?? "4-8").split("-").map(Number) as [number, number];
@@ -48,7 +58,7 @@ const started = Date.now();
 for (let i = 0; i < games; i++) {
   const players = minPlayers + Math.floor(rand() * (maxPlayers - minPlayers + 1));
   const strategies = Array.from({ length: players }, () => pool[Math.floor(rand() * pool.length)]!);
-  results.push(simulateGame({ seed: `sim-${i}`, strategies, weeks, events: args.get("eventos") !== "no", terrain: args.get("terreno") !== "no", units: args.get("tropas") !== "no" }));
+  results.push(simulateGame({ seed: `sim-${i}`, strategies, weeks, events: args.get("eventos") !== "no", terrain: args.get("terreno") !== "no", units: args.get("tropas") !== "no", sieges: args.get("asedios") !== "no" }));
 }
 const houses = results.flatMap((g) => g.houses.map((h) => ({ ...h, players: g.houses.length })));
 
@@ -76,7 +86,7 @@ function winStats(group: (SimHouseResult & { players: number })[]) {
 }
 
 console.log(
-  `# Simulación: ${games} partidas de ${weeks} semanas, ${minPlayers}-${maxPlayers} casas, modo ${mode}${args.get("eventos") === "no" ? ", sin eventos" : ""}${args.get("terreno") === "no" ? ", sin terreno" : ""}${args.get("tropas") === "no" ? ", solo Mesnada" : ""}`,
+  `# Simulación: ${games} partidas de ${weeks} semanas, ${minPlayers}-${maxPlayers} casas, modo ${mode}${args.get("eventos") === "no" ? ", sin eventos" : ""}${args.get("terreno") === "no" ? ", sin terreno" : ""}${args.get("tropas") === "no" ? ", solo Mesnada" : ""}${args.get("asedios") === "no" ? ", sin asedios" : ""}`,
 );
 console.log(`(${((Date.now() - started) / 1000).toFixed(1)} s)`);
 
@@ -154,6 +164,8 @@ table("Combate y comercio (por partida)", ["dato", "valor"], [
     `${f1(avg(results.map((r) => r.recruited.mesnada)))} / ${f1(avg(results.map((r) => r.recruited.jinetes)))} / ${f1(avg(results.map((r) => r.recruited.catapultas)))}`,
   ],
   ["Travesías por mar", f1(avg(results.map((r) => r.seaMoves)))],
+  ["Órdenes de asedio", f1(avg(results.map((r) => r.siegeOrders)))],
+  ["Noches de asedio (a castillos)", `${f1(avg(results.map((r) => r.siegeNights)))} (${f1(avg(results.map((r) => r.castleSiegeNights)))})`],
   ["Tratos cerrados", f1(avg(results.map((r) => r.trades)))],
   ["Socios comerciales por casa (toda la partida)", f1(avg(houses.map((h) => h.partners)))],
   ["Oro gastado en la Gran Subasta", f1(avg(results.map((r) => r.auctionGold)))],
