@@ -103,6 +103,9 @@ export interface TileView {
   catapultas?: number;
   fortifiedUntil: number | null;
   castleOf?: number | null;
+  /** Asedio: casa que la sitia y noches que lleva. */
+  besiegedBy?: number | null;
+  siegeNights?: number;
   visible: boolean;
   /** Se ve la casilla, pero sus tropas se esconden en el bosque (emboscada). */
   hidden?: boolean;
@@ -111,7 +114,7 @@ export interface TileView {
 
 export interface OrderView {
   id?: number;
-  tipo: "mover" | "apoyar";
+  tipo: "mover" | "apoyar" | "sitiar";
   desde: number;
   hacia: number;
   apoyaDesde: number | null;

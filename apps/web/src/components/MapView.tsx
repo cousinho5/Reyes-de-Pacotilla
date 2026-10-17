@@ -5,7 +5,7 @@ import { Icon, ShieldIcon, TileArt } from "../art";
 import { cellBox, sharedEdge, type Geo } from "../art/grid";
 import { geoOf } from "../art/world";
 import { WorldCanvas, useWorld } from "./WorldCanvas";
-import { HOUSE_COLORS, TERRAIN_NOTE, TERRITORY, TILE_LABEL, UNIT_LABEL, houseName, troopsText } from "../ui";
+import { HOUSE_COLORS, TERRAIN_NOTE, TERRITORY, TILE_LABEL, UNIT_LABEL, houseName, troopsText, wallsLeft } from "../ui";
 
 interface Props {
   state: GameState;
@@ -14,7 +14,12 @@ interface Props {
   act: (fn: () => Promise<unknown>, ok?: string) => Promise<void>;
 }
 
-type Compose = { from: number; mode: "mover" | "apoyar"; target: number | null; mix: Units; apoyaDesde: number | null };
+type Mode = "mover" | "apoyar" | "sitiar";
+type Compose = { from: number; mode: Mode; target: number | null; mix: Units; apoyaDesde: number | null };
+
+/** Se puede sitiar: fortalezas y castillos que no son tuyos. */
+const siegeable = (t: TileView, me: number | null | undefined) =>
+  t.owner !== me && (t.type === "fortaleza" || (t.type === "castillo" && t.castleOf != null));
 
 const NO_UNITS: Units = { mesnada: 0, jinetes: 0, catapultas: 0 };
 const RIDERS_ONLY = (n: number): Units => ({ mesnada: 0, jinetes: n, catapultas: 0 });
@@ -58,6 +63,8 @@ export function MapView({ state, draft, setDraft, act }: Props) {
           catapultas: t.catapultas ?? 0,
           fortified: t.fortifiedUntil != null && t.fortifiedUntil > last,
           battle: battles.has(t.id),
+          besieger:
+            t.besiegedBy != null ? HOUSE_COLORS[state.casas.find((h) => h.id === t.besiegedBy)?.color ?? ""]?.hex ?? null : null,
           fogged: !t.visible,
         };
       }),
@@ -147,6 +154,7 @@ export function MapView({ state, draft, setDraft, act }: Props) {
       return free.jinetes > 0 && marchKind(asTile(from), asTile(t), engineTiles, me, RIDERS_ONLY(free.jinetes)) === "carga";
     }
     if (!areAdjacent(from, t)) return false;
+    if (compose.mode === "sitiar") return siegeable(t, me);
     return t.type !== "castillo";
   };
 
@@ -267,7 +275,7 @@ export function MapView({ state, draft, setDraft, act }: Props) {
                     to={b}
                     color={TERRITORY[mine?.color ?? ""] ?? "#f1cf7d"}
                     width={1.5 + Math.min(3, o.tropas / 4)}
-                    dashed={o.tipo === "apoyar"}
+                    dashed={o.tipo !== "mover"}
                     label={o.tropas}
                   />
                 );
@@ -399,7 +407,7 @@ function TilePanel({
   tile: TileView;
   available: number;
   open: boolean;
-  onOrder: (mode: "mover" | "apoyar") => void;
+  onOrder: (mode: Mode) => void;
   onFortify: () => void;
 }) {
   const mine = tile.owner === state.yo.casa;
@@ -407,6 +415,8 @@ function TilePanel({
   const note =
     tile.type === "castillo" ? null : TILE_NAMES[tile.type]?.find((n) => tile.nombre.startsWith(n.name))?.note ?? null;
   const fortified = tile.fortifiedUntil != null && tile.fortifiedUntil > state.partida.resolucionActual;
+  // Sitiar: hay al lado una fortaleza o un castillo ajeno.
+  const canSiege = (state.casillas ?? []).some((t) => siegeable(t, state.yo.casa) && areAdjacent(t, tile));
   return (
     <section className="card tile-panel">
       <div className="tile-head">
@@ -430,6 +440,13 @@ function TilePanel({
           {tile.jinetes === 1 ? "jinete" : "jinetes"} · {tile.catapultas ?? 0} {tile.catapultas === 1 ? "catapulta" : "catapultas"}
         </p>
       )}
+      {tile.besiegedBy != null && (
+        <p className="siege-note">
+          {tile.type === "castillo"
+            ? `Rodeado por ${houseName(state.casas, tile.besiegedBy)}: produce la mitad.`
+            : `Sitiada por ${houseName(state.casas, tile.besiegedBy)} desde hace ${tile.siegeNights ?? 1} ${(tile.siegeNights ?? 1) === 1 ? "noche" : "noches"}: ${wallsLeft(tile.siegeNights ?? 1)}.`}
+        </p>
+      )}
       <p className="muted terrain-note">{TERRAIN_NOTE[tile.type]}</p>
       {tile.troops == null && (
         <p className="muted">
@@ -442,6 +459,7 @@ function TilePanel({
             Mover o atacar
           </button>
           <button onClick={() => onOrder("apoyar")}>Apoyar</button>
+          {canSiege && <button onClick={() => onOrder("sitiar")}>Sitiar</button>}
         </div>
       )}
       {mine && tile.type !== "castillo" && !fortified && (
@@ -477,7 +495,7 @@ function Composer({
     target && compose.mode === "apoyar"
       ? [...byId.values()].filter((t) => t.id !== from.id && t.id !== target.id && areAdjacent(t, target))
       : [];
-  const verb = compose.mode === "mover" ? "Mover o atacar" : "Apoyar";
+  const verb = compose.mode === "mover" ? "Mover o atacar" : compose.mode === "sitiar" ? "Sitiar" : "Apoyar";
   // Qué tipos pueden ir: a la carga solo jinetes; a la montaña solo Mesnada; los apoyos, sin catapultas.
   const me = state.yo.casa;
   const charge =
@@ -510,7 +528,9 @@ function Composer({
         <p>
           {compose.mode === "mover"
             ? "Toca una casilla marcada: una vecina, o más lejos por un camino tuyo, por mar desde un puerto o a la carga con jinetes."
-            : "Toca una casilla vecina marcada en el mapa."}
+            : compose.mode === "sitiar"
+              ? "Toca la fortaleza o el castillo vecino que quieres sitiar. Tus tropas se quedan en su casilla y la siguen defendiendo."
+              : "Toca una casilla vecina marcada en el mapa."}
         </p>
       ) : (
         <>
@@ -536,6 +556,14 @@ function Composer({
             </label>
           )}
           {shown.length === 0 && <p className="error">No te quedan tropas que puedan ir ahí.</p>}
+          {compose.mode === "sitiar" && (
+            <p className="hint">
+              {target.type === "castillo"
+                ? "Un castillo hay que rodearlo desde dos casillas tuyas a la vez: entonces produce la mitad y tú ganas 1 de Prestigio cada noche."
+                : "Cada noche de asedio la fortaleza pierde un 25% de murallas. Se rompe si atacan tu casilla."}{" "}
+              Hacen falta al menos 3 tropas.
+            </p>
+          )}
           {shown.map((k) => (
             <label key={k}>
               {UNIT_LABEL[k]}: <strong>{mix[k]}</strong> de {available[k]}
@@ -551,7 +579,7 @@ function Composer({
           <div className="actions">
             <button
               className="primary"
-              disabled={total < 1}
+              disabled={total < (compose.mode === "sitiar" ? 3 : 1)}
               onClick={() =>
                 onAdd({
                   tipo: compose.mode,

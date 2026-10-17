@@ -3,6 +3,7 @@ import {
   BUILDING_RESOURCE,
   LAST_PLACE_HELP,
   STRETCH_FREE_TILES,
+  SIEGE,
   STRETCH_PAN,
   TILE_PRODUCTION,
   TROOPS_PER_PAN,
@@ -50,16 +51,21 @@ export interface ProductionModifiers {
 /** Producción diaria de una casa: edificios + casillas controladas + ayuda al último. */
 export function dailyProduction(
   buildings: Record<BuildingKind, number>,
-  ownedTiles: Pick<Tile, "type">[],
+  ownedTiles: Pick<Tile, "type" | "besiegedBy">[],
   help?: Resource | null,
   mods?: ProductionModifiers | null,
 ): Resources {
   let out = emptyResources();
+  // Asedio: un castillo rodeado produce la mitad en sus edificios; una casilla sitiada, nada.
+  const castleBesieged = ownedTiles.some((t) => t.type === "castillo" && t.besiegedBy != null);
+  const siegeFactor = castleBesieged ? SIEGE.castleProduction : 1;
   for (const [kind, level] of Object.entries(buildings) as [BuildingKind, number][]) {
-    out[BUILDING_RESOURCE[kind]] += (BUILDING_PRODUCTION[level] ?? 0) * (mods?.buildingFactor?.[kind] ?? 1);
+    const made = (BUILDING_PRODUCTION[level] ?? 0) * (mods?.buildingFactor?.[kind] ?? 1);
+    out[BUILDING_RESOURCE[kind]] += castleBesieged ? Math.floor(made * siegeFactor) : made;
   }
   for (const t of ownedTiles) {
     if (mods?.tilesOff?.includes(t.type)) continue;
+    if (t.besiegedBy != null && SIEGE.stopsProduction) continue;
     out = addResources(out, TILE_PRODUCTION[t.type]);
   }
   for (const [r, f] of Object.entries(mods?.resourceFactor ?? {}) as [Resource, number][]) out[r] = Math.round(out[r] * f);

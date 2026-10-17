@@ -86,6 +86,12 @@ export const UNIT_NOTE: Record<"mesnada" | "jinetes" | "catapultas", string> = {
   catapultas: "No luchan (fuerza 0), pero cada una quita un 25% a la fortificación o la fortaleza que atacan. Comen como dos tropas y se pierden si el ataque fracasa.",
 };
 
+/** Lo que queda de las murallas de una fortaleza (+50%) tras `nights` noches de asedio (−25% cada una). */
+export function wallsLeft(nights: number): string {
+  const left = Math.max(0, 50 - 25 * nights);
+  return left > 0 ? `a sus murallas les queda +${left}% de defensa` : "sus murallas ya no defienden";
+}
+
 /** "6", o "6 (2 jinetes y 1 catapulta)" si hay tipos distintos de la Mesnada. */
 export function troopsText(n: number, jinetes = 0, catapultas = 0): string {
   const parts = [
@@ -207,6 +213,16 @@ export function describeEvent(e: EventView, houses: HouseInfo[], tiles: TileView
       return d.arrived
         ? `${houseName(houses, d.house)} se repliega a ${tile(d.to)} con ${troops(d.troops)}. Fray Abundio lo llamará repliegue genial.`
         : `${houseName(houses, d.house)} no tiene adónde replegarse: sus ${troops(d.troops)} se dispersan.`;
+    case "asedio":
+      return d.castle
+        ? `${houseName(houses, d.house)} rodea ${tile(d.tile)}${d.nights > 1 ? ` (${d.nights} noches)` : ""}: produce la mitad y el sitiador gana 1 de Prestigio.`
+        : `${houseName(houses, d.house)} sitia ${tile(d.tile)}${d.nights > 1 ? ` (${d.nights} noches)` : ""}: ${wallsLeft(d.nights)}.`;
+    case "asedio_roto":
+      return d.reason === "cortado"
+        ? `Rompen el asedio de ${houseName(houses, d.house)} a ${tile(d.tile)} atacando a los sitiadores.`
+        : d.reason === "tomada"
+          ? `El asedio a ${tile(d.tile)} termina: la casilla cambia de manos.`
+          : `${houseName(houses, d.house)} levanta el asedio de ${tile(d.tile)}.`;
     case "apoyo_cortado":
       return `El apoyo de ${houseName(houses, d.house)} desde ${tile(d.from)} queda cortado por un ataque.`;
     case "movimiento":

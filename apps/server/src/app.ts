@@ -553,7 +553,7 @@ app.get("/api/partidas/:id", async (c) => {
       .bind(house.id, game.current_resolution + 1)
       .all<{
         id: number;
-        kind: "move" | "support";
+        kind: "move" | "support" | "siege";
         from_tile_id: number;
         troops: number;
         jinetes: number;
@@ -680,7 +680,7 @@ app.get("/api/partidas/:id", async (c) => {
     casillas: projectForHouse(tiles, house.id, spied).map((t) => ({ ...t, nombre: names.get(t.id) })),
     ordenes: orders.results.map((o) => ({
       id: o.id,
-      tipo: o.kind === "move" ? "mover" : "apoyar",
+      tipo: o.kind === "move" ? "mover" : o.kind === "siege" ? "sitiar" : "apoyar",
       desde: o.from_tile_id,
       hacia: o.target_tile_id,
       apoyaDesde: o.supported_from_tile_id,
@@ -852,7 +852,7 @@ app.post("/api/partidas/:id/ausencia", async (c) => {
 });
 
 interface OrderInput {
-  tipo: "mover" | "apoyar";
+  tipo: "mover" | "apoyar" | "sitiar";
   desde: number;
   hacia: number;
   tropas: number;
@@ -874,7 +874,9 @@ app.put("/api/partidas/:id/ordenes", async (c) => {
   const orders: Order[] = ordenes.map((o) =>
     o.tipo === "mover"
       ? { kind: "move", house: m.house.id, from: Number(o.desde), to: Number(o.hacia), troops: Number(o.tropas), ...orderTypes(o) }
-      : {
+      : o.tipo === "sitiar"
+        ? { kind: "siege", house: m.house.id, from: Number(o.desde), target: Number(o.hacia), troops: Number(o.tropas), ...orderTypes(o) }
+        : {
           kind: "support",
           house: m.house.id,
           from: Number(o.desde),
@@ -885,7 +887,7 @@ app.put("/api/partidas/:id/ordenes", async (c) => {
         },
   );
   const tiles = toEngineTiles(await loadTiles(c.env.DB, m.game.id));
-  const { invalid } = checkOrders(tiles, orders);
+  const { invalid } = checkOrders(tiles, orders, m.game.current_resolution + 1);
   if (invalid.length > 0) return fail(c, 400, `Orden no válida: ${invalid[0]!.reason}.`);
 
   const n = m.game.current_resolution + 1;
