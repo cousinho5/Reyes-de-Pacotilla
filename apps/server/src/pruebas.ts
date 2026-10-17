@@ -10,6 +10,8 @@
 import {
   PERSONALITIES,
   PRESTIGE,
+  BRIBE_COST,
+  PHRASES,
   chooseObjective,
   eventCombat,
   eventOfWeek,
@@ -322,6 +324,14 @@ export async function botsPlayDay(env: NotifyEnv, game: GameRow): Promise<void> 
         db.prepare("UPDATE buildings SET level = level + 1 WHERE house_id = ? AND kind = ? AND level = ?").bind(h.id, b, levels[b]),
       );
       levels[b]++;
+      if (levels[b] >= 3) {
+        st.push(
+          db.prepare("INSERT INTO event_log (game_id, type, visible_to, payload) VALUES (?, 'mejora', NULL, ?)").bind(
+            game.id,
+            JSON.stringify({ house: h.id, edificio: b, nivel: levels[b] }),
+          ),
+        );
+      }
       if (levels[b] === 5) {
         st.push(
           db.prepare(
@@ -345,6 +355,22 @@ export async function botsPlayDay(env: NotifyEnv, game: GameRow): Promise<void> 
     }
     const fresh = (await loadHouses(db, game.id)).find((x) => x.id === h.id)!;
     await botPlaysCards(db, game, ctx, fresh, false);
+    // De vez en cuando, un soborno al cronista (las casas más ricas y vanidosas).
+    const bribeWeek = Math.floor(ctx.day / 7) + 1;
+    if (fresh.oro >= 60 + BRIBE_COST && (h.id + bribeWeek) % 3 === 0 && ctx.day % 7 >= 4 && ctx.day % 7 <= 6) {
+      await db
+        .batch([
+          db.prepare("INSERT OR IGNORE INTO bribes (game_id, house_id, week, amount, template_key) VALUES (?, ?, ?, ?, ?)").bind(
+            game.id,
+            h.id,
+            bribeWeek,
+            BRIBE_COST,
+            String((h.id + bribeWeek) % PHRASES["soborno.frase"].length),
+          ),
+          db.prepare("UPDATE houses SET oro = oro - ? WHERE id = ? AND changes() > 0").bind(BRIBE_COST, h.id),
+        ])
+        .catch((err) => console.error(`Soborno de ${h.name}:`, err));
+    }
     // Pujas de la Gran Subasta (si hay lotes anunciados y sigue abierta).
     const week = openAuctionWeek(game);
     if (week != null) {
@@ -481,6 +507,9 @@ export async function deleteTestGame(env: NotifyEnv, game: GameRow): Promise<voi
     db.prepare("DELETE FROM auction_lots WHERE game_id = ?").bind(game.id),
     db.prepare("DELETE FROM cards WHERE game_id = ?").bind(game.id),
     db.prepare("DELETE FROM game_events WHERE game_id = ?").bind(game.id),
+    db.prepare("DELETE FROM bribes WHERE game_id = ?").bind(game.id),
+    db.prepare("DELETE FROM bulletins WHERE game_id = ?").bind(game.id),
+    db.prepare("DELETE FROM phrase_usage WHERE game_id = ?").bind(game.id),
     db.prepare("DELETE FROM prestige_snapshots WHERE game_id = ?").bind(game.id),
     db.prepare("DELETE FROM notifications WHERE game_id = ?").bind(game.id),
     db.prepare("DELETE FROM job_runs WHERE game_id = ?").bind(game.id),

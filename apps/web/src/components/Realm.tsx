@@ -1,8 +1,15 @@
 import { useState } from "react";
+import { BulletinPanel } from "./BulletinPanel";
 import type { GameState } from "../api";
 import { ACHIEVEMENT_LABEL, HOUSE_COLORS, describeEvent, withArticle } from "../ui";
 
-export function Realm({ state }: { state: GameState }) {
+export function Realm({
+  state,
+  act,
+}: {
+  state: GameState;
+  act: (fn: () => Promise<unknown>, ok?: string) => Promise<void>;
+}) {
   const [open, setOpen] = useState<number | null>(null);
   const events = (state.eventos ?? [])
     .map((e) => ({ e, text: describeEvent(e, state.casas, state.casillas ?? []) }))
@@ -17,6 +24,7 @@ export function Realm({ state }: { state: GameState }) {
 
   return (
     <div>
+      <BulletinPanel state={state} act={act} />
       {winner && (
         <section className="card coronation">
           <h2>¡Larga vida a {withArticle(winner.nombre)}!</h2>

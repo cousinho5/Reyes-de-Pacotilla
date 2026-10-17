@@ -1,6 +1,6 @@
 # Banco de frases de Fray Abundio
 
-Banco de textos del cronista de Reyes de Pacotilla, versión 2 (adaptada al diseño v2: sin puntos de acción, con apoyos, rebotes, logros y objetivos secretos). Complementa la sección 17 del documento de diseño. En el código vivirá en un archivo de datos (por ejemplo `es.json`), con una lista de variantes por cada tipo de frase.
+Banco de textos del cronista de Reyes de Pacotilla, versión 2 (adaptada al diseño v2: sin puntos de acción, con apoyos, rebotes, logros y objetivos secretos). Complementa la sección 17 del documento de diseño. En el código, las secciones 1 a 8 están en `packages/engine/src/texts/cronista.ts` y los eventos en `packages/engine/src/events.ts`: si cambia una frase aquí, se cambia también allí.
 
 ## Cómo se usa
 

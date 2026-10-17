@@ -31,6 +31,7 @@ import {
 } from "@reyes/engine";
 import { notifyHouses, type NotifyEnv } from "./notify";
 import { announceAuction, auctionStatements, cardsForResolution } from "./subasta";
+import { publishBulletin } from "./boletin";
 import { dueJobs, type GameClock } from "./scheduler";
 import {
   computeAllPrestige,
@@ -96,6 +97,18 @@ export async function runGameJobs(env: NotifyEnv, game: GameRow, now: Date): Pro
     } catch (err) {
       if (isAlreadyDone(err)) continue;
       console.error(`Partida ${game.id}, tarea ${job.key}:`, err);
+    }
+  }
+  // Tras la resolución del domingo, el boletín de la semana (el último sale con el final).
+  const after = await loadGame(env.DB, game.id);
+  if (after && after.status === "active" && after.current_resolution >= 2 && after.current_resolution % 2 === 0) {
+    const week = after.current_resolution / 2;
+    if (week < after.weeks) {
+      try {
+        await publishBulletin(env, after, week);
+      } catch (err) {
+        console.error(`Partida ${game.id}, boletín ${week}:`, err);
+      }
     }
   }
 }
@@ -515,6 +528,14 @@ export async function finishGame(env: NotifyEnv, game: GameRow, now: Date): Prom
     ),
   );
   await db.batch(statements);
+
+  // Último boletín: objetivos secretos y Mecenas de la Mentira.
+  try {
+    const finished = await loadGame(db, game.id);
+    if (finished) await publishBulletin(env, finished, game.weeks, true);
+  } catch (err) {
+    console.error(`Partida ${game.id}, último boletín:`, err);
+  }
 
   const winner = houses.find((h) => h.id === final[0]?.house);
   await notifyHouses(env, houses.map((h) => h.id), {

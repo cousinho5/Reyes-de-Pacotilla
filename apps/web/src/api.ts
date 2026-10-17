@@ -1,6 +1,6 @@
 // Cliente de la API. Las cookies de sesión viajan solas (mismo origen).
 
-import type { BuildingKind, PrestigeBreakdown, Resource, Resources, TileType } from "@reyes/engine";
+import type { Bulletin, BuildingKind, PrestigeBreakdown, Resource, Resources, TileType } from "@reyes/engine";
 
 export class ApiError extends Error {
   constructor(
@@ -139,6 +139,8 @@ export interface GameState {
   /** Solo en partidas de prueba (y solo para quien las creó, en juego). */
   prueba?: TestInfo | null;
   subasta?: AuctionInfo | null;
+  boletines?: { semana: number; titular: string }[];
+  soborno?: { semana: number; coste: number; pagado: number | null; frases: string[] } | null;
   evento?: { semana: number; clave: string; nombre: string; texto: string; linea: string; aplicado: boolean } | null;
   cartas?: CardInfo[];
   /** Casas que vigilas con la carta Espía. */
@@ -216,6 +218,8 @@ export const api = {
   pushSubscribe: (sub: PushSubscriptionJSON) => call<{ ok: true }>("POST", "/push/suscribir", sub),
   pushUnsubscribe: (endpoint: string) => call<{ ok: true }>("POST", "/push/baja", { endpoint }),
   pushTest: () => call<{ ok: true }>("POST", "/push/prueba"),
+  bulletin: (id: number, semana: number) => call<Bulletin & { publicado: string }>("GET", `/partidas/${id}/boletin/${semana}`),
+  bribe: (id: number, plantilla: number) => call<{ ok: true }>("POST", `/partidas/${id}/soborno`, { plantilla }),
   bid: (id: number, lote: number, cantidad: number) => call<{ ok: true }>("PUT", `/partidas/${id}/subasta/${lote}`, { cantidad }),
   useCard: (id: number, carta: number, params: CardParamsInput) => call<{ ok: true }>("POST", `/partidas/${id}/cartas/${carta}/usar`, params),
   testAdvance: (id: number, hasta: "paso" | "resolucion") =>

@@ -31,6 +31,9 @@ import {
   type BuildingKind,
   type CardParams,
   type EventKey,
+  BRIBE_COST,
+  PHRASES,
+  resolutionInfo,
   type WeekEvent,
   EVENTS,
   eventLine,
@@ -51,6 +54,7 @@ import {
 import { notifyHouses, vapidFrom, type NotifyEnv } from "./notify";
 import { COLORS, pickShield } from "./heraldry";
 import { clockOf, runGameJobs } from "./jobs";
+import { bribeView, type StoredBulletin } from "./boletin";
 import { auctionView, handView, openAuctionWeek, spiedHouses, useCardStatements, type CardRow } from "./subasta";
 import { addBots, advance, botsPlayDay, deleteTestGame, testStart } from "./pruebas";
 import { acceptOffer, bundle, offerView, type OfferRow } from "./offers";
@@ -579,6 +583,15 @@ app.get("/api/partidas/:id", async (c) => {
         : null,
     subasta: game.status === "active" ? await auctionView(db, game, house.id) : null,
     evento: game.status === "active" ? await eventView(db, game) : null,
+    boletines: (
+      await db.prepare("SELECT week, json_extract(content, '$.headline') AS headline FROM bulletins WHERE game_id = ? ORDER BY week DESC")
+        .bind(game.id)
+        .all<{ week: number; headline: string }>()
+    ).results.map((b) => ({ semana: b.week, titular: b.headline })),
+    soborno:
+      game.status === "active"
+        ? await bribeView(db, game, house.id, house.name, resolutionInfo(Math.min(game.current_resolution + 1, game.weeks * 2)).week)
+        : null,
     cartas: await handView(db, game.id, house.id),
     vigiladas: spied,
     casillas: projectForHouse(tiles, house.id, spied).map((t) => ({ ...t, nombre: names.get(t.id) })),
@@ -651,6 +664,15 @@ app.post("/api/partidas/:id/mejorar", async (c) => {
       levels[edificio],
     ),
   ];
+  if (check.value.newLevel >= 3) {
+    // Para el boletín: obras notables (nivel 3 o más), públicas como el Prestigio de edificios.
+    statements.push(
+      db.prepare("INSERT INTO event_log (game_id, type, visible_to, payload) VALUES (?, 'mejora', NULL, ?)").bind(
+        m.game.id,
+        JSON.stringify({ house: m.house.id, edificio, nivel: check.value.newLevel }),
+      ),
+    );
+  }
   if (check.value.newLevel === 5) {
     // Logro "Obra maestra": solo la primera casa con un edificio a nivel 5.
     statements.push(
@@ -934,6 +956,51 @@ async function eventView(db: D1Database, game: GameRow) {
     aplicado: row.applied_at != null,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Boletín de Fray Abundio y soborno (diseño, sección 17)
+// ---------------------------------------------------------------------------
+
+app.get("/api/partidas/:id/boletin/:semana", async (c) => {
+  const m = await membership(c);
+  if (m instanceof Response) return m;
+  const row = await c.env.DB.prepare("SELECT content, published_at FROM bulletins WHERE game_id = ? AND week = ?")
+    .bind(m.game.id, Number(c.req.param("semana")))
+    .first<{ content: string; published_at: string }>();
+  if (!row) return fail(c, 404, "Ese boletín aún no se ha escrito.");
+  const content = JSON.parse(row.content) as StoredBulletin;
+  return c.json({ ...content, lastEventId: undefined, publicado: row.published_at });
+});
+
+/** Sobornar al cronista: una frase halagadora sobre uno mismo en el boletín del domingo. */
+app.post("/api/partidas/:id/soborno", async (c) => {
+  const m = await activeMembership(c);
+  if (m instanceof Response) return m;
+  const clock = clockOf(m.game)!;
+  if (!ordersOpen(gameNow(m.game), clock)) return fail(c, 409, "El cronista ya ha cerrado el boletín de esta semana.");
+  const { plantilla } = await c.req.json<{ plantilla?: number }>().catch(() => ({ plantilla: undefined }));
+  const n = Number(plantilla);
+  if (!Number.isInteger(n) || n < 0 || n >= PHRASES["soborno.frase"].length) return fail(c, 400, "Esa frase no está en el catálogo del cronista.");
+  const week = resolutionInfo(m.game.current_resolution + 1).week;
+  const db = c.env.DB;
+  try {
+    await db.batch([
+      db.prepare("INSERT INTO bribes (game_id, house_id, week, amount, template_key) VALUES (?, ?, ?, ?, ?)").bind(
+        m.game.id,
+        m.house.id,
+        week,
+        BRIBE_COST,
+        String(n),
+      ),
+      payStatement(db, m.house.id, { oro: BRIBE_COST }),
+    ]);
+  } catch (err) {
+    if (err instanceof Error && /CHECK constraint failed/.test(err.message)) return fail(c, 409, `Hacen falta ${BRIBE_COST} de Oro.`);
+    if (err instanceof Error && /UNIQUE constraint failed/.test(err.message)) return fail(c, 409, "Ya has sobornado al cronista esta semana.");
+    throw err;
+  }
+  return c.json({ ok: true });
+});
 
 // ---------------------------------------------------------------------------
 // Gran Subasta y cartas de la Corona (diseño, sección 9)
