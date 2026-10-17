@@ -241,8 +241,9 @@ const SYMBOL_CENTER: Record<ShieldShape, number> = {
 };
 
 /**
- * Cuadrícula del escudo: 'k' borde, 'a' y 'b' los dos campos, 'm' metal,
- * 'n' sombra del metal y 'x' detalle oscuro.
+ * Cuadrícula del escudo: 'k' borde, 'a' y 'b' los dos campos (con 'A'/'B' en
+ * la luz y 'c'/'d' en la sombra), 'm' metal, 'n' sombra del metal y 'x'
+ * detalle oscuro. El símbolo proyecta sombra abajo a la derecha.
  */
 export function shieldGrid(shape: ShieldShape, division: ShieldDivision, symbol: ShieldSymbol): string[] {
   const cells: string[][] = [];
@@ -263,12 +264,30 @@ export function shieldGrid(shape: ShieldShape, division: ShieldDivision, symbol:
   const w = Math.max(...art.map((r) => r.length));
   const x0 = Math.round(8 - w / 2);
   const y0 = Math.round(SYMBOL_CENTER[shape] - art.length / 2);
+  const isSymbol = new Set<string>();
   art.forEach((line, dy) => {
     [...line].forEach((ch, dx) => {
       const cell = cells[y0 + dy]?.[x0 + dx];
       if (cell == null || cell === "." || cell === "k" || ch === ".") return;
       cells[y0 + dy]![x0 + dx] = ch === "#" ? "m" : ch === "+" ? "n" : "x";
+      isSymbol.add(`${x0 + dx},${y0 + dy}`);
     });
   });
-  return cells.map((r) => r.join(""));
+  // Luz y sombra del campo: borde de arriba a la izquierda claro, de abajo a
+  // la derecha oscuro, y la sombra que proyecta el símbolo.
+  const at = (x: number, y: number) => cells[y]?.[x] ?? ".";
+  const out = cells.map((r) => [...r]);
+  for (let y = 0; y < SHIELD_H; y++) {
+    for (let x = 0; x < SHIELD_W; x++) {
+      const c = at(x, y);
+      if (c !== "a" && c !== "b") continue;
+      const sym = (dx: number, dy: number) => isSymbol.has(`${x + dx},${y + dy}`);
+      const dark = c === "a" ? "c" : "d";
+      const light = c === "a" ? "A" : "B";
+      if (sym(-1, -1) || (sym(-1, 0) && sym(0, -1))) out[y]![x] = dark;
+      else if (at(x + 1, y) === "k" || at(x, y + 1) === "k") out[y]![x] = dark;
+      else if (at(x - 1, y) === "k" || at(x, y - 1) === "k") out[y]![x] = light;
+    }
+  }
+  return out.map((r) => r.join(""));
 }

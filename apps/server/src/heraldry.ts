@@ -5,7 +5,9 @@ import type { HouseRow } from "./state";
 
 export const COLORS = HOUSE_COLORS;
 
-export function shieldOf(h: HouseRow): Shield {
+export type ShieldFields = Pick<HouseRow, "color" | "shield_shape" | "shield_division" | "color2" | "symbol" | "metal">;
+
+export function shieldOf(h: ShieldFields): Shield {
   return {
     color: h.color as Shield["color"],
     shape: h.shield_shape as Shield["shape"],
@@ -17,7 +19,7 @@ export function shieldOf(h: HouseRow): Shield {
 }
 
 /** El escudo tal como lo recibe el cliente. */
-export function shieldView(h: HouseRow) {
+export function shieldView(h: ShieldFields) {
   const s = shieldOf(h);
   return { forma: s.shape, division: s.division, color2: s.color2, simbolo: s.symbol, metal: s.metal };
 }

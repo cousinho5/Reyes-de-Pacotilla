@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { api, type Me } from "../api";
 import { navigate } from "../App";
-import { HOUSE_COLORS } from "../ui";
+import { FrayAbundio, ShieldIcon, TileArt } from "../art";
 
 export function Home() {
   const [me, setMe] = useState<Me | null>(null);
@@ -16,6 +16,11 @@ export function Home() {
   return (
     <main className="page">
       <header className="hero">
+        <div className="hero-art board" aria-hidden>
+          {(["campos", "bosque", "castillo", "montana", "puerto"] as const).map((t) => (
+            <TileArt key={t} type={t} flag="#d6a64b" />
+          ))}
+        </div>
         <h1>Reyes de Pacotilla</h1>
         <p className="subtitle">Aldricia, el Reino Más o Menos Unido</p>
       </header>
@@ -27,8 +32,8 @@ export function Home() {
           <ul className="list">
             {me.partidas.map((p) => (
               <li key={p.id}>
-                <button className="row-button" onClick={() => navigate(`/partida/${p.id}`)}>
-                  <span className="swatch" style={{ background: HOUSE_COLORS[p.color]?.hex }} />
+                <button className="row-button game-row" onClick={() => navigate(`/partida/${p.id}`)}>
+                  <ShieldIcon color={p.color} escudo={p.escudo} size={32} />
                   <span>
                     <strong>{p.nombre}</strong>
                     <br />
@@ -53,7 +58,8 @@ export function Home() {
         </section>
       ) : (
         me && (
-          <section className="card">
+          <section className="card welcome">
+            <FrayAbundio mood="adulador" size={72} />
             <p>El trono está vacío y Fray Abundio ya afila la pluma.</p>
             <button className="primary" onClick={() => navigate("/entrar")}>
               Entrar con mi código

@@ -15,6 +15,18 @@ export const HOUSE_COLORS: Record<string, { hex: string; nombre: string }> = {
   leonado: { hex: "#4E2F18", nombre: "Marrón" },
 };
 
+/** Color de frontera en el mapa: más vivo que el esmalte para leerse sobre la hierba. */
+export const TERRITORY: Record<string, string> = {
+  gules: "#ec4a33",
+  azur: "#4d86ff",
+  sinople: "#7ee06a",
+  sable: "#0d0d10",
+  purpura: "#e066dc",
+  naranjado: "#ffa236",
+  aguamarina: "#35dcd3",
+  leonado: "#b0773f",
+};
+
 export const RESOURCE_LABEL: Record<Resource, string> = {
   pan: "Pan",
   madera: "Madera",
@@ -98,6 +110,20 @@ const DAY_FMT = new Intl.DateTimeFormat("es-ES", { timeZone: "UTC", weekday: "lo
 /** "2026-10-19" → "lunes, 19 de octubre" */
 export function formatDay(date: string | null | undefined): string {
   return date ? DAY_FMT.format(new Date(`${date}T12:00:00Z`)) : "—";
+}
+
+const SHORT_FMT = new Intl.DateTimeFormat("es-ES", {
+  timeZone: "Europe/Madrid",
+  weekday: "short",
+  day: "numeric",
+  month: "short",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
+/** "dom, 1 nov, 22:00" */
+export function formatShort(iso: string | null | undefined): string {
+  return iso ? SHORT_FMT.format(new Date(iso)) : "—";
 }
 
 export function formatWhen(iso: string | null | undefined): string {

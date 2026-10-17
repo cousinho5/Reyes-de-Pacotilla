@@ -145,11 +145,19 @@ app.get("/api/yo", async (c) => {
     .bind(s.userId)
     .first<{ id: number; display_name: string }>();
   const { results } = await c.env.DB.prepare(
-    `SELECT g.id, g.name, g.status, g.is_test, h.name AS casa, h.color FROM houses h JOIN games g ON g.id = h.game_id
-     WHERE h.user_id = ? ORDER BY g.id DESC`,
+    `SELECT g.id, g.name, g.status, g.is_test, h.name AS casa, h.color, h.shield_shape, h.shield_division, h.color2, h.symbol, h.metal
+     FROM houses h JOIN games g ON g.id = h.game_id WHERE h.user_id = ? ORDER BY g.id DESC`,
   )
     .bind(s.userId)
-    .all<{ id: number; name: string; status: string; is_test: number; casa: string; color: string }>();
+    .all<
+      Pick<HouseRow, "color" | "shield_shape" | "shield_division" | "color2" | "symbol" | "metal"> & {
+        id: number;
+        name: string;
+        status: string;
+        is_test: number;
+        casa: string;
+      }
+    >();
   return c.json({
     usuario: user ? { id: user.id, nombre: user.display_name } : null,
     partidas: results.map((g) => ({
@@ -159,6 +167,7 @@ app.get("/api/yo", async (c) => {
       prueba: g.is_test === 1,
       casa: g.casa,
       color: g.color,
+      escudo: shieldView(g),
     })),
   });
 });
@@ -630,6 +639,7 @@ app.get("/api/partidas/:id", async (c) => {
               id: h.id,
               nombre: h.name,
               color: h.color,
+              escudo: shieldView(h),
               bot: h.is_bot === 1,
               personalidad: h.is_bot === 1 ? (h.bot_personality ?? "estratega") : null,
             })),

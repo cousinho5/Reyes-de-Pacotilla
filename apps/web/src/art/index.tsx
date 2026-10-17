@@ -5,7 +5,9 @@ import { useMemo } from "react";
 import type { ShieldView } from "../api";
 import { Pixels } from "./Pixels";
 import { shieldGrid } from "./shield";
-import { FRAY_SPRITES, RESOURCE_SPRITES, TILE_SPRITES, type FrayMood } from "./sprites";
+import { TILE_ART, flagPalette, shade } from "./tiles";
+import { ICONS, type IconName } from "./icons";
+import { FRAY_SPRITES, RESOURCE_SPRITES, type FrayMood } from "./sprites";
 
 export { Pixels } from "./Pixels";
 export type { FrayMood } from "./sprites";
@@ -39,10 +41,16 @@ export function ShieldIcon({ color, escudo, size = 32, title, className }: Shiel
   const symbol = (escudo?.simbolo ?? "leon") as ShieldSymbol;
   const grid = useMemo(() => shieldGrid(shape, division, symbol), [shape, division, symbol]);
   const metal = METAL[(escudo?.metal ?? "oro") as keyof typeof METAL] ?? METAL.oro;
+  const a = ENAMEL[color] ?? "#666666";
+  const b = ENAMEL[escudo?.color2 ?? ""] ?? a;
   const palette = {
     k: "#1a1410",
-    a: ENAMEL[color] ?? "#666",
-    b: ENAMEL[escudo?.color2 ?? ""] ?? ENAMEL[color] ?? "#666",
+    a,
+    b,
+    A: shade(a, 0.28),
+    B: shade(b, 0.28),
+    c: shade(a, -0.3),
+    d: shade(b, -0.3),
     m: metal[0],
     n: metal[1],
     x: "#1a1410",
@@ -58,11 +66,10 @@ export function ShieldIcon({ color, escudo, size = 32, title, className }: Shiel
   );
 }
 
-/** Dibujo de una casilla; el castillo lleva la bandera de su dueño. */
+/** Dibujo de una casilla; el castillo y la fortaleza llevan la bandera de su dueño. */
 export function TileArt({ type, flag, className }: { type: TileType; flag?: string | null; className?: string }) {
-  const sprite = TILE_SPRITES[type];
-  const palette = flag && type === "castillo" ? { ...sprite.palette, F: flag } : sprite.palette;
-  return <Pixels grid={sprite.grid} palette={palette} size={16} className={className} />;
+  const palette = useMemo(() => flagPalette(flag), [flag]);
+  return <Pixels grid={TILE_ART[type]} palette={palette} size={32} className={className} />;
 }
 
 export function ResourceIcon({ r, size = 18 }: { r: Resource; size?: number }) {
@@ -81,4 +88,10 @@ const MOOD_LABEL: Record<FrayMood, string> = {
 export function FrayAbundio({ mood = "solemne", size = 72 }: { mood?: FrayMood; size?: number }) {
   const s = FRAY_SPRITES[mood];
   return <Pixels grid={s.grid} palette={s.palette} size={size} title={MOOD_LABEL[mood]} className="fray" />;
+}
+
+/** Icono de interfaz en pixel art, teñido con `color`. */
+export function Icon({ name, size = 24, color = "#d6a64b", title }: { name: IconName; size?: number; color?: string; title?: string }) {
+  const palette = useMemo(() => ({ k: "#1c1410", m: color, l: shade(color, 0.45), d: shade(color, -0.35) }), [color]);
+  return <Pixels grid={ICONS[name]} palette={palette} size={size} title={title} className="ico" />;
 }

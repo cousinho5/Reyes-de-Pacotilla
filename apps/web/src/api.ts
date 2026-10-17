@@ -25,7 +25,7 @@ async function call<T>(method: string, path: string, body?: unknown): Promise<T>
 
 export interface Me {
   usuario: { id: number; nombre: string } | null;
-  partidas: { id: number; nombre: string; estado: string; prueba?: boolean; casa: string; color: string }[];
+  partidas: { id: number; nombre: string; estado: string; prueba?: boolean; casa: string; color: string; escudo?: ShieldView }[];
 }
 
 export interface ShieldView {
@@ -209,7 +209,7 @@ export interface TestInfo {
   /** En juego: hora simulada y casa que manejas. */
   ahora?: string;
   jugandoComo?: number;
-  casas?: { id: number; nombre: string; color: string; bot: boolean; personalidad?: string | null }[];
+  casas?: { id: number; nombre: string; color: string; escudo?: ShieldView; bot: boolean; personalidad?: string | null }[];
 }
 
 export const api = {
