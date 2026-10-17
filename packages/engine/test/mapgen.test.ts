@@ -65,14 +65,14 @@ describe("Páramos", () => {
     const p = computePrestige({
       house: 1,
       tiles: [
-        { id: 1, x: 0, y: 0, type: "paramo", owner: 1, troops: 1, fortifiedUntil: null },
-        { id: 2, x: 1, y: 0, type: "campos", owner: 1, troops: 1, fortifiedUntil: null },
+        { type: "paramo", owner: 1 },
+        { type: "campos", owner: 1 },
       ],
       buildings: { granja: 1, aserradero: 1, cantera: 1, mina: 1, mercado: 1 },
       gold: 0,
       tradePartners: 0,
       achievements: {},
-    } as Parameters<typeof computePrestige>[0]);
+    });
     expect(p.territorio).toBe(4);
   });
 });
