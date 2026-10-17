@@ -200,7 +200,7 @@ Lo que lleva al jugador a entrar a diario no es una obligación, sino que cada d
 
 ## 8. Órdenes y combate
 
-> **Sistema de guerra v3** (decidido el 17 de octubre de 2026). **Ya hecho:** casillas hexagonales y una resolución cada día a las 22:00. **Pendiente:** tres tipos de tropa (Mesnada, Jinetes y Catapultas), terreno que cambia el combate, flanqueo, asedios de varios días (el asedio a un castillo da Prestigio), un Capitán por casa que se puede capturar y rescatar, Gloria por ganar batallas y repetición animada de cada noche. La propuesta completa está en el documento "Reyes de Pacotilla: propuesta del nuevo sistema de guerra". Primeros resultados del simulador en `docs/simulaciones.md`. Hasta que esté hecho, rige lo que sigue.
+> **Sistema de guerra v3** (decidido el 17 de octubre de 2026). **Ya hecho:** casillas hexagonales, una resolución cada día a las 22:00 y terreno que cuenta (sección 8.8). **Pendiente:** tres tipos de tropa (Mesnada, Jinetes y Catapultas), terreno que cambia el combate, flanqueo, asedios de varios días (el asedio a un castillo da Prestigio), un Capitán por casa que se puede capturar y rescatar, Gloria por ganar batallas y repetición animada de cada noche. La propuesta completa está en el documento "Reyes de Pacotilla: propuesta del nuevo sistema de guerra". Primeros resultados del simulador en `docs/simulaciones.md`. Hasta que esté hecho, rige lo que sigue.
 
 ### 8.1 Órdenes
 
@@ -273,6 +273,23 @@ Las tropas se mueven como máximo una casilla por resolución: siete por semana 
 ### 8.7 Previsualización
 
 El botón **Simular** aplica tus órdenes al estado que conoces y te enseña el resultado previsto. Usa exactamente el mismo motor que el servidor, así que con la misma información el resultado coincide; lo que no sabes (las órdenes de los demás y lo que hay fuera de tu vista) sigue oculto.
+
+### 8.8 Terreno (diseño v3, fase 2)
+
+| Terreno | Defensa | Efecto especial |
+| --- | --- | --- |
+| Campos, páramo, puerto | +0% | El puerto permite la travesía |
+| Bosque | +25% | **Emboscada:** desde fuera se ve quién lo controla, pero no cuántas tropas hay (salvo con la carta Espía). Las guarniciones neutrales sí se ven. |
+| Cantera | +25% | Fortificar aquí cuesta 4 de Piedra en vez de 8. |
+| Montaña | +50% | **Atalaya:** desde una montaña tuya ves las casillas a dos pasos. |
+| Fortaleza | +50% | Como hasta ahora. |
+
+El terreno se suma a las demás bonificaciones del defensor y el tope sigue en x2.
+
+- **Caminos.** Los que se dibujan entre los castillos y las fortalezas cuentan: un grupo avanza **dos casillas en una noche** siguiendo el camino si la casilla de en medio es suya. Ese ataque no admite apoyos.
+- **Travesía.** Desde un puerto tuyo, un grupo llega a **cualquier otro puerto en una noche**, también para atacarlo. Tampoco admite apoyos. La propuesta decía dos noches, pero eso exigía guardar tropas "en el mar" entre resoluciones; con una noche y sin apoyos el puerto ya gana valor sin complicar las reglas.
+
+Simulación (300 partidas de 6 semanas, `docs/simulaciones.md`): con terreno hay un 15% menos de batallas entre casas (aún unas 2,5 veces más que con dos resoluciones por semana), y las casas con deserciones bajan del 20% al 11%. Los bots marchan por camino unas 21 veces por partida y casi no usan el mar (0,6 travesías): queda para las personas.
 
 ## 9. Comercio, subasta y pactos
 

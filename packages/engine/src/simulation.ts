@@ -14,8 +14,9 @@ import { generateMap } from "./mapgen";
 import { dealObjectives, objectiveMet, type ObjectiveKey } from "./objectives";
 import { computePrestige, isValidTrade, type AchievementKey, type PrestigeBreakdown } from "./prestige";
 import { resolveCampaign } from "./combat";
+import { marchKind } from "./terrain";
 import type { MapLayoutOverride } from "./mapgen";
-import { GRID, PRESTIGE, RHYTHM, SPECIALTY_PAIRS, STARTING_RESOURCES } from "./rules";
+import { GRID, PRESTIGE, RHYTHM, SPECIALTY_PAIRS, STARTING_RESOURCES, TERRAIN, TERRAIN_OFF } from "./rules";
 import { totalOf } from "./trade";
 import { auctionLots, doubleLot, resolveAuction, type Bid } from "./auction";
 import {
@@ -98,6 +99,8 @@ export interface SimOptions {
   resolutionDays?: number[];
   /** Resoluciones que dura fortificar (por defecto, la de RHYTHM). */
   fortify?: number;
+  /** Terreno que cuenta en la guerra (por defecto, sí: TERRAIN); false para el diseño v2. */
+  terrain?: boolean;
 }
 
 export interface SimHouseResult {
@@ -151,6 +154,9 @@ export interface SimGameResult {
   attacksWon: number;
   /** Órdenes de apoyo (a ataques o a defensas). */
   supports: number;
+  /** Movimientos por camino (dos casillas) y travesías por mar. */
+  roadMoves: number;
+  seaMoves: number;
   /** Tratos cerrados (válidos o no). */
   trades: number;
   /** Oro gastado en la Gran Subasta y cartas usadas. */
@@ -186,16 +192,18 @@ interface HouseState {
 
 export function simulateGame(opts: SimOptions): SimGameResult {
   // Las opciones de forma y ritmo cambian GRID y RHYTHM solo durante esta partida.
-  const saved = { grid: GRID.kind, days: RHYTHM.days, fortify: RHYTHM.fortify };
+  const saved = { grid: GRID.kind, days: RHYTHM.days, fortify: RHYTHM.fortify, terrain: { ...TERRAIN } };
   GRID.kind = opts.grid ?? GRID.kind;
   RHYTHM.days = opts.resolutionDays ?? RHYTHM.days;
   RHYTHM.fortify = opts.fortify ?? RHYTHM.fortify;
+  if (opts.terrain === false) Object.assign(TERRAIN, TERRAIN_OFF);
   try {
     return runGame(opts);
   } finally {
     GRID.kind = saved.grid;
     RHYTHM.days = saved.days;
     RHYTHM.fortify = saved.fortify;
+    Object.assign(TERRAIN, saved.terrain);
   }
 }
 
@@ -259,6 +267,8 @@ function runGame(opts: SimOptions): SimGameResult {
   let attacks = 0;
   let attacksWon = 0;
   let supports = 0;
+  let roadMoves = 0;
+  let seaMoves = 0;
   let auctionGold = 0;
   let cardsPlayed = 0;
   let rankWeek2: Map<HouseId, number> | null = null;
@@ -489,7 +499,12 @@ function runGame(opts: SimOptions): SimGameResult {
     const before = new Map(tiles.map((t) => [t.id, t]));
     for (const o of orders) {
       if (o.kind === "support") supports++;
-      else if (before.get(o.to)?.owner !== o.house) attacks++;
+      else {
+        if (before.get(o.to)?.owner !== o.house) attacks++;
+        const how = marchKind(before.get(o.from)!, before.get(o.to)!, tiles, o.house);
+        if (how === "camino") roadMoves++;
+        if (how === "mar") seaMoves++;
+      }
     }
     const result = resolveCampaign({
       resolution,
@@ -617,6 +632,8 @@ function runGame(opts: SimOptions): SimGameResult {
     attacks,
     attacksWon,
     supports,
+    roadMoves,
+    seaMoves,
     trades: trades.length,
     auctionGold,
     events: weekEvents.map((e) => e.key),

@@ -91,6 +91,43 @@ export const NEUTRAL_GARRISON: Record<Exclude<TileType, "castillo">, number> = {
   paramo: 2,
 };
 
+/**
+ * Terreno (diseño v3, fase 2). Es un objeto para que el simulador pueda
+ * apagar cada parte y comparar.
+ * - `defense`: bonificación de defensa por tipo de casilla (se suma a las demás; el tope x2 sigue).
+ * - `quarryFortify`: fortificar en una cantera cuesta esto (la piedra está a mano).
+ * - `roads`: por los caminos entre castillos y fortalezas se avanzan 2 casillas
+ *   por noche si la de en medio es tuya.
+ * - `sea`: de un puerto tuyo a cualquier otro puerto en una noche (sin apoyos).
+ * - `ambush`: desde fuera no se ve cuántas tropas hay en el bosque de otra casa.
+ * - `watchtower`: desde una montaña tuya ves a esta distancia.
+ */
+export const TERRAIN: {
+  defense: Partial<Record<TileType, number>>;
+  quarryFortify: Partial<Resources>;
+  roads: boolean;
+  sea: boolean;
+  ambush: boolean;
+  watchtower: number;
+} = {
+  defense: { bosque: 0.25, montana: 0.5, cantera: 0.25 },
+  quarryFortify: { piedra: 4 },
+  roads: true,
+  sea: true,
+  ambush: true,
+  watchtower: 2,
+};
+
+/** Terreno del diseño v2 (sin efectos), para comparar en el simulador. */
+export const TERRAIN_OFF = {
+  defense: {},
+  quarryFortify: { piedra: 8 },
+  roads: false,
+  sea: false,
+  ambush: false,
+  watchtower: 1,
+} as const;
+
 /** Bonificaciones de defensa (se suman; máximo total x2). */
 export const DEFENSE_BONUS = {
   base: 0.25,

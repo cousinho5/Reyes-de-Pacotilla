@@ -15,7 +15,7 @@
 // Todo es determinista: la misma partida da el mismo dibujo. Sin animación:
 // el mapa está quieto y solo cambia cuando cambia la partida.
 
-import { GRID, type TileType } from "@reyes/engine";
+import { GRID, roadEdges as engineRoadEdges, type TileType } from "@reyes/engine";
 import { CELL } from "./cell";
 import { edgeDistance, makeGeo, type Geo, type GridKind } from "./grid";
 import type { Palette } from "./Pixels";
@@ -431,44 +431,11 @@ export function renderWorld(opts: WorldOptions): WorldImage {
 }
 
 /**
- * Red de caminos: cada castillo se une a la fortaleza más cercana (o al
- * centro del mapa) por el camino más corto que evita montañas y puertos.
+ * Red de caminos: la del motor (terrain.ts), que es la que cuenta en la guerra
+ * (por los caminos se avanzan dos casillas por noche). Se dibuja tal cual.
  */
-export function roadEdges(cols: number, rows: number, cells: WorldCell[], grid: GridKind = GRID.kind): [WorldCell, WorldCell][] {
-  const at = new Map(cells.map((c) => [`${c.x},${c.y}`, c]));
-  const geo = makeGeo(grid, cols, rows, 0);
-  const forts = cells.filter((c) => c.type === "fortaleza");
-  const goals = forts.length ? forts : cells.filter((c) => c.x === Math.floor(cols / 2) && c.y === Math.floor(rows / 2));
-  const edges = new Map<string, [WorldCell, WorldCell]>();
-  for (const start of cells.filter((c) => c.type === "castillo")) {
-    const prev = new Map<string, string | null>([[`${start.x},${start.y}`, null]]);
-    const queue: WorldCell[] = [start];
-    let found: WorldCell | null = null;
-    while (queue.length && !found) {
-      const cur = queue.shift()!;
-      for (const [nx, ny] of geo.neighbours(cur.x, cur.y)) {
-        const n = at.get(`${nx},${ny}`);
-        const key = `${nx},${ny}`;
-        if (!n || prev.has(key)) continue;
-        const goal = goals.includes(n);
-        if (!goal && (n.type === "montana" || n.type === "puerto" || n.type === "castillo")) continue;
-        prev.set(key, `${cur.x},${cur.y}`);
-        if (goal) {
-          found = n;
-          break;
-        }
-        queue.push(n);
-      }
-    }
-    let key: string | null | undefined = found ? `${found.x},${found.y}` : null;
-    while (key) {
-      const from: string | null | undefined = prev.get(key);
-      if (!from) break;
-      edges.set([from, key].sort().join("|"), [at.get(from)!, at.get(key)!]);
-      key = from;
-    }
-  }
-  return [...edges.values()];
+export function roadEdges(_cols: number, _rows: number, cells: WorldCell[], _grid: GridKind = GRID.kind): [WorldCell, WorldCell][] {
+  return engineRoadEdges(cells);
 }
 
 // ---------------------------------------------------------------------------

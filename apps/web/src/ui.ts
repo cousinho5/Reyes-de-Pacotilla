@@ -69,6 +69,18 @@ export const TILE_LABEL: Record<TileType, string> = {
   paramo: "Páramo",
 };
 
+/** Lo que el terreno hace en la guerra (diseño v3), para el panel de la casilla. */
+export const TERRAIN_NOTE: Record<TileType, string> = {
+  castillo: "No se puede conquistar.",
+  campos: "Terreno llano: sin ventaja para nadie.",
+  bosque: "+25% de defensa. Emboscada: desde fuera no se ve cuántas tropas hay.",
+  cantera: "+25% de defensa. Fortificar aquí cuesta la mitad de Piedra.",
+  montana: "+50% de defensa. Atalaya: desde aquí ves a dos casillas.",
+  puerto: "Travesía: desde un puerto tuyo llegas a cualquier otro puerto en una noche.",
+  fortaleza: "+50% de defensa.",
+  paramo: "Terreno llano y yermo: no produce nada.",
+};
+
 export const TILE_MARK: Record<TileType, string> = {
   castillo: "♜",
   campos: "≋",

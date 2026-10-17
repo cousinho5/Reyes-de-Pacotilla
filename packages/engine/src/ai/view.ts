@@ -3,7 +3,7 @@
 
 import { defenseMultiplier } from "../combat";
 import { dailyProduction, upgradeCost, weeklyUpkeep } from "../economy";
-import { visibleTileIds } from "../fog";
+import { ambushed, visibleTileIds } from "../fog";
 import { areAdjacent } from "../map";
 import type { ObjectiveKey } from "../objectives";
 import { FORTIFY_COST, PRESTIGE, SPECIALTY_PAIRS, TROOP_COST, TROOPS_PER_PAN } from "../rules";
@@ -74,7 +74,14 @@ export function focusBuilding(levels: Record<BuildingKind, number>): BuildingKin
 
 export function situation(view: AiView, p: Personality): Situation {
   const visible = visibleTileIds(view.tiles, view.house, view.spied ?? []);
-  const seen = view.tiles.filter((t) => visible.has(t.id));
+  // En un bosque emboscado no se ven las tropas: el bot supone tantas como la
+  // media de lo que esa casa tiene a la vista (y al menos 3), como haría una persona.
+  const raw = view.tiles.filter((t) => visible.has(t.id));
+  const guess = (house: number) => {
+    const shown = raw.filter((t) => t.owner === house && t.type !== "castillo" && !ambushed(t, view.house, view.spied ?? []));
+    return Math.max(3, Math.round(shown.reduce((a, t) => a + t.troops, 0) / Math.max(1, shown.length)));
+  };
+  const seen = raw.map((t) => (ambushed(t, view.house, view.spied ?? []) ? { ...t, troops: guess(t.owner!) } : t));
   const own = seen.filter((t) => t.owner === view.house);
   const sorted = [...view.prestige].sort((a, b) => b.total - a.total || a.house - b.house);
   // El líder al que tener manía (ninguno si el líder es uno mismo).

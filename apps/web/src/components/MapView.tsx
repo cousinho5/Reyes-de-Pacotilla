@@ -1,11 +1,11 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { FORTIFY_COST, TILE_NAMES, areAdjacent } from "@reyes/engine";
+import { TILE_NAMES, areAdjacent, fortifyCost, marchKind, type Tile } from "@reyes/engine";
 import { api, type GameState, type OrderView, type TileView } from "../api";
 import { Icon, ShieldIcon, TileArt } from "../art";
 import { cellBox, sharedEdge, type Geo } from "../art/grid";
 import { geoOf } from "../art/world";
 import { WorldCanvas, useWorld } from "./WorldCanvas";
-import { HOUSE_COLORS, TERRITORY, TILE_LABEL, houseName } from "../ui";
+import { HOUSE_COLORS, TERRAIN_NOTE, TERRITORY, TILE_LABEL, houseName } from "../ui";
 
 interface Props {
   state: GameState;
@@ -117,12 +117,18 @@ export function MapView({ state, draft, setDraft, act }: Props) {
   const committed = (tileId: number) => draft.filter((o) => o.desde === tileId).reduce((a, o) => a + o.tropas, 0);
   const tile = tiles.find((t) => t.id === selected) ?? null;
   const byId = useMemo(() => new Map(tiles.map((t) => [t.id, t])), [tiles]);
+  // Para el motor, las tropas que no se ven cuentan como 0: solo importa el terreno y quién manda.
+  const engineTiles = useMemo(() => tiles.map(asTile), [tiles]);
 
   const isTarget = (t: TileView) => {
     if (!compose) return false;
     const from = byId.get(compose.from)!;
+    if (compose.mode === "mover") {
+      // Vecinas, y además por camino (dos casillas) o por mar (de puerto a puerto).
+      if (t.type === "castillo" && t.castleOf !== me) return false;
+      return me != null && marchKind(asTile(from), asTile(t), engineTiles, me) != null;
+    }
     if (!areAdjacent(from, t)) return false;
-    if (compose.mode === "mover") return !(t.type === "castillo" && t.castleOf !== me);
     return t.type !== "castillo";
   };
 
@@ -300,6 +306,11 @@ export function MapView({ state, draft, setDraft, act }: Props) {
   );
 }
 
+/** Una casilla tal como la entiende el motor. */
+function asTile(t: TileView): Tile {
+  return { id: t.id, x: t.x, y: t.y, type: t.type, owner: t.owner, troops: t.troops ?? 0, fortifiedUntil: t.fortifiedUntil, castleOf: t.castleOf ?? null };
+}
+
 /** Flecha de orden entre dos casillas, en píxeles del dibujo. */
 function Arrow({
   geo,
@@ -379,11 +390,16 @@ function TilePanel({
         </div>
         <div className="troop-count">
           {tile.troops ?? "?"}
-          <small>{tile.troops == null ? "sin ver" : tile.troops === 1 ? "tropa" : "tropas"}</small>
+          <small>{tile.troops == null ? (tile.hidden ? "escondidas" : "sin ver") : tile.troops === 1 ? "tropa" : "tropas"}</small>
         </div>
       </div>
       {note && <p className="note">«{note}»</p>}
-      {tile.troops == null && <p className="muted">No sabes cuántas tropas hay: está fuera de tu vista.</p>}
+      <p className="muted terrain-note">{TERRAIN_NOTE[tile.type]}</p>
+      {tile.troops == null && (
+        <p className="muted">
+          {tile.hidden ? "Sus tropas se esconden en el bosque: no sabes cuántas hay." : "No sabes cuántas tropas hay: está fuera de tu vista."}
+        </p>
+      )}
       {mine && open && available > 0 && (
         <div className="actions">
           <button className="primary grow" onClick={() => onOrder("mover")}>
@@ -394,7 +410,7 @@ function TilePanel({
       )}
       {mine && tile.type !== "castillo" && !fortified && (
         <button className="secondary wide" onClick={onFortify}>
-          <Icon name="muralla" size={18} color="#827d8a" /> Fortificar: {FORTIFY_COST.piedra} de Piedra, +25% de defensa{" "}
+          <Icon name="muralla" size={18} color="#827d8a" /> Fortificar: {fortifyCost(tile).piedra} de Piedra, +25% de defensa{" "}
           {(state.partida.fortificarResoluciones ?? 2) === 1 ? "una resolución" : `${state.partida.fortificarResoluciones ?? 2} resoluciones`}
         </button>
       )}
@@ -430,7 +446,11 @@ function Composer({
         {verb} desde {from.nombre}
       </h2>
       {!target ? (
-        <p>Toca una casilla vecina marcada en el mapa.</p>
+        <p>
+          {compose.mode === "mover"
+            ? "Toca una casilla marcada: una vecina, o más lejos por un camino tuyo o por mar desde un puerto."
+            : "Toca una casilla vecina marcada en el mapa."}
+        </p>
       ) : (
         <>
           <p>
