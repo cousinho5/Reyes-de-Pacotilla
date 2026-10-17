@@ -2,7 +2,7 @@
 // Es pura: el cron horario la llama y luego ejecuta las tareas contra D1.
 // Cada tarea tiene una clave única, así que repetirla no tiene efecto.
 
-import { announceInstant, localDate, resolutionInstant, zonedToUtc } from "@reyes/engine";
+import { announceInstant, localDate, resolutionInfo, resolutionInstant, totalResolutions, zonedToUtc } from "@reyes/engine";
 
 export interface GameClock {
   timezone: string;
@@ -13,6 +13,8 @@ export interface GameClock {
   weeks: number;
   /** Última resolución completada (0 si ninguna). */
   currentResolution: number;
+  /** Días con resolución (0 = lunes): todos, o miércoles y domingo en las partidas antiguas. */
+  days: number[];
 }
 
 export type Job =
@@ -29,7 +31,7 @@ export function dueJobs(now: Date, game: GameClock): Job[] {
   const start = zonedToUtc(game.startDate, "00:00", game.timezone);
   if (now < start) return jobs;
 
-  const total = game.weeks * 2;
+  const total = totalResolutions(game.weeks, game.days);
   const next = game.currentResolution + 1;
 
   if (game.currentResolution >= total) {
@@ -40,20 +42,19 @@ export function dueJobs(now: Date, game: GameClock): Job[] {
   const date = localDate(now, game.timezone);
   jobs.push({ kind: "produccion", key: `produccion:${date}`, date });
 
-  // Martes a la hora de resolución: lotes de la Gran Subasta del miércoles.
-  if (next % 2 === 1) {
-    const week = (next + 1) / 2;
-    if (now >= announceInstant(game.startDate, week, game.resolveTime, game.timezone)) {
-      jobs.push({ kind: "anuncio", key: `anuncio:${week}`, week });
-    }
+  // Martes a la hora de resolución: lotes de la Gran Subasta del miércoles (una
+  // vez por semana: la clave evita repetirlo). Va antes que la resolución del martes.
+  const { week, weekday } = resolutionInfo(next, game.days);
+  if (weekday <= 2 && now >= announceInstant(game.startDate, week, game.resolveTime, game.timezone)) {
+    jobs.push({ kind: "anuncio", key: `anuncio:${week}`, week });
   }
 
-  const close = resolutionInstant(game.startDate, next, game.closeTime, game.timezone);
+  const close = resolutionInstant(game.startDate, next, game.closeTime, game.timezone, game.days);
   if (now.getTime() >= close.getTime() - TWO_HOURS && now < close) {
     jobs.push({ kind: "aviso_cierre", key: `aviso_cierre:${next}`, resolution: next });
   }
 
-  const resolveAt = resolutionInstant(game.startDate, next, game.resolveTime, game.timezone);
+  const resolveAt = resolutionInstant(game.startDate, next, game.resolveTime, game.timezone, game.days);
   if (now >= resolveAt) {
     jobs.push({ kind: "resolucion", key: `resolucion:${next}`, resolution: next });
   }
@@ -64,6 +65,6 @@ export function dueJobs(now: Date, game: GameClock): Job[] {
 /** ¿Se pueden dar todavía órdenes para la próxima resolución? */
 export function ordersOpen(now: Date, game: GameClock): boolean {
   const next = game.currentResolution + 1;
-  if (next > game.weeks * 2) return false;
-  return now < resolutionInstant(game.startDate, next, game.closeTime, game.timezone);
+  if (next > totalResolutions(game.weeks, game.days)) return false;
+  return now < resolutionInstant(game.startDate, next, game.closeTime, game.timezone, game.days);
 }

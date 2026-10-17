@@ -21,6 +21,8 @@ import {
   objectiveMet,
   planAutopilot,
   resolutionInfo,
+  totalResolutions,
+  withRhythm,
   resolveCampaign,
   type AutopilotTemplate,
   type BuildingKind,
@@ -43,6 +45,7 @@ import {
   toEngineTiles,
   type GameRow,
   type HouseRow,
+  rhythmOf,
 } from "./state";
 
 const ABSENT_AFTER_MS = ABSENT_AFTER_DAYS * 24 * 60 * 60 * 1000;
@@ -80,6 +83,7 @@ export function clockOf(game: GameRow): GameClock | null {
     startDate: game.start_date,
     weeks: game.weeks,
     currentResolution: game.current_resolution,
+    days: rhythmOf(game).days,
   };
 }
 
@@ -101,8 +105,9 @@ export async function runGameJobs(env: NotifyEnv, game: GameRow, now: Date): Pro
   }
   // Tras la resolución del domingo, el boletín de la semana (el último sale con el final).
   const after = await loadGame(env.DB, game.id);
-  if (after && after.status === "active" && after.current_resolution >= 2 && after.current_resolution % 2 === 0) {
-    const week = after.current_resolution / 2;
+  const done = after && after.current_resolution >= 1 ? resolutionInfo(after.current_resolution, rhythmOf(after).days) : null;
+  if (after && after.status === "active" && done?.kind === "domingo") {
+    const week = done.week;
     if (week < after.weeks) {
       try {
         await publishBulletin(env, after, week);
@@ -151,7 +156,7 @@ export async function runProduction(env: NotifyEnv, game: GameRow, key: string, 
     if (!levels || !p) continue;
     const res = resourcesOf(house);
     for (const r of Object.keys(p) as (keyof typeof p)[]) res[r] += p[r];
-    const plan = planAutopilot({
+    const plan = withRhythm(rhythmOf(game), () => planAutopilot({
       template: (house.autopilot_template ?? "equilibrada") as AutopilotTemplate,
       day,
       house: house.id,
@@ -159,7 +164,7 @@ export async function runProduction(env: NotifyEnv, game: GameRow, key: string, 
       buildings: levels,
       resources: res,
       nextResolution: game.current_resolution + 1,
-    });
+    }));
     const c = plan.cost;
     const st = [
       db.prepare("UPDATE houses SET autopilot_ran_on = ? WHERE id = ? AND (autopilot_ran_on IS NULL OR autopilot_ran_on <> ?)").bind(
@@ -213,7 +218,18 @@ export async function runProduction(env: NotifyEnv, game: GameRow, key: string, 
 export async function closeWarning(env: NotifyEnv, game: GameRow, n: number): Promise<void> {
   await env.DB.prepare("INSERT INTO job_runs (game_id, job_key) VALUES (?, ?)").bind(game.id, `aviso_cierre:${n}`).run();
   const houses = await loadHouses(env.DB, game.id);
-  await notifyHouses(env, houses.map((h) => h.id), {
+  // Con resolución diaria, el aviso solo va a quien aún no ha dado órdenes:
+  // un aviso cada tarde a todo el mundo cansaría (respeto al tiempo).
+  let to = houses.map((h) => h.id);
+  if (rhythmOf(game).days.length > 2) {
+    const { results } = await env.DB.prepare("SELECT DISTINCT house_id FROM orders WHERE game_id = ? AND resolution_no = ?")
+      .bind(game.id, n)
+      .all<{ house_id: number }>();
+    const ordered = new Set(results.map((r) => r.house_id));
+    to = to.filter((id) => !ordered.has(id));
+  }
+  if (to.length === 0) return;
+  await notifyHouses(env, to, {
     kind: "cierre",
     title: "Cierre en 2 h",
     body: "Quedan dos horas para dar órdenes. Fray Abundio se impacienta.",
@@ -261,7 +277,8 @@ export async function runResolution(env: NotifyEnv, game: GameRow, n: number, no
   );
   const absentHouses = houses.filter((h) => isAbsent(h, now, game)).map((h) => h.id);
 
-  const { week, kind } = resolutionInfo(n);
+  const { days } = rhythmOf(game);
+  const { week, kind } = resolutionInfo(n, days);
   // Cartas que actúan en esta resolución (Tregua y Tambores de guerra).
   const cardEffects = await cardsForResolution(db, game.id, n);
   // Evento de la semana: lo que afecta al combate del miércoles.
@@ -403,9 +420,10 @@ export async function runResolution(env: NotifyEnv, game: GameRow, n: number, no
     }
     const last = lastPlace([...prestige].map(([house, p]) => ({ house, total: p.total })));
     statements.push(db.prepare("UPDATE houses SET help_until_resolution = NULL WHERE game_id = ?").bind(game.id));
-    if (last != null && n < game.weeks * 2) {
-      statements.push(db.prepare("UPDATE houses SET help_until_resolution = ? WHERE id = ?").bind(n + 2, last));
-      extraEvents.push({ type: "ayuda_ultimo", visibleTo: null, payload: { house: last, until: n + 2 } });
+    // La ayuda dura una semana: tantas resoluciones como días con resolución.
+    if (last != null && n < totalResolutions(game.weeks, days)) {
+      statements.push(db.prepare("UPDATE houses SET help_until_resolution = ? WHERE id = ?").bind(n + days.length, last));
+      extraEvents.push({ type: "ayuda_ultimo", visibleTo: null, payload: { house: last, until: n + days.length } });
     }
   }
 
@@ -512,7 +530,7 @@ export async function finishGame(env: NotifyEnv, game: GameRow, now: Date): Prom
       db.prepare("UPDATE houses SET objective_met = ? WHERE id = ?").bind(met ? 1 : 0, h.id),
       db.prepare(
         "INSERT OR REPLACE INTO prestige_snapshots (game_id, house_id, resolution_no, total, breakdown) VALUES (?, ?, ?, ?, ?)",
-      ).bind(game.id, h.id, game.weeks * 2 + 1, total, JSON.stringify({ ...p, objetivo: met ? PRESTIGE.secretObjective : 0, total })),
+      ).bind(game.id, h.id, totalResolutions(game.weeks, rhythmOf(game).days) + 1, total, JSON.stringify({ ...p, objetivo: met ? PRESTIGE.secretObjective : 0, total })),
       db.prepare("INSERT INTO event_log (game_id, type, visible_to, payload) VALUES (?, 'objetivo', NULL, ?)").bind(
         game.id,
         JSON.stringify({ house: h.id, objetivo: h.objective_key, cumplido: met }),

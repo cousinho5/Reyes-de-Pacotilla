@@ -85,7 +85,7 @@ describe("Piloto automático", () => {
 
   it("defensiva: fortifica la casilla amenazada y recluta guardando Pan", () => {
     const plan = planAutopilot({ ...base, template: "defensiva", resources: { ...rich } });
-    expect(plan.fortify).toEqual({ tile: 2, until: 4 });
+    expect(plan.fortify).toEqual({ tile: 2, until: 6 }); // cuatro resoluciones desde la 3
     expect(plan.recruit).toBe(10);
     expect(plan.upgrade).toBeNull();
   });

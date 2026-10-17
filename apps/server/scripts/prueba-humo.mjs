@@ -107,7 +107,11 @@ check("un código falso no entra", bad.status === 401, bad);
 
 const state = await pablo("GET", `/api/partidas/${gameId}`);
 const s = state.data;
-check("estado: 4 casas, mapa 5x4 y 20 casillas", s.casas?.length === 4 && s.partida.columnas === 5 && s.casillas?.length === 20, s.partida);
+check(
+  "estado: 4 casas, mapa hexagonal 6x5 y 30 casillas, una resolución al día (14 en 2 semanas)",
+  s.casas?.length === 4 && s.partida.columnas === 6 && s.casillas?.length === 30 && s.partida.totalResoluciones === 14,
+  s.partida,
+);
 check("recursos iniciales de 10", Object.values(s.yo.recursos).every((v) => v === 10), s.yo.recursos);
 check("producción inicial de 14 al día", Object.values(s.yo.produccionDiaria).reduce((a, b) => a + b, 0) === 14, s.yo.produccionDiaria);
 const hidden = s.casillas.filter((t) => !t.visible);

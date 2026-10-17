@@ -750,17 +750,63 @@ svg.ico {
   font-size: 0.88rem;
   background: rgba(251, 243, 223, 0.94);
 }
+/* Encima del dibujo: territorio y selección (SVG), botones de cada casilla y sus marcas. */
+.world-marks,
 .world-overlay {
   position: absolute;
-}
-.map {
-  display: grid;
-  gap: 0;
+  inset: 0;
   width: 100%;
   height: 100%;
 }
+.world-marks {
+  pointer-events: none;
+  overflow: visible;
+}
+.world-overlay {
+  pointer-events: none;
+}
+.cell-line {
+  fill: none;
+  stroke: rgba(28, 20, 16, 0.22);
+  stroke-width: 1;
+}
+.territory.fogged {
+  opacity: 0.7;
+}
+.cell-selected {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 3;
+  filter: drop-shadow(0 0 2px rgba(28, 20, 16, 0.9));
+}
+.cell-source {
+  fill: none;
+  stroke: var(--brass-hi);
+  stroke-width: 3;
+}
+.cell-target {
+  fill: rgba(241, 207, 125, 0.45);
+  stroke: var(--brass-hi);
+  stroke-width: 2.5;
+  animation: pulse 1.1s ease-in-out infinite;
+}
+@keyframes pulse {
+  50% {
+    fill: rgba(241, 207, 125, 0.12);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cell-target {
+    animation: none;
+  }
+}
+.cell-box {
+  position: absolute;
+}
+/* El botón ocupa la forma de la casilla: en hexágonos se recorta. */
 .tile {
-  position: relative;
+  position: absolute;
+  inset: 0;
   min-height: 0;
   padding: 0;
   border: none;
@@ -768,19 +814,18 @@ svg.ico {
   box-shadow: none;
   background: none;
   display: block;
+  pointer-events: auto;
+}
+.tile.hex {
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
 }
 .tile:active:not(:disabled) {
   transform: none;
   box-shadow: none;
 }
-/* Territorio: un velo del color de la casa y la frontera solo donde cambia el dueño. */
-.tile-owner {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-.tile.fogged .tile-owner {
-  opacity: 0.7;
+.tile:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: -4px;
 }
 .tile-banner {
   position: absolute;
@@ -816,41 +861,18 @@ svg.ico {
   border-radius: 3px;
   box-shadow: 0 0 0 1.5px var(--wood-0);
 }
-.tile.selected {
-  z-index: 4;
-  outline: 3px solid #fff;
-  outline-offset: -2px;
-  box-shadow: 0 0 0 2px var(--wood-0), 0 8px 14px rgba(0, 0, 0, 0.5);
+/* En hexágonos las esquinas de la caja quedan fuera: las marcas se meten hacia dentro. */
+.cell-box.hex .tile-banner {
+  top: 18%;
+  right: 6%;
 }
-.tile.source {
-  z-index: 4;
-  outline: 3px solid var(--brass-hi);
-  outline-offset: -2px;
+.cell-box.hex .tile-troops {
+  left: 8%;
+  bottom: 20%;
 }
-.tile.target {
-  z-index: 3;
-  outline: 3px solid var(--brass-hi);
-  outline-offset: -3px;
-  box-shadow: inset 0 0 0 5px rgba(28, 20, 16, 0.55);
-}
-.tile.target::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  background: rgba(241, 207, 125, 0.45);
-  animation: pulse 1.1s ease-in-out infinite;
-  pointer-events: none;
-}
-@keyframes pulse {
-  50% {
-    background: rgba(241, 207, 125, 0.15);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .tile.target::before {
-    animation: none;
-  }
+.cell-box.hex .tile-battle {
+  top: 18%;
+  left: 8%;
 }
 /* Flechas de órdenes (las tuyas) y de la última resolución (más apagadas). */
 .world-arrows {

@@ -23,7 +23,10 @@ import {
   planDay,
   planOrders,
   proposeOffer,
+  resolutionInfo,
   resolutionInstant,
+  totalResolutions,
+  withRhythm,
   situation,
   zonedToUtc,
   type AiView,
@@ -53,6 +56,7 @@ import {
   toEngineTiles,
   type GameRow,
   type HouseRow,
+  rhythmOf,
 } from "./state";
 
 /** Hora local a la que empieza cada día simulado. */
@@ -137,8 +141,8 @@ export function nextStop(game: GameRow, now: Date): Date {
   const morning = now < todayMorning ? todayMorning : zonedToUtc(addDays(today, 1), MORNING, game.timezone);
   const clock = clockOf(game);
   const next = game.current_resolution + 1;
-  if (!clock || next > game.weeks * 2) return morning;
-  const resolve = resolutionInstant(clock.startDate, next, clock.resolveTime, clock.timezone);
+  if (!clock || next > totalResolutions(game.weeks, clock.days)) return morning;
+  const resolve = resolutionInstant(clock.startDate, next, clock.resolveTime, clock.timezone, clock.days);
   return resolve > now && resolve < morning ? resolve : morning;
 }
 
@@ -161,7 +165,8 @@ export async function advance(env: BotEnv, gameId: number, until: "paso" | "reso
     const next = game.current_resolution + 1;
     const clock = clockOf(game)!;
     const resolving =
-      next <= game.weeks * 2 && stop >= resolutionInstant(clock.startDate, next, clock.resolveTime, clock.timezone);
+      next <= totalResolutions(game.weeks, clock.days) &&
+      stop >= resolutionInstant(clock.startDate, next, clock.resolveTime, clock.timezone, clock.days);
     // Las ofertas se hicieron durante el día: los bots contestan antes de nada.
     await botsAnswerOffers(env, game);
     if (resolving) await addBotOrders(env, game, next);
@@ -173,7 +178,7 @@ export async function advance(env: BotEnv, gameId: number, until: "paso" | "reso
     if (!resolving && game.status === "active") await botsPlayDay(env, game);
 
     if (until === "paso") break;
-    const total = game.weeks * 2;
+    const total = totalResolutions(game.weeks, rhythmOf(game).days);
     if (game.current_resolution > startResolution && game.current_resolution < total) break;
   }
   return game;
@@ -264,7 +269,7 @@ function botView(ctx: BotContext, h: HouseRow): AiView {
       if (ctx.day % 7 < 2 || week > g.weeks) return {};
       const ev = eventOfWeek(g.seed, week);
       return {
-        combat: (g.current_resolution + 1) % 2 === 1 ? eventCombat(ev) : undefined,
+        combat: resolutionInfo(g.current_resolution + 1, rhythmOf(g).days).kind === "miercoles" ? eventCombat(ev) : undefined,
         upkeepFactor: eventUpkeepFactor(ev),
       };
     })(),
@@ -281,7 +286,8 @@ async function botPlaysCards(db: D1Database, game: GameRow, ctx: BotContext, h: 
   const hand = handOf(ctx, h);
   if (hand.length === 0) return;
   const s = situation(botView(ctx, h), personalityOf(h));
-  for (const { card, params } of planCards(s, hand.map((c) => c.card_key as CardKey), resolutionDay)) {
+  const plays = withRhythm(rhythmOf(game), () => planCards(s, hand.map((c) => c.card_key as CardKey), resolutionDay));
+  for (const { card, params } of plays) {
     const row = hand.find((c) => c.card_key === card && !c.used_at);
     if (!row) continue;
     const prepared = useCardStatements(db, game, h, row, params, {
@@ -323,7 +329,7 @@ export async function botsPlayDay(env: NotifyEnv, game: GameRow): Promise<void> 
       st.push(db.prepare("UPDATE houses SET objective_key = ? WHERE id = ?").bind(h.objective_key, h.id));
     }
     const s = situation(botView(ctx, h), p);
-    const plan = planDay(s);
+    const plan = withRhythm(rhythmOf(game), () => planDay(s));
     const c = plan.cost;
     st.push(
       db.prepare(
@@ -444,7 +450,8 @@ async function addBotOrders(env: NotifyEnv, game: GameRow, n: number): Promise<v
   const statements: D1PreparedStatement[] = [];
   for (const h of activeBots(ctx.houses, game)) {
     if (existing.results.some((e) => e.house_id === h.id)) continue;
-    for (const o of planOrders(situation(botView(ctx, h), personalityOf(h)))) {
+    const orders = withRhythm(rhythmOf(game), () => planOrders(situation(botView(ctx, h), personalityOf(h))));
+    for (const o of orders) {
       statements.push(
         db.prepare(
           "INSERT INTO orders (game_id, house_id, resolution_no, kind, from_tile_id, troops, target_tile_id, supported_from_tile_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",

@@ -40,16 +40,33 @@ export const FORTIFY_COST: Partial<Resources> = { piedra: 8 };
  *   de columna y fila igual que ahora.
  * Es un objeto para que el simulador pueda comparar las dos.
  */
-export const GRID: { kind: "square" | "hex" } = { kind: "square" };
+export const GRID: { kind: "square" | "hex" } = { kind: "hex" };
 
 /**
  * Ritmo de la campaña.
  * - `days`: días de la semana con resolución (0 = lunes, 2 = miércoles, 6 = domingo).
  *   La Gran Subasta sigue el miércoles y el mantenimiento el domingo.
  * - `fortify`: resoluciones que dura una fortificación.
- * Diseño v3: una resolución al día y fortificar 4 resoluciones.
+ * Diseño v3: una resolución al día y fortificar 4 resoluciones. Las partidas
+ * empezadas antes guardan su ritmo (games.resolution_days en el servidor).
  */
-export const RHYTHM: { days: number[]; fortify: number } = { days: [2, 6], fortify: 2 };
+export const RHYTHM: { days: number[]; fortify: number } = { days: [0, 1, 2, 3, 4, 5, 6], fortify: 4 };
+
+/**
+ * Ejecuta `fn` (síncrona) con otro ritmo y deja RHYTHM como estaba. El
+ * servidor lo usa para las partidas empezadas con dos resoluciones por semana.
+ */
+export function withRhythm<T>(rhythm: { days: number[]; fortify: number }, fn: () => T): T {
+  const saved = { days: RHYTHM.days, fortify: RHYTHM.fortify };
+  RHYTHM.days = rhythm.days;
+  RHYTHM.fortify = rhythm.fortify;
+  try {
+    return fn();
+  } finally {
+    RHYTHM.days = saved.days;
+    RHYTHM.fortify = saved.fortify;
+  }
+}
 
 /** Producción diaria que añade una casilla controlada. */
 export const TILE_PRODUCTION: Record<TileType, Partial<Resources>> = {
@@ -164,7 +181,7 @@ export const MAP_LAYOUT: Record<4 | 5 | 6 | 7 | 8, { cols: number; rows: number;
  */
 export const MAP_LAYOUT_HEX: Record<4 | 5 | 6 | 7 | 8, { cols: number; rows: number; paramos: number }> = {
   4: { cols: 6, rows: 5, paramos: 2 },
-  5: { cols: 7, rows: 5, paramos: 3 },
+  5: { cols: 7, rows: 6, paramos: 5 },
   6: { cols: 8, rows: 6, paramos: 6 },
   7: { cols: 9, rows: 7, paramos: 10 },
   8: { cols: 10, rows: 8, paramos: 14 },

@@ -2,8 +2,9 @@ import { describe, expect, it } from "vitest";
 import { nextStop, testStart } from "../src/pruebas";
 import type { GameRow } from "../src/state";
 
-const game = (current: number): GameRow =>
+const game = (current: number, days = "2,6"): GameRow =>
   ({
+    resolution_days: days,
     timezone: "Europe/Madrid",
     close_time: "21:00",
     resolve_time: "22:00",
@@ -37,6 +38,18 @@ describe("Reloj de las partidas de prueba", () => {
       "dom, 22:00", // cruza el cambio de hora del 25 de octubre sin moverse
       "lun, 09:00",
     ]);
+  });
+
+  it("con resolución diaria, para cada mañana y cada noche", () => {
+    let now = testStart("2026-10-19", "Europe/Madrid");
+    let current = 0;
+    const stops = [madrid(now)];
+    for (let i = 0; i < 5; i++) {
+      now = nextStop(game(current, "0,1,2,3,4,5,6"), now);
+      stops.push(madrid(now));
+      if (stops.at(-1)!.endsWith("22:00")) current++;
+    }
+    expect(stops).toEqual(["lun, 09:00", "lun, 22:00", "mar, 09:00", "mar, 22:00", "mié, 09:00", "mié, 22:00"]);
   });
 
   it("acabadas las resoluciones, sigue a la mañana siguiente (para cerrar la partida)", () => {

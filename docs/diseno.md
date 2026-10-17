@@ -46,15 +46,19 @@ Todos los horarios son en hora de Madrid y se pueden ajustar por partida.
 
 | Cuándo | Qué pasa |
 | --- | --- |
+Desde el diseño v3 (octubre de 2026) hay **una resolución cada día**. Las partidas empezadas antes siguen con miércoles y domingo (cada partida guarda sus días en `games.resolution_days`).
+
+| Cuándo | Qué pasa |
+| --- | --- |
 | **Cada día, a las 00:00** | Producción diaria de recursos. |
 | **Cada día** | Entras, construyes, reclutas, fortificas, das o cambias órdenes, comercias y negocias. |
-| **Martes, 22:00** | Se anuncian el evento de la semana y los lotes de la Gran Subasta. |
-| **Miércoles, 21:00** | Cierre de órdenes y de pujas. |
-| **Miércoles, 22:00** | **Resolución 1:** subasta, campaña (con el efecto de combate del evento, si lo tiene) y efectos del evento. |
-| **Domingo, 21:00** | Cierre de órdenes y de sobornos al cronista. |
-| **Domingo, 22:00** | **Resolución 2:** campaña, mantenimiento, ayuda al último y boletín semanal de Fray Abundio. |
+| **Cada día, 21:00** | Cierre de órdenes. Dos horas antes, aviso solo a quien aún no ha dado órdenes. |
+| **Cada día, 22:00** | **Resolución de la campaña** y parte de guerra. |
+| **Martes, 22:00** | Además, se anuncian el evento de la semana y los lotes de la Gran Subasta (antes de la resolución del martes). |
+| **Miércoles, 22:00** | Además, subasta (pujas hasta las 21:00), efecto de combate del evento y efectos del evento. |
+| **Domingo, 22:00** | Además, mantenimiento, ayuda al último y boletín semanal de Fray Abundio (sobornos hasta las 21:00). |
 
-Las órdenes se pueden dar y cambiar en cualquier momento antes del cierre, así que no hace falta conectarse justo antes. Una partida estándar dura 6 semanas (12 resoluciones) y se puede configurar a 4, 6 u 8.
+Las órdenes se pueden dar y cambiar en cualquier momento antes del cierre, así que no hace falta conectarse justo antes. Una partida estándar dura 6 semanas (42 resoluciones) y se puede configurar a 2, 4, 6 u 8.
 
 ## 5. Recursos y edificios
 
@@ -93,17 +97,17 @@ Una mejora se nota en la producción del día siguiente. En la simulación, quie
 
 ### 6.1 Tamaño y casillas
 
-El mapa es una cuadrícula que escala con el número de jugadores para que los castillos queden siempre a unos 3 pasos del vecino más cercano y cada casa tenga unas 4 casillas productivas a su alcance antes del primer choque (hacia la segunda semana). El mapa se desplaza con el dedo, así que no hay límite de columnas.
+Desde el diseño v3 el mapa es de **hexágonos** (filas impares desplazadas media casilla), con 6 vecinas por casilla. Escala con el número de jugadores para que los castillos queden siempre a unos 3 pasos del vecino más cercano y cada casa tenga unas 4 casillas productivas a su alcance antes del primer choque (hacia la segunda semana). El mapa se desplaza con el dedo, así que no hay límite de columnas.
 
 | Jugadores | Cuadrícula | Casillas | Neutrales | Páramos | Productivas por casa |
 | --- | --- | --- | --- | --- | --- |
-| 4 | 5x4 | 20 | 16 | 1 | 3,8 |
-| 5 | 6x4 | 24 | 19 | 1 | 3,6 |
-| 6 | 6x5 | 30 | 24 | 2 | 3,7 |
-| 7 | 7x6 | 42 | 35 | 5 | 4,3 |
-| 8 | 7x7 | 49 | 41 | 7 | 4,3 |
+| 4 | 6x5 | 30 | 26 | 2 | 6,0 |
+| 5 | 7x6 | 42 | 37 | 5 | 6,4 |
+| 6 | 8x6 | 48 | 42 | 6 | 6,0 |
+| 7 | 9x7 | 63 | 56 | 10 | 6,6 |
+| 8 | 10x8 | 80 | 72 | 14 | 7,3 |
 
-Antes, con 7 y 8 casas el mapa era 6x5 y 6x6: los castillos quedaban a 2 pasos (el 14% de las parejas de castillos se tocaban casi), el primer choque llegaba una resolución antes y cada casa tenía la mitad de terreno que con 4-6 casas. Comparación completa en `docs/simulaciones.md`.
+Con 6 vecinas los castillos quedan más cerca, así que los mapas hexagonales tienen en torno a un 50% más de casillas que los de cuadrícula para mantenerlos a 3 pasos (simulaciones del 17 de octubre de 2026). Con cuadrícula (diseño v2) eran 5x4, 6x4, 6x5, 7x6 y 7x7. Antes aún, con 7 y 8 casas el mapa era 6x5 y 6x6: los castillos quedaban a 2 pasos (el 14% de las parejas de castillos se tocaban casi), el primer choque llegaba una resolución antes y cada casa tenía la mitad de terreno que con 4-6 casas. Comparación completa en `docs/simulaciones.md`.
 
 - Cada casa empieza en su **castillo**, en el borde del mapa. El castillo **no se puede conquistar**: los pretendientes no se atreven a tomar el castillo ajeno, solo las tierras de alrededor.
 
@@ -188,7 +192,7 @@ Cada día puedes hacer, sin límite más allá de lo que puedas pagar:
 | --- | --- | --- |
 | Mejorar un edificio | Ver tabla de la sección 5 | Sube un nivel; la producción aumenta al día siguiente. |
 | Reclutar | 2 Hierro + 2 Pan por tropa | Las tropas aparecen en tu castillo y pueden recibir órdenes para la siguiente resolución. |
-| Fortificar una casilla tuya | 8 Piedra | +25% de defensa durante las dos resoluciones siguientes. |
+| Fortificar una casilla tuya | 8 Piedra | +25% de defensa durante las cuatro resoluciones siguientes (dos en las partidas con miércoles y domingo). |
 | Dar órdenes | Gratis | Mover, atacar, apoyar o mantener (sección 8). |
 | Comerciar | Gratis | Ofertas, contraofertas y tratados (sección 9). |
 
@@ -196,7 +200,7 @@ Lo que lleva al jugador a entrar a diario no es una obligación, sino que cada d
 
 ## 8. Órdenes y combate
 
-> **En preparación: sistema de guerra v3** (decidido el 17 de octubre de 2026). Casillas hexagonales, una resolución cada día a las 22:00, tres tipos de tropa (Mesnada, Jinetes y Catapultas), terreno que cambia el combate, flanqueo, asedios de varios días (el asedio a un castillo da Prestigio), un Capitán por casa que se puede capturar y rescatar, Gloria por ganar batallas y repetición animada de cada noche. La propuesta completa está en el documento "Reyes de Pacotilla: propuesta del nuevo sistema de guerra". Primeros resultados del simulador en `docs/simulaciones.md`. Hasta que esté hecho, rige lo que sigue.
+> **Sistema de guerra v3** (decidido el 17 de octubre de 2026). **Ya hecho:** casillas hexagonales y una resolución cada día a las 22:00. **Pendiente:** tres tipos de tropa (Mesnada, Jinetes y Catapultas), terreno que cambia el combate, flanqueo, asedios de varios días (el asedio a un castillo da Prestigio), un Capitán por casa que se puede capturar y rescatar, Gloria por ganar batallas y repetición animada de cada noche. La propuesta completa está en el documento "Reyes de Pacotilla: propuesta del nuevo sistema de guerra". Primeros resultados del simulador en `docs/simulaciones.md`. Hasta que esté hecho, rige lo que sigue.
 
 ### 8.1 Órdenes
 
@@ -205,10 +209,10 @@ Cada grupo de tropas recibe una orden por resolución. Puedes dividir las tropas
 | Orden | Efecto |
 | --- | --- |
 | **Mantener** (por defecto) | El grupo se queda y defiende su casilla. |
-| **Mover / atacar** | El grupo intenta entrar en una casilla adyacente (sin diagonales). Si es tuya o está vacía y nadie más entra, simplemente se mueve. |
+| **Mover / atacar** | El grupo intenta entrar en una casilla adyacente (una de las seis que tocan su hexágono). Si es tuya o está vacía y nadie más entra, simplemente se mueve. |
 | **Apoyar** | El grupo se queda donde está y suma su fuerza a un ataque o a una defensa en una casilla adyacente. Se puede apoyar a otra casa. |
 
-Las tropas se mueven como máximo una casilla por resolución, dos por semana.
+Las tropas se mueven como máximo una casilla por resolución: siete por semana con la resolución diaria.
 
 ### 8.2 Fuerza
 

@@ -3,6 +3,8 @@
 // horaria de la partida (Europe/Madrid por defecto), qué toca hacer. Así los
 // cambios de horario de verano e invierno no mueven las 22:00.
 
+import { RHYTHM } from "./rules";
+
 export interface LocalParts {
   year: number;
   month: number;
@@ -59,23 +61,58 @@ export function zonedToUtc(date: string, time: string, timeZone: string): Date {
   return new Date(ts);
 }
 
-/** Semana y tipo de una resolución: las impares son el miércoles y las pares el domingo. */
-export function resolutionInfo(n: number): { week: number; kind: "miercoles" | "domingo" } {
-  return { week: Math.ceil(n / 2), kind: n % 2 === 1 ? "miercoles" : "domingo" };
+/** Una resolución cada día (diseño v3). */
+export const DAILY_DAYS = [0, 1, 2, 3, 4, 5, 6];
+/** Miércoles y domingo (diseño v2, partidas empezadas antes del cambio). */
+export const TWICE_WEEKLY_DAYS = [2, 6];
+
+/** Lee los días con resolución guardados como texto ("2,6" o "0,1,2,3,4,5,6"). */
+export function parseResolutionDays(text: string | null | undefined): number[] {
+  const days = (text ?? "")
+    .split(",")
+    .filter((d) => d.trim() !== "")
+    .map((d) => Number(d.trim()))
+    .filter((d) => Number.isInteger(d) && d >= 0 && d <= 6);
+  return days.length ? [...new Set(days)].sort((a, b) => a - b) : [...TWICE_WEEKLY_DAYS];
+}
+
+/** Resoluciones que tiene una partida. */
+export function totalResolutions(weeks: number, days: number[] = RHYTHM.days): number {
+  return weeks * days.length;
+}
+
+/** Resoluciones que dura fortificar con un ritmo: unos 7 días de protección como mucho. */
+export function fortifyResolutions(days: number[]): number {
+  return days.length >= 5 ? 4 : 2;
+}
+
+/**
+ * Semana, día (0 = lunes) y tipo de la resolución n. El miércoles trae la Gran
+ * Subasta y el evento de combate; el domingo, el mantenimiento y el boletín.
+ */
+export function resolutionInfo(
+  n: number,
+  days: number[] = RHYTHM.days,
+): { week: number; weekday: number; kind: "miercoles" | "domingo" | "dia" } {
+  const per = days.length;
+  const week = Math.ceil(n / per);
+  const weekday = days[(((n - 1) % per) + per) % per]!;
+  return { week, weekday, kind: weekday === 2 ? "miercoles" : weekday === 6 ? "domingo" : "dia" };
 }
 
 /**
  * Instante de la resolución n de una partida que empieza el lunes `startMonday`
- * (fecha local AAAA-MM-DD). Miércoles y domingo a `resolveTime`.
+ * (fecha local AAAA-MM-DD), a `resolveTime` del día que le toca.
  */
 export function resolutionInstant(
   startMonday: string,
   n: number,
   resolveTime: string,
   timeZone: string,
+  days: number[] = RHYTHM.days,
 ): Date {
-  const { week, kind } = resolutionInfo(n);
-  const offsetDays = (week - 1) * 7 + (kind === "miercoles" ? 2 : 6);
+  const { week, weekday } = resolutionInfo(n, days);
+  const offsetDays = (week - 1) * 7 + weekday;
   const [y, m, d] = startMonday.split("-").map(Number) as [number, number, number];
   const day = new Date(Date.UTC(y, m - 1, d + offsetDays));
   const date = `${day.getUTCFullYear()}-${pad(day.getUTCMonth() + 1)}-${pad(day.getUTCDate())}`;
