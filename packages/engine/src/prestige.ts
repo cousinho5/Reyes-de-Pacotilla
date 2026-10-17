@@ -1,5 +1,5 @@
 import { PRESTIGE } from "./rules";
-import type { BuildingKind, HouseId, Tile } from "./types";
+import type { BuildingKind, HouseId, Tile, TileType } from "./types";
 
 export type AchievementKey = keyof typeof PRESTIGE.achievement;
 
@@ -26,10 +26,17 @@ export interface PrestigeBreakdown {
   total: number;
 }
 
+/** Prestigio de territorio de una casilla. */
+export function tilePrestige(type: TileType): number {
+  if (type === "fortaleza") return PRESTIGE.perFortress;
+  if (type === "paramo") return PRESTIGE.perWasteland;
+  return PRESTIGE.perTile;
+}
+
 /** Prestigio en vivo: refleja el estado actual, no se acumula semana a semana. */
 export function computePrestige(input: PrestigeInput): PrestigeBreakdown {
   const own = input.tiles.filter((t) => t.owner === input.house && t.type !== "castillo");
-  const territorio = sumBy(own, (t) => (t.type === "fortaleza" ? PRESTIGE.perFortress : PRESTIGE.perTile));
+  const territorio = sumBy(own, (t) => tilePrestige(t.type));
 
   const levels = Object.values(input.buildings);
   const edificios =

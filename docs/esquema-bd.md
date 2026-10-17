@@ -254,7 +254,7 @@ CREATE TABLE tiles (
   x               INTEGER NOT NULL,
   y               INTEGER NOT NULL,
   type            TEXT    NOT NULL CHECK (type IN
-                  ('castillo','campos','bosque','cantera','montana','puerto','fortaleza')),
+                  ('castillo','campos','bosque','cantera','montana','puerto','fortaleza','paramo')),
   name            TEXT    NOT NULL,                  -- "Villa Mediocre"; castillos: el de la casa
   castle_of       INTEGER REFERENCES houses(id),     -- solo en castillos; nunca cambia
   owner_house_id  INTEGER REFERENCES houses(id),     -- NULL = neutral

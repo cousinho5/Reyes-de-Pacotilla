@@ -7,6 +7,7 @@
 
 import { checkOrders, defenseMultiplier } from "../combat";
 import { areAdjacent } from "../map";
+import { tilePrestige } from "../prestige";
 import { OBJECTIVE_TARGETS, PRESTIGE, STRETCH_FREE_TILES, STRETCH_PAN, TILE_PRODUCTION, TROOP_COST } from "../rules";
 import type { Order, Tile, TileId } from "../types";
 import { PRESTIGE_UNIT, valueOf, type Situation } from "./view";
@@ -46,7 +47,7 @@ export function targets(s: Situation): Target[] {
     const need = Math.floor((defense * p.margin) / (1 + (view.attackBonus ?? 0) + (view.combat?.attackBonusAll ?? 0))) + 1;
 
     // Valor: Prestigio de la casilla + lo que produce el resto de la partida.
-    let value = (t.type === "fortaleza" ? PRESTIGE.perFortress : PRESTIGE.perTile) * PRESTIGE_UNIT;
+    let value = tilePrestige(t.type) * PRESTIGE_UNIT;
     value += valueOf(s.values, TILE_PRODUCTION[t.type]) * s.daysLeft * 0.5;
     value += objectiveBonus(s, t);
     if (t.owner != null) {
