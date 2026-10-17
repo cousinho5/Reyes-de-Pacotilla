@@ -1,48 +1,33 @@
-// Pinta el mundo (art/world.ts) en un <canvas> nítido y alterna sus dos
-// fotogramas: el agua, las banderas, el humo y la bruma se mueven un poco.
+// Pinta el mundo (art/world.ts) en un <canvas> nítido. Sin animación: solo se
+// vuelve a pintar cuando cambia lo que hay en el mapa.
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { renderWorld, toImageData, type WorldOptions } from "../art/world";
+import { useEffect, useMemo, useRef } from "react";
+import { renderWorld, toImageData, type WorldImage, type WorldOptions } from "../art/world";
 
-const reducedMotion = () => typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-
-export function useWorld(opts: Omit<WorldOptions, "frame">) {
+export function useWorld(opts: WorldOptions): WorldImage {
   const key = JSON.stringify(opts);
-  return useMemo(
-    () => [renderWorld({ ...opts, frame: 0 }), renderWorld({ ...opts, frame: 1 })] as const,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [key],
-  );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  return useMemo(() => renderWorld(opts), [key]);
 }
 
-export function WorldCanvas({ opts, className, label }: { opts: Omit<WorldOptions, "frame">; className?: string; label?: string }) {
-  const frames = useWorld(opts);
-  const refs = [useRef<HTMLCanvasElement>(null), useRef<HTMLCanvasElement>(null)];
-  const [frame, setFrame] = useState<0 | 1>(0);
-
+export function WorldCanvas({ img, className, label }: { img: WorldImage; className?: string; label?: string }) {
+  const ref = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
-    frames.forEach((img, i) => {
-      const c = refs[i]!.current;
-      if (!c) return;
-      c.width = img.width;
-      c.height = img.height;
-      c.getContext("2d")?.putImageData(new ImageData(toImageData(img, i as 0 | 1), img.width, img.height), 0, 0);
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [frames]);
+    const c = ref.current;
+    if (!c) return;
+    c.width = img.width;
+    c.height = img.height;
+    c.getContext("2d")?.putImageData(new ImageData(toImageData(img), img.width, img.height), 0, 0);
+  }, [img]);
+  return <canvas ref={ref} className={`world-canvas ${className ?? ""}`} role={label ? "img" : undefined} aria-label={label} />;
+}
 
-  useEffect(() => {
-    if (reducedMotion()) return;
-    const t = window.setInterval(() => setFrame((f) => (f ? 0 : 1)), 750);
-    return () => window.clearInterval(t);
-  }, []);
-
-  const { width, height } = frames[0];
+/** Atajo para dibujos fijos (la portada). */
+export function StaticWorld({ opts, label }: { opts: WorldOptions; label?: string }) {
+  const img = useWorld(opts);
   return (
-    <div className={`world ${className ?? ""}`} style={{ aspectRatio: `${width} / ${height}` }} role={label ? "img" : undefined} aria-label={label}>
-      {refs.map((ref, i) => (
-        <canvas key={i} ref={ref} className="world-canvas" style={{ opacity: frame === i ? 1 : 0 }} aria-hidden />
-      ))}
+    <div className="world" style={{ aspectRatio: `${img.width} / ${img.height}` }}>
+      <WorldCanvas img={img} label={label} />
     </div>
   );
 }
