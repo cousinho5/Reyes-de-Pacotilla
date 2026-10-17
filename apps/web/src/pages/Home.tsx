@@ -1,7 +1,31 @@
 import { useEffect, useState } from "react";
 import { api, type Me } from "../api";
 import { navigate } from "../App";
-import { FrayAbundio, ShieldIcon, TileArt } from "../art";
+import { FrayAbundio, ShieldIcon } from "../art";
+import { WorldCanvas } from "../components/WorldCanvas";
+
+// Un trocito de Aldricia para la portada.
+const HERO = {
+  cols: 5,
+  rows: 2,
+  margin: 6,
+  seed: 3,
+  cells: (
+    [
+      ["bosque", "campos", "castillo", "montana", "montana"],
+      ["campos", "bosque", "fortaleza", "cantera", "puerto"],
+    ] as const
+  ).flatMap((row, y) =>
+    row.map((type, x) => ({
+      x,
+      y,
+      type,
+      owner: type === "castillo" ? "#B3291D" : type === "fortaleza" ? "#1B3C80" : null,
+      troops: type === "castillo" ? 9 : type === "fortaleza" ? 6 : null,
+      battle: x === 2 && y === 1,
+    })),
+  ),
+};
 
 export function Home() {
   const [me, setMe] = useState<Me | null>(null);
@@ -17,9 +41,7 @@ export function Home() {
     <main className="page">
       <header className="hero">
         <div className="hero-art board" aria-hidden>
-          {(["campos", "bosque", "castillo", "montana", "puerto"] as const).map((t) => (
-            <TileArt key={t} type={t} flag="#d6a64b" />
-          ))}
+          <WorldCanvas opts={HERO} />
         </div>
         <h1>Reyes de Pacotilla</h1>
         <p className="subtitle">Aldricia, el Reino Más o Menos Unido</p>

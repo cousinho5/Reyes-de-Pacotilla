@@ -398,14 +398,8 @@ svg.ico {
   padding: 1.25rem 0 0.25rem;
 }
 .hero-art {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  max-width: 22rem;
+  max-width: 24rem;
   margin: 0 auto 0.6rem;
-}
-.hero-art svg {
-  width: 100%;
-  height: auto;
 }
 .welcome {
   text-align: center;
@@ -703,7 +697,8 @@ svg.ico {
 }
 
 /* ------------------------------------------------------------------ */
-/* Mapa: un tablero continuo, enmarcado como una maqueta sobre la mesa. */
+/* Mapa: la región entera pintada en un lienzo, con una capa encima para
+   tocar casillas, ver fronteras, tropas y órdenes. */
 
 .board {
   padding: 5px;
@@ -714,107 +709,92 @@ svg.ico {
     0 0 0 2px var(--wood-0),
     0 10px 20px rgba(0, 0, 0, 0.55);
 }
+.world-wrap {
+  position: relative;
+}
+.world {
+  position: relative;
+  width: 100%;
+}
+.world-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+  transition: opacity 0.25s;
+}
+.world-overlay {
+  position: absolute;
+}
 .map {
   display: grid;
   gap: 0;
-  background: #22401f;
+  width: 100%;
+  height: 100%;
 }
 .tile {
   position: relative;
-  aspect-ratio: 1;
   min-height: 0;
   padding: 0;
   border: none;
   border-radius: 0;
   box-shadow: none;
   background: none;
-  overflow: hidden;
   display: block;
 }
 .tile:active:not(:disabled) {
   transform: none;
   box-shadow: none;
 }
-.tile-art {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  image-rendering: pixelated;
-}
-/* Niebla: el terreno se intuye, pero apagado y con bruma. */
-.tile.fogged .tile-art {
-  filter: saturate(0.3) brightness(0.74) contrast(0.88);
-}
-.tile.fogged::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(circle at 30% 35%, rgba(210, 205, 195, 0.18) 0 22%, transparent 23%),
-    radial-gradient(circle at 70% 70%, rgba(210, 205, 195, 0.14) 0 20%, transparent 21%);
-  pointer-events: none;
-}
-/* Frontera de cada casa: solo en los lados donde cambia el dueño. */
+/* Territorio: un velo del color de la casa y la frontera solo donde cambia el dueño. */
 .tile-owner {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  z-index: 1;
+}
+.tile.fogged .tile-owner {
+  opacity: 0.7;
 }
 .tile-banner {
   position: absolute;
   z-index: 2;
-  top: 3px;
-  right: 3px;
+  top: 4px;
+  right: 4px;
   line-height: 0;
   filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.7));
 }
 .tile-troops {
   position: absolute;
   z-index: 2;
-  left: 50%;
+  left: 4px;
   bottom: 4px;
-  transform: translateX(-50%);
   font-family: var(--font-pixel);
   font-weight: 600;
-  font-size: 0.95rem;
+  font-size: 0.85rem;
   line-height: 1;
-  padding: 0.12rem 0.32rem 0.18rem;
+  padding: 0.1rem 0.28rem 0.16rem;
   color: #fff;
-  background: rgba(28, 20, 16, 0.92);
+  background: rgba(28, 20, 16, 0.9);
   border-radius: 3px;
-  box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.85);
+  box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.8);
 }
-.tile-fort {
+.tile-battle {
   position: absolute;
   z-index: 2;
-  bottom: 3px;
-  left: 3px;
+  top: 4px;
+  left: 4px;
   line-height: 0;
-}
-.tile-orders {
-  position: absolute;
-  z-index: 3;
-  top: 3px;
-  left: 3px;
-  font-family: var(--font-pixel);
-  font-weight: 600;
-  font-size: 0.95rem;
-  line-height: 1;
-  padding: 0.1rem 0.25rem 0.15rem;
-  color: var(--ink);
-  background: var(--brass-hi);
+  padding: 1px;
+  background: var(--seal);
   border-radius: 3px;
-  box-shadow: 0 0 0 1.5px var(--ink);
-  pointer-events: none;
+  box-shadow: 0 0 0 1.5px var(--wood-0);
 }
 .tile.selected {
   z-index: 4;
   outline: 3px solid #fff;
   outline-offset: -2px;
-  box-shadow: 0 0 0 2px var(--wood-0), 0 8px 14px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 0 0 2px var(--wood-0), 0 8px 14px rgba(0, 0, 0, 0.5);
 }
 .tile.source {
   z-index: 4;
@@ -823,27 +803,65 @@ svg.ico {
 }
 .tile.target {
   z-index: 3;
-  outline: 3px dashed var(--brass-hi);
-  outline-offset: -5px;
+  outline: 3px solid var(--brass-hi);
+  outline-offset: -3px;
+  box-shadow: inset 0 0 0 5px rgba(28, 20, 16, 0.55);
 }
 .tile.target::before {
   content: "";
   position: absolute;
   inset: 0;
   z-index: 1;
-  background: rgba(241, 207, 125, 0.32);
+  background: rgba(241, 207, 125, 0.45);
   animation: pulse 1.1s ease-in-out infinite;
   pointer-events: none;
 }
 @keyframes pulse {
   50% {
-    background: rgba(241, 207, 125, 0.08);
+    background: rgba(241, 207, 125, 0.15);
   }
 }
 @media (prefers-reduced-motion: reduce) {
   .tile.target::before {
     animation: none;
   }
+}
+/* Flechas de órdenes (las tuyas) y de la última resolución (más apagadas). */
+.world-arrows {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 5;
+  overflow: visible;
+}
+.arrow.past {
+  opacity: 0.75;
+}
+.arrow-label {
+  font-family: var(--font-pixel);
+  font-weight: 600;
+  font-size: 7px;
+  fill: #fff;
+}
+.war-report {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin: 0.55rem 0.1rem 0;
+  font-size: 0.95rem;
+  color: var(--chalk);
+}
+.war-report span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.war-report .link {
+  color: var(--brass-hi);
+  white-space: nowrap;
 }
 
 .map-legend {
