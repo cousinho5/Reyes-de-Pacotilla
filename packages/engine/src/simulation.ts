@@ -16,7 +16,18 @@ import { computePrestige, isValidTrade, type AchievementKey, type PrestigeBreakd
 import { resolveCampaign } from "./combat";
 import { PRESTIGE, SPECIALTY_PAIRS, STARTING_RESOURCES } from "./rules";
 import { totalOf } from "./trade";
-import { auctionLots, resolveAuction, type Bid } from "./auction";
+import { auctionLots, doubleLot, resolveAuction, type Bid } from "./auction";
+import {
+  applyEventNow,
+  eventCombat,
+  eventDoublesAuction,
+  eventOfWeek,
+  eventProduction,
+  eventUpkeepFactor,
+  productionEventWeek,
+  type EventKey,
+  type WeekEvent,
+} from "./events";
 import { checkCard, type CardKey, type CardParams } from "./cards";
 import { BUILDINGS, RESOURCES, type BuildingKind, type HouseId, type Order, type Resource, type Resources, type Tile } from "./types";
 import {
@@ -76,6 +87,8 @@ export interface SimOptions {
   /** Una estrategia por casa (de 4 a 8). */
   strategies: Strategy[];
   weeks: 2 | 4 | 6 | 8;
+  /** Eventos de la semana (por defecto, sí). */
+  events?: boolean;
 }
 
 export interface SimHouseResult {
@@ -129,6 +142,8 @@ export interface SimGameResult {
   trades: number;
   /** Oro gastado en la Gran Subasta y cartas usadas. */
   auctionGold: number;
+  /** Eventos de cada semana, en orden. */
+  events: EventKey[];
   cardsPlayed: number;
   /** Mapa al final de la partida. */
   finalTiles: Tile[];
@@ -232,6 +247,15 @@ export function simulateGame(opts: SimOptions): SimGameResult {
     });
   };
 
+  // Un evento por semana (o ninguno si se simula sin eventos).
+  const weekEvents: WeekEvent[] =
+    opts.events === false ? [] : Array.from({ length: opts.weeks }, (_, w) => eventOfWeek(opts.seed, w + 1));
+  const productionMods = (day: number) => {
+    const w = productionEventWeek(day);
+    const ev = w != null ? weekEvents[w - 1] : undefined;
+    return ev && w != null ? eventProduction(ev, w, day) : null;
+  };
+
   const totalDays = opts.weeks * 7;
   /** Lo que ve una casa con personalidad (sus casillas y vecinas, Prestigio público). */
   const viewOf = (h: HouseState, day: number, ranking: { house: HouseId; total: number }[]): AiView => ({
@@ -255,6 +279,9 @@ export function simulateGame(opts: SimOptions): SimGameResult {
     spied: h.spies.filter((x) => x.until > resolution).map((x) => x.house),
     attackBonus: h.drums.find((d) => d.resolution === resolution + 1)?.bonus ?? 0,
     auctionsWon: h.auctionsWon,
+    // Lo anunciado el martes: combate del miércoles y mantenimiento del domingo.
+    combat: (resolution + 1) % 2 === 1 && day % 7 >= 1 && weekEvents[Math.floor(day / 7)] ? eventCombat(weekEvents[Math.floor(day / 7)]!) : undefined,
+    upkeepFactor: day % 7 >= 1 && weekEvents[Math.floor(day / 7)] ? eventUpkeepFactor(weekEvents[Math.floor(day / 7)]!) : 1,
   });
 
   /** Usa una carta de la mano (si es válida) y aplica su efecto. */
@@ -291,7 +318,7 @@ export function simulateGame(opts: SimOptions): SimGameResult {
     for (const h of houses) {
       const helpActive = h.helpUntil != null && h.helpUntil > resolution;
       const help = helpActive ? (isSmart(h.strategy) ? (h.helpChoice ?? "pan") : helpResource(h.res)) : null;
-      const p = dailyProduction(h.levels, tiles.filter((t) => t.owner === h.id), help);
+      const p = dailyProduction(h.levels, tiles.filter((t) => t.owner === h.id), help, productionMods(day));
       for (const r of RESOURCES) h.res[r] += p[r];
     }
 
@@ -365,12 +392,14 @@ export function simulateGame(opts: SimOptions): SimGameResult {
 
     // 4. Resolución el miércoles (día 2) y el domingo (día 6).
     const weekday = day % 7;
+    const week0 = Math.floor(day / 7) + 1;
     if (weekday !== 2 && weekday !== 6) continue;
 
     // 4a. Miércoles: Gran Subasta (antes de la campaña). Solo pujan las personalidades.
     if (weekday === 2) {
       const week = Math.floor(day / 7) + 1;
-      const lots = auctionLots(opts.seed, week);
+      const ev = weekEvents[week - 1];
+      const lots = auctionLots(opts.seed, week).map((l) => (ev && eventDoublesAuction(ev) ? doubleLot(l) : l));
       const bids: Bid[] = [];
       const pre = ranking(day);
       for (const h of houses) {
@@ -388,7 +417,7 @@ export function simulateGame(opts: SimOptions): SimGameResult {
         auctionGold += r.price;
         h.auctionsWon++;
         h.achievements.ganador_subasta = Math.min(PRESTIGE.auctionAchievementMax, (h.achievements.ganador_subasta ?? 0) + 1);
-        if (lot.kind === "card") h.hand.push(lot.card);
+        if (lot.kind === "card") for (let k = 0; k < (lot.count ?? 1); k++) h.hand.push(lot.card);
         else for (const [res, v] of Object.entries(lot.resources) as [Resource, number][]) h.res[res] += v;
       }
     }
@@ -434,8 +463,28 @@ export function simulateGame(opts: SimOptions): SimGameResult {
       attackBonus: Object.fromEntries(
         houses.flatMap((h) => h.drums.filter((d) => d.resolution === resolution).map((d) => [h.id, d.bonus] as const)),
       ),
+      ...(weekday === 2 && weekEvents[week0 - 1] ? eventCombat(weekEvents[week0 - 1]!) : {}),
     });
     tiles = result.tiles;
+    // Miércoles: efectos al momento del evento de la semana (repartos, bandidos).
+    if (weekday === 2 && weekEvents[week0 - 1]) {
+      const outcome = applyEventNow(
+        weekEvents[week0 - 1]!,
+        tiles,
+        houses.map((h) => ({
+          house: h.id,
+          resources: { ...h.res },
+          prestige: prestigeOf(h, day).total,
+          validTradesWeek: trades.filter((t) => t.valid && day - t.day < 7 && (t.a === h.id || t.b === h.id)).length,
+        })),
+        resolution,
+      );
+      tiles = outcome.tiles;
+      for (const [hid, delta] of outcome.resources) {
+        for (const [r, v] of Object.entries(delta) as [Resource, number][]) byId.get(hid)!.res[r] += v;
+      }
+      for (const [hid, n] of outcome.castleTroops) tiles = tiles.map((t) => (t.castleOf === hid ? { ...t, troops: t.troops + n } : t));
+    }
     for (const e of result.events) {
       if (e.type === "rebote") bounces++;
       if (e.type !== "combate") continue;
@@ -458,7 +507,8 @@ export function simulateGame(opts: SimOptions): SimGameResult {
 
     if (weekday === 6) {
       for (const h of houses) {
-        const upkeep = applyUpkeep(tiles, h.id, h.res.pan);
+        const ev = weekEvents[week0 - 1];
+        const upkeep = applyUpkeep(tiles, h.id, h.res.pan, ev ? eventUpkeepFactor(ev) : 1);
         tiles = upkeep.tiles;
         h.res.pan -= upkeep.paid;
         h.deserted += upkeep.deserted;
@@ -526,6 +576,7 @@ export function simulateGame(opts: SimOptions): SimGameResult {
     supports,
     trades: trades.length,
     auctionGold,
+    events: weekEvents.map((e) => e.key),
     cardsPlayed,
     finalTiles: tiles,
     houses: final.map((f, i) => ({

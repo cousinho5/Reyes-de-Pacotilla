@@ -8,7 +8,13 @@
 
 import {
   CARDS,
+  EVENTS,
   auctionLots,
+  doubleLot,
+  eventDoublesAuction,
+  eventLine,
+  eventOfWeek,
+  eventText,
   checkCard,
   lotLabel,
   resolveAuction,
@@ -47,7 +53,7 @@ export interface CardRow {
 export function lotOf(row: LotRow): Lot {
   const data = JSON.parse(row.payload) as Record<string, unknown>;
   return row.kind === "card"
-    ? { slot: row.slot, kind: "card", card: data.card as CardKey }
+    ? { slot: row.slot, kind: "card", card: data.card as CardKey, count: (data.count as number | undefined) ?? 1 }
     : { slot: row.slot, kind: "resources", resources: data as Partial<Record<Resource, number>> };
 }
 
@@ -59,10 +65,23 @@ export function openAuctionWeek(game: GameRow): number | null {
 }
 
 /** Tarea del martes: guardar los lotes de la semana y avisar. */
+/** Tarea del martes: el evento de la semana y los lotes de la Gran Subasta. */
 export async function announceAuction(env: NotifyEnv, game: GameRow, week: number): Promise<void> {
   const db = env.DB;
-  const lots = auctionLots(game.seed, week);
+  const event = eventOfWeek(game.seed, week);
+  const lots = auctionLots(game.seed, week).map((l) => (eventDoublesAuction(event) ? doubleLot(l) : l));
   await db.batch([
+    db.prepare("INSERT OR IGNORE INTO game_events (game_id, week, event_key, params, announced_at) VALUES (?, ?, ?, ?, ?)").bind(
+      game.id,
+      week,
+      event.key,
+      JSON.stringify(event),
+      gameNow(game).toISOString(),
+    ),
+    db.prepare("INSERT INTO event_log (game_id, type, visible_to, payload) VALUES (?, 'anuncio_evento', NULL, ?)").bind(
+      game.id,
+      JSON.stringify({ week, key: event.key, nombre: EVENTS[event.key].nombre, texto: eventText(event), linea: eventLine(game.seed, week, event) }),
+    ),
     db.prepare("INSERT INTO job_runs (game_id, job_key) VALUES (?, ?)").bind(game.id, `anuncio:${week}`),
     ...lots.map((l) =>
       db.prepare("INSERT OR IGNORE INTO auction_lots (game_id, week, slot, kind, payload) VALUES (?, ?, ?, ?, ?)").bind(
@@ -70,7 +89,7 @@ export async function announceAuction(env: NotifyEnv, game: GameRow, week: numbe
         week,
         l.slot,
         l.kind,
-        JSON.stringify(l.kind === "card" ? { card: l.card } : l.resources),
+        JSON.stringify(l.kind === "card" ? { card: l.card, count: l.count ?? 1 } : l.resources),
       ),
     ),
     db.prepare("INSERT INTO event_log (game_id, type, visible_to, payload) VALUES (?, 'anuncio_subasta', NULL, ?)").bind(
@@ -81,8 +100,8 @@ export async function announceAuction(env: NotifyEnv, game: GameRow, week: numbe
   const houses = await loadHouses(db, game.id);
   await notifyHouses(env, houses.map((h) => h.id), {
     kind: "subasta",
-    title: "Gran Subasta",
-    body: `Lotes de la semana: ${lots.map(lotLabel).join(", ")}. Pujas hasta mañana a las 21:00.`,
+    title: `Evento: ${EVENTS[event.key].nombre}`,
+    body: `${eventText(event)} Gran Subasta: ${lots.map(lotLabel).join(", ")}. Pujas hasta mañana a las 21:00.`,
     url: `/partida/${game.id}`,
     dedupe: `subasta:${game.id}:${week}`,
   });
@@ -136,14 +155,16 @@ export async function auctionStatements(
       ).bind(game.id, r.winner),
     );
     if (lot.kind === "card") {
-      statements.push(
-        db.prepare(`INSERT INTO cards (game_id, house_id, card_key, acquired_at) SELECT ?, ?, ?, ? WHERE ${won}`).bind(
-          game.id,
-          r.winner,
-          lot.card,
-          gameNow(game).toISOString(),
-        ),
-      );
+      for (let k = 0; k < (lot.count ?? 1); k++) {
+        statements.push(
+          db.prepare(`INSERT INTO cards (game_id, house_id, card_key, acquired_at) SELECT ?, ?, ?, ? WHERE ${won}`).bind(
+            game.id,
+            r.winner,
+            lot.card,
+            gameNow(game).toISOString(),
+          ),
+        );
+      }
     } else {
       const g = lot.resources;
       statements.push(

@@ -6,6 +6,7 @@
 //   npm run simular -- --modo clasico     # los bots sencillos de antes
 //   npm run simular -- --modo todos       # personalidades y bots sencillos juntos
 //   npm run simular -- --estrategias guerrero,mercader
+//   npm run simular -- --eventos no       # sin los eventos de la semana, para comparar
 //   npm run simular -- --json simulacion.json   # además, todos los datos en JSON
 
 import { writeFileSync } from "node:fs";
@@ -45,7 +46,7 @@ const started = Date.now();
 for (let i = 0; i < games; i++) {
   const players = minPlayers + Math.floor(rand() * (maxPlayers - minPlayers + 1));
   const strategies = Array.from({ length: players }, () => pool[Math.floor(rand() * pool.length)]!);
-  results.push(simulateGame({ seed: `sim-${i}`, strategies, weeks }));
+  results.push(simulateGame({ seed: `sim-${i}`, strategies, weeks, events: args.get("eventos") !== "no" }));
 }
 const houses = results.flatMap((g) => g.houses.map((h) => ({ ...h, players: g.houses.length })));
 
@@ -72,7 +73,9 @@ function winStats(group: (SimHouseResult & { players: number })[]) {
   return { wins, rate: wins / group.length, ratio: expected ? wins / expected : 0 };
 }
 
-console.log(`# Simulación: ${games} partidas de ${weeks} semanas, ${minPlayers}-${maxPlayers} casas, modo ${mode}`);
+console.log(
+  `# Simulación: ${games} partidas de ${weeks} semanas, ${minPlayers}-${maxPlayers} casas, modo ${mode}${args.get("eventos") === "no" ? ", sin eventos" : ""}`,
+);
 console.log(`(${((Date.now() - started) / 1000).toFixed(1)} s)`);
 
 table(

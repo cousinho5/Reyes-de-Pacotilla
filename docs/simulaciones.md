@@ -53,6 +53,20 @@ npm run simular -- --semanas 4                    # duración de la partida
 npm run simular -- --json datos.json              # además, todos los datos
 ```
 
+## Eventos de la semana (versión 1, 17 de octubre de 2026)
+
+20 eventos, uno por semana en un orden fijado por la semilla. Los bots tienen en cuenta los de combate (barro, fervor, Paz del Rey) y el mantenimiento doble o gratis. Comparación con y sin eventos (`--eventos no`), 1000 partidas mezcladas de 6 semanas cada una:
+
+| Dato | Sin eventos | Con eventos |
+| --- | --- | --- |
+| Personalidades (x lo esperado) | 0,7-1,4 | 0,7-1,3 |
+| Diferencia media 1.º - 2.º | 4,7 | 4,7 |
+| El líder de la semana 2 gana | 34% | 35% |
+| Casas con deserciones | 1% | 5% |
+| Prestigio medio del ganador | 49,6 | 50,0 |
+
+Los eventos dan variedad sin decidir partidas. La Paga Atrasada es la que más se nota: obliga a guardar Pan.
+
 ## Gran Subasta y cartas (versión 1, 16 de octubre de 2026)
 
 Los bots con personalidad pujan con parte de su Oro según lo que vale cada lote para ellos (más el Prestigio del logro y su objetivo secreto). Usan las cartas de efecto inmediato al momento, y la Tregua y los Tambores el día de la resolución.

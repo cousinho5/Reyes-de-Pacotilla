@@ -37,17 +37,32 @@ export function upgradeCost(currentLevel: number): Partial<Resources> | null {
   return UPGRADE_COST[next as 2 | 3 | 4 | 5];
 }
 
+/** Cambios de producción de un evento (ver events.ts). */
+export interface ProductionModifiers {
+  /** Multiplica la producción total de un recurso (0,75 = -25%). */
+  resourceFactor?: Partial<Record<Resource, number>>;
+  /** Multiplica lo que produce un edificio. */
+  buildingFactor?: Partial<Record<BuildingKind, number>>;
+  /** Tipos de casilla que no producen. */
+  tilesOff?: Tile["type"][];
+}
+
 /** Producción diaria de una casa: edificios + casillas controladas + ayuda al último. */
 export function dailyProduction(
   buildings: Record<BuildingKind, number>,
   ownedTiles: Pick<Tile, "type">[],
   help?: Resource | null,
+  mods?: ProductionModifiers | null,
 ): Resources {
   let out = emptyResources();
   for (const [kind, level] of Object.entries(buildings) as [BuildingKind, number][]) {
-    out[BUILDING_RESOURCE[kind]] += BUILDING_PRODUCTION[level] ?? 0;
+    out[BUILDING_RESOURCE[kind]] += (BUILDING_PRODUCTION[level] ?? 0) * (mods?.buildingFactor?.[kind] ?? 1);
   }
-  for (const t of ownedTiles) out = addResources(out, TILE_PRODUCTION[t.type]);
+  for (const t of ownedTiles) {
+    if (mods?.tilesOff?.includes(t.type)) continue;
+    out = addResources(out, TILE_PRODUCTION[t.type]);
+  }
+  for (const [r, f] of Object.entries(mods?.resourceFactor ?? {}) as [Resource, number][]) out[r] = Math.round(out[r] * f);
   if (help) out[help] += LAST_PLACE_HELP;
   return out;
 }

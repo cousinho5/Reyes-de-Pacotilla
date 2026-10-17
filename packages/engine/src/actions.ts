@@ -65,12 +65,13 @@ export interface UpkeepResult {
  * de la quinta. Si no llega, desertan las tropas que falten por cubrir,
  * empezando por las más alejadas del castillo.
  */
-export function applyUpkeep(tiles: Tile[], house: HouseId, pan: number): UpkeepResult {
+export function applyUpkeep(tiles: Tile[], house: HouseId, pan: number, factor = 1): UpkeepResult {
   const own = tiles.filter((t) => t.owner === house);
   const castle = own.find((t) => t.type === "castillo");
   const totalTroops = own.reduce((a, t) => a + t.troops, 0);
   const controlled = own.filter((t) => t.type !== "castillo").length;
-  const cost = weeklyUpkeep(totalTroops, controlled);
+  // `factor`: eventos que encarecen o perdonan el mantenimiento de la semana.
+  const cost = Math.round(weeklyUpkeep(totalTroops, controlled) * factor);
   if (pan >= cost) return { cost, paid: cost, deserted: 0, tiles };
 
   const shortfall = cost - pan;

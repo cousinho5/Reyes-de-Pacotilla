@@ -32,16 +32,18 @@ export function targets(s: Situation): Target[] {
   const weeksLeft = s.daysLeft / 7;
   for (const t of seen) {
     if (t.owner === view.house || t.type === "castillo") continue;
+    // La Paz del Rey: no se puede atacar a otras casas en esta resolución.
+    if (view.combat?.peace && t.owner != null) continue;
     const from = own.filter((o) => areAdjacent(o, t));
     if (from.length === 0) continue;
-    let defense = t.troops * defenseMultiplier(t, view.nextResolution, false);
+    let defense = t.troops * defenseMultiplier(t, view.nextResolution, false, view.combat?.defenseBonus ?? 0);
     if (t.owner != null) {
       // Puede recibir apoyos de sus casillas vecinas.
       const helpers = seen.filter((o) => o.owner === t.owner && o.id !== t.id && areAdjacent(o, t));
       defense += helpers.reduce((a, o) => a + o.troops, 0) * 0.5 * p.caution;
     }
     // Con Tambores de guerra hace falta menos tropa para la misma fuerza.
-    const need = Math.floor((defense * p.margin) / (1 + (view.attackBonus ?? 0))) + 1;
+    const need = Math.floor((defense * p.margin) / (1 + (view.attackBonus ?? 0) + (view.combat?.attackBonusAll ?? 0))) + 1;
 
     // Valor: Prestigio de la casilla + lo que produce el resto de la partida.
     let value = (t.type === "fortaleza" ? PRESTIGE.perFortress : PRESTIGE.perTile) * PRESTIGE_UNIT;

@@ -344,17 +344,30 @@ Frases para la crónica final, reescrita a favor del ganador. Las cifras se mant
 
 ## 10. Eventos
 
-Cada evento tiene un nombre épico, el efecto exacto y una línea del cronista.
+Cada evento tiene un nombre épico, el efecto exacto (diseño, sección 10) y dos líneas del cronista; la variante de cada partida la fija la semilla. En el código viven en `packages/engine/src/events.ts` (`EVENT_LINES`). `{jugador}` es la casa afectada.
 
 | Evento | Variantes |
 | --- | --- |
-| **La Gran Plaga de Ratas** (-25% de Pan) | Las ratas reclaman su parte de la cosecha. / Las ratas han organizado un banquete en los graneros reales. No invitaron a nadie. |
-| **Cosecha Gloriosa** (+25% de {recurso}) | Los campos rebosan. Los campesinos, sospechosamente contentos. / El cielo sonríe al reino. El cronista no se fía. |
-| **Los Bandidos del Camino** (6 bandidos atacan a la casa con más casillas) | Los bandidos han decidido que {jugador} tiene demasiadas tierras. / Los bandidos reparten justicia, a su manera, que es a palos. |
-| **El Tributo del Rey** (las dos casas con más Oro reparten el 20%) | La Corona reclama lo suyo a quien más tiene. El fantasma del rey lo aprueba. / Los ricos pagan y los demás aplauden. Por una vez. |
-| **La Fiesta de San Aldric** (producción doble ese día) | El reino celebra al difunto rey produciendo el doble. Sin pollo. / Día de fiesta: todos trabajan el doble, que es como se celebra aquí. |
-| **El Rey Ha Perdido las Llaves** (+15 Oro a quien más tratos válidos cierre esa semana) | Se buscan las llaves del tesoro. Quien más comercie, más llaveros verá. / {jugador} encuentra unas llaves y 15 de Oro. No eran las del tesoro, pero el Oro sí es de verdad. |
-| **El Mercado Enloquece** (lotes dobles en la subasta) | La subasta de esta semana ofrece el doble. Los pujadores, el doble de nerviosos. / Lotes dobles: el subastador ha perdido la cabeza, o la cuenta. |
+| **La Gran Plaga de Ratas** | Las ratas reclaman su parte de la cosecha. / Las ratas han organizado un banquete en los graneros reales. No invitaron a nadie. |
+| **Cosecha Gloriosa** | Los campos rebosan. Los campesinos, sospechosamente contentos. / El cielo sonríe al reino. El cronista no se fía. |
+| **La Fiebre del Oro** | Todo el reino quiere ser mercader. Los mercados no dan abasto, y el cronista tampoco. / Fiebre del oro: los mercaderes sonríen y los bolsillos tintinean. |
+| **Tormenta en la Costa** | El mar se enfada con los puertos. Los barcos, prudentes, se quedan en casa. / Tormenta en la costa: ni un barco entra, ni una moneda sale. |
+| **El Gran Derrumbe** | Las montañas se han cansado de que las piquen. Por una semana, descansan. / Gran derrumbe: canteros y mineros toman un descanso forzoso y pagado por nadie. |
+| **La Fiesta de San Aldric** | El reino celebra al difunto rey produciendo el doble. Sin pollo. / Día de fiesta: todos trabajan el doble, que es como se celebra aquí. |
+| **Caminos Embarrados** | Llueve sobre Aldricia. Quien ataque llegará tarde y lleno de barro. / Los caminos son ríos de lodo. Defender nunca fue tan cómodo. |
+| **Fervor Guerrero** | Los soldados han oído una canción épica y ahora quieren pelear con todo el mundo. / Fervor guerrero: hasta los cocineros afilan los cucharones. |
+| **La Paz del Rey** | El fantasma del rey exige paz entre las casas. Por una vez, le hacen caso. / Paz del Rey: las espadas descansan. Los neutrales, no tanto. |
+| **Los Bandidos del Camino** | Los bandidos han decidido que {jugador} tiene demasiadas tierras. / Los bandidos reparten justicia, a su manera, que es a palos. |
+| **El Tributo del Rey** | La Corona reclama lo suyo a quien más tiene. El fantasma del rey lo aprueba. / Los ricos pagan y los demás aplauden. Por una vez. |
+| **El Rey Ha Perdido las Llaves** | Se buscan las llaves del tesoro. Quien más comercie, más llaveros verá. / {jugador} encuentra unas llaves y 15 de Oro. No eran las del tesoro, pero el Oro sí es de verdad. |
+| **El Torneo Real** | Gran torneo en la corte: gana quien más soldados trae, que es la forma moderna de ganar torneos. / El torneo real premia al ejército más grande. La caballería, ofendida. |
+| **Levas Reales** | La Corona llama a filas. Los campesinos acuden, más o menos voluntarios. / Levas reales: cada castillo recibe reclutas nuevos y bastante desorientados. |
+| **Carnaval** | Carnaval en Aldricia: pan para todos y disfraces para quien se atreva. / El reino se disfraza y reparte pan. Fray Abundio va de fraile, como siempre. |
+| **La Limosna Real** | La Corona se apiada de {jugador}. El gesto es noble; la cantidad, modesta. / Limosna real para {jugador}. Nadie lo comenta. Todos lo comentan. |
+| **Paga Atrasada** | Los soldados reclaman las pagas atrasadas. Con intereses. / Este domingo el ejército cobra el doble. El tesorero ya ha empezado a llorar. |
+| **Indulgencia Real** | Por decreto del fantasma del rey, este domingo los soldados comen gratis. / Indulgencia real: el mantenimiento corre a cargo de la Corona, que no tiene Oro pero sí buena voluntad. |
+| **El Mercado Enloquece** | La subasta de esta semana ofrece el doble. Los pujadores, el doble de nerviosos. / Lotes dobles: el subastador ha perdido la cabeza, o la cuenta. |
+| **Semana Tranquila** | No pasa nada. Fray Abundio aprovecha para echarse una siesta. / Semana tranquila en Aldricia. El cronista bosteza y afila la pluma por si acaso. |
 
 ## 11. Interfaz y notificaciones
 

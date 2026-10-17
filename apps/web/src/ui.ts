@@ -170,6 +170,25 @@ export function describeEvent(e: EventView, houses: HouseInfo[], tiles: TileView
         d.cumplido ? "Cumplida: +6 de Prestigio." : "No la cumplió."
       }`;
     }
+    case "anuncio_evento":
+      return `Evento de la semana ${d.week}: ${d.nombre}. ${d.texto} «${d.linea}»`;
+    case "evento": {
+      const extra =
+        d.key === "bandidos" && d.tile != null
+          ? d.won
+            ? ` Los bandidos se quedan ${tile(d.tile)} (${troops(d.left)}).`
+            : ` ${tile(d.tile)} resiste a los bandidos y conserva ${troops(d.left)}.`
+          : Array.isArray(d.winners) && d.winners.length > 0
+            ? ` Premio para ${(d.winners as number[]).map((h) => withArticle(houseName(houses, h))).join(" y ")}.`
+            : d.key === "limosna_real" && d.house != null
+              ? ` La recibe ${withArticle(houseName(houses, d.house))}.`
+              : d.key === "tributo_rey" && Array.isArray(d.paid)
+                ? ` Pagan ${(d.paid as { house: number; gold: number }[]).map((x) => `${withArticle(houseName(houses, x.house))} (${x.gold})`).join(" y ")}; las demás reciben ${d.each} de Oro.`
+                : "";
+      return `${d.nombre}: «${d.linea}»${extra}`;
+    }
+    case "paz":
+      return `La Paz del Rey detiene el ataque de ${(d.houses as number[]).map((h) => withArticle(houseName(houses, h))).join(" y ")} contra ${tile(d.tile)}.`;
     case "anuncio_subasta":
       return `Gran Subasta de la semana ${d.week}: ${(d.lots as string[]).join(", ")}. Pujas hasta el miércoles a las 21:00.`;
     case "subasta":

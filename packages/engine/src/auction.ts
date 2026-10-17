@@ -8,7 +8,13 @@ import { RESOURCES, type HouseId, type Resource, type Resources } from "./types"
 
 export type Lot =
   | { slot: number; kind: "resources"; resources: Partial<Resources> }
-  | { slot: number; kind: "card"; card: CardKey };
+  | { slot: number; kind: "card"; card: CardKey; count?: number };
+
+/** El Mercado Enloquece: lotes dobles (el doble de recursos, o dos cartas). */
+export function doubleLot(lot: Lot): Lot {
+  if (lot.kind === "card") return { ...lot, count: (lot.count ?? 1) * 2 };
+  return { ...lot, resources: Object.fromEntries(Object.entries(lot.resources).map(([r, n]) => [r, n * 2])) };
+}
 
 /** Los tres lotes de una semana. Mismo `seed` y semana, mismos lotes. */
 export function auctionLots(seed: string, week: number): Lot[] {
@@ -26,7 +32,7 @@ export function auctionLots(seed: string, week: number): Lot[] {
 }
 
 export function lotLabel(lot: Lot): string {
-  if (lot.kind === "card") return `la carta ${CARDS[lot.card].nombre}`;
+  if (lot.kind === "card") return (lot.count ?? 1) > 1 ? `${lot.count} cartas ${CARDS[lot.card].nombre}` : `la carta ${CARDS[lot.card].nombre}`;
   const names: Record<Resource, string> = { pan: "Pan", madera: "Madera", piedra: "Piedra", hierro: "Hierro", oro: "Oro" };
   return (Object.entries(lot.resources) as [Resource, number][]).map(([r, n]) => `${n} de ${names[r]}`).join(" y ");
 }

@@ -29,6 +29,7 @@ Versión 1 (en curso):
 
 - Gran Subasta del miércoles: tres lotes anunciados el martes, pujas ciegas en Oro y logro de ganador de subasta.
 - Cartas de la Corona: Espía, Muralla, Mercenarios, Carreta, Maestro de obras, Diezmo, Tregua y Tambores de guerra.
+- Eventos de la semana: 20, anunciados el martes con la subasta (plagas, cosechas, bandidos, tributos, la Paz del Rey...).
 
 ## Desarrollo en local
 
