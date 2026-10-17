@@ -31,6 +31,9 @@ export interface WorldCell {
   owner?: string | null;
   /** Tropas a la vista (null si no se ven). */
   troops?: number | null;
+  /** De esas tropas, jinetes y catapultas. */
+  jinetes?: number;
+  catapultas?: number;
   fortified?: boolean;
   /** Hubo batalla aquí en la última resolución. */
   battle?: boolean;
@@ -412,7 +415,8 @@ export function renderWorld(opts: WorldOptions): WorldImage {
     const [x0, y0] = boxOf(c);
     if (c.fortified && c.type !== "castillo") palisade(cv, W, geo.outline(c.x, c.y, 4));
     if (c.battle) battlefield(cv, W, x0, y0, seed + c.x * 5 + c.y * 3);
-    if (c.troops != null && c.troops > 0) soldiers(cv, W, x0, y0, c.troops, c.owner ? flagOf(c) : null, seed + c.x + c.y * 9, isWater);
+    if (c.troops != null && c.troops > 0)
+      soldiers(cv, W, x0, y0, c.troops, c.owner ? flagOf(c) : null, seed + c.x + c.y * 9, isWater, c.jinetes ?? 0, c.catapultas ?? 0);
   }
 
   // 6. El margen se oscurece hacia fuera, como un mapa sobre la mesa.
@@ -1118,8 +1122,12 @@ function soldiers(
   flag: [string, string] | null,
   seed: number,
   isWater: (x: number, y: number) => boolean,
+  jinetes = 0,
+  catapultas = 0,
 ) {
   const n = Math.min(9, Math.ceil(troops / 2));
+  // Cuántas figuras van a caballo: en proporción, y al menos una si hay jinetes.
+  const riders = jinetes > 0 ? Math.max(1, Math.round((n * jinetes) / troops)) : 0;
   const [m, d] = flag ?? ["t", "S"];
   const body = [
     "...TT...u",
@@ -1154,10 +1162,27 @@ function soldiers(
   const dry = slots.filter(([lx, ly]) => !isWater(x0 + lx + 4, y0 + ly + 13) && !isWater(x0 + lx + 4, y0 + ly + 6));
   const pool = dry.length >= Math.min(n, 3) ? [...dry, ...slots.filter((sl) => !dry.includes(sl))] : slots;
   const used = pool.slice(0, n).sort((a, b) => a[1] - b[1]);
-  for (const [lx, ly] of used) {
+  // Los jinetes, en las primeras filas de la formación (las de delante, abajo).
+  const riderSlots = new Set([...used].sort((a, b) => b[1] - a[1]).slice(0, riders));
+  for (const slot of used) {
+    const [lx, ly] = slot;
     const jx = Math.floor(noise(lx, ly, seed) * 3) - 1;
+    if (riderSlots.has(slot)) {
+      cv.shadow(x0 + lx + jx + 6, y0 + ly + 14, 6.5, 1.3);
+      l.stamp(horseman(m, d), x0 + lx + jx - 2, y0 + ly);
+      continue;
+    }
     cv.shadow(x0 + lx + jx + 4, y0 + ly + 14, 4.5, 1.2);
     l.stamp(body, x0 + lx + jx, y0 + ly);
+  }
+  // Una catapulta junto a la formación, si las hay.
+  if (catapultas > 0) {
+    const cx = x0 + 40;
+    const cy = y0 + 44;
+    if (!isWater(cx + 6, cy + 9)) {
+      cv.shadow(cx + 7, cy + 11, 8, 1.4);
+      l.stamp(CATAPULT, cx, cy);
+    }
   }
   if (troops >= 6 && flag && used[0]) {
     const bx = x0 + used[0][0] + 9;
@@ -1168,6 +1193,41 @@ function soldiers(
   }
   l.paint(cv);
 }
+
+/** Jinete: caballo pardo y tabardo de la casa (13x14). */
+function horseman(m: string, d: string): string[] {
+  return [
+    "....TT.......",
+    "...TuTT......",
+    "...TTTT......",
+    "...sSs.......",
+    "..T" + m + m + "T.....u",
+    "..T" + m + d + m + "T...j.",
+    "..." + m + m + "jj.jj..",
+    ".jJ" + d + d + "JJjJj..",
+    "JJjjjjJjjJ...",
+    ".jJjjjjjjj...",
+    "..j.h..j.h...",
+    "..h.h..h.h...",
+    "..h.h..h.h...",
+    ".hh.hh.hh.hh.",
+  ];
+}
+
+/** Catapulta de madera con la cuchara cargada (14x11). */
+const CATAPULT = [
+  "..........ss..",
+  ".........sSSs.",
+  "........jJss..",
+  ".......jJ.....",
+  "......jJ......",
+  ".h...jJ.......",
+  ".hjjjJjjjjjh..",
+  "JjjjJjjjjJjjJ.",
+  "hhhhhhhhhhhhh.",
+  ".hSh.....hSh..",
+  ".hhh.....hhh..",
+];
 
 // ---------------------------------------------------------------------------
 

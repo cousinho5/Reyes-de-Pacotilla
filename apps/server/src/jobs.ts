@@ -247,7 +247,7 @@ export async function runResolution(env: NotifyEnv, game: GameRow, n: number, no
   const [tileRows, orderRows, houses, achieved] = await Promise.all([
     loadTiles(db, game.id),
     db.prepare(
-      "SELECT house_id, kind, from_tile_id, troops, target_tile_id, supported_from_tile_id FROM orders WHERE game_id = ? AND resolution_no = ? ORDER BY id",
+      "SELECT house_id, kind, from_tile_id, troops, jinetes, catapultas, target_tile_id, supported_from_tile_id FROM orders WHERE game_id = ? AND resolution_no = ? ORDER BY id",
     )
       .bind(game.id, n)
       .all<{
@@ -255,6 +255,8 @@ export async function runResolution(env: NotifyEnv, game: GameRow, n: number, no
         kind: "move" | "support";
         from_tile_id: number;
         troops: number;
+        jinetes: number;
+        catapultas: number;
         target_tile_id: number;
         supported_from_tile_id: number | null;
       }>(),
@@ -265,7 +267,7 @@ export async function runResolution(env: NotifyEnv, game: GameRow, n: number, no
   const tiles = toEngineTiles(tileRows);
   const orders: Order[] = orderRows.results.map((o) =>
     o.kind === "move"
-      ? { kind: "move", house: o.house_id, from: o.from_tile_id, to: o.target_tile_id, troops: o.troops }
+      ? { kind: "move", house: o.house_id, from: o.from_tile_id, to: o.target_tile_id, troops: o.troops, ...typesOf(o) }
       : {
           kind: "support",
           house: o.house_id,
@@ -273,6 +275,7 @@ export async function runResolution(env: NotifyEnv, game: GameRow, n: number, no
           target: o.target_tile_id,
           supportedFrom: o.supported_from_tile_id,
           troops: o.troops,
+          ...typesOf(o),
         },
   );
   const absentHouses = houses.filter((h) => isAbsent(h, now, game)).map((h) => h.id);
@@ -396,11 +399,20 @@ export async function runResolution(env: NotifyEnv, game: GameRow, n: number, no
   ];
   for (const t of finalTiles) {
     const old = before.get(t.id)!;
-    if (old.owner === t.owner && old.troops === t.troops && old.fortifiedUntil === t.fortifiedUntil) continue;
+    if (
+      old.owner === t.owner &&
+      old.troops === t.troops &&
+      old.fortifiedUntil === t.fortifiedUntil &&
+      (old.jinetes ?? 0) === (t.jinetes ?? 0) &&
+      (old.catapultas ?? 0) === (t.catapultas ?? 0)
+    )
+      continue;
     statements.push(
-      db.prepare("UPDATE tiles SET owner_house_id = ?, troops = ?, fortified_until = ? WHERE id = ?").bind(
+      db.prepare("UPDATE tiles SET owner_house_id = ?, troops = ?, jinetes = ?, catapultas = ?, fortified_until = ? WHERE id = ?").bind(
         t.owner,
         t.troops,
+        t.jinetes ?? 0,
+        t.catapultas ?? 0,
         t.fortifiedUntil ?? null,
         t.id,
       ),
@@ -567,4 +579,9 @@ export async function finishGame(env: NotifyEnv, game: GameRow, now: Date): Prom
 
 function isAlreadyDone(err: unknown): boolean {
   return err instanceof Error && /UNIQUE constraint failed/.test(err.message);
+}
+
+/** Jinetes y Catapultas de una orden guardada (sin ceros, como en el motor). */
+function typesOf(o: { jinetes: number; catapultas: number }): { jinetes?: number; catapultas?: number } {
+  return { ...(o.jinetes > 0 ? { jinetes: o.jinetes } : {}), ...(o.catapultas > 0 ? { catapultas: o.catapultas } : {}) };
 }

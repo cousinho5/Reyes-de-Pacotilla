@@ -3,8 +3,9 @@
 
 import { canAfford, upgradeCost, weeklyUpkeep } from "./economy";
 import { distance } from "./map";
-import { FORTIFY_COST, RHYTHM, TERRAIN, TROOP_COST, TROOPS_PER_PAN } from "./rules";
+import { FORTIFY_COST, RHYTHM, TERRAIN, TROOP_COST, TROOPS_PER_PAN, UNITS } from "./rules";
 import type { BuildingKind, HouseId, Resources, Tile } from "./types";
+import { clampUnits, setUnits, unitsOf, upkeepTroops, type UnitKind } from "./units";
 
 export type ActionResult<T> = { ok: true; value: T } | { ok: false; error: string };
 
@@ -20,17 +21,33 @@ export function checkUpgrade(
   return { ok: true, value: { cost, newLevel: level + 1 } };
 }
 
-export function recruitCost(count: number): Partial<Resources> {
+/** Coste de reclutar `count` tropas de un tipo (por defecto, Mesnada). */
+export function recruitCost(count: number, kind: UnitKind = "mesnada"): Partial<Resources> {
+  const base = kind === "jinetes" ? UNITS.jinetes.cost : kind === "catapultas" ? UNITS.catapultas.cost : TROOP_COST;
   const out: Partial<Resources> = {};
-  for (const [r, v] of Object.entries(TROOP_COST) as [keyof Resources, number][]) out[r] = v * count;
+  for (const [r, v] of Object.entries(base) as [keyof Resources, number][]) out[r] = v * count;
   return out;
 }
 
-export function checkRecruit(count: number, have: Resources): ActionResult<{ cost: Partial<Resources> }> {
+const SHORT: Record<UnitKind, string> = {
+  mesnada: "No hay Hierro o Pan suficientes.",
+  jinetes: "Para jinetes hacen falta 3 de Hierro, 2 de Pan y 1 de Oro cada uno.",
+  catapultas: "Para catapultas hacen falta 4 de Madera y 2 de Hierro cada una.",
+};
+
+export function checkRecruit(count: number, have: Resources, kind: UnitKind = "mesnada"): ActionResult<{ cost: Partial<Resources> }> {
   if (!Number.isInteger(count) || count < 1 || count > 100) return { ok: false, error: "Número de tropas no válido." };
-  const cost = recruitCost(count);
-  if (!canAfford(have, cost)) return { ok: false, error: "No hay Hierro o Pan suficientes." };
+  if (kind !== "mesnada" && !UNITS.enabled) return { ok: false, error: "En esta partida solo hay Mesnada." };
+  const cost = recruitCost(count, kind);
+  if (!canAfford(have, cost)) return { ok: false, error: SHORT[kind] };
   return { ok: true, value: { cost } };
+}
+
+/** Añade `count` tropas de un tipo a una casilla (al reclutar, en el castillo). */
+export function addRecruits<T extends Tile>(tile: T, count: number, kind: UnitKind = "mesnada"): T {
+  const u = unitsOf(tile);
+  u[kind] += count;
+  return setUnits(tile, u);
 }
 
 /**
@@ -73,7 +90,8 @@ export function applyUpkeep(tiles: Tile[], house: HouseId, pan: number, factor =
   const totalTroops = own.reduce((a, t) => a + t.troops, 0);
   const controlled = own.filter((t) => t.type !== "castillo").length;
   // `factor`: eventos que encarecen o perdonan el mantenimiento de la semana.
-  const cost = Math.round(weeklyUpkeep(totalTroops, controlled) * factor);
+  // Las Catapultas comen como dos tropas.
+  const cost = Math.round(weeklyUpkeep(upkeepTroops(own), controlled) * factor);
   if (pan >= cost) return { cost, paid: cost, deserted: 0, tiles };
 
   const shortfall = cost - pan;
@@ -92,7 +110,8 @@ export function applyUpkeep(tiles: Tile[], house: HouseId, pan: number, factor =
     tile.troops -= leave;
     toDesert -= leave;
   }
-  return { cost, paid: pan, deserted, tiles: tiles.map((t) => updated.get(t.id)!) };
+  // Desertan primero los de la Mesnada; si no queda, Jinetes y Catapultas.
+  return { cost, paid: pan, deserted, tiles: tiles.map((t) => clampUnits(updated.get(t.id)!)) };
 }
 
 /** Casa última en Prestigio (en empate, la de menor id, para ser deterministas). */

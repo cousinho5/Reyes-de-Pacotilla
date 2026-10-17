@@ -83,6 +83,9 @@ export interface TileRow {
   name: string;
   owner_house_id: number | null;
   troops: number;
+  /** De esas tropas, Jinetes y Catapultas (el resto, Mesnada). */
+  jinetes: number;
+  catapultas: number;
   fortified_until: number | null;
   castle_of: number | null;
 }
@@ -99,7 +102,7 @@ export async function loadHouses(db: D1Database, gameId: number): Promise<HouseR
 export async function loadTiles(db: D1Database, gameId: number): Promise<TileRow[]> {
   const { results } = await db
     .prepare(
-      "SELECT id, x, y, type, name, owner_house_id, troops, fortified_until, castle_of FROM tiles WHERE game_id = ? ORDER BY y, x",
+      "SELECT id, x, y, type, name, owner_house_id, troops, jinetes, catapultas, fortified_until, castle_of FROM tiles WHERE game_id = ? ORDER BY y, x",
     )
     .bind(gameId)
     .all<TileRow>();
@@ -114,6 +117,8 @@ export function toEngineTiles(rows: TileRow[]): Tile[] {
     type: t.type,
     owner: t.owner_house_id,
     troops: t.troops,
+    ...(t.jinetes > 0 ? { jinetes: t.jinetes } : {}),
+    ...(t.catapultas > 0 ? { catapultas: t.catapultas } : {}),
     fortifiedUntil: t.fortified_until,
     castleOf: t.castle_of,
   }));

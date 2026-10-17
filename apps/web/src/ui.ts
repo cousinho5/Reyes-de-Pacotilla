@@ -69,6 +69,32 @@ export const TILE_LABEL: Record<TileType, string> = {
   paramo: "Páramo",
 };
 
+/** Tipos de tropa (diseño v3). */
+export const UNIT_LABEL: Record<"mesnada" | "jinetes" | "catapultas", string> = {
+  mesnada: "Mesnada",
+  jinetes: "Jinetes",
+  catapultas: "Catapultas",
+};
+export const UNIT_ONE: Record<"mesnada" | "jinetes" | "catapultas", string> = {
+  mesnada: "soldado de la mesnada",
+  jinetes: "jinete",
+  catapultas: "catapulta",
+};
+export const UNIT_NOTE: Record<"mesnada" | "jinetes" | "catapultas", string> = {
+  mesnada: "La tropa de siempre: fuerza 1 en todas partes. La única que sube a la montaña.",
+  jinetes: "Cargan con fuerza 2 contra casillas llanas sin murallas y, solos, cruzan dos casillas llanas en una noche. En el bosque valen la mitad y no suben a la montaña.",
+  catapultas: "No luchan (fuerza 0), pero cada una quita un 25% a la fortificación o la fortaleza que atacan. Comen como dos tropas y se pierden si el ataque fracasa.",
+};
+
+/** "6", o "6 (2 jinetes y 1 catapulta)" si hay tipos distintos de la Mesnada. */
+export function troopsText(n: number, jinetes = 0, catapultas = 0): string {
+  const parts = [
+    jinetes > 0 ? `${jinetes} ${jinetes === 1 ? "jinete" : "jinetes"}` : null,
+    catapultas > 0 ? `${catapultas} ${catapultas === 1 ? "catapulta" : "catapultas"}` : null,
+  ].filter(Boolean);
+  return parts.length ? `${n} (${parts.join(" y ")})` : String(n);
+}
+
 /** Lo que el terreno hace en la guerra (diseño v3), para el panel de la casilla. */
 export const TERRAIN_NOTE: Record<TileType, string> = {
   castillo: "No se puede conquistar.",

@@ -8,6 +8,7 @@
 //   npm run simular -- --estrategias guerrero,mercader
 //   npm run simular -- --eventos no       # sin los eventos de la semana, para comparar
 //   npm run simular -- --terreno no       # sin los efectos del terreno (diseño v2), para comparar
+//   npm run simular -- --tropas no        # solo Mesnada (sin Jinetes ni Catapultas), para comparar
 //   npm run simular -- --json simulacion.json   # además, todos los datos en JSON
 
 import { writeFileSync } from "node:fs";
@@ -47,7 +48,7 @@ const started = Date.now();
 for (let i = 0; i < games; i++) {
   const players = minPlayers + Math.floor(rand() * (maxPlayers - minPlayers + 1));
   const strategies = Array.from({ length: players }, () => pool[Math.floor(rand() * pool.length)]!);
-  results.push(simulateGame({ seed: `sim-${i}`, strategies, weeks, events: args.get("eventos") !== "no", terrain: args.get("terreno") !== "no" }));
+  results.push(simulateGame({ seed: `sim-${i}`, strategies, weeks, events: args.get("eventos") !== "no", terrain: args.get("terreno") !== "no", units: args.get("tropas") !== "no" }));
 }
 const houses = results.flatMap((g) => g.houses.map((h) => ({ ...h, players: g.houses.length })));
 
@@ -75,7 +76,7 @@ function winStats(group: (SimHouseResult & { players: number })[]) {
 }
 
 console.log(
-  `# Simulación: ${games} partidas de ${weeks} semanas, ${minPlayers}-${maxPlayers} casas, modo ${mode}${args.get("eventos") === "no" ? ", sin eventos" : ""}${args.get("terreno") === "no" ? ", sin terreno" : ""}`,
+  `# Simulación: ${games} partidas de ${weeks} semanas, ${minPlayers}-${maxPlayers} casas, modo ${mode}${args.get("eventos") === "no" ? ", sin eventos" : ""}${args.get("terreno") === "no" ? ", sin terreno" : ""}${args.get("tropas") === "no" ? ", solo Mesnada" : ""}`,
 );
 console.log(`(${((Date.now() - started) / 1000).toFixed(1)} s)`);
 
@@ -148,6 +149,10 @@ table("Combate y comercio (por partida)", ["dato", "valor"], [
   ["Ataques que toman la casilla", pct(results.reduce((a, r) => a + r.attacksWon, 0) / Math.max(1, results.reduce((a, r) => a + r.attacks, 0)))],
   ["Órdenes de apoyo", f1(avg(results.map((r) => r.supports)))],
   ["Marchas por camino (2 casillas)", f1(avg(results.map((r) => r.roadMoves)))],
+  [
+    "Reclutadas: Mesnada / Jinetes / Catapultas",
+    `${f1(avg(results.map((r) => r.recruited.mesnada)))} / ${f1(avg(results.map((r) => r.recruited.jinetes)))} / ${f1(avg(results.map((r) => r.recruited.catapultas)))}`,
+  ],
   ["Travesías por mar", f1(avg(results.map((r) => r.seaMoves)))],
   ["Tratos cerrados", f1(avg(results.map((r) => r.trades)))],
   ["Socios comerciales por casa (toda la partida)", f1(avg(houses.map((h) => h.partners)))],

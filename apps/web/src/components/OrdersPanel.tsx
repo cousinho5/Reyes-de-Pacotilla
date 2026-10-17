@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { resolveCampaign, type Order, type Tile } from "@reyes/engine";
 import type { GameState, OrderView } from "../api";
-import { describeEvent, formatWhen } from "../ui";
+import { describeEvent, formatWhen, troopsText } from "../ui";
 
 interface Props {
   state: GameState;
@@ -25,13 +25,24 @@ export function OrdersPanel({ state, draft, setDraft }: Props) {
       type: t.type,
       owner: t.owner,
       troops: t.troops ?? 0,
+      ...(t.jinetes ? { jinetes: t.jinetes } : {}),
+      ...(t.catapultas ? { catapultas: t.catapultas } : {}),
       fortifiedUntil: t.fortifiedUntil,
       castleOf: t.castleOf ?? null,
     }));
     const orders: Order[] = draft.map((o) =>
       o.tipo === "mover"
-        ? { kind: "move", house: state.yo.casa, from: o.desde, to: o.hacia, troops: o.tropas }
-        : { kind: "support", house: state.yo.casa, from: o.desde, target: o.hacia, supportedFrom: o.apoyaDesde, troops: o.tropas },
+        ? { kind: "move", house: state.yo.casa, from: o.desde, to: o.hacia, troops: o.tropas, jinetes: o.jinetes, catapultas: o.catapultas }
+        : {
+            kind: "support",
+            house: state.yo.casa,
+            from: o.desde,
+            target: o.hacia,
+            supportedFrom: o.apoyaDesde,
+            troops: o.tropas,
+            jinetes: o.jinetes,
+            catapultas: o.catapultas,
+          },
     );
     const r = resolveCampaign({ resolution: (state.partida.resolucionActual ?? 0) + 1, tiles: known, orders });
     return r.events
@@ -57,11 +68,11 @@ export function OrdersPanel({ state, draft, setDraft }: Props) {
                 <span>
                   {o.tipo === "mover" ? (
                     <>
-                      <strong>{o.tropas}</strong> de {name(o.desde)} → <strong>{name(o.hacia)}</strong>
+                      <strong>{troopsText(o.tropas, o.jinetes, o.catapultas)}</strong> de {name(o.desde)} → <strong>{name(o.hacia)}</strong>
                     </>
                   ) : (
                     <>
-                      <strong>{o.tropas}</strong> de {name(o.desde)} apoyan{" "}
+                      <strong>{troopsText(o.tropas, o.jinetes, o.catapultas)}</strong> de {name(o.desde)} apoyan{" "}
                       {o.apoyaDesde ? (
                         <>
                           el ataque de {name(o.apoyaDesde)} sobre <strong>{name(o.hacia)}</strong>

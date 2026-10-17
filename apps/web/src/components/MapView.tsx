@@ -1,11 +1,11 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { TILE_NAMES, areAdjacent, fortifyCost, marchKind, type Tile } from "@reyes/engine";
+import { TILE_NAMES, areAdjacent, fortifyCost, marchKind, subUnits, unitsOf, type Tile, type Units } from "@reyes/engine";
 import { api, type GameState, type OrderView, type TileView } from "../api";
 import { Icon, ShieldIcon, TileArt } from "../art";
 import { cellBox, sharedEdge, type Geo } from "../art/grid";
 import { geoOf } from "../art/world";
 import { WorldCanvas, useWorld } from "./WorldCanvas";
-import { HOUSE_COLORS, TERRAIN_NOTE, TERRITORY, TILE_LABEL, houseName } from "../ui";
+import { HOUSE_COLORS, TERRAIN_NOTE, TERRITORY, TILE_LABEL, UNIT_LABEL, houseName, troopsText } from "../ui";
 
 interface Props {
   state: GameState;
@@ -14,7 +14,10 @@ interface Props {
   act: (fn: () => Promise<unknown>, ok?: string) => Promise<void>;
 }
 
-type Compose = { from: number; mode: "mover" | "apoyar"; target: number | null; troops: number; apoyaDesde: number | null };
+type Compose = { from: number; mode: "mover" | "apoyar"; target: number | null; mix: Units; apoyaDesde: number | null };
+
+const NO_UNITS: Units = { mesnada: 0, jinetes: 0, catapultas: 0 };
+const RIDERS_ONLY = (n: number): Units => ({ mesnada: 0, jinetes: n, catapultas: 0 });
 
 export function MapView({ state, draft, setDraft, act }: Props) {
   const tiles = state.casillas ?? [];
@@ -51,6 +54,8 @@ export function MapView({ state, draft, setDraft, act }: Props) {
           type: t.type,
           owner: house ? HOUSE_COLORS[house.color]?.hex ?? null : null,
           troops: t.troops,
+          jinetes: t.jinetes ?? 0,
+          catapultas: t.catapultas ?? 0,
           fortified: t.fortifiedUntil != null && t.fortifiedUntil > last,
           battle: battles.has(t.id),
           fogged: !t.visible,
@@ -115,6 +120,14 @@ export function MapView({ state, draft, setDraft, act }: Props) {
   const points = (t: TileView, inset = 0) => geo.outline(t.x, t.y, inset).map(([x, y]) => `${x},${y}`).join(" ");
 
   const committed = (tileId: number) => draft.filter((o) => o.desde === tileId).reduce((a, o) => a + o.tropas, 0);
+  /** Tropas de cada tipo que quedan libres en una casilla tras las órdenes ya dadas. */
+  const freeUnits = (tileId: number): Units => {
+    const t = tiles.find((x) => x.id === tileId);
+    if (!t || t.troops == null) return NO_UNITS;
+    return draft
+      .filter((o) => o.desde === tileId)
+      .reduce((u, o) => subUnits(u, unitsOf({ troops: o.tropas, jinetes: o.jinetes, catapultas: o.catapultas })), unitsOf({ ...t, troops: t.troops }));
+  };
   const tile = tiles.find((t) => t.id === selected) ?? null;
   const byId = useMemo(() => new Map(tiles.map((t) => [t.id, t])), [tiles]);
   // Para el motor, las tropas que no se ven cuentan como 0: solo importa el terreno y quién manda.
@@ -124,9 +137,14 @@ export function MapView({ state, draft, setDraft, act }: Props) {
     if (!compose) return false;
     const from = byId.get(compose.from)!;
     if (compose.mode === "mover") {
-      // Vecinas, y además por camino (dos casillas) o por mar (de puerto a puerto).
+      // Vecinas, y además por camino (dos casillas), por mar (de puerto a puerto)
+      // o a la carga (solo jinetes, por lo llano). A la montaña solo sube la Mesnada.
       if (t.type === "castillo" && t.castleOf !== me) return false;
-      return me != null && marchKind(asTile(from), asTile(t), engineTiles, me) != null;
+      if (me == null) return false;
+      const free = freeUnits(from.id);
+      if (t.type === "montana" && free.mesnada === 0) return false;
+      if (marchKind(asTile(from), asTile(t), engineTiles, me) != null) return true;
+      return free.jinetes > 0 && marchKind(asTile(from), asTile(t), engineTiles, me, RIDERS_ONLY(free.jinetes)) === "carga";
     }
     if (!areAdjacent(from, t)) return false;
     return t.type !== "castillo";
@@ -279,7 +297,8 @@ export function MapView({ state, draft, setDraft, act }: Props) {
           compose={compose}
           setCompose={setCompose}
           byId={byId}
-          available={(byId.get(compose.from)?.troops ?? 0) - committed(compose.from)}
+          available={freeUnits(compose.from)}
+          engineTiles={engineTiles}
           onAdd={(o) => {
             setDraft([...draft, o]);
             setCompose(null);
@@ -293,7 +312,7 @@ export function MapView({ state, draft, setDraft, act }: Props) {
             available={(tile.troops ?? 0) - committed(tile.id)}
             open={open}
             onOrder={(mode) =>
-              setCompose({ from: tile.id, mode, target: null, troops: Math.max(1, (tile.troops ?? 0) - committed(tile.id)), apoyaDesde: null })
+              setCompose({ from: tile.id, mode, target: null, mix: freeUnits(tile.id), apoyaDesde: null })
             }
             onFortify={() => act(() => api.fortify(state.partida.id, tile.id), "Murallas reforzadas.")}
           />
@@ -308,7 +327,18 @@ export function MapView({ state, draft, setDraft, act }: Props) {
 
 /** Una casilla tal como la entiende el motor. */
 function asTile(t: TileView): Tile {
-  return { id: t.id, x: t.x, y: t.y, type: t.type, owner: t.owner, troops: t.troops ?? 0, fortifiedUntil: t.fortifiedUntil, castleOf: t.castleOf ?? null };
+  return {
+    id: t.id,
+    x: t.x,
+    y: t.y,
+    type: t.type,
+    owner: t.owner,
+    troops: t.troops ?? 0,
+    ...(t.jinetes ? { jinetes: t.jinetes } : {}),
+    ...(t.catapultas ? { catapultas: t.catapultas } : {}),
+    fortifiedUntil: t.fortifiedUntil,
+    castleOf: t.castleOf ?? null,
+  };
 }
 
 /** Flecha de orden entre dos casillas, en píxeles del dibujo. */
@@ -394,6 +424,12 @@ function TilePanel({
         </div>
       </div>
       {note && <p className="note">«{note}»</p>}
+      {tile.troops != null && ((tile.jinetes ?? 0) > 0 || (tile.catapultas ?? 0) > 0) && (
+        <p className="unit-mix">
+          {tile.troops - (tile.jinetes ?? 0) - (tile.catapultas ?? 0)} de Mesnada · {tile.jinetes ?? 0}{" "}
+          {tile.jinetes === 1 ? "jinete" : "jinetes"} · {tile.catapultas ?? 0} {tile.catapultas === 1 ? "catapulta" : "catapultas"}
+        </p>
+      )}
       <p className="muted terrain-note">{TERRAIN_NOTE[tile.type]}</p>
       {tile.troops == null && (
         <p className="muted">
@@ -424,13 +460,15 @@ function Composer({
   setCompose,
   byId,
   available,
+  engineTiles,
   onAdd,
 }: {
   state: GameState;
   compose: Compose;
   setCompose: (c: Compose | null) => void;
   byId: Map<number, TileView>;
-  available: number;
+  available: Units;
+  engineTiles: Tile[];
   onAdd: (o: OrderView) => void;
 }) {
   const from = byId.get(compose.from)!;
@@ -440,6 +478,29 @@ function Composer({
       ? [...byId.values()].filter((t) => t.id !== from.id && t.id !== target.id && areAdjacent(t, target))
       : [];
   const verb = compose.mode === "mover" ? "Mover o atacar" : "Apoyar";
+  // Qué tipos pueden ir: a la carga solo jinetes; a la montaña solo Mesnada; los apoyos, sin catapultas.
+  const me = state.yo.casa;
+  const charge =
+    target != null &&
+    compose.mode === "mover" &&
+    me != null &&
+    marchKind(asTile(from), asTile(target), engineTiles, me) == null;
+  const kinds: (keyof Units)[] = !target
+    ? []
+    : charge
+      ? ["jinetes"]
+      : compose.mode === "mover" && target.type === "montana"
+        ? ["mesnada"]
+        : compose.mode === "apoyar"
+          ? ["mesnada", "jinetes"]
+          : ["mesnada", "jinetes", "catapultas"];
+  const mix: Units = {
+    mesnada: kinds.includes("mesnada") ? Math.min(compose.mix.mesnada, available.mesnada) : 0,
+    jinetes: kinds.includes("jinetes") ? Math.min(compose.mix.jinetes, available.jinetes) : 0,
+    catapultas: kinds.includes("catapultas") ? Math.min(compose.mix.catapultas, available.catapultas) : 0,
+  };
+  const total = mix.mesnada + mix.jinetes + mix.catapultas;
+  const shown = kinds.filter((k) => available[k] > 0);
   return (
     <section className="card composer">
       <h2>
@@ -448,13 +509,15 @@ function Composer({
       {!target ? (
         <p>
           {compose.mode === "mover"
-            ? "Toca una casilla marcada: una vecina, o más lejos por un camino tuyo o por mar desde un puerto."
+            ? "Toca una casilla marcada: una vecina, o más lejos por un camino tuyo, por mar desde un puerto o a la carga con jinetes."
             : "Toca una casilla vecina marcada en el mapa."}
         </p>
       ) : (
         <>
           <p>
             Objetivo: <strong>{target.nombre}</strong>
+            {charge && " · a la carga: solo van jinetes"}
+            {!charge && compose.mode === "mover" && target.type === "montana" && " · a la montaña solo sube la Mesnada"}
           </p>
           {compose.mode === "apoyar" && (
             <label>
@@ -472,31 +535,36 @@ function Composer({
               </select>
             </label>
           )}
-          <label>
-            Tropas: <strong>{compose.troops}</strong> de {available}
-            <input
-              type="range"
-              min={1}
-              max={Math.max(1, available)}
-              value={compose.troops}
-              onChange={(e) => setCompose({ ...compose, troops: Number(e.target.value) })}
-            />
-          </label>
+          {shown.length === 0 && <p className="error">No te quedan tropas que puedan ir ahí.</p>}
+          {shown.map((k) => (
+            <label key={k}>
+              {UNIT_LABEL[k]}: <strong>{mix[k]}</strong> de {available[k]}
+              <input
+                type="range"
+                min={0}
+                max={available[k]}
+                value={mix[k]}
+                onChange={(e) => setCompose({ ...compose, mix: { ...compose.mix, [k]: Number(e.target.value) } })}
+              />
+            </label>
+          ))}
           <div className="actions">
             <button
               className="primary"
-              disabled={available < 1}
+              disabled={total < 1}
               onClick={() =>
                 onAdd({
                   tipo: compose.mode,
                   desde: from.id,
                   hacia: target.id,
                   apoyaDesde: compose.mode === "apoyar" ? compose.apoyaDesde : null,
-                  tropas: compose.troops,
+                  tropas: total,
+                  ...(mix.jinetes > 0 ? { jinetes: mix.jinetes } : {}),
+                  ...(mix.catapultas > 0 ? { catapultas: mix.catapultas } : {}),
                 })
               }
             >
-              Añadir orden
+              Añadir orden: {troopsText(total, mix.jinetes, mix.catapultas)}
             </button>
           </div>
           <p className="hint">La orden se guarda al añadirla. Puedes verla o quitarla en la pestaña Órdenes.</p>

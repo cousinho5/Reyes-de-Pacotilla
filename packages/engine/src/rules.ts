@@ -24,6 +24,32 @@ export const UPGRADE_COST: Record<2 | 3 | 4 | 5, Partial<Resources>> = {
   5: { madera: 60, piedra: 35, hierro: 30, oro: 30 },
 };
 
+/**
+ * Tipos de tropa (diseño v3, fase 3). La Mesnada es la tropa de siempre.
+ * - Jinetes: rápidos y fuertes al cargar en llano, flojos en el bosque.
+ * - Catapultas: no luchan, pero rompen fortificaciones y fortalezas.
+ * Es un objeto para que el simulador pueda apagarlos (`enabled`) y comparar.
+ */
+export const UNITS = {
+  enabled: true,
+  jinetes: {
+    cost: { hierro: 3, pan: 2, oro: 1 } as Partial<Resources>,
+    /** Fuerza de cada jinete al atacar una casilla llana sin murallas. */
+    charge: 2,
+    /** Fuerza de cada jinete en el bosque (atacando, defendiendo o apoyando). */
+    forest: 0.5,
+  },
+  catapultas: {
+    cost: { madera: 4, hierro: 2 } as Partial<Resources>,
+    /** Cada catapulta que ataca quita esto al bono de fortificación o de fortaleza del defensor. */
+    breach: 0.25,
+    /** Una catapulta come como dos tropas. */
+    upkeep: 2,
+  },
+  /** Terreno llano: donde cargan los jinetes y por donde avanzan dos casillas. */
+  plains: ["campos", "paramo"] as TileType[],
+};
+
 /** Coste de reclutar una tropa. */
 // Antes 2 Hierro + 1 Pan: el Hierro era el único recurso escaso y el Pan sobraba.
 // Con 1 Hierro + 2 Pan pasaba lo contrario; 2 + 2 deja los dos justos (simulación del 16-10-2026).

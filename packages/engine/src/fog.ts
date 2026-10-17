@@ -44,8 +44,11 @@ export function projectForHouse(tiles: Tile[], house: HouseId, spied: HouseId[] 
   return tiles.map((t) => {
     const v = visible.has(t.id);
     const hidden = v && ambushed(t, house, spied);
+    // Si no se ven las tropas, tampoco de qué tipo son.
+    const { jinetes: _j, catapultas: _c, ...base } = t;
+    const shown = v && !hidden ? t : base;
     return {
-      ...t,
+      ...shown,
       troops: v && !hidden ? t.troops : null,
       fortifiedUntil: v ? (t.fortifiedUntil ?? null) : null,
       visible: v,

@@ -5,6 +5,9 @@ import { Hono, type Context } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import {
   BUILDINGS,
+  UNIT_KINDS,
+  upkeepTroops,
+  type UnitKind,
   SPECIALTY_PAIRS,
   STARTING_RESOURCES,
   castleName,
@@ -545,10 +548,19 @@ app.get("/api/partidas/:id", async (c) => {
     loadBuildings(db, game.id),
     computeAllPrestige(db, game.id, houses, tiles, now),
     db.prepare(
-      "SELECT id, kind, from_tile_id, troops, target_tile_id, supported_from_tile_id FROM orders WHERE house_id = ? AND resolution_no = ? ORDER BY id",
+      "SELECT id, kind, from_tile_id, troops, jinetes, catapultas, target_tile_id, supported_from_tile_id FROM orders WHERE house_id = ? AND resolution_no = ? ORDER BY id",
     )
       .bind(house.id, game.current_resolution + 1)
-      .all<{ id: number; kind: "move" | "support"; from_tile_id: number; troops: number; target_tile_id: number; supported_from_tile_id: number | null }>(),
+      .all<{
+        id: number;
+        kind: "move" | "support";
+        from_tile_id: number;
+        troops: number;
+        jinetes: number;
+        catapultas: number;
+        target_tile_id: number;
+        supported_from_tile_id: number | null;
+      }>(),
     db.prepare(
       `SELECT e.id, e.type, e.payload, e.at, r.number AS resolucion FROM event_log e LEFT JOIN resolutions r ON r.id = e.resolution_id
        WHERE e.game_id = ? AND (e.visible_to IS NULL OR e.visible_to = ?)
@@ -610,7 +622,7 @@ app.get("/api/partidas/:id", async (c) => {
       recursos: resourcesOf(house),
       edificios: levels,
       produccionDiaria: dailyProduction(levels, own, helpActive ? (house.help_resource ?? "pan") : null),
-      mantenimientoSemanal: weeklyUpkeep(own.reduce((a, t) => a + t.troops, 0), own.filter((t) => t.type !== "castillo").length),
+      mantenimientoSemanal: weeklyUpkeep(upkeepTroops(own), own.filter((t) => t.type !== "castillo").length),
       ayudaAlUltimo: helpActive ? (house.help_resource ?? "pan") : null,
       recursoAyuda: house.help_resource ?? "pan",
       objetivo: {
@@ -673,6 +685,8 @@ app.get("/api/partidas/:id", async (c) => {
       hacia: o.target_tile_id,
       apoyaDesde: o.supported_from_tile_id,
       tropas: o.troops,
+      jinetes: o.jinetes,
+      catapultas: o.catapultas,
     })),
     eventos: events.results.map((e) => ({ id: e.id, tipo: e.type, resolucion: e.resolucion, datos: JSON.parse(e.payload) })),
     ofertas: offers.results.map(offerView),
@@ -765,16 +779,19 @@ app.post("/api/partidas/:id/mejorar", async (c) => {
 app.post("/api/partidas/:id/reclutar", async (c) => {
   const m = await activeMembership(c);
   if (m instanceof Response) return m;
-  const { cantidad } = await c.req.json<{ cantidad?: number }>().catch(() => ({ cantidad: undefined }));
-  const check = checkRecruit(Number(cantidad), resourcesOf(m.house));
+  const { cantidad, tipo } = await c.req
+    .json<{ cantidad?: number; tipo?: string }>()
+    .catch(() => ({ cantidad: undefined, tipo: undefined }));
+  const kind = (tipo ?? "mesnada") as UnitKind;
+  if (!UNIT_KINDS.includes(kind)) return fail(c, 400, "Tipo de tropa no válido.");
+  const check = checkRecruit(Number(cantidad), resourcesOf(m.house), kind);
   if (!check.ok) return fail(c, 409, check.error);
+  const n = Number(cantidad);
   const err = await runPaid(c, [
     payStatement(c.env.DB, m.house.id, check.value.cost),
-    c.env.DB.prepare("UPDATE tiles SET troops = troops + ? WHERE game_id = ? AND castle_of = ?").bind(
-      Number(cantidad),
-      m.game.id,
-      m.house.id,
-    ),
+    c.env.DB.prepare(
+      "UPDATE tiles SET troops = troops + ?, jinetes = jinetes + ?, catapultas = catapultas + ? WHERE game_id = ? AND castle_of = ?",
+    ).bind(n, kind === "jinetes" ? n : 0, kind === "catapultas" ? n : 0, m.game.id, m.house.id),
   ]);
   return err ?? c.json({ ok: true });
 });
@@ -840,6 +857,9 @@ interface OrderInput {
   hacia: number;
   tropas: number;
   apoyaDesde?: number | null;
+  /** De esas tropas, cuántas son Jinetes y Catapultas (el resto, Mesnada). */
+  jinetes?: number;
+  catapultas?: number;
 }
 
 /** Sustituye todas las órdenes de la casa para la próxima resolución. */
@@ -853,7 +873,7 @@ app.put("/api/partidas/:id/ordenes", async (c) => {
 
   const orders: Order[] = ordenes.map((o) =>
     o.tipo === "mover"
-      ? { kind: "move", house: m.house.id, from: Number(o.desde), to: Number(o.hacia), troops: Number(o.tropas) }
+      ? { kind: "move", house: m.house.id, from: Number(o.desde), to: Number(o.hacia), troops: Number(o.tropas), ...orderTypes(o) }
       : {
           kind: "support",
           house: m.house.id,
@@ -861,6 +881,7 @@ app.put("/api/partidas/:id/ordenes", async (c) => {
           target: Number(o.hacia),
           supportedFrom: o.apoyaDesde == null ? null : Number(o.apoyaDesde),
           troops: Number(o.tropas),
+          ...orderTypes(o),
         },
   );
   const tiles = toEngineTiles(await loadTiles(c.env.DB, m.game.id));
@@ -872,7 +893,7 @@ app.put("/api/partidas/:id/ordenes", async (c) => {
     c.env.DB.prepare("DELETE FROM orders WHERE house_id = ? AND resolution_no = ?").bind(m.house.id, n),
     ...orders.map((o) =>
       c.env.DB.prepare(
-        "INSERT INTO orders (game_id, house_id, resolution_no, kind, from_tile_id, troops, target_tile_id, supported_from_tile_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO orders (game_id, house_id, resolution_no, kind, from_tile_id, troops, jinetes, catapultas, target_tile_id, supported_from_tile_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
       ).bind(
         m.game.id,
         m.house.id,
@@ -880,6 +901,8 @@ app.put("/api/partidas/:id/ordenes", async (c) => {
         o.kind,
         o.from,
         o.troops,
+        o.jinetes ?? 0,
+        o.catapultas ?? 0,
         o.kind === "move" ? o.to : o.target,
         o.kind === "support" ? o.supportedFrom : null,
       ),
@@ -1184,4 +1207,11 @@ export function nextMonday(now: Date, timeZone: string): string {
   const add = (8 - date.getUTCDay()) % 7 || 7;
   date.setUTCDate(date.getUTCDate() + add);
   return date.toISOString().slice(0, 10);
+}
+
+/** Jinetes y Catapultas que trae una orden del cliente (enteros o nada). */
+function orderTypes(o: { jinetes?: unknown; catapultas?: unknown }): { jinetes?: number; catapultas?: number } {
+  const j = Number(o.jinetes ?? 0);
+  const c = Number(o.catapultas ?? 0);
+  return { ...(j !== 0 ? { jinetes: j } : {}), ...(c !== 0 ? { catapultas: c } : {}) };
 }
