@@ -93,15 +93,17 @@ Una mejora se nota en la producción del día siguiente. En la simulación, quie
 
 ### 6.1 Tamaño y casillas
 
-El mapa es una cuadrícula que escala con el número de jugadores, con unas 4 casillas neutrales por casa para que la expansión dure las primeras semanas antes del contacto. Tiene como máximo 6 columnas para que quepa en el ancho de un móvil.
+El mapa es una cuadrícula que escala con el número de jugadores para que los castillos queden siempre a unos 3 pasos del vecino más cercano y cada casa tenga unas 4 casillas productivas a su alcance antes del primer choque (hacia la segunda semana). El mapa se desplaza con el dedo, así que no hay límite de columnas.
 
-| Jugadores | Cuadrícula | Casillas | Neutrales |
-| --- | --- | --- | --- |
-| 4 | 5x4 | 20 | 16 |
-| 5 | 6x4 | 24 | 19 |
-| 6 | 6x5 | 30 | 24 |
-| 7 | 6x5 | 30 | 23 |
-| 8 | 6x6 | 36 | 28 |
+| Jugadores | Cuadrícula | Casillas | Neutrales | Páramos | Productivas por casa |
+| --- | --- | --- | --- | --- | --- |
+| 4 | 5x4 | 20 | 16 | 1 | 3,8 |
+| 5 | 6x4 | 24 | 19 | 1 | 3,6 |
+| 6 | 6x5 | 30 | 24 | 2 | 3,7 |
+| 7 | 7x6 | 42 | 35 | 5 | 4,3 |
+| 8 | 7x7 | 49 | 41 | 7 | 4,3 |
+
+Antes, con 7 y 8 casas el mapa era 6x5 y 6x6: los castillos quedaban a 2 pasos (el 14% de las parejas de castillos se tocaban casi), el primer choque llegaba una resolución antes y cada casa tenía la mitad de terreno que con 4-6 casas. Comparación completa en `docs/simulaciones.md`.
 
 - Cada casa empieza en su **castillo**, en el borde del mapa. El castillo **no se puede conquistar**: los pretendientes no se atreven a tomar el castillo ajeno, solo las tierras de alrededor.
 
@@ -115,12 +117,13 @@ El mapa es una cuadrícula que escala con el número de jugadores, con unas 4 ca
 | Montaña | +2 Hierro | 6 | |
 | Puerto | +2 Oro | 8 | La única casilla que produce Oro |
 | Fortaleza | Nada | 8 | El defensor tiene +50% adicional y da más Prestigio |
+| Páramo | Nada | 2 | Tierra de nadie: da 1 de Prestigio (las demás, 3) y nunca está junto a un castillo |
 
 - Las guarniciones neutrales no atacan (salvo en el evento de los bandidos) y no crecen.
 
 - Se controla una casilla teniendo al menos 1 tropa en ella. Si una casilla se queda vacía, sigue siendo tuya hasta que otro entre.
 
-- El mapa se genera a partir de una semilla para que sea justo. El generador prueba 600 colocaciones y elige la más justa: los castillos van a distancias iguales por el borde, nunca en una esquina (solo tendrían dos vecinas) ni juntos, las fortalezas nunca están al lado de un castillo y el valor de las casillas cercanas a cada castillo difiere como mucho 1,5 puntos (1 por casilla vecina, 0,5 a dos pasos). Se comprueba con pruebas automáticas para 4 a 8 casas.
+- El mapa se genera a partir de una semilla para que sea justo. El generador prueba 600 colocaciones y elige la más justa: los castillos van a distancias iguales por el borde, nunca en una esquina (solo tendrían dos vecinas) ni juntos, las fortalezas y los páramos nunca están al lado de un castillo (se colocan primero en los huecos lejanos; los páramos quedan entre castillos como tierra de nadie) y el valor de las casillas cercanas a cada castillo difiere como mucho 1,5 puntos (1 por casilla vecina, 0,5 a dos pasos). Se comprueba con pruebas automáticas para 4 a 8 casas.
 
 ### 6.2 Qué ve cada jugador (niebla de guerra)
 

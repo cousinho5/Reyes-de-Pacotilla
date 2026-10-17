@@ -42,6 +42,7 @@ export const TILE_PRODUCTION: Record<TileType, Partial<Resources>> = {
   montana: { hierro: 2 },
   puerto: { oro: 2 },
   fortaleza: {},
+  paramo: {},
 };
 
 /** Guarnición neutral inicial según el tipo de casilla. */
@@ -52,6 +53,7 @@ export const NEUTRAL_GARRISON: Record<Exclude<TileType, "castillo">, number> = {
   montana: 6,
   puerto: 8,
   fortaleza: 8,
+  paramo: 2,
 };
 
 /** Bonificaciones de defensa (se suman; máximo total x2). */
@@ -76,6 +78,8 @@ export const LAST_PLACE_HELP = 3;
 export const PRESTIGE = {
   perTile: 3,
   perFortress: 5,
+  /** Un páramo no produce y da menos Prestigio que una casilla normal. */
+  perWasteland: 1,
   perLevelAboveOne: 1,
   perLevelFiveBuilding: 1,
   goldPerPoint: 25,
@@ -117,6 +121,22 @@ export const TILE_MIX: Record<Exclude<TileType, "castillo">, number> = {
   montana: 0.2,
   puerto: 0.1,
   fortaleza: 0.1,
+  paramo: 0,
+};
+
+/**
+ * Tamaño del mapa y páramos (casillas que no producen) según el número de
+ * casas. Los páramos se restan de las neutrales y el resto se reparte con
+ * TILE_MIX.
+ */
+export const MAP_LAYOUT: Record<4 | 5 | 6 | 7 | 8, { cols: number; rows: number; paramos: number }> = {
+  4: { cols: 5, rows: 4, paramos: 1 },
+  5: { cols: 6, rows: 4, paramos: 1 },
+  6: { cols: 6, rows: 5, paramos: 2 },
+  // Con 7 y 8 casas el mapa crece para que los castillos queden a 3 pasos como
+  // con menos casas; los páramos compensan las casillas de más (simulaciones.md).
+  7: { cols: 7, rows: 6, paramos: 5 },
+  8: { cols: 7, rows: 7, paramos: 7 },
 };
 
 /** Días sin entrar a partir de los que se activa el piloto automático. */

@@ -53,6 +53,55 @@ npm run simular -- --semanas 4                    # duración de la partida
 npm run simular -- --json datos.json              # además, todos los datos
 ```
 
+## Mapas más grandes con 7 y 8 casas, y páramos (17 de octubre de 2026, aplicado)
+
+**El problema.** Con 7 y 8 casas el mapa era 6x5 y 6x6. Los castillos quedaban a 2 pasos del vecino (con 4-6 casas, a 3), el 14% de las parejas de castillos estaban a 2 pasos o menos, el primer choque entre casas llegaba una resolución antes y cada casa tenía 3,3-3,5 casillas productivas (con 4-6 casas, unas 4). En la partida de prueba de 8 casas se veían castillos casi pegados.
+
+**Qué dicen otros juegos.**
+- *Diplomacy*: la guía de diseño de mapas pide no poner centros de origen de dos potencias juntos, que ninguna potencia esté el doble de expuesta que otra y que un tercio de los centros sean neutrales agrupados en zonas disputadas. [Agar, *Map Design*](https://diplom.org/Zine/F1998M/Agar/mapDesign.html)
+- *Civilization*: el tamaño del mapa se elige por número de civilizaciones para mantener la misma tierra por jugador; cuando la densidad cambia, cambia el juego (en mapas pequeños, conquistar ciudades es mucho más decisivo). [CivFanatics, *Map size scaling*](https://forums.civfanatics.com/threads/map-size-scaling.623497/)
+- *Small World*: un tablero distinto para cada número de jugadores. [Wikipedia](https://en.wikipedia.org/wiki/Small_World_(board_game))
+- *Catan*: una casilla que no produce nada (el desierto) da forma al tablero sin añadir reglas. [Meeple Mountain](https://www.meeplemountain.com/articles/games-we-love-catan)
+- *Twilight Imperium*: las casillas sin planetas o con anomalías separan a los jugadores y crean pasillos. [Wiki de TI](https://twilight-imperium.fandom.com/wiki/Anomalies)
+
+De ahí la idea: hacer crecer el mapa para recuperar las distancias de 4-6 casas y rellenar lo que sobra con **páramos**, casillas que no producen, para que el terreno productivo por casa no se dispare.
+
+**Cómo se probó.** `scripts/simular-mapa.ts` (se compila con esbuild como `npm run simular`): 400-600 partidas por variante con bots con personalidad mezclados, de 6 y de 4 semanas. Mide la distancia entre castillos, el primer choque entre casas, los choques, las casillas robadas, el territorio, el Prestigio del ganador, cuánto gana la casa con la mejor y con la peor salida (valor de lo que tiene a 1-2 pasos) y las deserciones.
+
+**Variantes descartadas (8 casas, 6 semanas, 400 partidas):**
+
+| Variante | Productivas por casa | Castillos a ≤2 | Distancia al vecino | Territorio medio | Prestigio del ganador | Páramos tomados |
+| --- | --- | --- | --- | --- | --- | --- |
+| 6x6 (antes) | 3,5 | 14% | 2,0 | 7,7 | 46,5 | — |
+| 7x6 | 4,3 | 7% | 2,5 | 10,4 | 51,7 | — |
+| 7x7 sin páramos | 5,1 | 0% | 3,0 | 11,6 | 51,9 | — |
+| 8x6 + 6 páramos | 4,3 | 0% | 3,0 | 11,9 | 51,9 | 87% |
+| 7x7 + 7 páramos, 3 de Prestigio | 4,3 | 0% | 3,0 | 12,5 | 53,6 | 70% |
+| 7x7 + 7 páramos, 0 de Prestigio | 4,3 | 0% | 3,0 | 10,7 | 50,6 | 9% |
+
+- 7x6 no basta: siguen quedando castillos a 2 pasos.
+- Sin páramos, el mapa grande da más terreno productivo que con 4-6 casas y el Prestigio sube.
+- Un páramo con 3 de Prestigio es una casilla normal sin producción: casi todos lo toman y el Prestigio sube.
+- Con 0 de Prestigio nadie lo quiere (9%): no hace de tierra de nadie disputada y la casa con mejor salida gana más (1,2-1,6 veces lo esperado según la tanda).
+- Con 1 de Prestigio se toma algo más de la mitad, sobre todo hacia el final, y el resto de cifras queda como con 4-6 casas.
+
+**Lo aplicado** (`MAP_LAYOUT` y `PRESTIGE.perWasteland` en `rules.ts`): 7 casas en 7x6 con 5 páramos y 8 casas en 7x7 con 7 páramos; 1 o 2 páramos también en 4-6 casas, por variedad (apenas cambia nada). El páramo no produce, tiene 2 de guarnición, da 1 de Prestigio y nunca está junto a un castillo. Además, el generador ya no prueba colocaciones al azar hasta acertar: pone primero fortalezas y páramos en los huecos lejos de los castillos. Con eso el reparto es más justo: la diferencia de valor alrededor de los castillos baja a 0,3-0,7 de mediana y 1,2 como mucho (antes se aceptaba hasta 1,5).
+
+**Antes y después, 600 partidas por variante:**
+
+| Casas | Semanas | Mapa | Productivas por casa | Castillos a ≤2 | 1.er choque (resolución) | Choques entre casas | Territorio medio | Prestigio del ganador | Páramos tomados |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 4 | 6 | antes 5x4 / ahora + 1 páramo | 4,0 / 3,8 | 0% / 0% | 4 / 4 | 12,4 / 14,5 | 12,1 / 11,4 | 51,7 / 50,8 | — / 97% |
+| 6 | 6 | antes 6x5 / ahora + 2 páramos | 4,0 / 3,7 | 0% / 0% | 3 / 3 | 24,3 / 26,1 | 11,1 / 11,2 | 51,8 / 52,3 | — / 77% |
+| 7 | 6 | antes 6x5 / ahora 7x6 + 5 | 3,3 / 4,3 | 14% / 0% | 2 / 3 | 33,8 / 31,3 | 9,0 / 11,8 | 48,1 / 53,8 | — / 73% |
+| 8 | 6 | antes 6x6 / ahora 7x7 + 7 | 3,5 / 4,3 | 14% / 0% | 2 / 3 | 32,2 / 34,8 | 8,0 / 11,2 | 47,0 / 51,3 | — / 62% |
+| 7 | 4 | antes 6x5 / ahora 7x6 + 5 | 3,3 / 4,3 | 14% / 0% | 2 / 3 | 20,5 / 18,4 | 8,3 / 10,8 | 40,2 / 43,6 | — / 62% |
+| 8 | 4 | antes 6x6 / ahora 7x7 + 7 | 3,5 / 4,3 | 14% / 0% | 2 / 3 | 19,6 / 21,6 | 7,2 / 10,5 | 38,7 / 42,5 | — / 54% |
+
+Con 7 y 8 casas el territorio y el Prestigio del ganador quedan ahora como con 4-6 casas, y el primer choque llega en la resolución 3 como en el resto. Las guerras no bajan: hay los mismos choques, pero después de una fase de expansión. En el simulador general (500 partidas mezcladas), los rebotes con 7-8 casas bajan de 1,4-3,8 a 0,2 por partida (había tantos ejércitos apiñados que chocaban sin querer).
+
+**Pendiente.** El objetivo secreto «puerto y fortaleza» se cumplía poco y ahora menos (del 7% al 2%): las fortalezas quedan en el centro y los puertos casi siempre en el borde. «Cinco casillas» se cumple algo más (del 20% al 29%). Conviene revisar los dos objetivos.
+
 ## Eventos de la semana (versión 1, 17 de octubre de 2026)
 
 20 eventos, uno por semana en un orden fijado por la semilla. Los bots tienen en cuenta los de combate (barro, fervor, Paz del Rey) y el mantenimiento doble o gratis. Comparación con y sin eventos (`--eventos no`), 1000 partidas mezcladas de 6 semanas cada una:

@@ -17,6 +17,7 @@ const VALUE: Record<TileType, number> = {
   montana: 1,
   campos: 0,
   bosque: 0,
+  paramo: -0.5,
   castillo: -1,
 };
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { areAdjacent, castleName, generateMap, mapSize, neutralMix, perimeter } from "../src";
+import { MAP_LAYOUT, areAdjacent, castleName, computePrestige, generateMap, mapSize, neutralMix, perimeter } from "../src";
 
 const housesFor = (n: number) => Array.from({ length: n }, (_, i) => i + 1);
 
@@ -31,8 +31,14 @@ describe("Generación del mapa", () => {
         const neutrals = map.tiles.filter((t) => t.type !== "castillo");
         expect(neutrals.every((t) => t.owner === null && t.troops > 0 && t.name !== "")).toBe(true);
         expect(new Set(neutrals.map((t) => t.name)).size).toBe(neutrals.length);
-        const fortresses = neutrals.filter((t) => t.type === "fortaleza");
+        const fortresses = neutrals.filter((t) => t.type === "fortaleza" || t.type === "paramo");
         for (const f of fortresses) for (const c of castles) expect(areAdjacent(f, c)).toBe(false);
+        // Los páramos de MAP_LAYOUT, con 2 de guarnición.
+        const paramos = neutrals.filter((t) => t.type === "paramo");
+        expect(paramos).toHaveLength(MAP_LAYOUT[n as 4 | 5 | 6 | 7 | 8].paramos);
+        expect(paramos.every((t) => t.troops === 2)).toBe(true);
+        // Ningún castillo a 2 pasos o menos de otro.
+        for (const c of castles) for (const o of castles) if (o !== c) expect(Math.abs(o.x - c.x) + Math.abs(o.y - c.y)).toBeGreaterThan(2);
 
         // Justicia: la diferencia de valor alrededor de los castillos es pequeña
         // (una casilla vale 1 si es vecina y 0,5 si está a dos pasos) y ningún
@@ -51,6 +57,23 @@ describe("Generación del mapa", () => {
     expect(mix).toHaveLength(16);
     expect(count("campos") + count("bosque") + count("cantera") + count("montana")).toBeGreaterThanOrEqual(12);
     expect(count("fortaleza")).toBeGreaterThanOrEqual(1);
+  });
+});
+
+describe("Páramos", () => {
+  it("no producen y dan 1 de Prestigio de territorio (las demás casillas, 3)", () => {
+    const p = computePrestige({
+      house: 1,
+      tiles: [
+        { id: 1, x: 0, y: 0, type: "paramo", owner: 1, troops: 1, fortifiedUntil: null },
+        { id: 2, x: 1, y: 0, type: "campos", owner: 1, troops: 1, fortifiedUntil: null },
+      ],
+      buildings: { granja: 1, aserradero: 1, cantera: 1, mina: 1, mercado: 1 },
+      gold: 0,
+      tradePartners: 0,
+      achievements: {},
+    } as Parameters<typeof computePrestige>[0]);
+    expect(p.territorio).toBe(4);
   });
 });
 

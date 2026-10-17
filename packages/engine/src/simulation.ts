@@ -14,6 +14,7 @@ import { generateMap } from "./mapgen";
 import { dealObjectives, objectiveMet, type ObjectiveKey } from "./objectives";
 import { computePrestige, isValidTrade, type AchievementKey, type PrestigeBreakdown } from "./prestige";
 import { resolveCampaign } from "./combat";
+import type { MapLayoutOverride } from "./mapgen";
 import { PRESTIGE, SPECIALTY_PAIRS, STARTING_RESOURCES } from "./rules";
 import { totalOf } from "./trade";
 import { auctionLots, doubleLot, resolveAuction, type Bid } from "./auction";
@@ -89,6 +90,8 @@ export interface SimOptions {
   weeks: 2 | 4 | 6 | 8;
   /** Eventos de la semana (por defecto, sí). */
   events?: boolean;
+  /** Tamaño del mapa y páramos (para probar alternativas). */
+  layout?: MapLayoutOverride;
 }
 
 export interface SimHouseResult {
@@ -128,6 +131,8 @@ export interface SimGameResult {
   /** El ganador se decidió por desempate (casillas u Oro). */
   tiebreak: boolean;
   neutralTotal: number;
+  /** Primera resolución con combate entre casas (null si no hubo). */
+  firstHouseCombat: number | null;
   neutralLeft: number;
   combatsVsNeutral: number;
   combatsVsHouse: number;
@@ -173,7 +178,7 @@ interface HouseState {
 
 export function simulateGame(opts: SimOptions): SimGameResult {
   const ids = opts.strategies.map((_, i) => i + 1);
-  const map = generateMap(opts.seed, ids);
+  const map = generateMap(opts.seed, ids, opts.layout);
   let tiles: Tile[] = map.tiles.map((t, i) => ({
     id: i + 1,
     x: t.x,
@@ -228,6 +233,7 @@ export function simulateGame(opts: SimOptions): SimGameResult {
   let auctionGold = 0;
   let cardsPlayed = 0;
   let rankWeek2: Map<HouseId, number> | null = null;
+  let firstHouseCombat: number | null = null;
 
   const prestigeOf = (h: HouseState, day: number, objectiveMet?: boolean) => {
     const partners = new Set<HouseId>();
@@ -489,7 +495,10 @@ export function simulateGame(opts: SimOptions): SimGameResult {
       if (e.type === "rebote") bounces++;
       if (e.type !== "combate") continue;
       if (e.previousOwner == null) combatsVsNeutral++;
-      else combatsVsHouse++;
+      else {
+        combatsVsHouse++;
+        firstHouseCombat ??= resolution;
+      }
       if (e.conquered) attacksWon++;
       if (e.conquered && e.winner != null && e.previousOwner != null) {
         conquestsFromHouses++;
@@ -566,6 +575,7 @@ export function simulateGame(opts: SimOptions): SimGameResult {
     margin: final[0]!.prestige.total - (final[1]?.prestige.total ?? 0),
     tiebreak: final.length > 1 && final[0]!.prestige.total === final[1]!.prestige.total,
     neutralTotal,
+    firstHouseCombat,
     neutralLeft: tiles.filter((t) => t.owner == null).length,
     combatsVsNeutral,
     combatsVsHouse,

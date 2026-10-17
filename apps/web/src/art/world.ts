@@ -62,7 +62,7 @@ const FLAG_MAIN = "αβγδεζηθ";
 const FLAG_SHADE = "ΑΒΓΔΕΖΗΘ";
 
 type Ramp = [string, string, string, string];
-type Ground = "meadow" | "forest" | "highland" | "dust";
+type Ground = "meadow" | "forest" | "highland" | "dust" | "barren";
 
 const GROUND_OF: Record<TileType, Ground> = {
   campos: "meadow",
@@ -72,6 +72,7 @@ const GROUND_OF: Record<TileType, Ground> = {
   montana: "highland",
   cantera: "dust",
   fortaleza: "dust",
+  paramo: "barren",
 };
 
 const RAMPS: Record<Ground, Ramp> = {
@@ -79,6 +80,8 @@ const RAMPS: Record<Ground, Ramp> = {
   forest: ["1", "2", "3", "4"],
   highland: ["2", "4", "F", "5"],
   dust: ["E", "f", "F", "a"],
+  // Tierra reseca y pálida.
+  barren: ["f", "F", "a", "A"],
 };
 
 const DARKER: Record<string, string> = {
@@ -587,6 +590,73 @@ function boat(layer: Layer, x: number, y: number, size: number, flag: [string, s
 // Terrenos
 
 const DRAW: Record<TileType, (ctx: CellCtx) => void> = {
+  paramo(ctx) {
+    const { cv, x0, y0, s } = ctx;
+    // Grietas de tierra seca: líneas quebradas en coordenadas del mundo.
+    for (let ly = 0; ly < CELL; ly++) {
+      for (let lx = 0; lx < CELL; lx++) {
+        const px = x0 + lx;
+        const py = y0 + ly;
+        if (inset(ctx, lx, ly, 4) || ctx.onRoad(px, py) || ctx.isWater(px, py)) continue;
+        const cx = Math.floor(px / 9);
+        const cy = Math.floor(py / 7);
+        const ox = Math.floor(noise(cx, cy, 61) * 9);
+        const oy = Math.floor(noise(cx, cy, 62) * 7);
+        const crack = (px % 9 === ox && noise(px, Math.floor(py / 2), 63) > 0.35) || (py % 7 === oy && noise(Math.floor(px / 2), py, 64) > 0.4);
+        if (crack) cv.set(px, py, noise(px, py, 65) > 0.5 ? "f" : "E");
+      }
+    }
+    // Hierba seca a matojos.
+    for (let i = 0; i < 26; i++) {
+      const gx = x0 + 3 + Math.floor(noise(s, i, 66) * 58);
+      const gy = y0 + 3 + Math.floor(noise(s, i + 40, 66) * 58);
+      if (ctx.onRoad(gx, gy) || ctx.isWater(gx, gy)) continue;
+      cv.set(gx, gy, "W");
+      cv.set(gx - 1, gy + 1, "w");
+      cv.set(gx + 1, gy + 1, "W");
+      cv.set(gx, gy + 1, "w");
+    }
+    // Piedras sueltas.
+    for (let i = 0; i < 4; i++) {
+      const rx = x0 + 8 + Math.floor(noise(s, i, 67) * 48);
+      const ry = y0 + 10 + Math.floor(noise(s, i + 9, 67) * 46);
+      if (!ctx.onRoad(rx, ry)) rock(ctx, rx, ry, 1 + Math.floor(noise(s, i + 3, 67) * 2.5), s + i);
+    }
+    // Un árbol seco con un buitre, o una calavera de vaca: aquí no se para nadie.
+    const l = new Layer(ctx.W);
+    const tx = x0 + 14 + Math.floor(noise(s, 1, 68) * 30);
+    const ty = y0 + 14 + Math.floor(noise(s, 2, 68) * 18);
+    if (!ctx.onRoad(tx + 6, ty + 18)) {
+      ctx.cv.shadow(tx + 8, ty + 20, 6, 1.4);
+      l.stamp(
+        [
+          "...h......h..",
+          "h..hj....hh..",
+          ".h.hj...hh...",
+          "..hhjh.hh..k.",
+          "....hjhh..kSk",
+          ".....hj..kTTk",
+          ".....hj...kk.",
+          ".....hj......",
+          "....hhjj.....",
+          ".....hj......",
+          ".....hj......",
+          ".....hj......",
+          "....hhjj.....",
+          "...hh..jj....",
+        ],
+        tx,
+        ty + 6,
+      );
+      // El buitre posado en la rama.
+      l.stamp([".SS.", "SuSS", ".SS.", "..y."], tx + 9, ty + 2);
+    }
+    const kx = x0 + 40 + Math.floor(noise(s, 3, 68) * 14);
+    const ky = y0 + 46 + Math.floor(noise(s, 4, 68) * 8);
+    if (!ctx.onRoad(kx + 3, ky + 2)) l.stamp(["u...u", ".uuu.", ".kuk.", "..u.."], kx, ky);
+    l.paint(cv);
+  },
+
   campos(ctx) {
     const { cv, x0, y0, s } = ctx;
     // Parcelas en coordenadas del mundo, separadas por setos: siguen en la casilla vecina.

@@ -66,6 +66,7 @@ export const TILE_LABEL: Record<TileType, string> = {
   montana: "Montaña",
   puerto: "Puerto",
   fortaleza: "Fortaleza",
+  paramo: "Páramo",
 };
 
 export const TILE_MARK: Record<TileType, string> = {
@@ -76,6 +77,7 @@ export const TILE_MARK: Record<TileType, string> = {
   montana: "▲",
   puerto: "⚓",
   fortaleza: "▣",
+  paramo: "∴",
 };
 
 export function houseColor(houses: HouseInfo[], id: number | null): string | null {

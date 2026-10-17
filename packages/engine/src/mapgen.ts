@@ -7,7 +7,7 @@
 import { mapSize } from "./map";
 import { TILE_NAMES } from "./names";
 import { seededRandom, shuffle } from "./random";
-import { NEUTRAL_GARRISON, STARTING_TROOPS, TILE_MIX } from "./rules";
+import { MAP_LAYOUT, NEUTRAL_GARRISON, STARTING_TROOPS, TILE_MIX } from "./rules";
 import type { HouseId, Tile, TileType } from "./types";
 
 export type NeutralType = Exclude<TileType, "castillo">;
@@ -36,6 +36,7 @@ const TYPE_VALUE: Record<NeutralType, number> = {
   montana: 1,
   puerto: 1.2,
   fortaleza: 0.6,
+  paramo: 0,
 };
 const PRODUCING: NeutralType[] = ["campos", "bosque", "cantera", "montana", "puerto"];
 
@@ -51,7 +52,7 @@ export function perimeter(cols: number, rows: number): [number, number][] {
 
 /** Cuántas casillas de cada tipo neutral hay en un mapa con `count` neutrales. */
 export function neutralMix(count: number): NeutralType[] {
-  const types = Object.keys(TILE_MIX) as NeutralType[];
+  const types = (Object.keys(TILE_MIX) as NeutralType[]).filter((t) => TILE_MIX[t] > 0);
   const exact = types.map((t) => ({ t, n: TILE_MIX[t] * count }));
   const bag = exact.flatMap(({ t, n }) => Array<NeutralType>(Math.floor(n)).fill(t));
   // Reparte los huecos que quedan por orden de mayor parte decimal.
@@ -60,8 +61,16 @@ export function neutralMix(count: number): NeutralType[] {
   return bag;
 }
 
-export function generateMap(seed: string, houses: HouseId[]): GeneratedMap {
-  const { cols, rows } = mapSize(houses.length);
+/** Tamaño y páramos de un mapa (por defecto, los de MAP_LAYOUT). */
+export interface MapLayoutOverride {
+  cols: number;
+  rows: number;
+  paramos: number;
+}
+
+export function generateMap(seed: string, houses: HouseId[], layout?: MapLayoutOverride): GeneratedMap {
+  const { cols, rows } = layout ?? mapSize(houses.length);
+  const paramos = layout?.paramos ?? MAP_LAYOUT[houses.length as 4 | 5 | 6 | 7 | 8]?.paramos ?? 0;
   const rand = seededRandom(seed);
   const ring = perimeter(cols, rows);
 
@@ -81,8 +90,18 @@ export function generateMap(seed: string, houses: HouseId[]): GeneratedMap {
     for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) if (!castleKey.has(`${x},${y}`)) free.push([x, y]);
     const nearCastle = (x: number, y: number) =>
       castlePos.some(([cx, cy]) => Math.abs(cx - x) + Math.abs(cy - y) === 1);
-    const types = shuffle(neutralMix(free.length), rand);
-    if (types.some((t, i) => t === "fortaleza" && nearCastle(...free[i]!))) continue;
+    // Fortalezas y páramos nunca junto a un castillo (los páramos quedan entre
+    // castillos, como tierra de nadie, sin castigar ninguna salida): se colocan
+    // primero en huecos lejos de los castillos y el resto se reparte al azar.
+    const mix = neutralMix(free.length - paramos);
+    const special = [...Array<NeutralType>(paramos).fill("paramo"), ...mix.filter((t) => t === "fortaleza")];
+    const rest = shuffle(mix.filter((t) => t !== "fortaleza"), rand);
+    const far = shuffle(free.map((_, i) => i).filter((i) => !nearCastle(...free[i]!)), rand);
+    if (far.length < special.length) continue;
+    const types: NeutralType[] = new Array(free.length);
+    special.forEach((t, k) => (types[far[k]!] = t));
+    let r = 0;
+    for (let i = 0; i < free.length; i++) if (!types[i]) types[i] = rest[r++]!;
     // Las esquinas solo tienen dos vecinas: penalizan.
     const cornerPenalty = castlePos.filter(([x, y]) => corners.has(`${x},${y}`)).length;
     const score = unfairness(free, types, castlePos).score + cornerPenalty * CORNER_PENALTY;

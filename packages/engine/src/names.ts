@@ -70,6 +70,18 @@ export const TILE_NAMES: Record<Exclude<TileType, "castillo">, TileName[]> = {
     { name: "Bastión de la Siesta", note: "Inexpugnable de dos a cinco." },
     { name: "Torre del Vigía Miope", note: "Ve venir al enemigo cuando ya ha llegado." },
   ],
+  paramo: [
+    { name: "El Páramo del Olvido", note: "Aquí no crece nada, ni siquiera la esperanza." },
+    { name: "Yermo de los Suspiros", note: "Los pastores lo cruzan corriendo." },
+    { name: "La Estepa Inútil", note: "Su único recurso es el viento." },
+    { name: "Llanura del Polvo", note: "Ideal para perder las botas y la paciencia." },
+    { name: "El Erial del Tío Blas", note: "El tío Blas tampoco lo quería." },
+    { name: "Tierra de Nadie", note: "Y nadie la echa de menos." },
+    { name: "Cerros Pelados", note: "Ni una cabra se atreve." },
+    { name: "Baldío del Cronista", note: "Fray Abundio lo usa para meditar. Y para echar la siesta." },
+    { name: "Secarral Mayor", note: "Hay un Secarral Menor. Es peor." },
+    { name: "Los Cardos Altivos", note: "Lo único que florece aquí es el orgullo." },
+  ],
 };
 
 /** Nombre del castillo de una casa, con la preposición bien puesta. */
