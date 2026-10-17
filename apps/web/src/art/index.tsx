@@ -5,7 +5,8 @@ import { useMemo } from "react";
 import type { ShieldView } from "../api";
 import { Pixels } from "./Pixels";
 import { shieldGrid } from "./shield";
-import { TILE_ART, flagPalette, shade } from "./tiles";
+import { shade } from "./tiles";
+import { renderWorld } from "./world";
 import { ICONS, type IconName } from "./icons";
 import { FRAY_SPRITES, RESOURCE_SPRITES, type FrayMood } from "./sprites";
 
@@ -66,10 +67,10 @@ export function ShieldIcon({ color, escudo, size = 32, title, className }: Shiel
   );
 }
 
-/** Dibujo de una casilla; el castillo y la fortaleza llevan la bandera de su dueño. */
+/** Dibujo de una casilla suelta (miniatura): el mismo pintor que el mapa. */
 export function TileArt({ type, flag, className }: { type: TileType; flag?: string | null; className?: string }) {
-  const palette = useMemo(() => flagPalette(flag), [flag]);
-  return <Pixels grid={TILE_ART[type]} palette={palette} size={32} className={className} />;
+  const img = useMemo(() => renderWorld({ cols: 1, rows: 1, margin: 0, cells: [{ x: 0, y: 0, type, owner: flag ?? null }] }), [type, flag]);
+  return <Pixels grid={img.pixels} palette={img.palette} size={32} className={className} />;
 }
 
 export function ResourceIcon({ r, size = 18 }: { r: Resource; size?: number }) {

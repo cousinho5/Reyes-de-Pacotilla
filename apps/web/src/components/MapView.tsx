@@ -2,6 +2,8 @@ import { useMemo, useState } from "react";
 import { FORTIFY_COST, TILE_NAMES, areAdjacent } from "@reyes/engine";
 import { api, type GameState, type OrderView, type TileView } from "../api";
 import { Icon, ShieldIcon, TileArt } from "../art";
+import { CELL } from "../art/world";
+import { WorldCanvas } from "./WorldCanvas";
 import { HOUSE_COLORS, TERRITORY, TILE_LABEL, houseName } from "../ui";
 
 interface Props {
@@ -20,6 +22,57 @@ export function MapView({ state, draft, setDraft, act }: Props) {
   const [selected, setSelected] = useState<number | null>(null);
   const [compose, setCompose] = useState<Compose | null>(null);
   const open = !!state.partida.ordenesAbiertas;
+  const rows = state.partida.filas ?? 5;
+  const mine = state.casas.find((h) => h.id === me);
+  const [showLast, setShowLast] = useState(false);
+
+  // Lo que pasó en la última resolución (solo lo que esta casa pudo ver).
+  const last = state.partida.resolucionActual;
+  const lastEvents = (state.eventos ?? []).filter((e) => e.resolucion === last && last > 0);
+  const combats = lastEvents.filter((e) => e.tipo === "combate");
+  const battles = new Set(combats.map((e) => Number(e.datos.tile)));
+  const conquests = combats.filter((e) => e.datos.conquered).length;
+  const lastMoves = lastEvents
+    .filter((e) => e.tipo === "movimiento")
+    .map((e) => e.datos as { house: number; from: number; to: number; troops: number });
+
+  // El dibujo del mundo: terreno, banderas, tropas a la vista, empalizadas y batallas.
+  const world = useMemo(
+    () => ({
+      cols,
+      rows,
+      seed: state.partida.id,
+      cells: tiles.map((t) => {
+        const house = t.owner != null ? state.casas.find((h) => h.id === t.owner) : undefined;
+        return {
+          x: t.x,
+          y: t.y,
+          type: t.type,
+          owner: house ? HOUSE_COLORS[house.color]?.hex ?? null : null,
+          troops: t.troops,
+          fortified: t.fortifiedUntil != null && t.fortifiedUntil > last,
+          battle: battles.has(t.id),
+          fogged: !t.visible,
+        };
+      }),
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [JSON.stringify(tiles), JSON.stringify(state.casas.map((h) => [h.id, h.color])), last, [...battles].join()],
+  );
+  // Un banderín por trozo de territorio (en la casilla de arriba a la izquierda), no en cada casilla.
+  const bannerHere = (t: TileView) => {
+    const ownerAt = (x: number, y: number) => tiles.find((n) => n.x === x && n.y === y)?.owner;
+    return ownerAt(t.x - 1, t.y) !== t.owner && ownerAt(t.x, t.y - 1) !== t.owner;
+  };
+  const M = 12;
+  const W = cols * CELL + 2 * M;
+  const H = rows * CELL + 2 * M;
+  const overlayBox = {
+    left: `${(M / W) * 100}%`,
+    top: `${(M / H) * 100}%`,
+    width: `${((cols * CELL) / W) * 100}%`,
+    height: `${((rows * CELL) / H) * 100}%`,
+  };
 
   const committed = (tileId: number) => draft.filter((o) => o.desde === tileId).reduce((a, o) => a + o.tropas, 0);
   const tile = tiles.find((t) => t.id === selected) ?? null;
@@ -42,7 +95,6 @@ export function MapView({ state, draft, setDraft, act }: Props) {
     setCompose(null);
   };
 
-  const outgoing = (t: TileView) => draft.filter((o) => o.desde === t.id);
 
   // Frontera de cada casa: una línea de su color (con un filo claro por dentro)
   // solo en los lados donde la casilla vecina es de otro dueño.
@@ -64,51 +116,100 @@ export function MapView({ state, draft, setDraft, act }: Props) {
   return (
     <div>
       <div className="board">
-        <div className="map" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
-          {tiles.map((t) => {
-            const house = t.owner != null ? state.casas.find((h) => h.id === t.owner) : undefined;
-            const border = house ? TERRITORY[house.color] ?? "#fff" : null;
-            const classes = [
-              "tile",
-              `tile-${t.type}`,
-              t.visible ? "" : "fogged",
-              selected === t.id ? "selected" : "",
-              isTarget(t) ? "target" : "",
-              compose?.from === t.id ? "source" : "",
-            ].join(" ");
-            const fortified = t.fortifiedUntil != null && t.fortifiedUntil > state.partida.resolucionActual;
-            return (
-              <button
-                key={t.id}
-                className={classes}
-                onClick={() => onTile(t)}
-                aria-label={`${t.nombre}, ${TILE_LABEL[t.type]}, ${t.owner ? houseName(state.casas, t.owner) : "neutral"}, ${
-                  t.troops == null ? "tropas desconocidas" : `${t.troops} tropas`
-                }`}
-              >
-                <TileArt type={t.type} flag={house ? HOUSE_COLORS[house.color]?.hex : null} className="tile-art" />
-                {border && <span className="tile-owner" style={{ boxShadow: frontier(t, border) }} aria-hidden />}
-                {house && t.type !== "castillo" && (
-                  <span className="tile-banner" aria-hidden>
-                    <ShieldIcon color={house.color} escudo={house.escudo} size={15} title="" />
-                  </span>
-                )}
-                {fortified && (
-                  <span className="tile-fort" aria-hidden>
-                    <Icon name="muralla" size={16} color="#aaa5b1" />
-                  </span>
-                )}
-                {t.troops != null && <span className="tile-troops">{t.troops}</span>}
-                {outgoing(t).length > 0 && (
-                  <span className="tile-orders" aria-hidden>
-                    {outgoing(t).map((o) => arrow(t, byId.get(o.hacia)!)).join("")}
-                  </span>
-                )}
-              </button>
-            );
-          })}
+        <div className="world-wrap">
+          <WorldCanvas opts={world} label="Mapa de Aldricia" />
+          <div className="world-overlay" style={overlayBox}>
+            <div
+              className="map"
+              style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))` }}
+            >
+              {tiles.map((t) => {
+                const house = t.owner != null ? state.casas.find((h) => h.id === t.owner) : undefined;
+                const border = house ? TERRITORY[house.color] ?? "#fff" : null;
+                const classes = [
+                  "tile",
+                  t.visible ? "" : "fogged",
+                  t.owner === me ? "mine" : "",
+                  selected === t.id ? "selected" : "",
+                  isTarget(t) ? "target" : "",
+                  compose?.from === t.id ? "source" : "",
+                ].join(" ");
+                return (
+                  <button
+                    key={t.id}
+                    className={classes}
+                    style={{ gridColumn: t.x + 1, gridRow: t.y + 1 }}
+                    onClick={() => onTile(t)}
+                    aria-label={`${t.nombre}, ${TILE_LABEL[t.type]}, ${t.owner ? houseName(state.casas, t.owner) : "neutral"}, ${
+                      t.troops == null ? "tropas desconocidas" : `${t.troops} tropas`
+                    }`}
+                  >
+                    {border && (
+                      <span className="tile-owner" style={{ boxShadow: frontier(t, border), background: `${border}1f` }} aria-hidden />
+                    )}
+                    {house && t.type !== "castillo" && bannerHere(t) && (
+                      <span className="tile-banner" aria-hidden>
+                        <ShieldIcon color={house.color} escudo={house.escudo} size={14} title="" />
+                      </span>
+                    )}
+                    {t.troops != null && <span className="tile-troops">{t.troops}</span>}
+                    {battles.has(t.id) && (
+                      <span className="tile-battle" aria-hidden title="Batalla en la última resolución">
+                        <Icon name="ordenes" size={14} color="#f1cf7d" />
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+            <svg className="world-arrows" viewBox={`0 0 ${cols * CELL} ${rows * CELL}`} aria-hidden>
+              <defs>
+                <marker id="punta" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="3.2" markerHeight="3.2" orient="auto-start-reverse">
+                  <path d="M0,0 L10,5 L0,10 z" fill="context-stroke" />
+                </marker>
+              </defs>
+              {showLast &&
+                lastMoves.map((m, i) => {
+                  const a = byId.get(m.from);
+                  const b = byId.get(m.to);
+                  if (!a || !b) return null;
+                  const house = state.casas.find((h) => h.id === m.house);
+                  return <Arrow key={`l${i}`} from={a} to={b} color={house ? TERRITORY[house.color] ?? "#ccc" : "#ccc"} width={1.5 + Math.min(3, m.troops / 4)} past />;
+                })}
+              {draft.map((o, i) => {
+                const a = byId.get(o.desde);
+                const b = byId.get(o.hacia);
+                if (!a || !b) return null;
+                return (
+                  <Arrow
+                    key={i}
+                    from={a}
+                    to={b}
+                    color={TERRITORY[mine?.color ?? ""] ?? "#f1cf7d"}
+                    width={1.5 + Math.min(3, o.tropas / 4)}
+                    dashed={o.tipo === "apoyar"}
+                    label={o.tropas}
+                  />
+                );
+              })}
+            </svg>
+          </div>
         </div>
       </div>
+      {(battles.size > 0 || lastMoves.length > 0) && (
+        <div className="war-report">
+          <span>
+            <Icon name="ordenes" size={18} color="#f1cf7d" />
+            {battles.size > 0
+              ? `${battles.size} ${battles.size === 1 ? "batalla" : "batallas"} en la última resolución`
+              : "Movimientos de la última resolución"}
+            {conquests > 0 && ` · ${conquests} ${conquests === 1 ? "casilla cambia" : "casillas cambian"} de bandera`}
+          </span>
+          <button className="link" onClick={() => setShowLast(!showLast)} aria-pressed={showLast}>
+            {showLast ? "Ocultar" : "Ver en el mapa"}
+          </button>
+        </div>
+      )}
 
       {compose ? (
         <Composer
@@ -143,11 +244,50 @@ export function MapView({ state, draft, setDraft, act }: Props) {
   );
 }
 
-function arrow(from: TileView, to: TileView): string {
-  if (to.x > from.x) return "→";
-  if (to.x < from.x) return "←";
-  if (to.y > from.y) return "↓";
-  return "↑";
+/** Flecha de orden entre dos casillas, en coordenadas del mundo (32 por casilla). */
+function Arrow({
+  from,
+  to,
+  color,
+  width,
+  dashed,
+  past,
+  label,
+}: {
+  from: TileView;
+  to: TileView;
+  color: string;
+  width: number;
+  dashed?: boolean;
+  past?: boolean;
+  label?: number;
+}) {
+  const ax = from.x * CELL + CELL / 2;
+  const ay = from.y * CELL + CELL / 2;
+  const bx = to.x * CELL + CELL / 2;
+  const by = to.y * CELL + CELL / 2;
+  // Algo de curva para que dos flechas opuestas no se tapen.
+  const mx = (ax + bx) / 2 + (by - ay) * 0.18;
+  const my = (ay + by) / 2 - (bx - ax) * 0.18;
+  const sx = ax + (bx - ax) * 0.18;
+  const sy = ay + (by - ay) * 0.18;
+  const ex = ax + (bx - ax) * 0.78;
+  const ey = ay + (by - ay) * 0.78;
+  const d = `M${sx},${sy} Q${mx},${my} ${ex},${ey}`;
+  return (
+    <g className={past ? "arrow past" : "arrow"}>
+      <path d={d} stroke="#1c1410" strokeWidth={width + 2} fill="none" strokeLinecap="round" strokeDasharray={dashed ? "4 3" : undefined} />
+      <path d={d} stroke={color} strokeWidth={width} fill="none" strokeLinecap="round" strokeDasharray={dashed ? "4 3" : undefined} markerEnd="url(#punta)" />
+      {label != null && (
+        <g transform={`translate(${mx},${my})`}>
+          <rect x={-5} y={-4.5} width={10} height={9} rx={1.5} fill="#1c1410" />
+          <text x={0} y={2.6} textAnchor="middle" className="arrow-label">
+            {label}
+          </text>
+        </g>
+      )}
+    </g>
+  );
 }
 
 function TilePanel({
