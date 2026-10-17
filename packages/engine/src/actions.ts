@@ -3,7 +3,7 @@
 
 import { canAfford, upgradeCost, weeklyUpkeep } from "./economy";
 import { distance } from "./map";
-import { FORTIFY_COST, RHYTHM, TROOP_COST, TROOPS_PER_PAN } from "./rules";
+import { FORTIFY_COST, RHYTHM, TERRAIN, TROOP_COST, TROOPS_PER_PAN } from "./rules";
 import type { BuildingKind, HouseId, Resources, Tile } from "./types";
 
 export type ActionResult<T> = { ok: true; value: T } | { ok: false; error: string };
@@ -47,8 +47,9 @@ export function checkFortify(
   if (tile.type === "castillo") return { ok: false, error: "Los castillos no necesitan fortificarse." };
   const until = nextResolution + RHYTHM.fortify - 1;
   if ((tile.fortifiedUntil ?? 0) >= until) return { ok: false, error: "Esta casilla ya está fortificada." };
-  if (!canAfford(have, FORTIFY_COST)) return { ok: false, error: "Hace falta Piedra para fortificar." };
-  return { ok: true, value: { cost: FORTIFY_COST, fortifiedUntil: until } };
+  const cost = fortifyCost(tile);
+  if (!canAfford(have, cost)) return { ok: false, error: "Hace falta Piedra para fortificar." };
+  return { ok: true, value: { cost, fortifiedUntil: until } };
 }
 
 export interface UpkeepResult {
@@ -98,4 +99,9 @@ export function applyUpkeep(tiles: Tile[], house: HouseId, pan: number, factor =
 export function lastPlace(prestige: { house: HouseId; total: number }[]): HouseId | null {
   if (prestige.length === 0) return null;
   return [...prestige].sort((a, b) => a.total - b.total || a.house - b.house)[0]!.house;
+}
+
+/** Lo que cuesta fortificar una casilla: en una cantera, menos (la piedra está a mano). */
+export function fortifyCost(tile: Pick<Tile, "type">): Partial<Resources> {
+  return tile.type === "cantera" ? TERRAIN.quarryFortify : FORTIFY_COST;
 }

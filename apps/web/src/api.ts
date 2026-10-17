@@ -101,6 +101,8 @@ export interface TileView {
   fortifiedUntil: number | null;
   castleOf?: number | null;
   visible: boolean;
+  /** Se ve la casilla, pero sus tropas se esconden en el bosque (emboscada). */
+  hidden?: boolean;
   nombre: string;
 }
 

@@ -19,6 +19,7 @@
 
 import { DEFENSE_BONUS } from "./rules";
 import { areAdjacent } from "./map";
+import { marchKind, terrainDefense } from "./terrain";
 import type {
   CampaignEvent,
   CampaignInput,
@@ -45,6 +46,8 @@ export function defenseMultiplier(tile: Tile, resolution: number, absent: boolea
   let bonus = DEFENSE_BONUS.base + extra;
   if (tile.fortifiedUntil != null && tile.fortifiedUntil >= resolution) bonus += DEFENSE_BONUS.fortified;
   if (tile.type === "fortaleza") bonus += DEFENSE_BONUS.fortress;
+  // Terreno (diseño v3): bosque y cantera +25%, montaña +50%.
+  bonus += terrainDefense(tile.type);
   if (absent) bonus += DEFENSE_BONUS.absent;
   return 1 + Math.min(bonus, DEFENSE_BONUS.max);
 }
@@ -304,7 +307,7 @@ function validate(order: Order, tiles: Map<TileId, Tile>): string | null {
 function validateMove(order: MoveOrder, from: Tile, tiles: Map<TileId, Tile>): string | null {
   const to = tiles.get(order.to);
   if (!to) return "la casilla de destino no existe";
-  if (!areAdjacent(from, to)) return "el destino no es adyacente";
+  if (!marchKind(from, to, [...tiles.values()], order.house)) return "el destino no es adyacente ni se llega por camino o por mar";
   if (to.type === "castillo" && to.castleOf !== order.house) return "los castillos no se pueden atacar";
   return null;
 }

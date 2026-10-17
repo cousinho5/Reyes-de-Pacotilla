@@ -7,6 +7,7 @@
 
 import { checkOrders, defenseMultiplier } from "../combat";
 import { areAdjacent } from "../map";
+import { marchKind } from "../terrain";
 import { tilePrestige } from "../prestige";
 import { OBJECTIVE_TARGETS, PRESTIGE, STRETCH_FREE_TILES, STRETCH_PAN, TILE_PRODUCTION, TROOP_COST } from "../rules";
 import type { Order, Tile, TileId } from "../types";
@@ -22,6 +23,8 @@ export interface Target {
   value: number;
   /** Casillas propias desde las que se puede atacar o apoyar. */
   from: Tile[];
+  /** Casillas propias desde las que se llega por camino o por mar (sin apoyos). */
+  reach: Tile[];
 }
 
 /** Casillas que se pueden atacar este turno, con su valor y la fuerza necesaria. */
@@ -36,7 +39,8 @@ export function targets(s: Situation): Target[] {
     // La Paz del Rey: no se puede atacar a otras casas en esta resolución.
     if (view.combat?.peace && t.owner != null) continue;
     const from = own.filter((o) => areAdjacent(o, t));
-    if (from.length === 0) continue;
+    const reach = own.filter((o) => !areAdjacent(o, t) && marchKind(o, t, view.tiles, view.house) != null);
+    if (from.length === 0 && reach.length === 0) continue;
     let defense = t.troops * defenseMultiplier(t, view.nextResolution, false, view.combat?.defenseBonus ?? 0);
     if (t.owner != null) {
       // Puede recibir apoyos de sus casillas vecinas.
@@ -59,7 +63,7 @@ export function targets(s: Situation): Target[] {
     if (controlled >= STRETCH_FREE_TILES) value -= STRETCH_PAN * weeksLeft * s.values.pan;
     // Bajas previstas: lo que se pierde al ganar por la mínima.
     value -= Math.max(1, defense) * 0.6 * troopValue;
-    if (value > 0) out.push({ tile: t, defense, need, value, from });
+    if (value > 0) out.push({ tile: t, defense, need, value, from, reach });
   }
   return out.sort((a, b) => b.value / b.need - a.value / a.need || a.tile.id - b.tile.id);
 }
@@ -120,18 +124,21 @@ export function planOrders(s: Situation): Order[] {
   const supportUsed = new Map<TileId, number>();
   const room = (t: Tile) => t.troops - (moved.get(t.id) ?? 0) - (supportUsed.get(t.id) ?? 0);
   for (const target of targets(s)) {
-    const mains = target.from
-      .map((t) => {
+    const mains = [
+      ...target.from.map((t) => {
         const f = free.get(t.id) ?? 0;
         // Si no tiene tropas libres, puede mandar un par de las de guardia como punta de lanza.
         const n = f > 0 ? f : Math.min(2, room(t) - 1);
-        return { t, n };
-      })
+        return { t, n, far: false };
+      }),
+      // Por camino o por mar solo van tropas libres, y sin apoyos.
+      ...target.reach.map((t) => ({ t, n: Math.min(free.get(t.id) ?? 0, room(t)), far: true })),
+    ]
       .filter((x) => x.n > 0)
-      .sort((a, b) => b.n - a.n || a.t.id - b.t.id);
+      .sort((a, b) => b.n - a.n || Number(a.far) - Number(b.far) || a.t.id - b.t.id);
     const main = mains[0];
     if (!main) continue;
-    const helpers = target.from
+    const helpers = (main.far ? [] : target.from)
       .filter((t) => t.id !== main.t.id)
       .map((t) => ({ t, n: room(t) }))
       .filter((x) => x.n > 0)
@@ -188,8 +195,9 @@ export function planOrders(s: Situation): Order[] {
     const n = Math.min(free.get(t.id) ?? 0, room(t));
     const d = distance.get(t.id);
     if (n <= 0 || d == null || d === 0) continue;
+    // Por los caminos propios se avanza dos casillas en una noche.
     const step = own
-      .filter((o) => areAdjacent(o, t) && (distance.get(o.id) ?? Infinity) < d)
+      .filter((o) => (areAdjacent(o, t) || marchKind(t, o, view.tiles, house) === "camino") && (distance.get(o.id) ?? Infinity) < d)
       .sort((a, b) => (s.threat.get(b.id) ?? 0) - (s.threat.get(a.id) ?? 0) || distance.get(a.id)! - distance.get(b.id)! || a.id - b.id)[0];
     if (step) {
       orders.push({ kind: "move", house, from: t.id, to: step.id, troops: n });

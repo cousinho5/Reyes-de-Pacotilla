@@ -1,22 +1,41 @@
 // Niebla de guerra (diseño, sección 6.2): cada casa ve con detalle sus
 // casillas y las adyacentes; del resto solo sabe quién las controla.
+// Terreno (diseño v3): desde una montaña propia se ve más lejos (atalaya), y
+// en el bosque de otra casa no se ve cuántas tropas hay (emboscada).
 
-import { areAdjacent } from "./map";
+import { areAdjacent, distance } from "./map";
+import { TERRAIN } from "./rules";
 import type { HouseId, Tile, TileId } from "./types";
 
 export interface VisibleTile extends Omit<Tile, "troops" | "fortifiedUntil"> {
-  /** null si la casilla está fuera de la vista de la casa. */
+  /** null si la casilla está fuera de la vista de la casa, o emboscada en un bosque. */
   troops: number | null;
   fortifiedUntil: number | null;
   visible: boolean;
+  /** Se ve la casilla, pero sus tropas se esconden en el bosque. */
+  hidden?: boolean;
 }
 
 /** `spied`: casas vigiladas con la carta Espía (se ven todas sus casillas). */
 export function visibleTileIds(tiles: Tile[], house: HouseId, spied: HouseId[] = []): Set<TileId> {
   const own = tiles.filter((t) => t.owner === house || (t.owner != null && spied.includes(t.owner)));
   const ids = new Set<TileId>(own.map((t) => t.id));
-  for (const t of tiles) if (own.some((o) => areAdjacent(o, t))) ids.add(t.id);
+  // Atalaya: desde una montaña propia (no de una casa espiada) se ve más lejos.
+  const towers = own.filter((t) => t.owner === house && t.type === "montana");
+  for (const t of tiles) {
+    if (own.some((o) => areAdjacent(o, t))) ids.add(t.id);
+    else if (towers.some((o) => distance(o, t) <= TERRAIN.watchtower)) ids.add(t.id);
+  }
   return ids;
+}
+
+/**
+ * Emboscada: tropas de otra casa en un bosque. Se ve quién lo controla, pero no
+ * cuántas tropas hay (salvo con la carta Espía). Las guarniciones neutrales no
+ * se esconden: todo el mundo sabe cuántas hay.
+ */
+export function ambushed(t: Pick<Tile, "type" | "owner">, house: HouseId, spied: HouseId[] = []): boolean {
+  return TERRAIN.ambush && t.type === "bosque" && t.owner != null && t.owner !== house && !spied.includes(t.owner);
 }
 
 /** Lo que el servidor puede enviar a una casa: nunca más de lo que ve. */
@@ -24,11 +43,13 @@ export function projectForHouse(tiles: Tile[], house: HouseId, spied: HouseId[] 
   const visible = visibleTileIds(tiles, house, spied);
   return tiles.map((t) => {
     const v = visible.has(t.id);
+    const hidden = v && ambushed(t, house, spied);
     return {
       ...t,
-      troops: v ? t.troops : null,
+      troops: v && !hidden ? t.troops : null,
       fortifiedUntil: v ? (t.fortifiedUntil ?? null) : null,
       visible: v,
+      ...(hidden ? { hidden: true } : {}),
     };
   });
 }

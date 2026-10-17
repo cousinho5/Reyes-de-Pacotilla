@@ -53,6 +53,27 @@ npm run simular -- --semanas 4                    # duración de la partida
 npm run simular -- --json datos.json              # además, todos los datos
 ```
 
+## Terreno que cuenta (17 de octubre de 2026, fase 2 del sistema de guerra v3, aplicado)
+
+Hexágonos y resolución diaria en las dos columnas; la segunda añade el terreno (`TERRAIN` en `rules.ts`): bosque y cantera +25% de defensa, montaña +50%, emboscada en el bosque, atalaya en la montaña, caminos de dos casillas por noche y travesía de puerto a puerto. Se lanza con `npm run simular -- --partidas 300` y `--terreno no` para comparar.
+
+| Dato (por partida) | Sin terreno | Con terreno |
+| --- | --- | --- |
+| Combates entre casas (4 / 6 / 8 casas) | 38,0 / 68,9 / 66,6 | 35,3 / 54,6 / 58,9 |
+| Casillas robadas (4 / 6 / 8 casas) | 23,5 / 44,3 / 44,5 | 24,2 / 36,6 / 41,2 |
+| Ataques que toman la casilla | 77% | 80% |
+| Marchas por camino / travesías por mar | — | 21,4 / 0,6 |
+| Casas con deserciones | 20% | 11% |
+| El líder de la semana 2 gana | 34% | 35% |
+| Guerrero, veces lo esperado | 1,6 | 1,4 |
+| Objetivo fortaleza / puerto y fortaleza cumplidos | 18% / 13% | 25% / 15% |
+| Prestigio medio del ganador | 64,7 | 63,8 |
+
+- **Las deserciones vuelven a niveles razonables.** El terreno defensivo hace que las fronteras cambien menos de manos y que nadie pierda de golpe la tierra que da el Pan.
+- **Algo menos de guerra, pero mejor escogida:** se ataca menos lo bien defendido y los ataques que salen ganan más a menudo.
+- **El guerrero sigue ganando más de lo que le toca** (1,4 veces), pero menos que antes. Las tropas nuevas (fase 3) volverán a tocar esto.
+- **Los bots casi no cruzan el mar**: solo lo hacen si tienen tropas libres en un puerto. Para las personas será una sorpresa táctica; no hace falta que los bots la usen más.
+
 ## Hexágonos y una resolución al día (17 de octubre de 2026, fase 0 del sistema de guerra v3)
 
 Primera prueba del nuevo sistema de guerra (`docs/diseno.md`, propuesta v3): casillas hexagonales con 6 vecinas y una resolución cada día en vez de dos por semana. Fortificar dura 4 resoluciones. Las tropas, el terreno y los asedios nuevos aún no están en el simulador; esto solo mide la forma del mapa y el ritmo. Se lanza con `HEX=1 npm run simular-mapa -- 150`.
