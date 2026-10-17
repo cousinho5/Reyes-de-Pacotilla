@@ -21,6 +21,7 @@ import {
   type Tile,
 } from "@reyes/engine";
 import { notifyHouses, type NotifyEnv } from "./notify";
+import { announceAuction, auctionStatements, cardsForResolution } from "./subasta";
 import { dueJobs, type GameClock } from "./scheduler";
 import {
   computeAllPrestige,
@@ -79,6 +80,7 @@ export async function runGameJobs(env: NotifyEnv, game: GameRow, now: Date): Pro
   for (const job of dueJobs(now, clock)) {
     try {
       if (job.kind === "produccion") await runProduction(env, game, job.key, job.date, now);
+      else if (job.kind === "anuncio") await announceAuction(env, game, job.week);
       else if (job.kind === "aviso_cierre") await closeWarning(env, game, job.resolution);
       else if (job.kind === "resolucion") await runResolution(env, game, job.resolution, now);
       else if (job.kind === "fin") await finishGame(env, game, now);
@@ -234,8 +236,10 @@ export async function runResolution(env: NotifyEnv, game: GameRow, n: number, no
   );
   const absentHouses = houses.filter((h) => isAbsent(h, now, game)).map((h) => h.id);
 
-  const result = resolveCampaign({ resolution: n, tiles, orders, absentHouses });
   const { week, kind } = resolutionInfo(n);
+  // Cartas que actúan en esta resolución (Tregua y Tambores de guerra).
+  const cardEffects = await cardsForResolution(db, game.id, n);
+  const result = resolveCampaign({ resolution: n, tiles, orders, absentHouses, ...cardEffects });
   let finalTiles: Tile[] = result.tiles;
   const extraEvents: { type: string; visibleTo: number | null; payload: unknown }[] = [];
   const extraStatements: D1PreparedStatement[] = [];
@@ -254,6 +258,13 @@ export async function runResolution(env: NotifyEnv, game: GameRow, n: number, no
       );
       extraEvents.push({ type: "logro", visibleTo: null, payload: { house: first.winner, logro: "primera_fortaleza" } });
     }
+  }
+
+  // Miércoles: la Gran Subasta se adjudica antes de la campaña.
+  if (kind === "miercoles") {
+    const auction = await auctionStatements(db, game, week, houses);
+    extraStatements.push(...auction.statements);
+    extraEvents.unshift(...auction.events);
   }
 
   // Quien no eligió objetivo antes de la primera resolución se queda con el primero.
@@ -314,14 +325,16 @@ export async function runResolution(env: NotifyEnv, game: GameRow, n: number, no
     }
   }
 
+  // La subasta se cuenta primero; luego la campaña y lo demás.
   const allEvents: { type: string; visibleTo: number | null; payload: unknown }[] = [
+    ...extraEvents.filter((e) => e.type === "subasta"),
     ...result.events.map((e: CampaignEvent) => ({
       type: e.type,
       // Las órdenes inválidas solo las ve su casa; el resto es público.
       visibleTo: e.type === "orden_invalida" ? e.order.house : null,
       payload: e,
     })),
-    ...extraEvents,
+    ...extraEvents.filter((e) => e.type !== "subasta"),
   ];
   for (const e of allEvents) {
     statements.push(
@@ -357,7 +370,7 @@ export async function runResolution(env: NotifyEnv, game: GameRow, n: number, no
 /** Fin de la partida: objetivos secretos, Prestigio final y coronación. */
 export async function finishGame(env: NotifyEnv, game: GameRow, now: Date): Promise<void> {
   const db = env.DB;
-  const [houses, tileRows, buildings, trades, takes] = await Promise.all([
+  const [houses, tileRows, buildings, trades, takes, lotsWon] = await Promise.all([
     loadHouses(db, game.id),
     loadTiles(db, game.id),
     loadBuildings(db, game.id),
@@ -368,6 +381,9 @@ export async function finishGame(env: NotifyEnv, game: GameRow, now: Date): Prom
          AND json_extract(payload, '$.previousOwner') IS NOT NULL
        GROUP BY house`,
     )
+      .bind(game.id)
+      .all<{ house: number; n: number }>(),
+    db.prepare("SELECT winner_house_id AS house, COUNT(*) AS n FROM auction_lots WHERE game_id = ? AND winner_house_id IS NOT NULL GROUP BY winner_house_id")
       .bind(game.id)
       .all<{ house: number; n: number }>(),
   ]);
@@ -403,6 +419,7 @@ export async function finishGame(env: NotifyEnv, game: GameRow, now: Date): Prom
         otherHouses: houses.length - 1,
         validTradesAllGame: valid,
         tilesTakenFromHouses: takes.results.find((t) => t.house === h.id)?.n ?? 0,
+        auctionsWon: lotsWon.results.find((l) => l.house === h.id)?.n ?? 0,
       });
     const p = prestige.get(h.id)!;
     const total = p.total + (met ? PRESTIGE.secretObjective : 0);

@@ -124,6 +124,8 @@ Para probar el juego sin reunir a 4 personas:
 
 Migración 0004: `houses.bot_personality`, la personalidad de cada bot (estratega, mercader, guerrero, arquitecta u oportunista; ver `packages/engine/src/ai`).
 
+Gran Subasta y cartas (versión 1) usan las tablas que ya estaban en la migración 0001: `auction_lots` (payload `{"hierro":30}` o `{"card":"espia"}`), `bids` (se cambia con `ON CONFLICT ... DO UPDATE`, que actualiza `placed_at`) y `cards` (`used_params` guarda `{params, effect, token}`; el token hace que usar una carta sea idempotente, como la aceptación de ofertas). La adjudicación va dentro del lote de la resolución del miércoles y cada sentencia comprueba en la propia base que el ganador aún tiene el Oro.
+
 Borrar una prueba elimina la partida, sus filas y los usuarios de sus bots en un solo lote.
 
 ## 8. SQL completo (migración 0001)

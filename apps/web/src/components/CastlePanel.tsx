@@ -2,6 +2,7 @@ import { useState } from "react";
 import { BUILDINGS, RESOURCES, TROOP_COST, canAfford, upgradeCost, type Resource, type Resources } from "@reyes/engine";
 import { api, type GameState } from "../api";
 import { BUILDING_LABEL, RESOURCE_LABEL, RESOURCE_MARK } from "../ui";
+import { CardsPanel } from "./CardsPanel";
 import { HouseSettings } from "./HouseSettings";
 
 interface Props {
@@ -82,6 +83,8 @@ export function CastlePanel({ state, gameId, act }: Props) {
           </select>
         </label>
       </section>
+
+      <CardsPanel state={state} act={act} />
 
       <section className="card">
         <h2>Edificios</h2>

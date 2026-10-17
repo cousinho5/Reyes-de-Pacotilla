@@ -138,11 +138,45 @@ export interface GameState {
   casas: HouseInfo[];
   /** Solo en partidas de prueba (y solo para quien las creó, en juego). */
   prueba?: TestInfo | null;
+  subasta?: AuctionInfo | null;
+  cartas?: CardInfo[];
+  /** Casas que vigilas con la carta Espía. */
+  vigiladas?: number[];
   casillas?: TileView[];
   ordenes?: OrderView[];
   eventos?: EventView[];
   ofertas?: OfferInfo[];
   tratos?: TradeInfo[];
+}
+
+export interface AuctionInfo {
+  semana: number;
+  abierta: boolean;
+  lotes: {
+    lote: number;
+    nombre: string;
+    carta: { clave: string; nombre: string; texto: string } | null;
+    recursos: Partial<Resources> | null;
+    miPuja: number | null;
+    ganador: number | null;
+    precio: number | null;
+  }[];
+}
+
+export interface CardInfo {
+  id: number;
+  clave: string;
+  nombre: string;
+  texto: string;
+  objetivo: "casa" | "casilla_propia" | "recursos" | "edificio" | null;
+}
+
+export interface CardParamsInput {
+  casa?: number;
+  casilla?: number;
+  edificio?: BuildingKind;
+  da?: Resource;
+  recibe?: Resource;
 }
 
 export interface TestInfo {
@@ -181,6 +215,8 @@ export const api = {
   pushSubscribe: (sub: PushSubscriptionJSON) => call<{ ok: true }>("POST", "/push/suscribir", sub),
   pushUnsubscribe: (endpoint: string) => call<{ ok: true }>("POST", "/push/baja", { endpoint }),
   pushTest: () => call<{ ok: true }>("POST", "/push/prueba"),
+  bid: (id: number, lote: number, cantidad: number) => call<{ ok: true }>("PUT", `/partidas/${id}/subasta/${lote}`, { cantidad }),
+  useCard: (id: number, carta: number, params: CardParamsInput) => call<{ ok: true }>("POST", `/partidas/${id}/cartas/${carta}/usar`, params),
   testAdvance: (id: number, hasta: "paso" | "resolucion") =>
     call<{ ok: true; ahora: string; resolucion: number; estado: string }>("POST", `/partidas/${id}/prueba/avanzar`, { hasta }),
   testPlayAs: (id: number, casa: number) => call<{ ok: true }>("POST", `/partidas/${id}/prueba/jugar-como`, { casa }),

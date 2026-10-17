@@ -67,7 +67,14 @@ export function resolveCampaign(input: CampaignInput): CampaignResult {
   const supports: SupportOrder[] = [];
   const checked = checkOrders(input.tiles, input.orders);
   for (const { order, reason } of checked.invalid) events.push({ type: "orden_invalida", order, reason });
+  // Tregua: los ataques contra esas casillas no salen (las tropas se quedan donde estaban).
+  const truce = new Set(input.truceTiles ?? []);
+  const stopped = new Map<TileId, Set<HouseId>>();
   for (const order of checked.valid) {
+    if (order.kind === "move" && truce.has(order.to) && tiles.get(order.to)!.owner !== order.house) {
+      stopped.set(order.to, (stopped.get(order.to) ?? new Set()).add(order.house));
+      continue;
+    }
     if (order.kind === "move") {
       // Varias órdenes iguales de la misma casa se agrupan.
       const same = moves.find((m) => m.house === order.house && m.from === order.from && m.to === order.to);
@@ -76,6 +83,10 @@ export function resolveCampaign(input: CampaignInput): CampaignResult {
     } else {
       supports.push(order);
     }
+  }
+
+  for (const [tile, houses] of [...stopped.entries()].sort((a, b) => a[0] - b[0])) {
+    events.push({ type: "tregua", tile, houses: [...houses].sort((a, b) => a - b) });
   }
 
   // 2. Las tropas que salen dejan su casilla (si fallan, vuelven al final).
@@ -90,7 +101,9 @@ export function resolveCampaign(input: CampaignInput): CampaignResult {
 
   const attackSupport = (m: Move) =>
     activeSupports.filter((s) => s.target === m.to && s.supportedFrom === m.from && !isOwnTileAgainst(s, m, tiles));
-  const attackStrength = (m: Move) => m.troops + sum(attackSupport(m).map((s) => s.troops));
+  // Tambores de guerra: la fuerza de los ataques de esa casa sube un porcentaje.
+  const attackStrength = (m: Move) =>
+    (m.troops + sum(attackSupport(m).map((s) => s.troops))) * (1 + (input.attackBonus?.[m.house] ?? 0));
 
   // 4. Choques frontales: dos casas que se cambian de casilla.
   for (const a of moves) {

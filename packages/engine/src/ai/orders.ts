@@ -40,7 +40,8 @@ export function targets(s: Situation): Target[] {
       const helpers = seen.filter((o) => o.owner === t.owner && o.id !== t.id && areAdjacent(o, t));
       defense += helpers.reduce((a, o) => a + o.troops, 0) * 0.5 * p.caution;
     }
-    const need = Math.floor(defense * p.margin) + 1;
+    // Con Tambores de guerra hace falta menos tropa para la misma fuerza.
+    const need = Math.floor((defense * p.margin) / (1 + (view.attackBonus ?? 0))) + 1;
 
     // Valor: Prestigio de la casilla + lo que produce el resto de la partida.
     let value = (t.type === "fortaleza" ? PRESTIGE.perFortress : PRESTIGE.perTile) * PRESTIGE_UNIT;

@@ -11,16 +11,17 @@ export interface VisibleTile extends Omit<Tile, "troops" | "fortifiedUntil"> {
   visible: boolean;
 }
 
-export function visibleTileIds(tiles: Tile[], house: HouseId): Set<TileId> {
-  const own = tiles.filter((t) => t.owner === house);
+/** `spied`: casas vigiladas con la carta Espía (se ven todas sus casillas). */
+export function visibleTileIds(tiles: Tile[], house: HouseId, spied: HouseId[] = []): Set<TileId> {
+  const own = tiles.filter((t) => t.owner === house || (t.owner != null && spied.includes(t.owner)));
   const ids = new Set<TileId>(own.map((t) => t.id));
   for (const t of tiles) if (own.some((o) => areAdjacent(o, t))) ids.add(t.id);
   return ids;
 }
 
 /** Lo que el servidor puede enviar a una casa: nunca más de lo que ve. */
-export function projectForHouse(tiles: Tile[], house: HouseId): VisibleTile[] {
-  const visible = visibleTileIds(tiles, house);
+export function projectForHouse(tiles: Tile[], house: HouseId, spied: HouseId[] = []): VisibleTile[] {
+  const visible = visibleTileIds(tiles, house, spied);
   return tiles.map((t) => {
     const v = visible.has(t.id);
     return {

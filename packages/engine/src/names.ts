@@ -71,3 +71,14 @@ export const TILE_NAMES: Record<Exclude<TileType, "castillo">, TileName[]> = {
     { name: "Torre del Vigía Miope", note: "Ve venir al enemigo cuando ya ha llegado." },
   ],
 };
+
+/** Nombre del castillo de una casa, con la preposición bien puesta. */
+export function castleName(house: string): string {
+  if (/^casa\b/i.test(house)) return `Castillo de la ${house}`;
+  const article = house.match(/^(los|las|el|la)\s+(.*)$/i);
+  if (article) {
+    const a = article[1]!.toLowerCase();
+    return a === "el" ? `Castillo del ${article[2]}` : `Castillo de ${a} ${article[2]}`;
+  }
+  return `Castillo de ${house}`;
+}

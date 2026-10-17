@@ -672,3 +672,19 @@ label.check input {
   padding: 0.4rem 0.3rem;
   font-size: 0.85rem;
 }
+
+/* Gran Subasta y cartas */
+.lot {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.lot .grow {
+  flex: 1;
+}
+.bid input {
+  width: 4.5rem;
+}
+.card-row .actions select {
+  max-width: 100%;
+}
