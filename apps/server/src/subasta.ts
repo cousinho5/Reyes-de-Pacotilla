@@ -19,6 +19,8 @@ import {
   lotLabel,
   resolveAuction,
   resolutionInfo,
+  totalResolutions,
+  withRhythm,
   type Bid,
   type CardContext,
   type CardEffect,
@@ -30,7 +32,7 @@ import {
 } from "@reyes/engine";
 import { randomCode } from "./auth";
 import { notifyHouses, type NotifyEnv } from "./notify";
-import { gameNow, loadHouses, type GameRow, type HouseRow } from "./state";
+import { gameNow, loadHouses, rhythmOf, type GameRow, type HouseRow } from "./state";
 
 export interface LotRow {
   id: number;
@@ -60,8 +62,10 @@ export function lotOf(row: LotRow): Lot {
 /** Semana de la subasta abierta: la de la próxima resolución si es miércoles. */
 export function openAuctionWeek(game: GameRow): number | null {
   const next = game.current_resolution + 1;
-  if (next > game.weeks * 2 || next % 2 === 0) return null;
-  return resolutionInfo(next).week;
+  const { days } = rhythmOf(game);
+  if (next > totalResolutions(game.weeks, days)) return null;
+  const info = resolutionInfo(next, days);
+  return info.kind === "miercoles" ? info.week : null;
 }
 
 /** Tarea del martes: guardar los lotes de la semana y avisar. */
@@ -224,7 +228,7 @@ export function useCardStatements(
   params: CardParams,
   ctx: CardContext,
 ): { ok: true; statements: D1PreparedStatement[]; effect: CardEffect } | { ok: false; error: string } {
-  const check = checkCard(card.card_key, params, ctx);
+  const check = withRhythm(rhythmOf(game), () => checkCard(card.card_key, params, ctx));
   if (!check.ok) return check;
   const e = check.effect;
   const now = gameNow(game).toISOString();
@@ -275,7 +279,7 @@ export function useCardStatements(
 
 /** Lo que ve una casa de la subasta de la semana (sin las pujas de las demás). */
 export async function auctionView(db: D1Database, game: GameRow, houseId: number) {
-  const week = openAuctionWeek(game) ?? resolutionInfo(Math.max(1, game.current_resolution)).week;
+  const week = openAuctionWeek(game) ?? resolutionInfo(Math.max(1, game.current_resolution), rhythmOf(game).days).week;
   const { results: rows } = await db
     .prepare("SELECT * FROM auction_lots WHERE game_id = ? AND week = ? ORDER BY slot")
     .bind(game.id, week)

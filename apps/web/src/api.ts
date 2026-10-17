@@ -133,6 +133,10 @@ export interface GameState {
     filas: number | null;
     resolucionActual: number;
     totalResoluciones: number;
+    /** Días con resolución (0 = lunes ... 6 = domingo). */
+    diasResolucion?: number[];
+    /** Resoluciones que dura fortificar. */
+    fortificarResoluciones?: number;
     proximaResolucion?: number | null;
     cierre?: string | null;
     resolucion?: string | null;

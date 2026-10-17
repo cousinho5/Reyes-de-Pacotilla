@@ -3,9 +3,11 @@ import { GRID, MAP_LAYOUT_HEX, RHYTHM, areAdjacent, distance, generateMap, mapSi
 
 const housesFor = (n: number) => Array.from({ length: n }, (_, i) => i + 1);
 
+const ORIGINAL = GRID.kind;
+
 describe("Casillas hexagonales (diseño v3)", () => {
   afterEach(() => {
-    GRID.kind = "square";
+    GRID.kind = ORIGINAL;
   });
 
   it("cada casilla interior tiene 6 vecinas, como en una rejilla odd-r", () => {
@@ -33,7 +35,8 @@ describe("Casillas hexagonales (diseño v3)", () => {
     expect(distance({ x: 0, y: 0 }, { x: 5, y: 4 })).toBe(7);
   });
 
-  it("la cuadrícula sigue igual mientras no se cambie GRID", () => {
+  it("con GRID en cuadrícula, la adyacencia es la de siempre (sin diagonales)", () => {
+    GRID.kind = "square";
     expect(areAdjacent({ x: 1, y: 1 }, { x: 2, y: 2 })).toBe(false);
     expect(distance({ x: 0, y: 0 }, { x: 2, y: 3 })).toBe(5);
   });
@@ -60,20 +63,22 @@ describe("Casillas hexagonales (diseño v3)", () => {
 
 describe("Simulación con hexágonos y resolución diaria", () => {
   it("es determinista y deja GRID y RHYTHM como estaban", () => {
+    GRID.kind = "square";
+    const rhythm = { days: RHYTHM.days, fortify: RHYTHM.fortify };
     const opts = {
       seed: "hex-diaria",
       strategies: ["estratega", "guerrero", "mercader", "arquitecta"] as const,
       weeks: 2 as const,
       grid: "hex" as const,
-      resolutionDays: [0, 1, 2, 3, 4, 5, 6],
-      fortify: 4,
+      resolutionDays: [1, 3, 5],
+      fortify: 3,
     };
     const a = simulateGame({ ...opts, strategies: [...opts.strategies] });
     const b = simulateGame({ ...opts, strategies: [...opts.strategies] });
     expect(a).toEqual(b);
     expect(GRID.kind).toBe("square");
-    expect(RHYTHM.days).toEqual([2, 6]);
-    expect(RHYTHM.fortify).toBe(2);
+    expect(RHYTHM).toEqual(rhythm);
+    GRID.kind = ORIGINAL;
     // Con hexágonos, el mapa de 4 casas es el de MAP_LAYOUT_HEX.
     expect(a.finalTiles).toHaveLength(MAP_LAYOUT_HEX[4].cols * MAP_LAYOUT_HEX[4].rows);
     expect(a.firstHouseCombatDay == null || a.firstHouseCombatDay >= 1).toBe(true);

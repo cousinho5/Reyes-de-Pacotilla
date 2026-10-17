@@ -185,6 +185,7 @@ CREATE TABLE games (
   map_cols        INTEGER,
   map_rows        INTEGER,
   current_resolution INTEGER NOT NULL DEFAULT 0,     -- última resolución completada
+  resolution_days TEXT    NOT NULL DEFAULT '2,6',    -- días con resolución, 0 = lunes; las nuevas, '0,1,2,3,4,5,6' (0006)
   invite_code     TEXT    NOT NULL UNIQUE,           -- para unirse a la partida en el lobby
   created_by      INTEGER NOT NULL REFERENCES users(id),
   created_at      TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
@@ -294,7 +295,7 @@ CREATE TABLE resolutions (
   game_id         INTEGER NOT NULL REFERENCES games(id) ON DELETE CASCADE,
   number          INTEGER NOT NULL,                  -- 1..2*semanas
   week            INTEGER NOT NULL,
-  kind            TEXT    NOT NULL CHECK (kind IN ('miercoles','domingo')),
+  kind            TEXT    NOT NULL CHECK (kind IN ('miercoles','domingo','dia')),  -- 'dia': ni miércoles ni domingo (migración 0006)
   scheduled_at    TEXT    NOT NULL,                  -- instante UTC calculado desde la hora local
   status          TEXT    NOT NULL DEFAULT 'pending'
                   CHECK (status IN ('pending','running','done','failed')),

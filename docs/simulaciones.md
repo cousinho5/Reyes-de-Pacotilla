@@ -62,7 +62,7 @@ Primera prueba del nuevo sistema de guerra (`docs/diseno.md`, propuesta v3): cas
 | Casas | Ahora (cuadrado, 2/sem) | Hexágonos elegidos (`MAP_LAYOUT_HEX`) | Castillos a ≤2 | 1.er choque (día) | Choques entre casas por semana | Casillas robadas por casa | Líder de la semana 2 gana | Casas con deserciones |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 4 | 5x4 + 1 | 6x5 + 2 | 0% | 14 → 9 | 2,6 → 6,6 | 1,9 → 6,2 | 41% → 45% | 9% → 19% |
-| 5 | 6x4 + 1 | 7x5 + 3 | 0% | 10 → 7 | 3,3 → 9,5 | 2,0 → 7,7 | 32% → 31% | 7% → 15% |
+| 5 | 6x4 + 1 | 7x6 + 5 | 0% | 10 → 9 | 3,3 → 9,7 | 2,0 → 8,1 | 32% → 30% | 7% → 19% |
 | 6 | 6x5 + 2 | 8x6 + 6 | 0% | 10 → 6 | 4,4 → 11,2 | 2,3 → 7,2 | 35% → 33% | 5% → 18% |
 | 7 | 7x6 + 5 | 9x7 + 10 | 0% | 10 → 7 | 5,0 → 11,8 | 2,3 → 6,8 | 28% → 27% | 6% → 22% |
 | 8 | 7x7 + 7 | 10x8 + 14 | 0% | 10 → 6 | 6,1 → 11,1 | 2,5 → 5,4 | 32% → 30% | 6% → 19% |
@@ -72,6 +72,7 @@ Tamaños descartados (150 partidas por variante):
 - **El mismo mapa en hexágonos** (por ejemplo 5x4 con 4 casas): el 33% de los castillos queda a 2 pasos y el primer choque llega el día 3.
 - **Un paso menos** (7x6 con 6 casas, 8x7 con 7, 9x8 con 8): entre un 2% y un 7% de castillos a 2 pasos y choque el día 4 o 5.
 - **Más grandes aún** (9x8 con 7 casas, 10x9 con 8): más Prestigio por territorio y más deserciones, sin mejorar el choque.
+- **7x5 con 5 casas** daba buenas distancias, pero el generador no lograba salidas justas: el valor de los alrededores de los castillos difería en 1,8 puntos de mediana (el límite es 1,5). Con 7x6 y 5 páramos baja a 1,1.
 
 Lo que queda por ajustar antes de jugar con hexágonos:
 

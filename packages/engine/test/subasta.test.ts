@@ -94,7 +94,7 @@ describe("Cartas de la Corona", () => {
     expect(checkCard("espia", { casa: 1 }, ctx).ok).toBe(false);
     expect(checkCard("espia", { casa: 2 }, ctx)).toEqual({ ok: true, effect: { spy: { house: 2, until: 3 } } });
     expect(checkCard("muralla", { casilla: 4 }, ctx).ok).toBe(false);
-    expect(checkCard("muralla", { casilla: 2 }, ctx)).toEqual({ ok: true, effect: { fortify: { tile: 2, until: 4 } } });
+    expect(checkCard("muralla", { casilla: 2 }, ctx)).toEqual({ ok: true, effect: { fortify: { tile: 2, until: 6 } } });
     expect(checkCard("mercenarios", {}, ctx)).toEqual({ ok: true, effect: { castleTroops: 5 } });
     expect(checkCard("carreta", { da: "piedra", recibe: "oro" }, ctx).ok).toBe(false); // solo 5 de Piedra
     expect(checkCard("carreta", { da: "pan", recibe: "hierro" }, ctx)).toEqual({

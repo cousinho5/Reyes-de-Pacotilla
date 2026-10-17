@@ -3,6 +3,7 @@ import { SHIELD_DIVISIONS, SHIELD_SHAPES, SHIELD_SYMBOLS } from "@reyes/engine";
 import { SHIELD_H, SHIELD_W, SYMBOL_ART, shieldGrid } from "../src/art/shield";
 import { FRAY_SPRITES, RESOURCE_SPRITES } from "../src/art/sprites";
 import { renderWorld, roadEdges, type WorldCell } from "../src/art/world";
+import { makeGeo, sharedEdge } from "../src/art/grid";
 
 const count = (rows: string[], chars: string) => rows.join("").split("").filter((c) => chars.includes(c)).length;
 
@@ -55,7 +56,11 @@ describe("Pixel art", () => {
     const a = renderWorld({ cols: 5, rows: 4, cells, seed: 3 });
     const b = renderWorld({ cols: 5, rows: 4, cells, seed: 3 });
     expect(a.pixels).toEqual(b.pixels);
-    expect(a.width).toBe(5 * 64 + 40);
+    // Hexágonos: 64 de la primera casilla, 56 por cada una más, media de desplazamiento y 20 de margen a cada lado.
+    expect(a.grid).toBe("hex");
+    expect(a.width).toBe(64 + 4 * 56 + 28 + 40);
+    expect(a.height).toBe(64 + 3 * 48 + 40);
+    expect(renderWorld({ cols: 5, rows: 4, cells, seed: 3, grid: "square" }).width).toBe(5 * 64 + 40);
     const fogged = renderWorld({ cols: 5, rows: 4, cells: cells.map((c) => ({ ...c, fogged: true })), seed: 3 });
     expect(fogged.pixels).toEqual(a.pixels);
     for (const c of a.pixels.join("")) expect(a.palette[c], `color «${c}»`).toBeDefined();
@@ -67,5 +72,22 @@ describe("Pixel art", () => {
     const edges = roadEdges(3, 2, cells);
     expect(edges.length).toBeGreaterThan(0);
     for (const [a, b] of edges) expect(a.type !== "montana" && b.type !== "montana").toBe(true);
+  });
+
+  it("en hexágonos, cada píxel del tablero pertenece a la casilla de centro más cercano y los lados compartidos casan", () => {
+    const geo = makeGeo("hex", 6, 5, 20);
+    for (let y = 0; y < 5; y++)
+      for (let x = 0; x < 6; x++) {
+        const [cx, cy] = geo.center(x, y);
+        expect(geo.cellAt(cx, cy)).toEqual([x, y]);
+        for (const [nx, ny] of geo.neighbours(x, y)) {
+          if (nx < 0 || ny < 0 || nx >= 6 || ny >= 5) continue;
+          const [a, b] = sharedEdge(geo, x, y, nx, ny);
+          const [c, d] = sharedEdge(geo, nx, ny, x, y);
+          // El mismo lado visto desde las dos casillas (en orden inverso), con menos de 1 px de diferencia.
+          expect(Math.hypot(a[0] - d[0], a[1] - d[1])).toBeLessThan(1);
+          expect(Math.hypot(b[0] - c[0], b[1] - c[1])).toBeLessThan(1);
+        }
+      }
   });
 });

@@ -15,11 +15,13 @@
 // Todo es determinista: la misma partida da el mismo dibujo. Sin animación:
 // el mapa está quieto y solo cambia cuando cambia la partida.
 
-import type { TileType } from "@reyes/engine";
+import { GRID, type TileType } from "@reyes/engine";
+import { CELL } from "./cell";
+import { edgeDistance, makeGeo, type Geo, type GridKind } from "./grid";
 import type { Palette } from "./Pixels";
 import { WORLD, noise, shade } from "./tiles";
 
-export const CELL = 64;
+export { CELL };
 
 export interface WorldCell {
   x: number;
@@ -43,6 +45,8 @@ export interface WorldOptions {
   /** Borde de tierra alrededor del tablero, en píxeles. */
   margin?: number;
   seed?: number;
+  /** Forma de las casillas (por defecto, la del motor: GRID). */
+  grid?: GridKind;
 }
 
 export interface WorldImage {
@@ -56,6 +60,12 @@ export interface WorldImage {
   rows: number;
   /** Niebla por casilla: fog[y][x]. */
   fog: boolean[][];
+  grid: GridKind;
+}
+
+/** Geometría de un mundo ya dibujado (centros de casilla, contornos). */
+export function geoOf(img: Pick<WorldImage, "grid" | "cols" | "rows" | "margin">): Geo {
+  return makeGeo(img.grid, img.cols, img.rows, img.margin);
 }
 
 const FLAG_MAIN = "αβγδεζηθ";
@@ -167,8 +177,10 @@ export function renderWorld(opts: WorldOptions): WorldImage {
   const { cols, rows, cells } = opts;
   const M = opts.margin ?? 20;
   const seed = opts.seed ?? 7;
-  const W = cols * CELL + 2 * M;
-  const H = rows * CELL + 2 * M;
+  const kind = opts.grid ?? GRID.kind;
+  const geo = makeGeo(kind, cols, rows, M);
+  const W = geo.width;
+  const H = geo.height;
   const cv = new Canvas(W, H);
   const byPos = new Map(cells.map((c, i) => [`${c.x},${c.y}`, i]));
   const at = (x: number, y: number) => {
@@ -189,26 +201,54 @@ export function renderWorld(opts: WorldOptions): WorldImage {
   }
   const flagOf = (c: WorldCell): [string, string] => (c.owner ? flagChars.get(c.owner) ?? ["x", "X"] : ["x", "X"]);
 
+  // 0. A qué casilla pertenece cada píxel y a qué distancia está del borde:
+  // del más cercano (para la transición del suelo) y del más cercano con otro
+  // terreno o con el final del mapa (para que lo de cada casilla no se salga).
+  const cellOf = new Int32Array(W * H).fill(-1);
+  const inside = new Uint8Array(W * H);
+  const nearD = new Float32Array(W * H);
+  const nearNb = new Int32Array(W * H).fill(-1);
+  const diffD = new Float32Array(W * H);
+  for (let py = 0; py < H; py++) {
+    for (let px = 0; px < W; px++) {
+      const [gx, gy] = geo.cellAt(px, py);
+      const idx = byPos.get(`${gx},${gy}`);
+      const i = py * W + px;
+      if (idx == null) continue;
+      cellOf[i] = idx;
+      let nd = Infinity;
+      let nb = -1;
+      let dd = Infinity;
+      let outside = false;
+      for (const [nx, ny] of geo.neighbours(gx, gy)) {
+        const d = edgeDistance(geo, px, py, gx, gy, nx, ny);
+        const n = byPos.get(`${nx},${ny}`);
+        if (n == null) {
+          if (d < 0) outside = true;
+          dd = Math.min(dd, d);
+          continue;
+        }
+        if (d < nd) [nd, nb] = [d, n];
+        if (cells[n]!.type !== cells[idx]!.type) dd = Math.min(dd, d);
+      }
+      inside[i] = outside ? 0 : 1;
+      nearD[i] = nd;
+      nearNb[i] = nb;
+      diffD[i] = dd;
+    }
+  }
+
   // 1. Suelo continuo, con transición tramada entre terrenos.
   const BLEND = 12;
   for (let py = 0; py < H; py++) {
     for (let px = 0; px < W; px++) {
-      const inGrid = px >= M && py >= M && px < W - M && py < H - M;
-      const gx = Math.min(cols - 1, Math.max(0, Math.floor((px - M) / CELL)));
-      const gy = Math.min(rows - 1, Math.max(0, Math.floor((py - M) / CELL)));
-      const here = at(gx, gy);
+      const i = py * W + px;
+      const here = cellOf[i]! >= 0 ? cells[cellOf[i]!] : undefined;
       let ground: Ground = here ? GROUND_OF[here.type] : "meadow";
-      if (here && inGrid) {
-        const lx = px - M - gx * CELL;
-        const ly = py - M - gy * CELL;
-        let d = lx;
-        let dx = -1;
-        let dy = 0;
-        if (CELL - 1 - lx < d) [d, dx, dy] = [CELL - 1 - lx, 1, 0];
-        if (ly < d) [d, dx, dy] = [ly, 0, -1];
-        if (CELL - 1 - ly < d) [d, dx, dy] = [CELL - 1 - ly, 0, 1];
-        const nb = at(gx + dx, gy + dy);
-        if (nb && d < BLEND && GROUND_OF[nb.type] !== ground) {
+      const nb = nearNb[i]! >= 0 ? cells[nearNb[i]!] : undefined;
+      if (here && inside[i] && nb) {
+        const d = nearD[i]!;
+        if (d < BLEND && GROUND_OF[nb.type] !== ground) {
           const wave = (noise(Math.floor(px / 4), Math.floor(py / 4), seed + 8) - 0.5) * 0.4;
           if (noise(px, py, seed + 3) < (1 - d / BLEND) * 0.55 + wave * (1 - d / BLEND)) ground = GROUND_OF[nb.type];
         }
@@ -218,7 +258,7 @@ export function renderWorld(opts: WorldOptions): WorldImage {
       const big = noise(Math.floor(px / 12), Math.floor(py / 10), seed + 11) - 0.5;
       const mid = noise(Math.floor(px / 5), Math.floor(py / 4), seed + 12) - 0.5;
       const v = 0.5 + big * 0.7 + mid * 0.35 + (noise(px, py, seed) - 0.5) * 0.22;
-      cv.data[py * W + px] = v < 0.2 ? dk : v > 0.8 ? (v > 0.9 && noise(px, py, seed + 1) > 0.5 ? hi : lt) : md;
+      cv.data[i] = v < 0.2 ? dk : v > 0.8 ? (v > 0.9 && noise(px, py, seed + 1) > 0.5 ? hi : lt) : md;
     }
   }
   // Matas de hierba y alguna flor.
@@ -241,25 +281,34 @@ export function renderWorld(opts: WorldOptions): WorldImage {
 
   // 2. Agua: los puertos forman bahías que se unen entre sí y con el mar del borde.
   const water = new Uint8Array(W * H);
+  const wobble = (px: number, py: number) => (noise(Math.floor(px / 5), Math.floor(py / 5), seed + 5) - 0.5) * 0.35;
   for (const p of cells.filter((c) => c.type === "puerto")) {
-    const cx = M + p.x * CELL + CELL / 2;
-    const cy = M + p.y * CELL + CELL / 2;
-    const reach = (dx: number, dy: number) => {
-      const n = at(p.x + dx, p.y + dy);
-      if (n?.type === "puerto") return CELL / 2 + 4;
-      if (!n) return CELL / 2 + M;
-      return 0;
-    };
-    const ext = { l: reach(-1, 0), r: reach(1, 0), u: reach(0, -1), d: reach(0, 1) };
-    for (let py = cy - CELL / 2 - M; py < cy + CELL / 2 + M; py++) {
-      for (let px = cx - CELL / 2 - M; px < cx + CELL / 2 + M; px++) {
+    const [cx, cy] = geo.center(p.x, p.y);
+    // La bahía, algo más alta que baja: abajo queda la orilla del muelle.
+    for (let py = Math.floor(cy - 30); py < cy + 30; py++) {
+      for (let px = Math.floor(cx - 30); px < cx + 30; px++) {
         if (px < 0 || py < 0 || px >= W || py >= H) continue;
-        const dx = px - cx;
-        const dy = py - cy;
-        const rx = dx < 0 ? Math.max(25, ext.l) : Math.max(25, ext.r);
-        const ry = dy < 0 ? Math.max(24, ext.u) : Math.max(14, ext.d);
-        const wob = (noise(Math.floor(px / 5), Math.floor(py / 5), seed + 5) - 0.5) * 0.35;
-        if (Math.abs(dx / rx) ** 2.6 + Math.abs(dy / ry) ** 2.6 < 0.8 + wob) water[py * W + px] = 1;
+        const ry = py < cy ? 24 : 14;
+        if (Math.abs((px - cx) / 25) ** 2.6 + Math.abs((py - cy) / ry) ** 2.6 < 0.8 + wobble(px, py)) water[py * W + px] = 1;
+      }
+    }
+    // Canales hacia los puertos vecinos y hacia el mar, fuera del mapa.
+    for (const [nx, ny] of geo.neighbours(p.x, p.y)) {
+      const n = at(nx, ny);
+      if (n && n.type !== "puerto") continue;
+      const [ex, ey] = geo.center(nx, ny);
+      const far = n ? 1 : 1 + M / CELL;
+      const bx = cx + (ex - cx) * far;
+      const by = cy + (ey - cy) * far;
+      const len2 = (bx - cx) ** 2 + (by - cy) ** 2;
+      const r = n ? 15 : 22;
+      for (let py = Math.floor(Math.min(cy, by) - r - 4); py < Math.max(cy, by) + r + 4; py++) {
+        for (let px = Math.floor(Math.min(cx, bx) - r - 4); px < Math.max(cx, bx) + r + 4; px++) {
+          if (px < 0 || py < 0 || px >= W || py >= H) continue;
+          const t = Math.max(0, Math.min(1, ((px - cx) * (bx - cx) + (py - cy) * (by - cy)) / len2));
+          const d = Math.hypot(px - (cx + (bx - cx) * t), py - (cy + (by - cy) * t));
+          if (d < r * (1 + wobble(px, py))) water[py * W + px] = 1;
+        }
       }
     }
   }
@@ -291,11 +340,11 @@ export function renderWorld(opts: WorldOptions): WorldImage {
 
   // 3. Caminos entre castillos y fortalezas: siguen de una casilla a otra.
   const road = new Uint8Array(W * H);
-  for (const [a, b] of roadEdges(cols, rows, cells)) {
-    const ax = M + a.x * CELL + CELL / 2;
-    const ay = M + a.y * CELL + CELL / 2 + 10;
-    const bx = M + b.x * CELL + CELL / 2;
-    const by = M + b.y * CELL + CELL / 2 + 10;
+  for (const [a, b] of roadEdges(cols, rows, cells, kind)) {
+    const [ax, ay0] = geo.center(a.x, a.y);
+    const [bx, by0] = geo.center(b.x, b.y);
+    const ay = ay0 + 10;
+    const by = by0 + 10;
     const len = Math.hypot(bx - ax, by - ay);
     const nx = -(by - ay) / len;
     const ny = (bx - ax) / len;
@@ -325,21 +374,43 @@ export function renderWorld(opts: WorldOptions): WorldImage {
   }
   const onRoad = (x: number, y: number) => cv.inside(x, y) && road[Math.round(y) * W + Math.round(x)] === 1;
 
+  // 3b. Linde entre casillas: un punteado oscuro muy fino sobre el suelo, para
+  // que se lea cada casilla sin dibujar una rejilla.
+  for (let i = 0; i < W * H; i++) {
+    if (!inside[i] || nearNb[i]! < 0 || nearD[i]! >= 1 || road[i] || water[i]) continue;
+    const x = i % W;
+    const y = Math.floor(i / W);
+    if ((x + y) % 4 !== 0) cv.darken(x, y);
+  }
+
   // 4. Lo que hay en cada casilla, de arriba abajo para que lo de delante tape.
   const order = cells.map((c, i) => ({ c, i })).sort((a, b) => a.c.y - b.c.y || a.c.x - b.c.x);
+  const boxOf = (c: WorldCell): [number, number] => {
+    const [cx, cy] = geo.center(c.x, c.y);
+    return [cx - CELL / 2, cy - CELL / 2];
+  };
   for (const { c, i } of order) {
-    const x0 = M + c.x * CELL;
-    const y0 = M + c.y * CELL;
+    const [x0, y0] = boxOf(c);
     const s = seed * 97 + i * 31 + c.x * 7 + c.y * 13;
-    const same = (dx: number, dy: number) => at(c.x + dx, c.y + dy)?.type === c.type;
-    DRAW[c.type]({ cv, W, x0, y0, s, same, onRoad, isWater, flag: flagOf(c) });
+    // (dx, dy): lado izquierdo, derecho, de arriba o de abajo. En hexágonos,
+    // arriba y abajo hay dos vecinas: basta con que una sea del mismo terreno.
+    const same = (dx: number, dy: number) => {
+      if (dy === 0 || kind === "square") return at(c.x + dx, c.y + dy)?.type === c.type;
+      return geo.neighbours(c.x, c.y).some(([nx, ny]) => ny === c.y + dy && at(nx, ny)?.type === c.type);
+    };
+    const mine = (px: number, py: number) => {
+      if (!cv.inside(px, py)) return false;
+      const k = Math.round(py) * W + Math.round(px);
+      return cellOf[k] === i && inside[k] === 1;
+    };
+    const border = (px: number, py: number) => (cv.inside(px, py) ? diffD[Math.round(py) * W + Math.round(px)]! : -1);
+    DRAW[c.type]({ cv, W, x0, y0, s, same, mine, border, onRoad, isWater, flag: flagOf(c) });
   }
 
   // 5. Lo que cambia con la partida: empalizadas, batallas y tropas.
   for (const { c } of order) {
-    const x0 = M + c.x * CELL;
-    const y0 = M + c.y * CELL;
-    if (c.fortified && c.type !== "castillo") palisade(cv, W, x0, y0);
+    const [x0, y0] = boxOf(c);
+    if (c.fortified && c.type !== "castillo") palisade(cv, W, geo.outline(c.x, c.y, 4));
     if (c.battle) battlefield(cv, W, x0, y0, seed + c.x * 5 + c.y * 3);
     if (c.troops != null && c.troops > 0) soldiers(cv, W, x0, y0, c.troops, c.owner ? flagOf(c) : null, seed + c.x + c.y * 9, isWater);
   }
@@ -356,15 +427,16 @@ export function renderWorld(opts: WorldOptions): WorldImage {
   const pixels: string[] = [];
   for (let y = 0; y < H; y++) pixels.push(cv.data.slice(y * W, (y + 1) * W).join(""));
   const fog = Array.from({ length: rows }, (_, y) => Array.from({ length: cols }, (_, x) => !!at(x, y)?.fogged));
-  return { width: W, height: H, margin: M, pixels, palette, cols, rows, fog };
+  return { width: W, height: H, margin: M, pixels, palette, cols, rows, fog, grid: kind };
 }
 
 /**
  * Red de caminos: cada castillo se une a la fortaleza más cercana (o al
  * centro del mapa) por el camino más corto que evita montañas y puertos.
  */
-export function roadEdges(cols: number, rows: number, cells: WorldCell[]): [WorldCell, WorldCell][] {
+export function roadEdges(cols: number, rows: number, cells: WorldCell[], grid: GridKind = GRID.kind): [WorldCell, WorldCell][] {
   const at = new Map(cells.map((c) => [`${c.x},${c.y}`, c]));
+  const geo = makeGeo(grid, cols, rows, 0);
   const forts = cells.filter((c) => c.type === "fortaleza");
   const goals = forts.length ? forts : cells.filter((c) => c.x === Math.floor(cols / 2) && c.y === Math.floor(rows / 2));
   const edges = new Map<string, [WorldCell, WorldCell]>();
@@ -374,9 +446,9 @@ export function roadEdges(cols: number, rows: number, cells: WorldCell[]): [Worl
     let found: WorldCell | null = null;
     while (queue.length && !found) {
       const cur = queue.shift()!;
-      for (const [dx, dy] of [[0, 1], [1, 0], [0, -1], [-1, 0]] as const) {
-        const n = at.get(`${cur.x + dx},${cur.y + dy}`);
-        const key = `${cur.x + dx},${cur.y + dy}`;
+      for (const [nx, ny] of geo.neighbours(cur.x, cur.y)) {
+        const n = at.get(`${nx},${ny}`);
+        const key = `${nx},${ny}`;
         if (!n || prev.has(key)) continue;
         const goal = goals.includes(n);
         if (!goal && (n.type === "montana" || n.type === "puerto" || n.type === "castillo")) continue;
@@ -409,19 +481,20 @@ interface CellCtx {
   y0: number;
   s: number;
   same: (dx: number, dy: number) => boolean;
+  /** El píxel es de esta casilla (dentro de su hexágono o cuadrado). */
+  mine: (px: number, py: number) => boolean;
+  /** Distancia del píxel al borde con otro terreno o con el final del mapa. */
+  border: (px: number, py: number) => number;
   onRoad: (x: number, y: number) => boolean;
   isWater: (x: number, y: number) => boolean;
   flag: [string, string];
 }
 
-/** ¿Está (lx, ly) cerca de un lado cuyo vecino es de otro terreno? */
+/** ¿Está (lx, ly) fuera de la casilla o cerca de un lado cuyo vecino es de otro terreno? */
 function inset(ctx: CellCtx, lx: number, ly: number, m: number): boolean {
-  return (
-    (!ctx.same(-1, 0) && lx < m) ||
-    (!ctx.same(1, 0) && lx > CELL - 1 - m) ||
-    (!ctx.same(0, -1) && ly < m) ||
-    (!ctx.same(0, 1) && ly > CELL - 1 - m)
-  );
+  const px = ctx.x0 + lx;
+  const py = ctx.y0 + ly;
+  return !ctx.mine(px, py) || ctx.border(px, py) < m;
 }
 
 /** Árbol de copa redonda con luz arriba a la izquierda y follaje con grano. */
@@ -739,7 +812,7 @@ const DRAW: Record<TileType, (ctx: CellCtx) => void> = {
         const ty = gy * S + 3 + Math.floor(noise(gx, gy, 52) * 8);
         const lx = tx - x0;
         const ly = ty - y0;
-        if (lx < 0 || ly < 0 || lx >= CELL || ly >= CELL) continue;
+        if (lx < 0 || ly < 0 || lx >= CELL || ly >= CELL || !ctx.mine(tx, ty)) continue;
         if (inset(ctx, lx, ly, 7) && noise(gx, gy, 53) < 0.75) continue;
         if (ctx.onRoad(tx, ty + 6) || ctx.isWater(tx, ty + 5)) continue;
         if (noise(gx, gy, 54) < 0.1) continue; // claro
@@ -814,6 +887,7 @@ const DRAW: Record<TileType, (ctx: CellCtx) => void> = {
         if (!ctx.same(0, -1) && ly < 5 - ragged / 2) continue;
         if (lx < 5 + ragged / 2 && !ctx.same(flip ? 1 : -1, 0)) continue;
         if (lx > CELL - 6 - ragged / 2 && !ctx.same(flip ? -1 : 1, 0)) continue;
+        if (!ctx.mine(X(lx), y0 + ly)) continue;
         const v = noise(Math.floor(lx / 2), ly, s);
         const face = ly > stepTop;
         cv.set(X(lx), y0 + ly, face ? (ly === stepTop + 1 ? "S" : v > 0.5 ? "S" : "s") : ly % 5 === 4 ? "S" : v > 0.82 ? "u" : v < 0.12 ? "S" : v > 0.5 ? "T" : "t");
@@ -993,8 +1067,8 @@ const DRAW: Record<TileType, (ctx: CellCtx) => void> = {
 // ---------------------------------------------------------------------------
 // Capas de la partida
 
-/** Empalizada de estacas afiladas alrededor de una casilla fortificada. */
-function palisade(cv: Canvas, W: number, x0: number, y0: number) {
+/** Empalizada de estacas afiladas siguiendo el contorno de una casilla fortificada. */
+function palisade(cv: Canvas, W: number, outline: [number, number][]) {
   const l = new Layer(W);
   const stake = (x: number, y: number) => {
     l.set(x, y, "J");
@@ -1009,19 +1083,22 @@ function palisade(cv: Canvas, W: number, x0: number, y0: number) {
     l.set(x + 1, y + 4, "H");
     l.set(x + 1, y + 5, "h");
   };
-  for (let x = x0 + 3; x < x0 + CELL - 4; x += 3) {
-    stake(x, y0 + 2);
-    stake(x, y0 + CELL - 9);
-  }
-  for (let y = y0 + 8; y < y0 + CELL - 12; y += 5) {
-    stake(x0 + 2, y);
-    stake(x0 + CELL - 4, y);
-  }
-  // Travesaño.
-  for (let x = x0 + 3; x < x0 + CELL - 3; x++) {
-    l.set(x, y0 + 5, "h");
-    l.set(x, y0 + CELL - 6, "h");
-  }
+  // Las estacas se clavan de arriba abajo para que las de delante tapen.
+  const posts: [number, number][] = [];
+  outline.forEach(([ax, ay], k) => {
+    const [bx, by] = outline[(k + 1) % outline.length]!;
+    const len = Math.hypot(bx - ax, by - ay);
+    const steps = Math.max(1, Math.round(len / 3.2));
+    for (let i = 0; i < steps; i++) {
+      const x = Math.round(ax + ((bx - ax) * i) / steps);
+      const y = Math.round(ay + ((by - ay) * i) / steps) - 6;
+      posts.push([x, y]);
+      // Travesaño.
+      l.set(x, y + 3, "h");
+      l.set(x + 1, y + 3, "h");
+    }
+  });
+  posts.sort((a, b) => a[1] - b[1]).forEach(([x, y]) => stake(x, y));
   l.paint(cv, "h");
 }
 
@@ -1133,7 +1210,8 @@ function soldiers(
  * entre casillas vistas y no vistas, y algún jirón de bruma.
  */
 export function toImageData(img: WorldImage): Uint8ClampedArray<ArrayBuffer> {
-  const { width: W, height: H, pixels, palette, margin: M, cols, rows, fog } = img;
+  const { width: W, height: H, pixels, palette, cols, rows, fog } = img;
+  const geo = geoOf(img);
   const out = new Uint8ClampedArray(new ArrayBuffer(W * H * 4));
   const cache = new Map<string, [number, number, number]>();
   const rgb = (c: string): [number, number, number] => {
@@ -1147,20 +1225,34 @@ export function toImageData(img: WorldImage): Uint8ClampedArray<ArrayBuffer> {
     return v;
   };
   const anyFog = fog.some((r) => r.some(Boolean));
-  const fogAt = (gx: number, gy: number) => (fog[Math.min(rows - 1, Math.max(0, gy))]![Math.min(cols - 1, Math.max(0, gx))] ? 1 : 0);
+  const fogAt = (gx: number, gy: number) => (fog[gy]?.[gx] ? 1 : 0);
+  /** Niebla en un píxel: la de su casilla, mezclada cerca del borde con la de la vecina. */
+  const SOFT = 14;
+  const fogWeight = (x: number, y: number) => {
+    const [gx, gy] = geo.cellAt(x, y);
+    const own = fogAt(gx, gy);
+    let f = own;
+    let best = Infinity;
+    for (const [nx, ny] of geo.neighbours(gx, gy)) {
+      if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) continue;
+      const other = fogAt(nx, ny);
+      if (other === own) continue;
+      const d = edgeDistance(geo, x, y, gx, gy, nx, ny);
+      if (d < SOFT && d < best) {
+        best = d;
+        const w = 0.5 * (1 - Math.max(0, d) / SOFT);
+        f = own * (1 - w) + other * w;
+      }
+    }
+    return f;
+  };
   for (let y = 0; y < H; y++) {
     const row = pixels[y]!;
     for (let x = 0; x < W; x++) {
       let [r, g, b] = rgb(row[x]!);
       if (anyFog) {
-        const fx = (x - M) / CELL - 0.5;
-        const fy = (y - M) / CELL - 0.5;
-        const ix = Math.floor(fx);
-        const iy = Math.floor(fy);
-        const tx = fx - ix;
-        const ty = fy - iy;
-        const f = fogAt(ix, iy) * (1 - tx) * (1 - ty) + fogAt(ix + 1, iy) * tx * (1 - ty) + fogAt(ix, iy + 1) * (1 - tx) * ty + fogAt(ix + 1, iy + 1) * tx * ty;
-        const k = Math.min(1, Math.max(0, (f - 0.5) * 4 + 0.5));
+        const f = fogWeight(x, y);
+        const k = Math.min(1, Math.max(0, (f - 0.5) * 2 + 0.5));
         if (k > 0 && noise(x, y, 31) < k) {
           const grey = r * 0.3 + g * 0.59 + b * 0.11;
           const cloud = noise(Math.floor(x / 10), Math.floor(y / 6), 99);

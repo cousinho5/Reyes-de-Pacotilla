@@ -4,6 +4,8 @@ import {
   BUILDINGS,
   PRESTIGE,
   computePrestige,
+  fortifyResolutions,
+  parseResolutionDays,
   type AchievementKey,
   type BuildingKind,
   type HouseId,
@@ -33,6 +35,14 @@ export interface GameRow {
   test_bots: number | null;
   sim_now: string | null;
   played_house_id: number | null;
+  /** Días con resolución, "0,1,2,3,4,5,6" (0 = lunes). Las partidas antiguas, "2,6". */
+  resolution_days: string;
+}
+
+/** Días con resolución de la partida y cuánto dura fortificar con ese ritmo. */
+export function rhythmOf(game: Pick<GameRow, "resolution_days">): { days: number[]; fortify: number } {
+  const days = parseResolutionDays(game.resolution_days);
+  return { days, fortify: fortifyResolutions(days) };
 }
 
 /** Hora de la partida: la real, o la simulada en las partidas de prueba. */

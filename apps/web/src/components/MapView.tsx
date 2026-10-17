@@ -2,7 +2,8 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { FORTIFY_COST, TILE_NAMES, areAdjacent } from "@reyes/engine";
 import { api, type GameState, type OrderView, type TileView } from "../api";
 import { Icon, ShieldIcon, TileArt } from "../art";
-import { CELL } from "../art/world";
+import { cellBox, sharedEdge, type Geo } from "../art/grid";
+import { geoOf } from "../art/world";
 import { WorldCanvas, useWorld } from "./WorldCanvas";
 import { HOUSE_COLORS, TERRITORY, TILE_LABEL, houseName } from "../ui";
 
@@ -59,15 +60,15 @@ export function MapView({ state, draft, setDraft, act }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [JSON.stringify(tiles), JSON.stringify(state.casas.map((h) => [h.id, h.color])), last, [...battles].join()],
   );
-  // Un banderín por trozo de territorio (en la casilla de arriba a la izquierda), no en cada casilla.
-  const bannerHere = (t: TileView) => {
-    const ownerAt = (x: number, y: number) => tiles.find((n) => n.x === x && n.y === y)?.owner;
-    return ownerAt(t.x - 1, t.y) !== t.owner && ownerAt(t.x, t.y - 1) !== t.owner;
-  };
   const img = useWorld(world);
-  const M = img.margin;
   const W = img.width;
   const H = img.height;
+  const geo = useMemo(() => geoOf(img), [img]);
+  const tileAt = useMemo(() => new Map(tiles.map((t) => [`${t.x},${t.y}`, t])), [tiles]);
+  const ownerAt = (x: number, y: number) => tileAt.get(`${x},${y}`)?.owner;
+  // Un banderín por trozo de territorio (en su casilla de más arriba a la izquierda), no en cada casilla.
+  const bannerHere = (t: TileView) =>
+    geo.neighbours(t.x, t.y).every(([nx, ny]) => !(ny < t.y || (ny === t.y && nx < t.x)) || ownerAt(nx, ny) !== t.owner);
 
   // Zoom: de cerca (2 px de pantalla por píxel del dibujo, unas 3 casillas de ancho
   // en un móvil) o el reino entero ajustado al ancho.
@@ -88,8 +89,9 @@ export function MapView({ state, draft, setDraft, act }: Props) {
   const centerOn = (x: number, y: number) => {
     const el = viewport.current;
     if (!el) return;
-    el.scrollLeft = (M + (x + 0.5) * CELL) * scale - el.clientWidth / 2;
-    el.scrollTop = (M + (y + 0.5) * CELL) * scale - el.clientHeight / 2;
+    const [cx, cy] = geo.center(x, y);
+    el.scrollLeft = cx * scale - el.clientWidth / 2;
+    el.scrollTop = cy * scale - el.clientHeight / 2;
   };
   // Al abrir, el mapa se centra en tu castillo.
   const myCastle = tiles.find((t) => t.type === "castillo" && t.castleOf === me) ?? tiles.find((t) => t.owner === me);
@@ -105,12 +107,12 @@ export function MapView({ state, draft, setDraft, act }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scale, myCastle?.id]);
 
-  const overlayBox = {
-    left: `${(M / W) * 100}%`,
-    top: `${(M / H) * 100}%`,
-    width: `${((cols * CELL) / W) * 100}%`,
-    height: `${((rows * CELL) / H) * 100}%`,
+  /** Posición de la casilla sobre el dibujo, en porcentajes (escala con el zoom). */
+  const boxStyle = (t: TileView) => {
+    const [l, tp, w, h] = cellBox(geo, t.x, t.y);
+    return { left: `${(l / W) * 100}%`, top: `${(tp / H) * 100}%`, width: `${(w / W) * 100}%`, height: `${(h / H) * 100}%` };
   };
+  const points = (t: TileView, inset = 0) => geo.outline(t.x, t.y, inset).map(([x, y]) => `${x},${y}`).join(" ");
 
   const committed = (tileId: number) => draft.filter((o) => o.desde === tileId).reduce((a, o) => a + o.tropas, 0);
   const tile = tiles.find((t) => t.id === selected) ?? null;
@@ -143,20 +145,10 @@ export function MapView({ state, draft, setDraft, act }: Props) {
 
   // Frontera de cada casa: una línea de su color (con un filo claro por dentro)
   // solo en los lados donde la casilla vecina es de otro dueño.
-  const frontier = (t: TileView, color: string) => {
-    const other = (dx: number, dy: number) => tiles.find((n) => n.x === t.x + dx && n.y === t.y + dy)?.owner !== t.owner;
-    const sides: [number, number, (w: number) => string][] = [
-      [0, -1, (w) => `0 ${w}px`],
-      [0, 1, (w) => `0 -${w}px`],
-      [-1, 0, (w) => `${w}px 0`],
-      [1, 0, (w) => `-${w}px 0`],
-    ];
-    const lines = sides.filter(([dx, dy]) => other(dx, dy));
-    return [
-      ...lines.map(([, , off]) => `inset ${off(3)} 0 ${color}`),
-      ...lines.map(([, , off]) => `inset ${off(4)} 0 rgba(255, 255, 255, 0.55)`),
-    ].join(", ");
-  };
+  const frontier = (t: TileView) =>
+    geo.neighbours(t.x, t.y)
+      .filter(([nx, ny]) => ownerAt(nx, ny) !== t.owner)
+      .map(([nx, ny]) => ({ outer: sharedEdge(geo, t.x, t.y, nx, ny, 1.5), inner: sharedEdge(geo, t.x, t.y, nx, ny, 4) }));
 
   return (
     <div>
@@ -167,51 +159,65 @@ export function MapView({ state, draft, setDraft, act }: Props) {
         <div className={`map-viewport ${close ? "close" : "whole"}`} ref={viewport}>
         <div className="world-wrap" style={{ width: W * scale, height: H * scale }}>
           <WorldCanvas img={img} label="Mapa de Aldricia" />
-          <div className="world-overlay" style={overlayBox}>
-            <div
-              className="map"
-              style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))` }}
-            >
-              {tiles.map((t) => {
-                const house = t.owner != null ? state.casas.find((h) => h.id === t.owner) : undefined;
-                const border = house ? TERRITORY[house.color] ?? "#fff" : null;
-                const classes = [
-                  "tile",
-                  t.visible ? "" : "fogged",
-                  t.owner === me ? "mine" : "",
-                  selected === t.id ? "selected" : "",
-                  isTarget(t) ? "target" : "",
-                  compose?.from === t.id ? "source" : "",
-                ].join(" ");
-                return (
+          <svg className="world-marks" viewBox={`0 0 ${W} ${H}`} aria-hidden>
+            {tiles.map((t) => (
+              <polygon key={`g${t.id}`} points={points(t)} className="cell-line" />
+            ))}
+            {tiles.map((t) => {
+              const house = t.owner != null ? state.casas.find((h) => h.id === t.owner) : undefined;
+              const color = house ? TERRITORY[house.color] ?? "#fff" : null;
+              if (!color) return null;
+              return (
+                <g key={`o${t.id}`} className={t.visible ? "territory" : "territory fogged"}>
+                  <polygon points={points(t)} fill={color} fillOpacity={0.12} />
+                  {frontier(t).map(({ outer, inner }, i) => (
+                    <g key={i}>
+                      <line x1={inner[0][0]} y1={inner[0][1]} x2={inner[1][0]} y2={inner[1][1]} stroke="rgba(255,255,255,0.55)" strokeWidth={1.5} />
+                      <line x1={outer[0][0]} y1={outer[0][1]} x2={outer[1][0]} y2={outer[1][1]} stroke={color} strokeWidth={3} strokeLinecap="round" />
+                    </g>
+                  ))}
+                </g>
+              );
+            })}
+            {tiles.filter(isTarget).map((t) => (
+              <polygon key={`t${t.id}`} points={points(t, 2)} className="cell-target" />
+            ))}
+            {compose && byId.get(compose.from) && <polygon points={points(byId.get(compose.from)!, 1.5)} className="cell-source" />}
+            {tile && !compose && <polygon points={points(tile, 1.5)} className="cell-selected" />}
+          </svg>
+          <div className="world-overlay">
+            {tiles.map((t) => {
+              const house = t.owner != null ? state.casas.find((h) => h.id === t.owner) : undefined;
+              return (
+                <div key={t.id} className={`cell-box ${geo.kind}`} style={boxStyle(t)}>
                   <button
-                    key={t.id}
-                    className={classes}
-                    style={{ gridColumn: t.x + 1, gridRow: t.y + 1 }}
+                    className={`tile ${geo.kind}`}
                     onClick={() => onTile(t)}
+                    aria-pressed={selected === t.id}
                     aria-label={`${t.nombre}, ${TILE_LABEL[t.type]}, ${t.owner ? houseName(state.casas, t.owner) : "neutral"}, ${
                       t.troops == null ? "tropas desconocidas" : `${t.troops} tropas`
-                    }`}
-                  >
-                    {border && (
-                      <span className="tile-owner" style={{ boxShadow: frontier(t, border), background: `${border}1f` }} aria-hidden />
-                    )}
-                    {house && t.type !== "castillo" && bannerHere(t) && (
-                      <span className="tile-banner" aria-hidden>
-                        <ShieldIcon color={house.color} escudo={house.escudo} size={14} title="" />
-                      </span>
-                    )}
-                    {t.troops != null && <span className="tile-troops">{t.troops}</span>}
-                    {battles.has(t.id) && (
-                      <span className="tile-battle" aria-hidden title="Batalla en la última resolución">
-                        <Icon name="ordenes" size={14} color="#f1cf7d" />
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-            <svg className="world-arrows" viewBox={`0 0 ${cols * CELL} ${rows * CELL}`} aria-hidden>
+                    }${isTarget(t) ? ", objetivo posible" : ""}`}
+                  />
+                  {house && t.type !== "castillo" && bannerHere(t) && (
+                    <span className="tile-banner" aria-hidden>
+                      <ShieldIcon color={house.color} escudo={house.escudo} size={14} title="" />
+                    </span>
+                  )}
+                  {t.troops != null && (
+                    <span className="tile-troops" aria-hidden>
+                      {t.troops}
+                    </span>
+                  )}
+                  {battles.has(t.id) && (
+                    <span className="tile-battle" aria-hidden title="Batalla en la última resolución">
+                      <Icon name="ordenes" size={14} color="#f1cf7d" />
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <svg className="world-arrows" viewBox={`0 0 ${W} ${H}`} aria-hidden>
               <defs>
                 <marker id="punta" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="3.2" markerHeight="3.2" orient="auto-start-reverse">
                   <path d="M0,0 L10,5 L0,10 z" fill="context-stroke" />
@@ -223,7 +229,7 @@ export function MapView({ state, draft, setDraft, act }: Props) {
                   const b = byId.get(m.to);
                   if (!a || !b) return null;
                   const house = state.casas.find((h) => h.id === m.house);
-                  return <Arrow key={`l${i}`} from={a} to={b} color={house ? TERRITORY[house.color] ?? "#ccc" : "#ccc"} width={1.5 + Math.min(3, m.troops / 4)} past />;
+                  return <Arrow key={`l${i}`} geo={geo} from={a} to={b} color={house ? TERRITORY[house.color] ?? "#ccc" : "#ccc"} width={1.5 + Math.min(3, m.troops / 4)} past />;
                 })}
               {draft.map((o, i) => {
                 const a = byId.get(o.desde);
@@ -232,6 +238,7 @@ export function MapView({ state, draft, setDraft, act }: Props) {
                 return (
                   <Arrow
                     key={i}
+                    geo={geo}
                     from={a}
                     to={b}
                     color={TERRITORY[mine?.color ?? ""] ?? "#f1cf7d"}
@@ -241,8 +248,7 @@ export function MapView({ state, draft, setDraft, act }: Props) {
                   />
                 );
               })}
-            </svg>
-          </div>
+          </svg>
         </div>
         </div>
       </div>
@@ -294,8 +300,9 @@ export function MapView({ state, draft, setDraft, act }: Props) {
   );
 }
 
-/** Flecha de orden entre dos casillas, en coordenadas del mundo (32 por casilla). */
+/** Flecha de orden entre dos casillas, en píxeles del dibujo. */
 function Arrow({
+  geo,
   from,
   to,
   color,
@@ -304,6 +311,7 @@ function Arrow({
   past,
   label,
 }: {
+  geo: Geo;
   from: TileView;
   to: TileView;
   color: string;
@@ -312,10 +320,8 @@ function Arrow({
   past?: boolean;
   label?: number;
 }) {
-  const ax = from.x * CELL + CELL / 2;
-  const ay = from.y * CELL + CELL / 2;
-  const bx = to.x * CELL + CELL / 2;
-  const by = to.y * CELL + CELL / 2;
+  const [ax, ay] = geo.center(from.x, from.y);
+  const [bx, by] = geo.center(to.x, to.y);
   // Algo de curva para que dos flechas opuestas no se tapen.
   const mx = (ax + bx) / 2 + (by - ay) * 0.18;
   const my = (ay + by) / 2 - (bx - ax) * 0.18;
@@ -388,7 +394,8 @@ function TilePanel({
       )}
       {mine && tile.type !== "castillo" && !fortified && (
         <button className="secondary wide" onClick={onFortify}>
-          <Icon name="muralla" size={18} color="#827d8a" /> Fortificar: {FORTIFY_COST.piedra} de Piedra, +25% de defensa dos resoluciones
+          <Icon name="muralla" size={18} color="#827d8a" /> Fortificar: {FORTIFY_COST.piedra} de Piedra, +25% de defensa{" "}
+          {(state.partida.fortificarResoluciones ?? 2) === 1 ? "una resolución" : `${state.partida.fortificarResoluciones ?? 2} resoluciones`}
         </button>
       )}
     </section>

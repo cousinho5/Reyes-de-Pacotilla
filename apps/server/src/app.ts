@@ -26,6 +26,9 @@ import {
   localParts,
   projectForHouse,
   resolutionInstant,
+  DAILY_DAYS,
+  totalResolutions,
+  withRhythm,
   weeklyUpkeep,
   zonedToUtc,
   type BuildingKind,
@@ -72,6 +75,7 @@ import {
   gameNow,
   type GameRow,
   type HouseRow,
+  rhythmOf,
 } from "./state";
 
 export interface Env extends NotifyEnv {
@@ -270,9 +274,9 @@ app.post("/api/partidas", async (c) => {
   }
   const invite = randomCode(8);
   const game = await c.env.DB.prepare(
-    "INSERT INTO games (name, weeks, seed, invite_code, created_by, is_test, test_bots) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id",
+    "INSERT INTO games (name, weeks, seed, invite_code, created_by, is_test, test_bots, resolution_days) VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
   )
-    .bind(nombre, semanas, randomCode(12), invite, userId, prueba ? 1 : 0, prueba ? bots : null)
+    .bind(nombre, semanas, randomCode(12), invite, userId, prueba ? 1 : 0, prueba ? bots : null, DAILY_DAYS.join(","))
     .first<{ id: number }>();
   return c.json({ id: game!.id, codigoInvitacion: invite, codigoAcceso });
 });
@@ -518,7 +522,10 @@ app.get("/api/partidas/:id", async (c) => {
       columnas: game.map_cols,
       filas: game.map_rows,
       resolucionActual: game.current_resolution,
-      totalResoluciones: game.weeks * 2,
+      totalResoluciones: totalResolutions(game.weeks, rhythmOf(game).days),
+      /** Días con resolución (0 = lunes) y resoluciones que dura fortificar. */
+      diasResolucion: rhythmOf(game).days,
+      fortificarResoluciones: rhythmOf(game).fortify,
     },
   };
   if (game.status === "lobby") {
@@ -581,7 +588,7 @@ app.get("/api/partidas/:id", async (c) => {
 
   const clock = clockOf(game)!;
   const next = game.current_resolution + 1;
-  const total = game.weeks * 2;
+  const total = totalResolutions(game.weeks, rhythmOf(game).days);
   const levels = buildings.get(house.id)!;
   const own = tiles.filter((t) => t.owner === house.id);
   const helpActive = house.help_until_resolution != null && house.help_until_resolution > game.current_resolution;
@@ -592,8 +599,8 @@ app.get("/api/partidas/:id", async (c) => {
     partida: {
       ...base.partida,
       proximaResolucion: next <= total ? next : null,
-      cierre: next <= total ? resolutionInstant(clock.startDate, next, clock.closeTime, clock.timezone).toISOString() : null,
-      resolucion: next <= total ? resolutionInstant(clock.startDate, next, clock.resolveTime, clock.timezone).toISOString() : null,
+      cierre: next <= total ? resolutionInstant(clock.startDate, next, clock.closeTime, clock.timezone, clock.days).toISOString() : null,
+      resolucion: next <= total ? resolutionInstant(clock.startDate, next, clock.resolveTime, clock.timezone, clock.days).toISOString() : null,
       ordenesAbiertas: game.status === "active" && ordersOpen(now, clock),
       haEmpezado: now >= zonedToUtc(clock.startDate, "00:00", clock.timezone),
       final: ending ? (JSON.parse(ending.payload) as { ranking: { house: number; total: number }[]; winner: number | null }) : null,
@@ -654,7 +661,7 @@ app.get("/api/partidas/:id", async (c) => {
     ).results.map((b) => ({ semana: b.week, titular: b.headline })),
     soborno:
       game.status === "active"
-        ? await bribeView(db, game, house.id, house.name, resolutionInfo(Math.min(game.current_resolution + 1, game.weeks * 2)).week)
+        ? await bribeView(db, game, house.id, house.name, resolutionInfo(Math.min(game.current_resolution + 1, totalResolutions(game.weeks, rhythmOf(game).days)), rhythmOf(game).days).week)
         : null,
     cartas: await handView(db, game.id, house.id),
     vigiladas: spied,
@@ -779,7 +786,7 @@ app.post("/api/partidas/:id/fortificar", async (c) => {
   const tiles = toEngineTiles(await loadTiles(c.env.DB, m.game.id));
   const tile = tiles.find((t) => t.id === Number(casilla));
   if (!tile) return fail(c, 404, "Esa casilla no existe.");
-  const check = checkFortify(tile, m.house.id, m.game.current_resolution + 1, resourcesOf(m.house));
+  const check = withRhythm(rhythmOf(m.game), () => checkFortify(tile, m.house.id, m.game.current_resolution + 1, resourcesOf(m.house)));
   if (!check.ok) return fail(c, 409, check.error);
   const err = await runPaid(c, [
     payStatement(c.env.DB, m.house.id, check.value.cost),
@@ -1045,7 +1052,7 @@ app.post("/api/partidas/:id/soborno", async (c) => {
   const { plantilla } = await c.req.json<{ plantilla?: number }>().catch(() => ({ plantilla: undefined }));
   const n = Number(plantilla);
   if (!Number.isInteger(n) || n < 0 || n >= PHRASES["soborno.frase"].length) return fail(c, 400, "Esa frase no está en el catálogo del cronista.");
-  const week = resolutionInfo(m.game.current_resolution + 1).week;
+  const week = resolutionInfo(m.game.current_resolution + 1, rhythmOf(m.game).days).week;
   const db = c.env.DB;
   try {
     await db.batch([

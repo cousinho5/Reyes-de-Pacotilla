@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyUpkeep, checkFortify, checkRecruit, checkUpgrade, lastPlace, projectForHouse, type Tile } from "../src";
+import { applyUpkeep, checkFortify, checkRecruit, checkUpgrade, lastPlace, projectForHouse, withRhythm, type Tile } from "../src";
 
 const rich = { pan: 100, madera: 100, piedra: 100, hierro: 100, oro: 100 };
 const poor = { pan: 0, madera: 0, piedra: 0, hierro: 0, oro: 0 };
@@ -21,10 +21,14 @@ describe("Acciones", () => {
     expect(checkRecruit(0, rich).ok).toBe(false);
   });
 
-  it("fortificar: solo casillas propias, no castillos, dura dos resoluciones", () => {
+  it("fortificar: solo casillas propias, no castillos; dura cuatro resoluciones (dos con el ritmo antiguo)", () => {
     const tile: Tile = { id: 1, x: 0, y: 0, type: "campos", owner: 1, troops: 3 };
-    expect(checkFortify(tile, 1, 3, rich)).toMatchObject({ ok: true, value: { fortifiedUntil: 4 } });
-    expect(checkFortify({ ...tile, fortifiedUntil: 4 }, 1, 3, rich).ok).toBe(false);
+    expect(checkFortify(tile, 1, 3, rich)).toMatchObject({ ok: true, value: { fortifiedUntil: 6 } });
+    expect(checkFortify({ ...tile, fortifiedUntil: 6 }, 1, 3, rich).ok).toBe(false);
+    expect(withRhythm({ days: [2, 6], fortify: 2 }, () => checkFortify(tile, 1, 3, rich))).toMatchObject({
+      ok: true,
+      value: { fortifiedUntil: 4 },
+    });
     expect(checkFortify(tile, 2, 3, rich).ok).toBe(false);
     expect(checkFortify({ ...tile, type: "castillo" }, 1, 3, rich).ok).toBe(false);
   });
