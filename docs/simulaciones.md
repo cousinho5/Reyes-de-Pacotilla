@@ -53,6 +53,18 @@ npm run simular -- --semanas 4                    # duración de la partida
 npm run simular -- --json datos.json              # además, todos los datos
 ```
 
+## Segundo ajuste, con bots con personalidad (16 de octubre de 2026, aplicado)
+
+| Valor | Antes | Ahora | Resultado (1000 partidas mezcladas) |
+| --- | --- | --- | --- |
+| Objetivo de edificios | Los 5 a nivel 3 (97%) | Sumar 17 niveles (35%) | Probado también "4 a nivel 4" (3%) y "3 a nivel 4" (13%) |
+| Objetivo de casillas | 6 casillas (3%) | 5 casillas (15%) | Quien lo cumple gana el 62% (antes, el 87%) |
+| Nivel 5 de un edificio | 75+45+40+40 = 200 | 60+35+30+30 = 155 | Obra maestra: 12% → 17%. Se probó también +3 de Prestigio por edificio a nivel 5: apenas cambiaba nada |
+| Guarnición de las fortalezas | 10 | 8 | Objetivo fortaleza: 12% → 14% |
+| Fortificar | 10 de Piedra | 8 de Piedra | La Piedra sigue sobrando (unos 80); los bots fortifican poco |
+
+Personalidades entre 0,7 y 1,3; especialidades entre 0,9 y 1,1 (2000 en espejo); el líder de la semana 2 gana el 25% (28% en partidas de 4 semanas). El comercio sigue saturado (comercio_con_tres y diez_tratos al 100%): se decide tras la piloto.
+
 ## Con bots con personalidad (16 de octubre de 2026)
 
 1000 partidas mezcladas de 6 semanas, 2000 en espejo (todas estrategas) y 1000 con todos los bots.

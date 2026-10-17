@@ -40,13 +40,13 @@ export const PERSONALITY_NAMES = Object.keys(PERSONALITIES) as PersonalityName[]
 export function chooseObjective(options: readonly ObjectiveKey[], p: Personality): ObjectiveKey {
   const fit: Record<ObjectiveKey, number> = {
     puerto_y_fortaleza: 0.4 + 0.3 * p.houseBias,
-    edificios_nivel_3: 0.5 + 0.5 * (1 - p.specialize) * (2 - p.military),
+    niveles_17: 0.4 + 0.5 * (1 - p.specialize) * (2 - p.military),
     oro_200: 0.6 + 0.3 * p.trade,
     comercio_con_tres: 0.3 + 0.9 * p.trade,
     fortaleza: 0.5 + 0.3 * p.military,
     casillas_ajenas: 0.2 + 0.6 * p.houseBias,
     tropas_40: 0.3 + 0.5 * p.military,
-    seis_casillas: 0.5 + 0.3 * p.military,
+    cinco_casillas: 0.5 + 0.3 * p.military,
     obra_maestra: 0.1 + 0.9 * p.specialize,
     diez_tratos: 0.2 + 0.8 * p.trade,
   };

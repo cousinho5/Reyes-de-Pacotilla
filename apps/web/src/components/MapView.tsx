@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { TILE_NAMES, areAdjacent } from "@reyes/engine";
+import { FORTIFY_COST, TILE_NAMES, areAdjacent } from "@reyes/engine";
 import { api, type GameState, type OrderView, type TileView } from "../api";
 import { TILE_LABEL, TILE_MARK, houseColor, houseName } from "../ui";
 
@@ -160,7 +160,7 @@ function TilePanel({
       )}
       {mine && tile.type !== "castillo" && !fortified && (
         <button className="secondary" onClick={onFortify}>
-          Fortificar (10 de Piedra, +25% de defensa dos resoluciones)
+          Fortificar ({FORTIFY_COST.piedra} de Piedra, +25% de defensa dos resoluciones)
         </button>
       )}
     </section>
