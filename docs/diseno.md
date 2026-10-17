@@ -511,11 +511,30 @@ El tono es épico con humor: lo grande se cuenta con solemnidad y los detalles p
 
 ### 17.6 Sobornar al cronista
 
+Hecho en la versión 1: en la pestaña Reino, cualquier día de la semana hasta el cierre del domingo.
+
 - Una vez por semana, cada casa puede pagar **10 Oro** antes del cierre del domingo para que el boletín incluya una frase halagadora sobre ella.
 - La frase se elige de una lista de plantillas que hablan **solo de uno mismo**: no sirve para hablar mal de nadie.
 - No da Prestigio ni ventajas. El Oro sale del juego, así que tiene un coste real (40 Oro de sobornos equivalen a más de un punto de riqueza).
 - Fray Abundio lo declara al pie del boletín: "Esta crónica cuenta con el generoso patrocinio de la Casa de Pablo".
 - Quien más Oro gaste en sobornos recibe al final el título de **Mecenas de la Mentira**.
+
+### 17.6 bis El boletín semanal (hecho en la versión 1)
+
+Se publica cada domingo tras la resolución (`packages/engine/src/bulletin.ts`), con los hechos públicos desde el boletín anterior. Se lee en pergamino en la pestaña Reino y llega un aviso al móvil. Tiene botón para compartirlo en WhatsApp como texto. El orden:
+
+1. **Titular:** cambio de favorito, casillas que cambian de bandera, murallas que aguantan o semana tranquila.
+2. **El favorito:** elogio al líder o, si es nuevo, cambio de bando.
+3. **Los pretendientes:** solo en el primer boletín, con escudo y lema. La casa de la gallina tiene su frase.
+4. **Crónica de las armas:** batallas entre casas (hasta 5), conquistas neutrales (hasta 3, y el resto resumido), apoyos y rebotes.
+5. **Mercados y augurios:** el evento, la Gran Subasta y el comercio.
+6. **Obras y honores:** logros y mejoras de nivel 3 o más.
+7. **Noticias de las casas:** el lema contra la realidad y el último.
+8. **Del difunto rey:** la versión oficial de su muerte, una vez por partida, o su fantasma.
+9. **Comunicados de la corte:** las frases compradas, con el pie de patrocinio.
+10. **Notas al margen:** una o dos.
+
+El último boletín sale con el final: revela las ambiciones secretas y nombra al Mecenas de la Mentira. Las frases no se repiten en la partida hasta agotar su tipo (tabla `phrase_usage`). Las cifras salen siempre del registro.
 
 ### 17.7 La Crónica Definitiva
 
@@ -650,7 +669,7 @@ Pixel art en lo jugable, interfaz plana y limpia en lo informativo y un toque de
 3. **MVP 1 (hecho):** cuentas por invitación y código, casa (nombre, color y lema), mapa justo con niebla de guerra, producción, construir, reclutar, fortificar, órdenes de mover y apoyar con simulación, resolución con rebotes, mantenimiento con deserciones, ayuda al último y Prestigio en vivo.
 4. **MVP 2 (hecho):** comercio (ofertas públicas y dirigidas, contraofertas y aceptación atómica sin dobles aceptaciones), objetivos secretos, logros de primera fortaleza y obra maestra, piloto automático y modo vacaciones, notificaciones push y final de partida con revelación de objetivos y coronación.
 5. **Partida piloto de 4 semanas** con los amigos (en la simulación, las partidas de 2 semanas las gana casi siempre quien va primero en la segunda semana). Antes, partidas de prueba contra bots y el simulador (`npm run simular`, resultados en `docs/simulaciones.md`).
-6. **Versión 1:** Gran Subasta y cartas (hecho), eventos (hecho), boletín con Fray Abundio (incluido el soborno), creador de escudos y lemas, y botón de compartir en WhatsApp.
+6. **Versión 1:** Gran Subasta y cartas (hecho), eventos (hecho), boletín con Fray Abundio (incluido el soborno; hecho), creador de escudos y lemas, y botón de compartir en WhatsApp.
 7. **Primera partida completa de 6 semanas.**
 8. **Versión 2:** tratados comerciales, mensajes privados, temporadas, títulos y la Crónica Definitiva.
 

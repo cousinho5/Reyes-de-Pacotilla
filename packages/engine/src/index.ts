@@ -19,3 +19,5 @@ export * from "./ai";
 export * from "./cards";
 export * from "./auction";
 export * from "./events";
+export * from "./bulletin";
+export { PHRASES, type PhraseKey } from "./texts/cronista";

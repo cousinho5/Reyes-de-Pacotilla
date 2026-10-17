@@ -170,6 +170,10 @@ export function describeEvent(e: EventView, houses: HouseInfo[], tiles: TileView
         d.cumplido ? "Cumplida: +6 de Prestigio." : "No la cumplió."
       }`;
     }
+    case "boletin":
+      return `Fray Abundio publica el boletín de la semana ${d.week}: «${d.headline}». Léelo arriba.`;
+    case "mejora":
+      return null;
     case "anuncio_evento":
       return `Evento de la semana ${d.week}: ${d.nombre}. ${d.texto} «${d.linea}»`;
     case "evento": {

@@ -707,3 +707,112 @@ label.check input {
   margin: 0.25rem 0 0;
   color: var(--muted);
 }
+
+/* Boletín de Fray Abundio: pergamino */
+.bulletin-wrap {
+  margin-bottom: 1rem;
+}
+.bulletin-weeks {
+  display: flex;
+  gap: 0.4rem;
+  overflow-x: auto;
+  padding-bottom: 0.4rem;
+}
+.bulletin-weeks button {
+  white-space: nowrap;
+  padding: 0.3rem 0.6rem;
+  font-size: 0.85rem;
+}
+.bulletin-weeks button.chosen {
+  background: var(--ink);
+  color: var(--card);
+}
+.parchment {
+  position: relative;
+  padding: 1.4rem 1.2rem 1.2rem;
+  color: #3a2a17;
+  background:
+    radial-gradient(ellipse at 20% 10%, rgba(255, 255, 255, 0.45), transparent 60%),
+    radial-gradient(ellipse at 80% 90%, rgba(120, 80, 30, 0.18), transparent 55%),
+    linear-gradient(180deg, #f3e2b8 0%, #ecd7a3 55%, #e3c98c 100%);
+  border: 1px solid #c9a96a;
+  border-radius: 6px;
+  box-shadow:
+    inset 0 0 40px rgba(110, 70, 20, 0.25),
+    0 2px 6px rgba(60, 40, 10, 0.18);
+  font-family: Georgia, "Iowan Old Style", "Palatino Linotype", serif;
+  line-height: 1.5;
+}
+.parchment header {
+  text-align: center;
+  border-bottom: 2px double #a07d42;
+  margin-bottom: 0.8rem;
+  padding-bottom: 0.6rem;
+}
+.parchment-kicker {
+  margin: 0;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #7a5a2c;
+}
+.parchment h2 {
+  margin: 0.35rem 0 0;
+  font-size: 1.25rem;
+  letter-spacing: 0.02em;
+  color: #5a1e12;
+}
+.parchment h3 {
+  margin: 1rem 0 0.3rem;
+  font-size: 0.95rem;
+  font-variant: small-caps;
+  letter-spacing: 0.05em;
+  color: #6b3b14;
+}
+.parchment section p {
+  margin: 0 0 0.45rem;
+}
+.parchment section:first-of-type p:first-of-type::first-letter {
+  float: left;
+  font-size: 2.6rem;
+  line-height: 0.85;
+  padding: 0.15rem 0.35rem 0 0;
+  color: #8a2a17;
+  font-weight: 700;
+}
+.margin-notes {
+  float: right;
+  width: 38%;
+  margin: 0 0 0.5rem 0.8rem;
+  padding-left: 0.6rem;
+  border-left: 1px dashed #a07d42;
+  font-style: italic;
+  font-size: 0.78rem;
+  color: #7a5a2c;
+  transform: rotate(1.2deg);
+}
+.margin-notes p {
+  margin: 0 0 0.4rem;
+}
+.sponsors {
+  clear: both;
+  margin-top: 0.8rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid #c9a96a;
+  font-style: italic;
+  font-size: 0.85rem;
+}
+.sponsors p {
+  margin: 0 0 0.3rem;
+}
+.signature {
+  clear: both;
+  text-align: right;
+  font-style: italic;
+  font-size: 0.85rem;
+  margin: 0.8rem 0 0.8rem;
+}
+.parchment .share {
+  display: block;
+  text-align: center;
+}

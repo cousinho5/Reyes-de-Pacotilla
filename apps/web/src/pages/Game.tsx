@@ -147,7 +147,7 @@ export function Game({ id }: { id: number }) {
           <OrdersPanel state={state} draft={draft} setDraft={updateDraft} />
         )}
         {tab === "comercio" && <TradePanel state={state} act={act} />}
-        {tab === "reino" && <Realm state={state} />}
+        {tab === "reino" && <Realm state={state} act={act} />}
       </main>
 
       {toast && (
