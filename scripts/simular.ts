@@ -10,6 +10,7 @@
 //   npm run simular -- --terreno no       # sin los efectos del terreno (diseño v2), para comparar
 //   npm run simular -- --tropas no        # solo Mesnada (sin Jinetes ni Catapultas), para comparar
 //   npm run simular -- --asedios no       # sin asedios, para comparar
+//   npm run simular -- --capitan no       # sin Capitán ni Gloria, para comparar
 //   npm run simular -- --json simulacion.json   # además, todos los datos en JSON
 
 import { writeFileSync } from "node:fs";
@@ -58,7 +59,7 @@ const started = Date.now();
 for (let i = 0; i < games; i++) {
   const players = minPlayers + Math.floor(rand() * (maxPlayers - minPlayers + 1));
   const strategies = Array.from({ length: players }, () => pool[Math.floor(rand() * pool.length)]!);
-  results.push(simulateGame({ seed: `sim-${i}`, strategies, weeks, events: args.get("eventos") !== "no", terrain: args.get("terreno") !== "no", units: args.get("tropas") !== "no", sieges: args.get("asedios") !== "no" }));
+  results.push(simulateGame({ seed: `sim-${i}`, strategies, weeks, events: args.get("eventos") !== "no", terrain: args.get("terreno") !== "no", units: args.get("tropas") !== "no", sieges: args.get("asedios") !== "no", captainGlory: args.get("capitan") !== "no" }));
 }
 const houses = results.flatMap((g) => g.houses.map((h) => ({ ...h, players: g.houses.length })));
 
@@ -86,7 +87,7 @@ function winStats(group: (SimHouseResult & { players: number })[]) {
 }
 
 console.log(
-  `# Simulación: ${games} partidas de ${weeks} semanas, ${minPlayers}-${maxPlayers} casas, modo ${mode}${args.get("eventos") === "no" ? ", sin eventos" : ""}${args.get("terreno") === "no" ? ", sin terreno" : ""}${args.get("tropas") === "no" ? ", solo Mesnada" : ""}${args.get("asedios") === "no" ? ", sin asedios" : ""}`,
+  `# Simulación: ${games} partidas de ${weeks} semanas, ${minPlayers}-${maxPlayers} casas, modo ${mode}${args.get("eventos") === "no" ? ", sin eventos" : ""}${args.get("terreno") === "no" ? ", sin terreno" : ""}${args.get("tropas") === "no" ? ", solo Mesnada" : ""}${args.get("asedios") === "no" ? ", sin asedios" : ""}${args.get("capitan") === "no" ? ", sin Capitán ni Gloria" : ""}`,
 );
 console.log(`(${((Date.now() - started) / 1000).toFixed(1)} s)`);
 
@@ -165,6 +166,7 @@ table("Combate y comercio (por partida)", ["dato", "valor"], [
   ],
   ["Travesías por mar", f1(avg(results.map((r) => r.seaMoves)))],
   ["Órdenes de asedio", f1(avg(results.map((r) => r.siegeOrders)))],
+  ["Capitanes capturados", f1(avg(results.map((r) => r.captainsCaptured)))],
   ["Noches de asedio (a castillos)", `${f1(avg(results.map((r) => r.siegeNights)))} (${f1(avg(results.map((r) => r.castleSiegeNights)))})`],
   ["Tratos cerrados", f1(avg(results.map((r) => r.trades)))],
   ["Socios comerciales por casa (toda la partida)", f1(avg(houses.map((h) => h.partners)))],

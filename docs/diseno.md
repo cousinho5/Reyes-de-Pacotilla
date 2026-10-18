@@ -200,7 +200,7 @@ Lo que lleva al jugador a entrar a diario no es una obligación, sino que cada d
 
 ## 8. Órdenes y combate
 
-> **Sistema de guerra v3** (decidido el 17 de octubre de 2026). **Ya hecho:** casillas hexagonales, una resolución cada día a las 22:00, terreno que cuenta (sección 8.8), tres tipos de tropa (sección 8.9) y asedios (sección 8.10). **Pendiente:** terreno que cambia el combate, flanqueo, asedios de varios días (el asedio a un castillo da Prestigio), un Capitán por casa que se puede capturar y rescatar, Gloria por ganar batallas y repetición animada de cada noche. La propuesta completa está en el documento "Reyes de Pacotilla: propuesta del nuevo sistema de guerra". Primeros resultados del simulador en `docs/simulaciones.md`. Hasta que esté hecho, rige lo que sigue.
+> **Sistema de guerra v3** (decidido el 17 de octubre de 2026). **Ya hecho:** casillas hexagonales, una resolución cada día a las 22:00, terreno que cuenta (sección 8.8), tres tipos de tropa (sección 8.9), asedios (sección 8.10) y el Capitán con la Gloria (sección 8.11). **Pendiente:** repetición animada de cada noche, avisos de amenaza y veteranos. La propuesta completa está en el documento "Reyes de Pacotilla: propuesta del nuevo sistema de guerra". Primeros resultados del simulador en `docs/simulaciones.md`. Hasta que esté hecho, rige lo que sigue.
 
 ### 8.1 Órdenes
 
@@ -314,6 +314,17 @@ Simulación (300 partidas de 6 semanas, `docs/simulaciones.md`): los bots reclut
 - **Se rompe** si atacan la casilla desde la que se sitia (aunque el ataque fracase) o si se pierde. **Se levanta** si nadie lo mantiene esa noche, y **termina** si la casilla sitiada cambia de manos.
 - Las casillas solo fortificadas no se pueden sitiar. Se probó en la simulación y fortificar dejaba de servir: la arquitecta, que se defiende fortificando, se hundía.
 
+### 8.11 El Capitán y la Gloria (diseño v3, fase 4)
+
+- **Un Capitán por casa**, con nombre propio (Sir Gonzalo el Despistado y compañía). Empieza en el castillo y se ve en el mapa con un casco.
+- **Suma 2 de fuerza** a la defensa de la casilla donde está y al grupo con el que sale. Al dar una orden desde su casilla se marca "Con el Capitán"; solo puede ir con un grupo.
+- **Cae preso** si su grupo pierde contra otra casa: un ataque que fracasa, un choque de frente perdido o la casilla donde estaba conquistada. Contra bandidos no cae preso: huye al castillo.
+- **Preso:** quien lo captura puede **soltarlo** cuando quiera desde el castillo (moneda de cambio para tratos). Si no, **se fuga a las 7 noches** y vuelve a su castillo. Mientras está preso, su casa lucha sin él.
+- Si gana, avanza con sus tropas; si se retiran, vuelve con ellas (al castillo si su casilla se ha perdido).
+- **Gloria (Prestigio permanente):** +1 por cada batalla ganada contra otra casa (atacando, defendiendo o en un choque de frente) y +1 de **honor** a quien pierde una casilla contra al menos el doble de fuerza. Máximo 8 en la partida.
+
+Simulación (600 partidas de 6 semanas): un 25-27% más de batallas entre casas, los ataques triunfan algo menos (79% → 72%), caen unos 6 Capitanes por partida y el líder de la semana 2 gana igual o algo menos (29% → 27%).
+
 ## 9. Comercio, subasta y pactos
 
 El comercio es la mitad del juego, así que tiene que ser excelente:
@@ -391,6 +402,8 @@ El Prestigio es **un marcador del estado actual**, no una suma semana a semana. 
 | **Edificios** | 1 por cada nivel por encima de 1 (empiezas con 2, máximo 20), +1 extra por cada edificio a nivel 5 |
 | **Riqueza** | 1 por cada 25 Oro en el tesoro (máximo 10) |
 | **Comercio** | 2 por cada casa distinta con la que hayas cerrado un trato válido en los últimos 7 días (máximo 6) |
+| **Asedios** | 1 por noche rodeando un castillo ajeno (máximo 10, sección 8.10) |
+| **Gloria** | 1 por batalla ganada contra otra casa y 1 de honor por caer ante el doble de fuerza (máximo 8, sección 8.11) |
 | **Logros** | Permanentes, no se pierden (sección 11.2) |
 
 Así una ventaja temprana no se cobra seis veces, construir no es la vía segura que siempre gana y quien va detrás siempre puede remontar. En la simulación con estos valores, las estrategias puras acaban entre 20 y 30 de Prestigio y la mixta en unos 37.

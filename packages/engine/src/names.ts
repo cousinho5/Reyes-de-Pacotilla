@@ -94,3 +94,26 @@ export function castleName(house: string): string {
   }
   return `Castillo de ${house}`;
 }
+
+/** Capitanes de las casas (diseño v3): uno por casa, elegido con la semilla. */
+export const CAPTAIN_NAMES = [
+  "Sir Ramiro el Tibio",
+  "Doña Urraca la Puntual",
+  "Don Fermín Pocacosa",
+  "Sor Brígida de las Lanzas",
+  "Sir Gonzalo el Despistado",
+  "Doña Elvira Mediacota",
+  "Don Lope el Madrugador",
+  "Sir Nuño Calzasmal",
+  "Doña Toda la Prudente",
+  "Don Bermudo el Optimista",
+  "Sir Pelayo Cuestabajo",
+  "Doña Jimena la Tozuda",
+] as const;
+
+/** Nombre del Capitán de una casa: el mismo durante toda la partida. */
+export function captainName(seed: string, house: number): string {
+  let h = 0;
+  for (const ch of `${seed}:${house}`) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return CAPTAIN_NAMES[h % CAPTAIN_NAMES.length]!;
+}

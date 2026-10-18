@@ -1354,3 +1354,31 @@ label.check input {
 .unit-note {
   font-size: 0.92rem;
 }
+
+/* Capitán: yelmo sobre la casilla donde está. */
+.tile-captain {
+  position: absolute;
+  z-index: 2;
+  bottom: 4px;
+  right: 4px;
+  line-height: 0;
+  padding: 1px;
+  background: rgba(28, 20, 16, 0.85);
+  border-radius: 3px;
+  box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.7);
+}
+.cell-box.hex .tile-captain {
+  right: 8%;
+  bottom: 20%;
+}
+.captain-note,
+.siege-note {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+label.check {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+}

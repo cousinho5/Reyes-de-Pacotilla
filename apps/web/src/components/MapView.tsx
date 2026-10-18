@@ -5,7 +5,7 @@ import { Icon, ShieldIcon, TileArt } from "../art";
 import { cellBox, sharedEdge, type Geo } from "../art/grid";
 import { geoOf } from "../art/world";
 import { WorldCanvas, useWorld } from "./WorldCanvas";
-import { HOUSE_COLORS, TERRAIN_NOTE, TERRITORY, TILE_LABEL, UNIT_LABEL, houseName, troopsText, wallsLeft } from "../ui";
+import { HOUSE_COLORS, TERRAIN_NOTE, TERRITORY, TILE_LABEL, UNIT_LABEL, captainOf, houseName, troopsText, wallsLeft } from "../ui";
 
 interface Props {
   state: GameState;
@@ -15,7 +15,7 @@ interface Props {
 }
 
 type Mode = "mover" | "apoyar" | "sitiar";
-type Compose = { from: number; mode: Mode; target: number | null; mix: Units; apoyaDesde: number | null };
+type Compose = { from: number; mode: Mode; target: number | null; mix: Units; apoyaDesde: number | null; capitan?: boolean };
 
 /** Se puede sitiar: fortalezas y castillos que no son tuyos. */
 const siegeable = (t: TileView, me: number | null | undefined) =>
@@ -240,6 +240,11 @@ export function MapView({ state, draft, setDraft, act }: Props) {
                       {t.troops}
                     </span>
                   )}
+                  {(t.capitanes ?? []).length > 0 && (
+                    <span className="tile-captain" aria-hidden title="Capitán">
+                      <Icon name="capitan" size={14} color={t.capitanes!.includes(me ?? -1) ? "#f1cf7d" : "#d9d2c3"} />
+                    </span>
+                  )}
                   {battles.has(t.id) && (
                     <span className="tile-battle" aria-hidden title="Batalla en la última resolución">
                       <Icon name="ordenes" size={14} color="#f1cf7d" />
@@ -307,6 +312,9 @@ export function MapView({ state, draft, setDraft, act }: Props) {
           byId={byId}
           available={freeUnits(compose.from)}
           engineTiles={engineTiles}
+          captainHere={
+            !!byId.get(compose.from)?.capitanes?.includes(me ?? -1) && !draft.some((o) => o.capitan)
+          }
           onAdd={(o) => {
             setDraft([...draft, o]);
             setCompose(null);
@@ -447,6 +455,12 @@ function TilePanel({
             : `Sitiada por ${houseName(state.casas, tile.besiegedBy)} desde hace ${tile.siegeNights ?? 1} ${(tile.siegeNights ?? 1) === 1 ? "noche" : "noches"}: ${wallsLeft(tile.siegeNights ?? 1)}.`}
         </p>
       )}
+      {(tile.capitanes ?? []).map((h) => (
+        <p key={h} className="captain-note">
+          <Icon name="capitan" size={16} color={h === state.yo.casa ? "#d6a64b" : "#827d8a"} />{" "}
+          {h === state.yo.casa ? `Aquí está tu Capitán, ${captainOf(state.casas, h).split(",")[0]}.` : `Aquí está ${captainOf(state.casas, h)}.`}
+        </p>
+      ))}
       <p className="muted terrain-note">{TERRAIN_NOTE[tile.type]}</p>
       {tile.troops == null && (
         <p className="muted">
@@ -479,6 +493,7 @@ function Composer({
   byId,
   available,
   engineTiles,
+  captainHere,
   onAdd,
 }: {
   state: GameState;
@@ -487,6 +502,8 @@ function Composer({
   byId: Map<number, TileView>;
   available: Units;
   engineTiles: Tile[];
+  /** El Capitán de la casa está en la casilla de salida y aún no va con otra orden. */
+  captainHere: boolean;
   onAdd: (o: OrderView) => void;
 }) {
   const from = byId.get(compose.from)!;
@@ -556,6 +573,12 @@ function Composer({
             </label>
           )}
           {shown.length === 0 && <p className="error">No te quedan tropas que puedan ir ahí.</p>}
+          {compose.mode === "mover" && captainHere && (
+            <label className="check">
+              <input type="checkbox" checked={!!compose.capitan} onChange={(e) => setCompose({ ...compose, capitan: e.target.checked })} />
+              Con el Capitán: +2 de fuerza. Si el ataque fracasa contra otra casa, cae preso.
+            </label>
+          )}
           {compose.mode === "sitiar" && (
             <p className="hint">
               {target.type === "castillo"
@@ -589,6 +612,7 @@ function Composer({
                   tropas: total,
                   ...(mix.jinetes > 0 ? { jinetes: mix.jinetes } : {}),
                   ...(mix.catapultas > 0 ? { catapultas: mix.catapultas } : {}),
+                  ...(compose.mode === "mover" && captainHere && compose.capitan ? { capitan: true } : {}),
                 })
               }
             >

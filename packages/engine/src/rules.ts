@@ -72,6 +72,27 @@ export const SIEGE = {
   prestigeMax: 10,
 };
 
+/**
+ * Capitán y Gloria (diseño v3, fase 4).
+ * - El Capitán suma `strength` a la fuerza del grupo con el que va (antes de bonificaciones).
+ *   Si su grupo pierde contra otra casa, cae preso; se escapa a las `escapeAfter`
+ *   resoluciones (o antes, si quien lo tiene lo suelta, por ejemplo tras un rescate).
+ * - Gloria: cada batalla ganada contra otra casa (atacando o defendiendo) da
+ *   `perVictory` de Prestigio; perder defendiendo contra el doble de fuerza o más
+ *   da `honor` ("cayó con honor"). Con tope `max`.
+ */
+export const CAPTAIN = {
+  enabled: true,
+  strength: 2,
+  escapeAfter: 7,
+};
+export const GLORY = {
+  enabled: true,
+  perVictory: 1,
+  honor: 1,
+  max: 8,
+};
+
 /** Coste de reclutar una tropa. */
 // Antes 2 Hierro + 1 Pan: el Hierro era el único recurso escaso y el Pan sobraba.
 // Con 1 Hierro + 2 Pan pasaba lo contrario; 2 + 2 deja los dos justos (simulación del 16-10-2026).

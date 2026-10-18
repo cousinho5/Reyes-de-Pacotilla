@@ -1,4 +1,4 @@
-import { PRESTIGE, SIEGE } from "./rules";
+import { GLORY, PRESTIGE, SIEGE } from "./rules";
 import type { BuildingKind, HouseId, Tile, TileType } from "./types";
 
 export type AchievementKey = keyof typeof PRESTIGE.achievement;
@@ -16,6 +16,8 @@ export interface PrestigeInput {
   secretObjectiveMet?: boolean;
   /** Noches que esta casa ha tenido rodeado el castillo de otra (diseño v3). */
   siegeNights?: number;
+  /** Puntos de Gloria: batallas ganadas a otras casas y derrotas con honor (diseño v3). */
+  glory?: number;
 }
 
 export interface PrestigeBreakdown {
@@ -26,6 +28,8 @@ export interface PrestigeBreakdown {
   logros: number;
   /** Noches de asedio a castillos ajenos. */
   asedios: number;
+  /** Batallas ganadas a otras casas (y derrotas con honor). */
+  gloria: number;
   objetivo: number;
   total: number;
 }
@@ -57,6 +61,7 @@ export function computePrestige(input: PrestigeInput): PrestigeBreakdown {
   }
 
   const asedios = Math.min(SIEGE.prestigeMax, (input.siegeNights ?? 0) * SIEGE.prestigePerNight);
+  const gloria = GLORY.enabled ? Math.min(GLORY.max, input.glory ?? 0) : 0;
   const objetivo = input.secretObjectiveMet ? PRESTIGE.secretObjective : 0;
   return {
     territorio,
@@ -65,8 +70,9 @@ export function computePrestige(input: PrestigeInput): PrestigeBreakdown {
     comercio,
     logros,
     asedios,
+    gloria,
     objetivo,
-    total: territorio + edificios + riqueza + comercio + logros + asedios + objetivo,
+    total: territorio + edificios + riqueza + comercio + logros + asedios + gloria + objetivo,
   };
 }
 

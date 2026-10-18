@@ -55,6 +55,8 @@ export interface MoveOrder {
   /** De esas tropas, cuántas son Jinetes y cuántas Catapultas (el resto, Mesnada). */
   jinetes?: number;
   catapultas?: number;
+  /** El Capitán de la casa va con este grupo (solo si está en la casilla de origen). */
+  captain?: boolean;
 }
 
 export interface SupportOrder {
@@ -88,6 +90,19 @@ export interface SiegeOrder {
 
 export type Order = MoveOrder | SupportOrder | SiegeOrder;
 
+/**
+ * Capitán de una casa (diseño v3, fase 4): está en una casilla propia o preso
+ * de otra casa hasta la resolución `freeAt` (incluida, se escapa al empezar
+ * esa resolución).
+ */
+export interface Captain {
+  house: HouseId;
+  /** Casilla donde está; null si está preso. */
+  tile: TileId | null;
+  capturedBy?: HouseId | null;
+  freeAt?: number | null;
+}
+
 export interface CampaignInput {
   /** Número de la resolución que se está ejecutando (1, 2, ...). */
   resolution: number;
@@ -103,6 +118,8 @@ export interface CampaignInput {
   attackBonusAll?: number;
   defenseBonus?: number;
   peace?: boolean;
+  /** Capitanes de las casas (diseño v3). */
+  captains?: Captain[];
 }
 
 export type CampaignEvent =
@@ -175,6 +192,23 @@ export type CampaignEvent =
       reason: "cortado" | "levantado" | "tomada";
     }
   | {
+      type: "capitan_preso";
+      house: HouseId;
+      /** Casa que lo captura. */
+      by: HouseId;
+      tile: TileId;
+      freeAt: number;
+    }
+  | {
+      type: "capitan_libre";
+      house: HouseId;
+      /**
+       * "fuga": se escapó al cumplirse el plazo; "huida": perdió contra una guarnición
+       * neutral y volvió al castillo; "liberado": quien lo tenía lo soltó (rescate).
+       */
+      reason: "fuga" | "huida" | "liberado";
+    }
+  | {
       type: "repliegue";
       house: HouseId;
       from: TileId;
@@ -187,4 +221,6 @@ export type CampaignEvent =
 export interface CampaignResult {
   tiles: Tile[];
   events: CampaignEvent[];
+  /** Capitanes tras la resolución (los mismos que entraron, movidos, presos o libres). */
+  captains: Captain[];
 }

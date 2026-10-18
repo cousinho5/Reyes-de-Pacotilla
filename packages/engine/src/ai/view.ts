@@ -22,6 +22,8 @@ export interface AiView {
   resources: Resources;
   /** Próxima resolución que se va a ejecutar. */
   nextResolution: number;
+  /** Casilla donde está el Capitán de la casa (null si está preso o no hay Capitán). */
+  captainTile?: number | null;
   /** Día de la partida (0 = primer lunes) y total de días. */
   day: number;
   totalDays: number;

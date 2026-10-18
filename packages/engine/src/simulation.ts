@@ -13,10 +13,10 @@ import { dailyProduction } from "./economy";
 import { generateMap } from "./mapgen";
 import { dealObjectives, objectiveMet, type ObjectiveKey } from "./objectives";
 import { computePrestige, isValidTrade, type AchievementKey, type PrestigeBreakdown } from "./prestige";
-import { resolveCampaign } from "./combat";
+import { gloryFromEvents, resolveCampaign } from "./combat";
 import { marchKind } from "./terrain";
 import type { MapLayoutOverride } from "./mapgen";
-import { GRID, PRESTIGE, RHYTHM, SPECIALTY_PAIRS, STARTING_RESOURCES, SIEGE, TERRAIN, TERRAIN_OFF, UNITS } from "./rules";
+import { GRID, PRESTIGE, RHYTHM, SPECIALTY_PAIRS, STARTING_RESOURCES, SIEGE, TERRAIN, TERRAIN_OFF, UNITS, CAPTAIN, GLORY } from "./rules";
 import { totalOf } from "./trade";
 import { auctionLots, doubleLot, resolveAuction, type Bid } from "./auction";
 import {
@@ -31,7 +31,7 @@ import {
   type WeekEvent,
 } from "./events";
 import { checkCard, type CardKey, type CardParams } from "./cards";
-import { BUILDINGS, RESOURCES, type BuildingKind, type HouseId, type Order, type Resource, type Resources, type Tile } from "./types";
+import { BUILDINGS, RESOURCES, type Captain, type BuildingKind, type HouseId, type Order, type Resource, type Resources, type Tile } from "./types";
 import {
   PERSONALITIES,
   PERSONALITY_NAMES,
@@ -105,6 +105,8 @@ export interface SimOptions {
   units?: boolean;
   /** Asedios (por defecto, sí). */
   sieges?: boolean;
+  /** Capitán y Gloria (por defecto, sí). */
+  captainGlory?: boolean;
 }
 
 export interface SimHouseResult {
@@ -160,6 +162,8 @@ export interface SimGameResult {
   supports: number;
   /** Tropas reclutadas de cada tipo (bots con personalidad). */
   recruited: { mesnada: number; jinetes: number; catapultas: number };
+  /** Capitanes capturados en la partida. */
+  captainsCaptured: number;
   /** Órdenes de asedio, noches de asedio (todas) y noches de asedio a castillos. */
   siegeOrders: number;
   siegeNights: number;
@@ -200,6 +204,9 @@ interface HouseState {
   drums: { resolution: number; bonus: number }[];
   /** Noches que ha tenido rodeado el castillo de otra casa (Prestigio). */
   siegeNights: number;
+  /** Puntos de Gloria (Prestigio) y su Capitán. */
+  glory: number;
+  captain: Captain;
 }
 
 export function simulateGame(opts: SimOptions): SimGameResult {
@@ -208,6 +215,11 @@ export function simulateGame(opts: SimOptions): SimGameResult {
   if (opts.units === false) UNITS.enabled = false;
   const savedSiege = SIEGE.enabled;
   if (opts.sieges === false) SIEGE.enabled = false;
+  const savedCG = { captain: CAPTAIN.enabled, glory: GLORY.enabled };
+  if (opts.captainGlory === false) {
+    CAPTAIN.enabled = false;
+    GLORY.enabled = false;
+  }
   GRID.kind = opts.grid ?? GRID.kind;
   RHYTHM.days = opts.resolutionDays ?? RHYTHM.days;
   RHYTHM.fortify = opts.fortify ?? RHYTHM.fortify;
@@ -221,6 +233,8 @@ export function simulateGame(opts: SimOptions): SimGameResult {
     Object.assign(TERRAIN, saved.terrain);
     UNITS.enabled = saved.units;
     SIEGE.enabled = savedSiege;
+    CAPTAIN.enabled = savedCG.captain;
+    GLORY.enabled = savedCG.glory;
   }
 }
 
@@ -244,6 +258,7 @@ function runGame(opts: SimOptions): SimGameResult {
     castleOf: t.castleOf ?? null,
   }));
   const objectives = dealObjectives(opts.seed, ids);
+  const startCastle = (id: HouseId) => tiles.find((t) => t.castleOf === id)?.id ?? null;
   const houses: HouseState[] = ids.map((id, i) => {
     const pair = SPECIALTY_PAIRS[i % SPECIALTY_PAIRS.length]!;
     const strategy = opts.strategies[i]!;
@@ -270,6 +285,8 @@ function runGame(opts: SimOptions): SimGameResult {
       truces: [],
       drums: [],
       siegeNights: 0,
+      glory: 0,
+      captain: { house: id, tile: startCastle(id), capturedBy: null, freeAt: null },
     };
   });
   const byId = new Map(houses.map((h) => [h.id, h]));
@@ -287,6 +304,7 @@ function runGame(opts: SimOptions): SimGameResult {
   let supports = 0;
   let roadMoves = 0;
   let siegeOrders = 0;
+  let captainsCaptured = 0;
   let siegeNightsTotal = 0;
   let castleSiegeNights = 0;
   const recruited = { mesnada: 0, jinetes: 0, catapultas: 0 };
@@ -313,6 +331,7 @@ function runGame(opts: SimOptions): SimGameResult {
       achievements: h.achievements,
       secretObjectiveMet: objectiveMet,
       siegeNights: h.siegeNights,
+      glory: h.glory,
     });
   };
 
@@ -333,6 +352,7 @@ function runGame(opts: SimOptions): SimGameResult {
     buildings: h.levels,
     resources: { ...h.res },
     nextResolution: resolution + 1,
+    captainTile: h.captain.tile,
     day,
     totalDays,
     objective: h.objective,
@@ -539,6 +559,7 @@ function runGame(opts: SimOptions): SimGameResult {
       resolution,
       tiles,
       orders,
+      captains: CAPTAIN.enabled ? houses.map((h) => h.captain) : [],
       absentHouses: absent,
       truceTiles: houses.flatMap((h) => h.truces.filter((t) => t.resolution === resolution).map((t) => t.tile)),
       attackBonus: Object.fromEntries(
@@ -547,6 +568,9 @@ function runGame(opts: SimOptions): SimGameResult {
       ...(weekday === 2 && weekEvents[week0 - 1] ? eventCombat(weekEvents[week0 - 1]!) : {}),
     });
     tiles = result.tiles;
+    for (const c of result.captains) byId.get(c.house)!.captain = c;
+    for (const [hid, g] of gloryFromEvents(result.events)) byId.get(hid)!.glory += g;
+    for (const e of result.events) if (e.type === "capitan_preso") captainsCaptured++;
     // Miércoles: efectos al momento del evento de la semana (repartos, bandidos).
     if (weekday === 2 && weekEvents[week0 - 1]) {
       const outcome = applyEventNow(
@@ -669,6 +693,7 @@ function runGame(opts: SimOptions): SimGameResult {
     attacksWon,
     supports,
     recruited,
+    captainsCaptured,
     siegeOrders,
     siegeNights: siegeNightsTotal,
     castleSiegeNights,

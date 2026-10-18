@@ -247,6 +247,7 @@ function botView(ctx: BotContext, h: HouseRow): AiView {
     buildings: ctx.buildings.get(h.id)!,
     resources: resourcesOf(h),
     nextResolution: g.current_resolution + 1,
+    captainTile: h.captain_tile,
     day: ctx.day,
     totalDays: g.weeks * 7,
     objective: (h.objective_key as ObjectiveKey | null) ?? null,
@@ -458,7 +459,7 @@ async function addBotOrders(env: NotifyEnv, game: GameRow, n: number): Promise<v
     for (const o of orders) {
       statements.push(
         db.prepare(
-          "INSERT INTO orders (game_id, house_id, resolution_no, kind, from_tile_id, troops, jinetes, catapultas, target_tile_id, supported_from_tile_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "INSERT INTO orders (game_id, house_id, resolution_no, kind, from_tile_id, troops, jinetes, catapultas, captain, target_tile_id, supported_from_tile_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         ).bind(
           game.id,
           h.id,
@@ -468,6 +469,7 @@ async function addBotOrders(env: NotifyEnv, game: GameRow, n: number): Promise<v
           o.troops,
           o.jinetes ?? 0,
           o.catapultas ?? 0,
+          o.kind === "move" && o.captain ? 1 : 0,
           o.kind === "move" ? o.to : o.target,
           o.kind === "support" ? o.supportedFrom : null,
         ),

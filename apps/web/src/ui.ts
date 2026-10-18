@@ -86,6 +86,12 @@ export const UNIT_NOTE: Record<"mesnada" | "jinetes" | "catapultas", string> = {
   catapultas: "No luchan (fuerza 0), pero cada una quita un 25% a la fortificación o la fortaleza que atacan. Comen como dos tropas y se pierden si el ataque fracasa.",
 };
 
+/** "Sir Ramiro el Tibio, de la Casa del Nabo". */
+export function captainOf(houses: HouseInfo[], id: number): string {
+  const h = houses.find((x) => x.id === id);
+  return h?.capitan ? `${h.capitan.nombre}, capitán de ${h.nombre}` : `El capitán de ${houseName(houses, id)}`;
+}
+
 /** Lo que queda de las murallas de una fortaleza (+50%) tras `nights` noches de asedio (−25% cada una). */
 export function wallsLeft(nights: number): string {
   const left = Math.max(0, 50 - 25 * nights);
@@ -213,6 +219,14 @@ export function describeEvent(e: EventView, houses: HouseInfo[], tiles: TileView
       return d.arrived
         ? `${houseName(houses, d.house)} se repliega a ${tile(d.to)} con ${troops(d.troops)}. Fray Abundio lo llamará repliegue genial.`
         : `${houseName(houses, d.house)} no tiene adónde replegarse: sus ${troops(d.troops)} se dispersan.`;
+    case "capitan_preso":
+      return `${captainOf(houses, d.house)} cae preso de ${houseName(houses, d.by)} en ${tile(d.tile)}. Se escapará en la resolución ${d.freeAt}, salvo rescate.`;
+    case "capitan_libre":
+      return d.reason === "fuga"
+        ? `${captainOf(houses, d.house)} se escapa y vuelve a su castillo, con más hambre que gloria.`
+        : d.reason === "liberado"
+          ? `${houseName(houses, d.by)} suelta a ${captainOf(houses, d.house)}. Fray Abundio sospecha que hubo rescate.`
+          : `${captainOf(houses, d.house)} huye de la guarnición neutral y vuelve a su castillo.`;
     case "asedio":
       return d.castle
         ? `${houseName(houses, d.house)} rodea ${tile(d.tile)}${d.nights > 1 ? ` (${d.nights} noches)` : ""}: produce la mitad y el sitiador gana 1 de Prestigio.`

@@ -66,6 +66,7 @@ export function Realm({
                   Territorio {h.prestigio.territorio} · Edificios {h.prestigio.edificios} · Riqueza {h.prestigio.riqueza} · Comercio{" "}
                   {h.prestigio.comercio} · Logros {h.prestigio.logros}
                   {(h.prestigio.asedios ?? 0) > 0 && ` · Asedios ${h.prestigio.asedios}`}
+                  {(h.prestigio.gloria ?? 0) > 0 && ` · Gloria ${h.prestigio.gloria}`}
                   {h.objetivo && (
                     <>
                       <br />
