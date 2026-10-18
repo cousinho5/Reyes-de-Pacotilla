@@ -9,7 +9,7 @@ import { checkOrders, defenseMultiplier, walled } from "../combat";
 import { areAdjacent } from "../map";
 import { marchKind } from "../terrain";
 import { tilePrestige } from "../prestige";
-import { OBJECTIVE_TARGETS, PRESTIGE, STRETCH_FREE_TILES, STRETCH_PAN, TILE_PRODUCTION, TROOP_COST, UNITS } from "../rules";
+import { OBJECTIVE_TARGETS, PRESTIGE, SIEGE, STRETCH_FREE_TILES, STRETCH_PAN, TILE_PRODUCTION, TROOP_COST, UNITS } from "../rules";
 import { isPlain, totalUnits, unitFields, unitsOf, type UnitKind, type Units } from "../units";
 import type { Order, Tile, TileId } from "../types";
 import { PRESTIGE_UNIT, valueOf, type Situation } from "./view";
@@ -165,6 +165,34 @@ export function planOrders(s: Situation): Order[] {
     }
   }
 
+  // 1b. Asedios: las tropas se quedan en su casilla (y la defienden), así que
+  // sitiar sale casi gratis. Castillos ajenos que se puedan rodear desde dos
+  // casillas propias (dan Prestigio) y murallas que hoy no se pueden asaltar.
+  if (SIEGE.enabled) {
+    const attacked = new Set(orders.filter((o) => o.kind === "move").map((o) => (o as { to: TileId }).to));
+    const besiege = (from: Tile, target: Tile) => {
+      const n = room(from);
+      if (n < SIEGE.minTroops) return false;
+      orders.push({ kind: "siege", house, from: from.id, target: target.id, troops: n });
+      supportUsed.set(from.id, (supportUsed.get(from.id) ?? 0) + n);
+      free.set(from.id, 0);
+      return true;
+    };
+    for (const c of s.seen.filter((t) => t.type === "castillo" && t.owner != null && t.owner !== house).sort((a, b) => a.id - b.id)) {
+      const sides = own
+        .filter((o) => o.type !== "castillo" && areAdjacent(o, c) && room(o) >= SIEGE.minTroops)
+        .sort((a, b) => room(b) - room(a) || a.id - b.id);
+      if (sides.length < SIEGE.castleSides) continue;
+      for (const o of sides.slice(0, SIEGE.castleSides)) besiege(o, c);
+    }
+    for (const target of targets(s)) {
+      if (attacked.has(target.tile.id) || !walled(target.tile, view.nextResolution)) continue;
+      if (!SIEGE.fortifiedTargets && target.tile.type !== "fortaleza") continue;
+      const from = target.from.filter((o) => room(o) >= SIEGE.minTroops).sort((a, b) => room(b) - room(a) || a.id - b.id)[0];
+      if (from) besiege(from, target.tile);
+    }
+  }
+
   // 2. Defensa: casillas amenazadas que no aguantan.
   const weak = own
     .filter((t) => t.type !== "castillo")
@@ -210,7 +238,7 @@ export function planOrders(s: Situation): Order[] {
   }
 
   // Por si acaso: nunca dar órdenes inválidas.
-  return checkOrders(view.tiles, assignUnits(orders, s)).valid;
+  return checkOrders(view.tiles, assignUnits(orders, s), view.nextResolution).valid;
 }
 
 /**

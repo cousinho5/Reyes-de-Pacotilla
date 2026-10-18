@@ -29,11 +29,14 @@ export function OrdersPanel({ state, draft, setDraft }: Props) {
       ...(t.catapultas ? { catapultas: t.catapultas } : {}),
       fortifiedUntil: t.fortifiedUntil,
       castleOf: t.castleOf ?? null,
+      ...(t.besiegedBy != null ? { besiegedBy: t.besiegedBy, siegeNights: t.siegeNights ?? 0 } : {}),
     }));
     const orders: Order[] = draft.map((o) =>
       o.tipo === "mover"
         ? { kind: "move", house: state.yo.casa, from: o.desde, to: o.hacia, troops: o.tropas, jinetes: o.jinetes, catapultas: o.catapultas }
-        : {
+        : o.tipo === "sitiar"
+          ? { kind: "siege", house: state.yo.casa, from: o.desde, target: o.hacia, troops: o.tropas, jinetes: o.jinetes, catapultas: o.catapultas }
+          : {
             kind: "support",
             house: state.yo.casa,
             from: o.desde,
@@ -66,7 +69,11 @@ export function OrdersPanel({ state, draft, setDraft }: Props) {
             {draft.map((o, i) => (
               <li key={i}>
                 <span>
-                  {o.tipo === "mover" ? (
+                  {o.tipo === "sitiar" ? (
+                    <>
+                      <strong>{troopsText(o.tropas, o.jinetes, o.catapultas)}</strong> de {name(o.desde)} sitian <strong>{name(o.hacia)}</strong>
+                    </>
+                  ) : o.tipo === "mover" ? (
                     <>
                       <strong>{troopsText(o.tropas, o.jinetes, o.catapultas)}</strong> de {name(o.desde)} → <strong>{name(o.hacia)}</strong>
                     </>

@@ -200,7 +200,7 @@ Lo que lleva al jugador a entrar a diario no es una obligación, sino que cada d
 
 ## 8. Órdenes y combate
 
-> **Sistema de guerra v3** (decidido el 17 de octubre de 2026). **Ya hecho:** casillas hexagonales, una resolución cada día a las 22:00, terreno que cuenta (sección 8.8) y tres tipos de tropa (sección 8.9). **Pendiente:** terreno que cambia el combate, flanqueo, asedios de varios días (el asedio a un castillo da Prestigio), un Capitán por casa que se puede capturar y rescatar, Gloria por ganar batallas y repetición animada de cada noche. La propuesta completa está en el documento "Reyes de Pacotilla: propuesta del nuevo sistema de guerra". Primeros resultados del simulador en `docs/simulaciones.md`. Hasta que esté hecho, rige lo que sigue.
+> **Sistema de guerra v3** (decidido el 17 de octubre de 2026). **Ya hecho:** casillas hexagonales, una resolución cada día a las 22:00, terreno que cuenta (sección 8.8), tres tipos de tropa (sección 8.9) y asedios (sección 8.10). **Pendiente:** terreno que cambia el combate, flanqueo, asedios de varios días (el asedio a un castillo da Prestigio), un Capitán por casa que se puede capturar y rescatar, Gloria por ganar batallas y repetición animada de cada noche. La propuesta completa está en el documento "Reyes de Pacotilla: propuesta del nuevo sistema de guerra". Primeros resultados del simulador en `docs/simulaciones.md`. Hasta que esté hecho, rige lo que sigue.
 
 ### 8.1 Órdenes
 
@@ -305,6 +305,14 @@ Simulación (300 partidas de 6 semanas, `docs/simulaciones.md`): con terreno hay
 - La niebla esconde también de qué tipo son las tropas que no se ven.
 
 Simulación (300 partidas de 6 semanas, `docs/simulaciones.md`): los bots reclutan un 9% de jinetes y un 2% de catapultas. Hay un 6% más de batallas entre casas y la ventaja del guerrero baja de 1,4 a 1,3 veces lo esperado.
+
+### 8.10 Asedios (diseño v3, fase 3b)
+
+- **Orden Sitiar:** un grupo de al menos 3 tropas rodea una **fortaleza** o un **castillo ajeno** vecino. No se mueve: sigue defendiendo su casilla.
+- **Fortaleza sitiada:** cada noche de asedio pierde un 25% de murallas. Su +50% desaparece en dos noches, y se suma a lo que quiten las catapultas.
+- **Castillo rodeado:** hay que sitiarlo a la vez desde **dos casillas propias**. Mientras dure, sus edificios producen la mitad y quien lo rodea gana **1 de Prestigio por noche** (hasta 10 en la partida). El castillo sigue sin poder conquistarse.
+- **Se rompe** si atacan la casilla desde la que se sitia (aunque el ataque fracase) o si se pierde. **Se levanta** si nadie lo mantiene esa noche, y **termina** si la casilla sitiada cambia de manos.
+- Las casillas solo fortificadas no se pueden sitiar. Se probó en la simulación y fortificar dejaba de servir: la arquitecta, que se defiende fortificando, se hundía.
 
 ## 9. Comercio, subasta y pactos
 

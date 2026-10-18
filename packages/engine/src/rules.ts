@@ -50,6 +50,28 @@ export const UNITS = {
   plains: ["campos", "paramo"] as TileType[],
 };
 
+/**
+ * Asedios (diseño v3, fase 3).
+ * - `wallsPerNight`: cada noche de asedio quita esto al bono de fortificación o de fortaleza.
+ * - `minTroops`: tropas mínimas de cada grupo que sitia.
+ * - `castleSides`: casillas propias desde las que hay que rodear un castillo.
+ * - `castleProduction`: lo que producen los edificios de un castillo rodeado.
+ * - `prestigePerNight`, `prestigeMax`: Prestigio por noche de asedio a un castillo, con tope.
+ */
+export const SIEGE = {
+  enabled: true,
+  wallsPerNight: 0.25,
+  minTroops: 3,
+  castleSides: 2,
+  castleProduction: 0.5,
+  /** Se pueden sitiar también las casillas fortificadas. No: solo fortalezas y castillos (la simulación del 18-10-2026 mostró que si no, fortificar dejaba de servir). */
+  fortifiedTargets: false,
+  /** Una casilla sitiada (que no sea un castillo) deja de producir. */
+  stopsProduction: true,
+  prestigePerNight: 1,
+  prestigeMax: 10,
+};
+
 /** Coste de reclutar una tropa. */
 // Antes 2 Hierro + 1 Pan: el Hierro era el único recurso escaso y el Pan sobraba.
 // Con 1 Hierro + 2 Pan pasaba lo contrario; 2 + 2 deja los dos justos (simulación del 16-10-2026).

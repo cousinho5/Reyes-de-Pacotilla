@@ -73,6 +73,8 @@ export interface HouseRow extends Resources {
   objective_met: number | null;
   is_bot: number;
   bot_personality: string | null;
+  /** Noches que ha tenido rodeado un castillo ajeno (Prestigio, diseño v3). */
+  siege_nights: number;
 }
 
 export interface TileRow {
@@ -88,6 +90,9 @@ export interface TileRow {
   catapultas: number;
   fortified_until: number | null;
   castle_of: number | null;
+  /** Asedio: casa que la tiene sitiada y noches que lleva. */
+  besieged_by: number | null;
+  siege_nights: number;
 }
 
 export async function loadGame(db: D1Database, gameId: number): Promise<GameRow | null> {
@@ -102,7 +107,7 @@ export async function loadHouses(db: D1Database, gameId: number): Promise<HouseR
 export async function loadTiles(db: D1Database, gameId: number): Promise<TileRow[]> {
   const { results } = await db
     .prepare(
-      "SELECT id, x, y, type, name, owner_house_id, troops, jinetes, catapultas, fortified_until, castle_of FROM tiles WHERE game_id = ? ORDER BY y, x",
+      "SELECT id, x, y, type, name, owner_house_id, troops, jinetes, catapultas, fortified_until, castle_of, besieged_by, siege_nights FROM tiles WHERE game_id = ? ORDER BY y, x",
     )
     .bind(gameId)
     .all<TileRow>();
@@ -121,6 +126,7 @@ export function toEngineTiles(rows: TileRow[]): Tile[] {
     ...(t.catapultas > 0 ? { catapultas: t.catapultas } : {}),
     fortifiedUntil: t.fortified_until,
     castleOf: t.castle_of,
+    ...(t.besieged_by != null ? { besiegedBy: t.besieged_by, siegeNights: t.siege_nights } : {}),
   }));
 }
 
@@ -180,6 +186,7 @@ export async function computeAllPrestige(
         gold: h.oro,
         tradePartners: partners.get(h.id)?.size ?? 0,
         achievements: ach,
+        siegeNights: h.siege_nights ?? 0,
       }),
     );
   }

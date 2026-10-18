@@ -37,6 +37,8 @@ export interface WorldCell {
   fortified?: boolean;
   /** Hubo batalla aquí en la última resolución. */
   battle?: boolean;
+  /** Color (hex) de la casa que la tiene sitiada: tiendas de campaña alrededor. */
+  besieger?: string | null;
   /** Fuera de la vista de la casa. */
   fogged?: boolean;
 }
@@ -415,6 +417,7 @@ export function renderWorld(opts: WorldOptions): WorldImage {
     const [x0, y0] = boxOf(c);
     if (c.fortified && c.type !== "castillo") palisade(cv, W, geo.outline(c.x, c.y, 4));
     if (c.battle) battlefield(cv, W, x0, y0, seed + c.x * 5 + c.y * 3);
+    if (c.besieger) camp(cv, W, x0, y0, flagChars.get(c.besieger) ?? ["x", "X"], isWater);
     if (c.troops != null && c.troops > 0)
       soldiers(cv, W, x0, y0, c.troops, c.owner ? flagOf(c) : null, seed + c.x + c.y * 9, isWater, c.jinetes ?? 0, c.catapultas ?? 0);
   }
@@ -1071,6 +1074,19 @@ function palisade(cv: Canvas, W: number, outline: [number, number][]) {
   });
   posts.sort((a, b) => a[1] - b[1]).forEach(([x, y]) => stake(x, y));
   l.paint(cv, "h");
+}
+
+/** Campamento de asedio: tiendas con el banderín de quien sitia, alrededor de la casilla. */
+function camp(cv: Canvas, W: number, x0: number, y0: number, flag: [string, string], isWater: (x: number, y: number) => boolean) {
+  const [m, d] = flag;
+  const tent = ["...h....", "...h" + m + m + "..", "...h" + d + "...", "..kVk...", ".kVvVk..", "kVvhvVk.", "kkkkkkk."];
+  const l = new Layer(W);
+  for (const [lx, ly] of [[2, 40], [50, 40], [26, 54], [8, 6], [46, 8]] as const) {
+    if (isWater(x0 + lx + 3, y0 + ly + 6)) continue;
+    cv.shadow(x0 + lx + 4, y0 + ly + 7, 4.5, 1.2);
+    l.stamp(tent, x0 + lx, y0 + ly);
+  }
+  l.paint(cv);
 }
 
 /** Huella de la última batalla: tierra quemada, lanzas y escudos rotos, hogueras y humo. */
