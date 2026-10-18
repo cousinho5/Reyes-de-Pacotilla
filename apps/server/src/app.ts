@@ -5,6 +5,7 @@ import { Hono, type Context } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import {
   BUILDINGS,
+  captainName,
   UNIT_KINDS,
   upkeepTroops,
   type UnitKind,
@@ -468,6 +469,10 @@ app.post("/api/partidas/:id/empezar", async (c) => {
       ),
     );
   });
+  // Cada Capitán empieza en el castillo de su casa.
+  statements.push(
+    db.prepare("UPDATE houses SET captain_tile = (SELECT t.id FROM tiles t WHERE t.castle_of = houses.id) WHERE game_id = ?").bind(game.id),
+  );
   await db.batch(statements);
   // En las pruebas, el primer día empieza ya: producción del lunes.
   if (test) {
@@ -548,7 +553,7 @@ app.get("/api/partidas/:id", async (c) => {
     loadBuildings(db, game.id),
     computeAllPrestige(db, game.id, houses, tiles, now),
     db.prepare(
-      "SELECT id, kind, from_tile_id, troops, jinetes, catapultas, target_tile_id, supported_from_tile_id FROM orders WHERE house_id = ? AND resolution_no = ? ORDER BY id",
+      "SELECT id, kind, from_tile_id, troops, jinetes, catapultas, captain, target_tile_id, supported_from_tile_id FROM orders WHERE house_id = ? AND resolution_no = ? ORDER BY id",
     )
       .bind(house.id, game.current_resolution + 1)
       .all<{
@@ -558,6 +563,7 @@ app.get("/api/partidas/:id", async (c) => {
         troops: number;
         jinetes: number;
         catapultas: number;
+        captain: number;
         target_tile_id: number;
         supported_from_tile_id: number | null;
       }>(),
@@ -647,6 +653,8 @@ app.get("/api/partidas/:id", async (c) => {
         logros: achievements.results.filter((a) => a.house_id === h.id).map((a) => ({ clave: a.achievement_key, veces: a.times })),
         // Los objetivos secretos solo se revelan al final.
         objetivo: finished ? { ...objectiveView(h.objective_key), cumplido: h.objective_met === 1 } : null,
+        // Capitán: su nombre y, si está preso, de quién (es público: se sabe en todo el reino).
+        capitan: { nombre: captainName(game.seed, h.id), presoDe: h.captain_captured_by, libreEn: h.captain_free_at },
       }))
       .sort((a, b) => (b.prestigio?.total ?? 0) - (a.prestigio?.total ?? 0)),
     prueba:
@@ -677,7 +685,11 @@ app.get("/api/partidas/:id", async (c) => {
         : null,
     cartas: await handView(db, game.id, house.id),
     vigiladas: spied,
-    casillas: projectForHouse(tiles, house.id, spied).map((t) => ({ ...t, nombre: names.get(t.id) })),
+    casillas: projectForHouse(tiles, house.id, spied).map((t) => {
+      // Capitanes en la casilla: el propio siempre; los ajenos, solo si se ven sus tropas.
+      const caps = houses.filter((h) => h.captain_tile === t.id && (h.id === house.id || t.troops != null)).map((h) => h.id);
+      return { ...t, nombre: names.get(t.id), ...(caps.length ? { capitanes: caps } : {}) };
+    }),
     ordenes: orders.results.map((o) => ({
       id: o.id,
       tipo: o.kind === "move" ? "mover" : o.kind === "siege" ? "sitiar" : "apoyar",
@@ -687,6 +699,7 @@ app.get("/api/partidas/:id", async (c) => {
       tropas: o.troops,
       jinetes: o.jinetes,
       catapultas: o.catapultas,
+      ...(o.captain ? { capitan: true } : {}),
     })),
     eventos: events.results.map((e) => ({ id: e.id, tipo: e.type, resolucion: e.resolucion, datos: JSON.parse(e.payload) })),
     ofertas: offers.results.map(offerView),
@@ -860,6 +873,8 @@ interface OrderInput {
   /** De esas tropas, cuántas son Jinetes y Catapultas (el resto, Mesnada). */
   jinetes?: number;
   catapultas?: number;
+  /** El Capitán va con este grupo (solo órdenes de mover). */
+  capitan?: boolean;
 }
 
 /** Sustituye todas las órdenes de la casa para la próxima resolución. */
@@ -873,7 +888,15 @@ app.put("/api/partidas/:id/ordenes", async (c) => {
 
   const orders: Order[] = ordenes.map((o) =>
     o.tipo === "mover"
-      ? { kind: "move", house: m.house.id, from: Number(o.desde), to: Number(o.hacia), troops: Number(o.tropas), ...orderTypes(o) }
+      ? {
+          kind: "move",
+          house: m.house.id,
+          from: Number(o.desde),
+          to: Number(o.hacia),
+          troops: Number(o.tropas),
+          ...orderTypes(o),
+          ...(o.capitan === true ? { captain: true } : {}),
+        }
       : o.tipo === "sitiar"
         ? { kind: "siege", house: m.house.id, from: Number(o.desde), target: Number(o.hacia), troops: Number(o.tropas), ...orderTypes(o) }
         : {
@@ -889,13 +912,17 @@ app.put("/api/partidas/:id/ordenes", async (c) => {
   const tiles = toEngineTiles(await loadTiles(c.env.DB, m.game.id));
   const { invalid } = checkOrders(tiles, orders, m.game.current_resolution + 1);
   if (invalid.length > 0) return fail(c, 400, `Orden no válida: ${invalid[0]!.reason}.`);
+  const withCaptain = orders.filter((o) => o.kind === "move" && o.captain);
+  if (withCaptain.length > 1) return fail(c, 400, "El Capitán solo puede ir con un grupo.");
+  if (withCaptain.length === 1 && withCaptain[0]!.from !== m.house.captain_tile)
+    return fail(c, 400, "Tu Capitán no está en esa casilla.");
 
   const n = m.game.current_resolution + 1;
   const statements = [
     c.env.DB.prepare("DELETE FROM orders WHERE house_id = ? AND resolution_no = ?").bind(m.house.id, n),
     ...orders.map((o) =>
       c.env.DB.prepare(
-        "INSERT INTO orders (game_id, house_id, resolution_no, kind, from_tile_id, troops, jinetes, catapultas, target_tile_id, supported_from_tile_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO orders (game_id, house_id, resolution_no, kind, from_tile_id, troops, jinetes, catapultas, captain, target_tile_id, supported_from_tile_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
       ).bind(
         m.game.id,
         m.house.id,
@@ -905,6 +932,7 @@ app.put("/api/partidas/:id/ordenes", async (c) => {
         o.troops,
         o.jinetes ?? 0,
         o.catapultas ?? 0,
+        o.kind === "move" && o.captain ? 1 : 0,
         o.kind === "move" ? o.to : o.target,
         o.kind === "support" ? o.supportedFrom : null,
       ),
@@ -912,6 +940,29 @@ app.put("/api/partidas/:id/ordenes", async (c) => {
   ];
   await c.env.DB.batch(statements);
   return c.json({ ok: true, ordenes: orders.length });
+});
+
+/**
+ * Soltar a un Capitán preso (diseño v3). Lo usa quien lo tiene, por ejemplo
+ * tras cobrar un rescate en el comercio. El Capitán vuelve a su castillo.
+ */
+app.post("/api/partidas/:id/capitan/:casa/soltar", async (c) => {
+  const m = await activeMembership(c);
+  if (m instanceof Response) return m;
+  const prisoner = Number(c.req.param("casa"));
+  const db = c.env.DB;
+  const castle = await db.prepare("SELECT id FROM tiles WHERE game_id = ? AND castle_of = ?").bind(m.game.id, prisoner).first<{ id: number }>();
+  if (!castle) return fail(c, 404, "Esa casa no existe.");
+  const res = await db.batch([
+    db.prepare(
+      "UPDATE houses SET captain_tile = ?, captain_captured_by = NULL, captain_free_at = NULL WHERE id = ? AND game_id = ? AND captain_captured_by = ?",
+    ).bind(castle.id, prisoner, m.game.id, m.house.id),
+    db.prepare(
+      "INSERT INTO event_log (game_id, type, visible_to, payload) SELECT ?, 'capitan_libre', NULL, ? WHERE changes() > 0",
+    ).bind(m.game.id, JSON.stringify({ house: prisoner, by: m.house.id, reason: "liberado" })),
+  ]);
+  if ((res[0]?.meta.changes ?? 0) === 0) return fail(c, 409, "No tienes preso a ese Capitán.");
+  return c.json({ ok: true });
 });
 
 // ---------------------------------------------------------------------------

@@ -7,6 +7,7 @@ import {
   fortifyResolutions,
   parseResolutionDays,
   type AchievementKey,
+  type Captain,
   type BuildingKind,
   type HouseId,
   type PrestigeBreakdown,
@@ -75,6 +76,12 @@ export interface HouseRow extends Resources {
   bot_personality: string | null;
   /** Noches que ha tenido rodeado un castillo ajeno (Prestigio, diseño v3). */
   siege_nights: number;
+  /** Capitán (diseño v3): casilla donde está (null si preso), quién lo tiene y hasta qué resolución. */
+  captain_tile: number | null;
+  captain_captured_by: number | null;
+  captain_free_at: number | null;
+  /** Puntos de Gloria (Prestigio). */
+  glory: number;
 }
 
 export interface TileRow {
@@ -187,8 +194,19 @@ export async function computeAllPrestige(
         tradePartners: partners.get(h.id)?.size ?? 0,
         achievements: ach,
         siegeNights: h.siege_nights ?? 0,
+        glory: h.glory ?? 0,
       }),
     );
   }
   return out;
+}
+
+/** Capitanes de las casas, en el formato del motor. */
+export function captainsOf(houses: HouseRow[]): Captain[] {
+  return houses.map((h) => ({
+    house: h.id,
+    tile: h.captain_tile,
+    capturedBy: h.captain_captured_by,
+    freeAt: h.captain_free_at,
+  }));
 }

@@ -114,6 +114,21 @@ export const ICONS = {
     ".kkkkkkkkkk.",
     "............",
   ],
+  // Yelmo de capitán con penacho.
+  capitan: [
+    ".....kk.....",
+    "....kllk....",
+    "...kllmk....",
+    "....kmk.....",
+    "...kkkkkk...",
+    "..klmmmmdk..",
+    ".klmmmmmmdk.",
+    ".kmkkkkkkmk.",
+    ".kmk.kk.kmk.",
+    ".kmmkmmkmdk.",
+    "..kddmmddk..",
+    "...kkkkkk...",
+  ],
 } as const;
 
 export type IconName = keyof typeof ICONS;

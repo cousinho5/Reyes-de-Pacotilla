@@ -3,6 +3,7 @@
 // la restricción UNIQUE hace fallar el lote entero y no se repite nada.
 
 import {
+  gloryFromEvents,
   EVENTS,
   applyEventNow,
   eventCombat,
@@ -46,6 +47,7 @@ import {
   type GameRow,
   type HouseRow,
   rhythmOf,
+  captainsOf,
 } from "./state";
 
 const ABSENT_AFTER_MS = ABSENT_AFTER_DAYS * 24 * 60 * 60 * 1000;
@@ -247,7 +249,7 @@ export async function runResolution(env: NotifyEnv, game: GameRow, n: number, no
   const [tileRows, orderRows, houses, achieved] = await Promise.all([
     loadTiles(db, game.id),
     db.prepare(
-      "SELECT house_id, kind, from_tile_id, troops, jinetes, catapultas, target_tile_id, supported_from_tile_id FROM orders WHERE game_id = ? AND resolution_no = ? ORDER BY id",
+      "SELECT house_id, kind, from_tile_id, troops, jinetes, catapultas, captain, target_tile_id, supported_from_tile_id FROM orders WHERE game_id = ? AND resolution_no = ? ORDER BY id",
     )
       .bind(game.id, n)
       .all<{
@@ -257,6 +259,7 @@ export async function runResolution(env: NotifyEnv, game: GameRow, n: number, no
         troops: number;
         jinetes: number;
         catapultas: number;
+        captain: number;
         target_tile_id: number;
         supported_from_tile_id: number | null;
       }>(),
@@ -267,7 +270,15 @@ export async function runResolution(env: NotifyEnv, game: GameRow, n: number, no
   const tiles = toEngineTiles(tileRows);
   const orders: Order[] = orderRows.results.map((o) =>
     o.kind === "move"
-      ? { kind: "move", house: o.house_id, from: o.from_tile_id, to: o.target_tile_id, troops: o.troops, ...typesOf(o) }
+      ? {
+          kind: "move",
+          house: o.house_id,
+          from: o.from_tile_id,
+          to: o.target_tile_id,
+          troops: o.troops,
+          ...typesOf(o),
+          ...(o.captain ? { captain: true } : {}),
+        }
       : o.kind === "siege"
         ? { kind: "siege", house: o.house_id, from: o.from_tile_id, target: o.target_tile_id, troops: o.troops, ...typesOf(o) }
         : {
@@ -292,6 +303,7 @@ export async function runResolution(env: NotifyEnv, game: GameRow, n: number, no
     resolution: n,
     tiles,
     orders,
+    captains: captainsOf(houses),
     absentHouses,
     ...cardEffects,
     ...(kind === "miercoles" ? eventCombat(event) : {}),
@@ -425,6 +437,23 @@ export async function runResolution(env: NotifyEnv, game: GameRow, n: number, no
         t.id,
       ),
     );
+  }
+  // Capitanes: dónde acaba cada uno (o quién lo tiene preso), y la Gloria de la noche.
+  for (const c of result.captains) {
+    const h = houses.find((x) => x.id === c.house);
+    if (!h) continue;
+    if (h.captain_tile === c.tile && h.captain_captured_by === (c.capturedBy ?? null) && h.captain_free_at === (c.freeAt ?? null)) continue;
+    statements.push(
+      db.prepare("UPDATE houses SET captain_tile = ?, captain_captured_by = ?, captain_free_at = ? WHERE id = ?").bind(
+        c.tile,
+        c.capturedBy ?? null,
+        c.freeAt ?? null,
+        c.house,
+      ),
+    );
+  }
+  for (const [house, g] of gloryFromEvents(result.events)) {
+    statements.push(db.prepare("UPDATE houses SET glory = glory + ? WHERE id = ?").bind(g, house));
   }
   // Asedio a un castillo: una noche más de Prestigio para quien lo rodea.
   for (const e of result.events) {

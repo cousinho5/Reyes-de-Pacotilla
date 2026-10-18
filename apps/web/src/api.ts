@@ -69,6 +69,8 @@ export interface HouseInfo {
   prestigio?: PrestigeBreakdown;
   logros?: { clave: string; veces: number }[];
   objetivo?: (ObjectiveView & { cumplido: boolean }) | null;
+  /** Capitán de la casa: su nombre y, si está preso, de quién y hasta qué resolución. */
+  capitan?: { nombre: string; presoDe: number | null; libreEn: number | null };
 }
 
 export interface OfferInfo {
@@ -103,6 +105,8 @@ export interface TileView {
   catapultas?: number;
   fortifiedUntil: number | null;
   castleOf?: number | null;
+  /** Capitanes que hay en la casilla (el tuyo siempre; los ajenos, si ves sus tropas). */
+  capitanes?: number[];
   /** Asedio: casa que la sitia y noches que lleva. */
   besiegedBy?: number | null;
   siegeNights?: number;
@@ -122,6 +126,8 @@ export interface OrderView {
   /** De esas tropas, Jinetes y Catapultas (el resto, Mesnada). */
   jinetes?: number;
   catapultas?: number;
+  /** El Capitán va con este grupo. */
+  capitan?: boolean;
 }
 
 export interface EventView {
@@ -241,6 +247,7 @@ export const api = {
   recruit: (id: number, cantidad: number, tipo: "mesnada" | "jinetes" | "catapultas" = "mesnada") =>
     call<{ ok: true }>("POST", `/partidas/${id}/reclutar`, { cantidad, tipo }),
   fortify: (id: number, casilla: number) => call<{ ok: true }>("POST", `/partidas/${id}/fortificar`, { casilla }),
+  releaseCaptain: (id: number, casa: number) => call<{ ok: true }>("POST", `/partidas/${id}/capitan/${casa}/soltar`),
   setHelp: (id: number, recurso: Resource) => call<{ ok: true }>("POST", `/partidas/${id}/ayuda`, { recurso }),
   saveOrders: (id: number, ordenes: OrderView[]) => call<{ ok: true }>("PUT", `/partidas/${id}/ordenes`, { ordenes }),
   newCode: () => call<{ codigoAcceso: string }>("POST", "/codigo-nuevo"),

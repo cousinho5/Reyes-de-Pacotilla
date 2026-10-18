@@ -1,8 +1,8 @@
-import { ResourceIcon } from "../art";
+import { Icon, ResourceIcon } from "../art";
 import { useState } from "react";
 import { BUILDINGS, RESOURCES, UNIT_KINDS, canAfford, recruitCost as costOf, upgradeCost, unitsOf, type Resource, type Resources, type UnitKind } from "@reyes/engine";
 import { api, type GameState } from "../api";
-import { BUILDING_LABEL, RESOURCE_LABEL, UNIT_LABEL, UNIT_NOTE, UNIT_ONE } from "../ui";
+import { BUILDING_LABEL, RESOURCE_LABEL, UNIT_LABEL, UNIT_NOTE, UNIT_ONE, houseName } from "../ui";
 import { CardsPanel } from "./CardsPanel";
 import { HouseSettings } from "./HouseSettings";
 
@@ -166,7 +166,53 @@ export function CastlePanel({ state, gameId, act }: Props) {
         </button>
       </section>
 
+      <CaptainCard state={state} gameId={gameId} act={act} />
+
       <HouseSettings state={state} act={act} />
     </div>
+  );
+}
+
+/** Tu Capitán (dónde está o de quién es preso) y los Capitanes que tienes presos. */
+function CaptainCard({ state, gameId, act }: Props) {
+  const me = state.casas.find((h) => h.id === state.yo.casa);
+  if (!me?.capitan) return null;
+  const where = state.casillas?.find((t) => t.capitanes?.includes(me.id));
+  const prisoners = state.casas.filter((h) => h.capitan?.presoDe === me.id);
+  return (
+    <section className="card">
+      <h2>
+        <Icon name="capitan" size={20} color="#d6a64b" /> {me.capitan.nombre}
+      </h2>
+      {me.capitan.presoDe != null ? (
+        <p>
+          Preso de {houseName(state.casas, me.capitan.presoDe)}. Se escapará en la resolución {me.capitan.libreEn}, salvo que te lo
+          devuelvan antes: puedes ofrecer un rescate en el Comercio.
+        </p>
+      ) : (
+        <p>
+          Está en {where?.nombre ?? "tu castillo"}. Suma 2 de fuerza al grupo con el que va (lo eliges al dar una orden desde su
+          casilla) y a la defensa de la casilla donde está. Si su grupo pierde contra otra casa, cae preso.
+        </p>
+      )}
+      {prisoners.length > 0 && (
+        <>
+          <h3>Tus presos</h3>
+          <ul className="list">
+            {prisoners.map((h) => (
+              <li key={h.id}>
+                <span>
+                  {h.capitan!.nombre}, de {h.nombre} (se escapa en la resolución {h.capitan!.libreEn})
+                </span>
+                <button className="link" onClick={() => act(() => api.releaseCaptain(gameId, h.id), `${h.capitan!.nombre} vuelve a casa.`)}>
+                  Soltar
+                </button>
+              </li>
+            ))}
+          </ul>
+          <p className="hint">Cobra el rescate en el Comercio antes de soltarlo: Fray Abundio no se fía de nadie.</p>
+        </>
+      )}
+    </section>
   );
 }

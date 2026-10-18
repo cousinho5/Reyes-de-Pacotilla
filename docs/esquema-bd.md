@@ -232,7 +232,11 @@ CREATE TABLE houses (
   UNIQUE (game_id, user_id),
   UNIQUE (game_id, color),
   UNIQUE (game_id, shield_shape, symbol),
-  siege_nights    INTEGER NOT NULL DEFAULT 0      -- noches rodeando castillos ajenos: Prestigio (0008)
+  siege_nights    INTEGER NOT NULL DEFAULT 0,     -- noches rodeando castillos ajenos: Prestigio (0008)
+  captain_tile    INTEGER REFERENCES tiles(id),   -- dónde está el Capitán; NULL si está preso (0009)
+  captain_captured_by INTEGER REFERENCES houses(id), -- casa que lo tiene preso (0009)
+  captain_free_at INTEGER,                        -- resolución en la que se fuga (0009)
+  glory           INTEGER NOT NULL DEFAULT 0 CHECK (glory >= 0)   -- Gloria: Prestigio permanente por batallas (0009)
 );
 
 -- Cinco edificios por casa, dentro del castillo. Nunca se pierden.
@@ -285,6 +289,7 @@ CREATE TABLE orders (
   catapultas      INTEGER NOT NULL DEFAULT 0 CHECK (catapultas >= 0),  -- de esas tropas (0007)
   target_tile_id  INTEGER NOT NULL REFERENCES tiles(id), -- destino (move) o casilla apoyada (support)
   supported_from_tile_id INTEGER REFERENCES tiles(id),   -- support: origen del ataque apoyado; NULL = apoyar la defensa
+  captain         INTEGER NOT NULL DEFAULT 0 CHECK (captain IN (0, 1)),  -- 1 si el Capitán va con este grupo (0009)
   updated_at      TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
   CHECK (kind = 'support' OR supported_from_tile_id IS NULL),
   CHECK (from_tile_id <> target_tile_id)

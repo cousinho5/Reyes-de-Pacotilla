@@ -53,6 +53,24 @@ npm run simular -- --semanas 4                    # duración de la partida
 npm run simular -- --json datos.json              # además, todos los datos
 ```
 
+## Capitán y Gloria (18 de octubre de 2026, fase 4 del sistema de guerra v3, aplicado)
+
+600 partidas de 6 semanas con hexágonos, resolución diaria, terreno, tipos de tropa y asedios en ambas columnas (`npm run simular -- --partidas 600`, `--capitan no` para comparar).
+
+| Dato (por partida) | Sin Capitán ni Gloria | Con Capitán y Gloria |
+| --- | --- | --- |
+| Combates entre casas (4 / 8 casas) | 30,9 / 65,2 | 39,2 / 82,9 |
+| Ataques que toman la casilla | 79% | 72% |
+| Capitanes capturados | — | 6,4 |
+| Arquitecta (veces lo esperado) | 0,5 | 0,7 |
+| Guerrero (veces lo esperado) | 1,3 | 1,3 |
+| El líder de la semana 2 gana | 29% | 27% |
+| Prestigio medio del ganador | 64,8 | 72,3 |
+
+Lo que sale: la Gloria empuja a pelear (un 25% más de batallas) sin que gane siempre el más agresivo, porque el +2 del Capitán también defiende y el honor premia a quien cae ante una fuerza muy superior. La arquitecta mejora porque su Capitán defiende el castillo. El Prestigio del ganador sube unos 7 puntos: hay que vigilar la inflación del marcador.
+
+Veteranos (tropas que ganan experiencia) quedan aplazados: las tropas de una casilla se juntan en un solo número, así que no hay "grupo" que recuerde sus batallas. Hace falta otro modelo de datos.
+
 ## Asedios (18 de octubre de 2026, fase 3b del sistema de guerra v3, aplicado)
 
 600 partidas de 6 semanas con hexágonos, resolución diaria, terreno y tipos de tropa en ambas columnas (`npm run simular -- --partidas 600`, `--asedios no` para comparar).

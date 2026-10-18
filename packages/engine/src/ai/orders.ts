@@ -9,7 +9,7 @@ import { checkOrders, defenseMultiplier, walled } from "../combat";
 import { areAdjacent } from "../map";
 import { marchKind } from "../terrain";
 import { tilePrestige } from "../prestige";
-import { OBJECTIVE_TARGETS, PRESTIGE, SIEGE, STRETCH_FREE_TILES, STRETCH_PAN, TILE_PRODUCTION, TROOP_COST, UNITS } from "../rules";
+import { CAPTAIN, OBJECTIVE_TARGETS, PRESTIGE, SIEGE, STRETCH_FREE_TILES, STRETCH_PAN, TILE_PRODUCTION, TROOP_COST, UNITS } from "../rules";
 import { isPlain, totalUnits, unitFields, unitsOf, type UnitKind, type Units } from "../units";
 import type { Order, Tile, TileId } from "../types";
 import { PRESTIGE_UNIT, valueOf, type Situation } from "./view";
@@ -147,9 +147,12 @@ export function planOrders(s: Situation): Order[] {
       .map((t) => ({ t, n: room(t) }))
       .filter((x) => x.n > 0)
       .sort((a, b) => b.n - a.n || a.t.id - b.t.id);
-    const strength = main.n + helpers.reduce((a, h) => a + h.n, 0);
+    const strength =
+      main.n + helpers.reduce((a, h) => a + h.n, 0) + (CAPTAIN.enabled && view.captainTile === main.t.id ? CAPTAIN.strength : 0);
     if (strength < target.need) continue;
-    orders.push({ kind: "move", house, from: main.t.id, to: target.tile.id, troops: main.n });
+    // El Capitán va con el primer ataque que sale de su casilla (suma fuerza, pero puede caer preso).
+    const withCaptain = CAPTAIN.enabled && view.captainTile === main.t.id && !orders.some((o) => o.kind === "move" && o.captain);
+    orders.push({ kind: "move", house, from: main.t.id, to: target.tile.id, troops: main.n, ...(withCaptain ? { captain: true } : {}) });
     moved.set(main.t.id, (moved.get(main.t.id) ?? 0) + main.n);
     free.set(main.t.id, Math.max(0, (free.get(main.t.id) ?? 0) - main.n));
     // Solo los apoyos necesarios, empezando por los más grandes.

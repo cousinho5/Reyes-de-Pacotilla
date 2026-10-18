@@ -33,7 +33,7 @@ export function OrdersPanel({ state, draft, setDraft }: Props) {
     }));
     const orders: Order[] = draft.map((o) =>
       o.tipo === "mover"
-        ? { kind: "move", house: state.yo.casa, from: o.desde, to: o.hacia, troops: o.tropas, jinetes: o.jinetes, catapultas: o.catapultas }
+        ? { kind: "move", house: state.yo.casa, from: o.desde, to: o.hacia, troops: o.tropas, jinetes: o.jinetes, catapultas: o.catapultas, captain: o.capitan }
         : o.tipo === "sitiar"
           ? { kind: "siege", house: state.yo.casa, from: o.desde, target: o.hacia, troops: o.tropas, jinetes: o.jinetes, catapultas: o.catapultas }
           : {
@@ -47,7 +47,13 @@ export function OrdersPanel({ state, draft, setDraft }: Props) {
             catapultas: o.catapultas,
           },
     );
-    const r = resolveCampaign({ resolution: (state.partida.resolucionActual ?? 0) + 1, tiles: known, orders });
+    const myCaptain = tiles.find((t) => t.capitanes?.includes(state.yo.casa ?? -1))?.id ?? null;
+    const r = resolveCampaign({
+      resolution: (state.partida.resolucionActual ?? 0) + 1,
+      tiles: known,
+      orders,
+      captains: state.yo.casa != null && myCaptain != null ? [{ house: state.yo.casa, tile: myCaptain }] : [],
+    });
     return r.events
       .filter((e) => e.type !== "movimiento")
       .map((e, i) => ({ i, text: describeEvent({ id: i, tipo: e.type, resolucion: null, datos: e as never }, state.casas, tiles) }))
@@ -76,6 +82,7 @@ export function OrdersPanel({ state, draft, setDraft }: Props) {
                   ) : o.tipo === "mover" ? (
                     <>
                       <strong>{troopsText(o.tropas, o.jinetes, o.catapultas)}</strong> de {name(o.desde)} → <strong>{name(o.hacia)}</strong>
+                      {o.capitan && " (con el Capitán)"}
                     </>
                   ) : (
                     <>
