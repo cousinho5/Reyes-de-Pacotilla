@@ -281,7 +281,7 @@ CREATE TABLE orders (
   id              INTEGER PRIMARY KEY,
   game_id         INTEGER NOT NULL REFERENCES games(id) ON DELETE CASCADE,
   house_id        INTEGER NOT NULL REFERENCES houses(id) ON DELETE CASCADE,
-  resolution_no   INTEGER NOT NULL,                  -- resolución a la que van dirigidas
+  resolution_no   INTEGER NOT NULL,                  -- resolución a la que van dirigidas (la próxima, o una de las siguientes si van en cola)
   kind            TEXT    NOT NULL CHECK (kind IN ('move','support','siege')),  -- 'siege' desde 0008
   from_tile_id    INTEGER NOT NULL REFERENCES tiles(id),
   troops          INTEGER NOT NULL CHECK (troops > 0),
@@ -334,7 +334,7 @@ CREATE TABLE event_log (
   game_id         INTEGER NOT NULL REFERENCES games(id) ON DELETE CASCADE,
   resolution_id   INTEGER REFERENCES resolutions(id),
   at              TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
-  type            TEXT    NOT NULL,                  -- combate, rebote, conquista, trato, pacto_roto...
+  type            TEXT    NOT NULL,                  -- combate, rebote, conquista, trato, estandartes (solo para quien los ve)...
   visible_to      INTEGER REFERENCES houses(id),
   payload         TEXT    NOT NULL                   -- JSON con los datos (casas, casilla, tropas...)
 );

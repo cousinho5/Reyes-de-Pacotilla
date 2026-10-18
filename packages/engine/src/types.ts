@@ -149,7 +149,15 @@ export type CampaignEvent =
       previousOwner: HouseId | null;
       conquered: boolean;
       survivors: number;
-      sides: { house: HouseId | null; role: "defensa" | "ataque"; strength: number; troops: number; supporters: HouseId[] }[];
+      sides: {
+        house: HouseId | null;
+        role: "defensa" | "ataque";
+        strength: number;
+        troops: number;
+        supporters: HouseId[];
+        /** Ataque: casillas de las que salen sus tropas (para la repetición de la noche). */
+        from?: TileId[];
+      }[];
     }
   | {
       type: "tregua";

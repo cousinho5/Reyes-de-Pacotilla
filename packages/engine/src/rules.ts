@@ -86,6 +86,15 @@ export const CAPTAIN = {
   strength: 2,
   escapeAfter: 7,
 };
+/**
+ * Órdenes en cola (diseño v3, fase 5): se pueden dejar órdenes para `nights`
+ * resoluciones seguidas (esta noche y las siguientes). Al llegar su noche, cada
+ * orden se ajusta a las tropas que queden en su casilla.
+ */
+export const QUEUE = {
+  nights: 3,
+};
+
 export const GLORY = {
   enabled: true,
   perVictory: 1,

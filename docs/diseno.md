@@ -200,7 +200,7 @@ Lo que lleva al jugador a entrar a diario no es una obligación, sino que cada d
 
 ## 8. Órdenes y combate
 
-> **Sistema de guerra v3** (decidido el 17 de octubre de 2026). **Ya hecho:** casillas hexagonales, una resolución cada día a las 22:00, terreno que cuenta (sección 8.8), tres tipos de tropa (sección 8.9), asedios (sección 8.10) y el Capitán con la Gloria (sección 8.11). **Pendiente:** repetición animada de cada noche, avisos de amenaza y veteranos. La propuesta completa está en el documento "Reyes de Pacotilla: propuesta del nuevo sistema de guerra". Primeros resultados del simulador en `docs/simulaciones.md`. Hasta que esté hecho, rige lo que sigue.
+> **Sistema de guerra v3** (decidido el 17 de octubre de 2026). **Ya hecho:** casillas hexagonales, una resolución cada día a las 22:00, terreno que cuenta (sección 8.8), tres tipos de tropa (sección 8.9), asedios (sección 8.10), el Capitán con la Gloria (sección 8.11) y la repetición de la noche con avisos y órdenes en cola (sección 8.12). **Pendiente:** veteranos. La propuesta completa está en el documento "Reyes de Pacotilla: propuesta del nuevo sistema de guerra". Primeros resultados del simulador en `docs/simulaciones.md`. Hasta que esté hecho, rige lo que sigue.
 
 ### 8.1 Órdenes
 
@@ -324,6 +324,16 @@ Simulación (300 partidas de 6 semanas, `docs/simulaciones.md`): los bots reclut
 - **Gloria (Prestigio permanente):** +1 por cada batalla ganada contra otra casa (atacando, defendiendo o en un choque de frente) y +1 de **honor** a quien pierde una casilla contra al menos el doble de fuerza. Máximo 8 en la partida.
 
 Simulación (600 partidas de 6 semanas): un 25-27% más de batallas entre casas, los ataques triunfan algo menos (79% → 72%), caen unos 6 Capitanes por partida y el líder de la semana 2 gana igual o algo menos (29% → 27%).
+
+### 8.12 Repetición de la noche, avisos y órdenes en cola (diseño v3, fase 5)
+
+- **Repetición de la noche.** Al abrir el mapa tras una resolución, el mapa cuenta en unos 20 segundos lo que pasó: los ejércitos marchan de casilla en casilla, la cámara se acerca a cada batalla con la fuerza de cada bando y sus bajas, la casilla cambia de color con un barrido y Fray Abundio pone una línea del banco de frases (siempre la misma para la misma batalla). Después, los asedios con sus tiendas y los repliegues. Sale sola una vez por noche, se puede saltar y se puede volver a ver con "Ver la noche". Solo dibuja lo que la casa ve; las batallas fuera de su vista se cuentan al final.
+- **Estandartes a la vista.** Si un grupo de otra casa entra esta noche en una casilla vecina a las tuyas, el parte de las 22:00 lo destaca ("Se ven estandartes de la Casa del Nabo en el Prado Pisoteado (5 tropas), junto a tu Molino") y la casilla tuya lleva un estandarte de aviso. En un bosque ajeno no se ve quién hay, así que no hay aviso.
+- **Amenaza en el mapa.** Las casillas tuyas que un enemigo a la vista puede atacar en la próxima resolución (vecinas, por camino o a la carga) llevan un borde rojo discontinuo. Las órdenes del enemigo no se ven: es lo que podría hacer, no lo que hará. Los castillos no se marcan porque no se pueden atacar.
+- **Órdenes en cola.** Se pueden dejar órdenes para la próxima resolución y las dos siguientes, eligiendo la noche encima del mapa. Para las noches siguientes, el mapa muestra cómo quedaría si todo sale como esperas (con lo que ves y sin las órdenes ajenas), y las órdenes de otras noches se ven punteadas. Al llegar su noche, **cada orden sale con las tropas que queden** en su casilla (por tipos y en el orden en que se dieron); si no queda ninguna, o la casilla ya no es tuya, no se cumple. Al quitar una orden, se quitan también las de la cola que dependían de ella.
+- **Simular varias noches.** La simulación de la pestaña Órdenes recorre noche a noche todas las órdenes de la cola.
+
+El ajuste a las tropas que queden también vale para las órdenes de la próxima noche (por ejemplo, si los bandidos se llevaron tropas). En la simulación de 100 partidas no cambia nada: los bots dan siempre órdenes que caben.
 
 ## 9. Comercio, subasta y pactos
 

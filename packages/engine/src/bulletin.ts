@@ -140,37 +140,22 @@ export function writeBulletin(input: BulletinInput): Bulletin {
   let neutralSkipped = 0;
   for (const f of combats) {
     const d = f.data as unknown as CombatData;
-    const def = d.sides.find((s) => s.role === "defensa");
-    const atk = d.sides.filter((s) => s.role === "ataque").sort((a, b) => b.strength - a.strength);
-    if (d.conquered && d.previousOwner == null) {
+    const phrase = combatPhrase(d, name, tile);
+    if (!phrase) continue;
+    if (phrase.neutral) {
       // Conquista de una neutral.
       if (neutralLines >= MAX_NEUTRAL_BATTLES) {
         neutralSkipped++;
         continue;
       }
-      const w = atk.find((s) => s.house === d.winner);
-      battles.push(say("combate.neutral", { ganador: name(d.winner), casilla: tile(d.tile), n: w?.troops ?? 0, m: def?.troops ?? 0 }));
+      battles.push(say(phrase.key, phrase.vars));
       neutralLines++;
       continue;
     }
     if (houseLines >= MAX_HOUSE_BATTLES) continue;
-    if (d.conquered) {
-      lostTile.add(d.previousOwner!);
-      const w = atk.find((s) => s.house === d.winner);
-      const helpers = (w?.supporters ?? []).filter((h) => h !== d.winner);
-      const vars = { ganador: name(d.winner), perdedor: name(d.previousOwner), casilla: tile(d.tile), n: w?.troops ?? 0, m: def?.troops ?? 0 };
-      if (helpers.length > 0) battles.push(say("combate.apoyo_ataque", { ...vars, apoyo: name(helpers[0]) }));
-      else if (atk.length > 1) battles.push(say("combate.tumulto", vars));
-      else battles.push(say("combate.gana_atacante", vars));
-      houseLines++;
-    } else if (def && atk[0]) {
-      // Resiste el defensor (una casa o la guarnición neutral).
-      const helpers = (def.supporters ?? []).filter((h) => h !== d.winner);
-      const vars = { defensor: name(d.winner), atacante: name(atk[0].house), casilla: tile(d.tile), n: def.troops, m: atk[0].troops };
-      if (helpers.length > 0 && d.winner != null) battles.push(say("combate.apoyo_defensa", { ...vars, apoyo: name(helpers[0]) }));
-      else battles.push(say("combate.resiste", vars));
-      houseLines++;
-    }
+    if (d.conquered) lostTile.add(d.previousOwner!);
+    battles.push(say(phrase.key, phrase.vars));
+    houseLines++;
   }
   for (const f of input.facts.filter((x) => x.type === "rebote").slice(0, 2)) {
     const hs = f.data.houses as HouseId[];
@@ -325,6 +310,61 @@ interface CombatData {
   previousOwner: HouseId | null;
   conquered: boolean;
   sides: { house: HouseId | null; role: "defensa" | "ataque"; strength: number; troops: number; supporters?: HouseId[] }[];
+}
+
+/** Qué tipo de frase toca a un combate y con qué cifras (las del principio del combate). */
+function combatPhrase(
+  d: CombatData,
+  name: (id: unknown) => string,
+  tile: (id: unknown) => string,
+): { key: PhraseKey; vars: Record<string, string | number>; neutral: boolean } | null {
+  const def = d.sides.find((s) => s.role === "defensa");
+  const atk = d.sides.filter((s) => s.role === "ataque").sort((a, b) => b.strength - a.strength);
+  if (d.conquered && d.previousOwner == null) {
+    const w = atk.find((s) => s.house === d.winner);
+    return {
+      key: "combate.neutral",
+      vars: { ganador: name(d.winner), casilla: tile(d.tile), n: w?.troops ?? 0, m: def?.troops ?? 0 },
+      neutral: true,
+    };
+  }
+  if (d.conquered) {
+    const w = atk.find((s) => s.house === d.winner);
+    const helpers = (w?.supporters ?? []).filter((h) => h !== d.winner);
+    const vars = { ganador: name(d.winner), perdedor: name(d.previousOwner), casilla: tile(d.tile), n: w?.troops ?? 0, m: def?.troops ?? 0 };
+    if (helpers.length > 0) return { key: "combate.apoyo_ataque", vars: { ...vars, apoyo: name(helpers[0]) }, neutral: false };
+    return { key: atk.length > 1 ? "combate.tumulto" : "combate.gana_atacante", vars, neutral: false };
+  }
+  if (def && atk[0]) {
+    // Resiste el defensor (una casa o la guarnición neutral).
+    const helpers = (def.supporters ?? []).filter((h) => h !== d.winner);
+    const vars = { defensor: name(d.winner), atacante: name(atk[0].house), casilla: tile(d.tile), n: def.troops, m: atk[0].troops };
+    if (helpers.length > 0 && d.winner != null) return { key: "combate.apoyo_defensa", vars: { ...vars, apoyo: name(helpers[0]) }, neutral: false };
+    return { key: "combate.resiste", vars, neutral: false };
+  }
+  return null;
+}
+
+/**
+ * Una línea de Fray Abundio para un combate (repetición de la noche). La
+ * variante sale de `seed`, así que la misma batalla dice siempre lo mismo.
+ * `houseName`: nombre de cada casa tal cual ("Casa del Nabo").
+ */
+export function battleLine(
+  data: Record<string, unknown>,
+  houseName: (id: HouseId) => string | undefined,
+  tileName: string,
+  seed: string,
+): string | null {
+  const name = (id: unknown) => {
+    const n = id == null ? undefined : houseName(id as HouseId);
+    return n ? houseInSentence(n) : "la guarnición neutral";
+  };
+  const phrase = combatPhrase(data as unknown as CombatData, name, () => tileName);
+  if (!phrase) return null;
+  const all = PHRASES[phrase.key] as readonly string[];
+  const pick = all[Math.floor(seededRandom(`${seed}:${phrase.key}`)() * all.length)]!;
+  return fill(pick, phrase.vars);
 }
 
 function attackersOf(f: BulletinFact): (HouseId | null)[] {

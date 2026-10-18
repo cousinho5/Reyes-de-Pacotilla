@@ -129,6 +129,51 @@ export const ICONS = {
     "..kddmmddk..",
     "...kkkkkk...",
   ],
+  // Estandarte en su asta: aviso de "se ven estandartes".
+  estandarte: [
+    ".k..........",
+    ".kkkkkkkk...",
+    ".kllmmmmmk..",
+    ".klmmmmmmmk.",
+    ".kmmmmmmmk..",
+    ".kmmmmmmmmk.",
+    ".kddmmmdk...",
+    ".kkkkkkk....",
+    ".k..........",
+    ".k..........",
+    ".k..........",
+    "kkk.........",
+  ],
+  // Humo de batalla (repetición de la noche).
+  humo: [
+    "............",
+    "....kkk.....",
+    "...kllmk.kk.",
+    ".kkkllmmkllk",
+    "kllmmmmmmmmk",
+    "klmmmmmmdmk.",
+    ".kmmdmmmmmk.",
+    "kllmmmmdmmmk",
+    "kmmmmdmmmddk",
+    ".kddmmmdddk.",
+    "..kkkdddkk..",
+    ".....kkk....",
+  ],
+  // Tienda de campaña de un asedio.
+  tienda: [
+    "............",
+    ".....k......",
+    ".....kk.....",
+    "....kllk....",
+    "...klmmdk...",
+    "...klmkmdk..",
+    "..klmk.kmdk.",
+    "..kmmk.kmdk.",
+    ".klmmk.kmmdk",
+    ".kmmdk.kmddk",
+    "kkkkkkkkkkkk",
+    "............",
+  ],
 } as const;
 
 export type IconName = keyof typeof ICONS;

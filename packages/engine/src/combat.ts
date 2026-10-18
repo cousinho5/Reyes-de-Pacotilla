@@ -318,6 +318,7 @@ export function resolveCampaign(input: CampaignInput): CampaignResult {
         strength: a.strength,
         troops: a.troops,
         supporters: a.supporters,
+        from: unique(a.moves.map((m) => m.from)),
       })),
     ];
 

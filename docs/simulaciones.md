@@ -53,6 +53,10 @@ npm run simular -- --semanas 4                    # duración de la partida
 npm run simular -- --json datos.json              # además, todos los datos
 ```
 
+## Repetición, avisos y órdenes en cola (18 de octubre de 2026, fase 5 del sistema de guerra v3, aplicado)
+
+No cambia valores del juego: añade la repetición de la noche, los avisos y las órdenes en cola. La única regla nueva es que una orden sale con las tropas que queden en su casilla. El simulador la aplica igual que el servidor (`fitOrders` antes de `resolveCampaign`). Con 100 partidas de 6 semanas las cifras siguen en la línea de la fase 4: 6,1 Capitanes capturados por partida, el líder de la semana 2 gana el 21% y el Prestigio medio del ganador es 72,5. Los bots no usan la cola; lo que aporte se verá en la partida piloto.
+
 ## Capitán y Gloria (18 de octubre de 2026, fase 4 del sistema de guerra v3, aplicado)
 
 600 partidas de 6 semanas con hexágonos, resolución diaria, terreno, tipos de tropa y asedios en ambas columnas (`npm run simular -- --partidas 600`, `--capitan no` para comparar).
