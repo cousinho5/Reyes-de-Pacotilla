@@ -25,6 +25,8 @@ import {
   totalResolutions,
   withRhythm,
   resolveCampaign,
+  fitOrders,
+  bannersSeen,
   type AutopilotTemplate,
   type BuildingKind,
   type CampaignEvent,
@@ -302,7 +304,8 @@ export async function runResolution(env: NotifyEnv, game: GameRow, n: number, no
   const result = resolveCampaign({
     resolution: n,
     tiles,
-    orders,
+    // Órdenes en cola: cada una se ajusta a las tropas que queden en su casilla.
+    orders: fitOrders(tiles, orders),
     captains: captainsOf(houses),
     absentHouses,
     ...cardEffects,
@@ -402,6 +405,16 @@ export async function runResolution(env: NotifyEnv, game: GameRow, n: number, no
       if (upkeep.paid > 0) extraStatements.push(db.prepare("UPDATE houses SET pan = pan - ? WHERE id = ?").bind(upkeep.paid, h.id));
       extraEvents.push({ type: "mantenimiento", visibleTo: h.id, payload: { house: h.id, ...upkeep, tiles: undefined } });
     }
+  }
+
+  // Estandartes a la vista: grupos ajenos que esta noche han entrado junto a tus tierras.
+  const tileName = new Map(tileRows.map((t) => [t.id, t.name]));
+  const sightings = new Map<number, { house: number; tile: number; troops: number; near: number }[]>();
+  for (const h of houses) {
+    const seen = bannersSeen(finalTiles, result.events, h.id);
+    if (seen.length === 0) continue;
+    sightings.set(h.id, seen);
+    for (const b of seen) extraEvents.push({ type: "estandartes", visibleTo: h.id, payload: { ...b, viewer: h.id } });
   }
 
   const before = new Map(tiles.map((t) => [t.id, t]));
@@ -512,12 +525,22 @@ export async function runResolution(env: NotifyEnv, game: GameRow, n: number, no
     if (e.type === "rebote") e.houses.forEach((h) => fought.add(h));
   }
   for (const h of houses) {
+    const seen = sightings.get(h.id) ?? [];
+    const banners =
+      seen.length > 0
+        ? ` Se ven estandartes de ${houses.find((x) => x.id === seen[0]!.house)?.name ?? "otra casa"} en ${tileName.get(seen[0]!.tile) ?? "una casilla vecina"}${
+            seen.length > 1 ? ` y ${seen.length - 1} ${seen.length === 2 ? "aviso" : "avisos"} más` : ""
+          }.`
+        : "";
     await notifyHouses(env, [h.id], {
       kind: "resolucion",
-      title: fought.has(h.id) ? `Combate en la resolución ${n}` : `Resolución ${n}`,
-      body: fought.has(h.id)
-        ? "Ha habido batalla en tus tierras. El resultado, en la crónica."
-        : "El reino se ha movido. Echa un vistazo a la crónica.",
+      title: fought.has(h.id) ? `Combate en la resolución ${n}` : seen.length > 0 ? `Estandartes a la vista` : `Resolución ${n}`,
+      body:
+        (fought.has(h.id)
+          ? "Ha habido batalla en tus tierras. Mira la repetición de la noche."
+          : seen.length > 0
+            ? "Hay movimiento junto a tus tierras."
+            : "El reino se ha movido. Echa un vistazo a la crónica.") + banners,
       url: `/partida/${game.id}`,
       dedupe: `resolucion:${game.id}:${n}:${h.id}`,
     });

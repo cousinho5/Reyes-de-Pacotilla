@@ -1382,3 +1382,344 @@ label.check {
   gap: 0.5rem;
   align-items: flex-start;
 }
+
+/* --------------------------------------------------------------------------
+   Sistema de guerra v3, fase 5: noches en cola, avisos y repetición de la noche
+   -------------------------------------------------------------------------- */
+
+/* Elegir la noche para la que se dan órdenes. */
+.nights {
+  display: flex;
+  gap: 0.35rem;
+  margin: 0 0 0.45rem;
+  overflow-x: auto;
+}
+.nights button {
+  flex: 1 0 auto;
+  min-height: 38px;
+  padding: 0.2rem 0.7rem;
+  font-size: 0.92rem;
+  color: var(--chalk);
+  background: var(--wood-2);
+  box-shadow: inset 0 0 0 1.5px var(--wood-edge);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+}
+.nights button.active {
+  color: var(--ink);
+  background: var(--brass-hi);
+  box-shadow: inset 0 0 0 1.5px var(--brass-lo);
+}
+.nights .badge {
+  min-width: 1.15rem;
+  padding: 0 0.25rem;
+  font-family: var(--font-pixel);
+  font-size: 0.72rem;
+  line-height: 1.15rem;
+  color: #fff;
+  background: var(--seal);
+  border-radius: 999px;
+}
+.plan-note {
+  margin: 0 0.1rem 0.45rem;
+  font-size: 0.9rem;
+  color: var(--dust);
+}
+/* Planeando otra noche: el mapa es una previsión, con un velo de pergamino. */
+.board.planning .world-canvas {
+  filter: sepia(0.35) saturate(0.85);
+}
+.arrow.queued {
+  opacity: 0.5;
+}
+
+/* Amenazas: borde rojo en las casillas tuyas al alcance de un enemigo a la vista. */
+.cell-threat {
+  fill: none;
+  stroke: #ff4b33;
+  stroke-width: 2.5;
+  stroke-dasharray: 5 3;
+  filter: drop-shadow(0 0 1.5px rgba(28, 20, 16, 0.9));
+}
+.threat-note {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0.55rem 0.1rem 0;
+  font-size: 0.92rem;
+  color: var(--chalk);
+}
+.threat-swatch {
+  flex: none;
+  width: 16px;
+  height: 12px;
+  border: 2px dashed #ff4b33;
+  border-radius: 2px;
+}
+.tile-alert {
+  position: absolute;
+  z-index: 3;
+  line-height: 0;
+  padding: 1px;
+  background: rgba(28, 20, 16, 0.9);
+  border-radius: 3px;
+  box-shadow: 0 0 0 1.5px #ff4b33;
+}
+.cell-box.hex .tile-alert {
+  top: 40%;
+  right: 4%;
+}
+.banner-alerts {
+  list-style: none;
+  margin: 0.45rem 0.1rem 0;
+  padding: 0;
+  font-size: 0.92rem;
+  color: var(--chalk);
+}
+.banner-alerts li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  margin: 0.2rem 0;
+}
+.war-actions {
+  display: inline-flex;
+  gap: 0.8rem;
+}
+.night-orders h3 {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  color: var(--ink);
+}
+.night-orders h3 .link {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+/* Repetición de la noche. Mientras dura, se apagan las marcas del mapa de ahora. */
+.board.replaying .tile-troops,
+.board.replaying .tile-battle,
+.board.replaying .tile-captain,
+.board.replaying .tile-alert,
+.board.replaying .territory {
+  visibility: hidden;
+}
+.replay {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+}
+.replay-marks,
+.replay-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.replay-focus {
+  fill: rgba(241, 207, 125, 0.18);
+  stroke: var(--brass-hi);
+  stroke-width: 2.5;
+}
+.replay-token {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  padding: 1px 3px 1px 1px;
+  background: rgba(28, 20, 16, 0.88);
+  border-radius: 3px;
+  box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.8);
+  line-height: 0;
+}
+.replay-token b {
+  font-family: var(--font-pixel);
+  font-size: 0.8rem;
+  line-height: 1;
+  color: #fff;
+}
+.replay-battle {
+  position: absolute;
+  transform: translate(-50%, -30%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.replay-battle .smoke {
+  display: flex;
+  align-items: flex-end;
+  line-height: 0;
+  animation: humo 0.7s steps(2) infinite;
+}
+@keyframes humo {
+  50% {
+    transform: translateY(-2px) scale(1.06);
+  }
+}
+.battle-card {
+  min-width: 10.5rem;
+  margin-top: 2px;
+  padding: 0.3rem 0.45rem;
+  font-size: 0.82rem;
+  color: var(--ink);
+  background: rgba(241, 229, 200, 0.97);
+  border-radius: 4px;
+  box-shadow:
+    0 0 0 2px var(--wood-0),
+    0 4px 10px rgba(0, 0, 0, 0.5);
+}
+.battle-side {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  line-height: 1.3;
+}
+.battle-side b {
+  font-family: var(--font-pixel);
+}
+.battle-side.won b {
+  color: var(--moss);
+}
+.battle-side.lost {
+  opacity: 0.6;
+  text-decoration: line-through;
+}
+.battle-side .fallen {
+  font-style: normal;
+  font-family: var(--font-pixel);
+  color: var(--seal);
+  text-decoration: none;
+  animation: caen 0.8s ease-out both;
+}
+@keyframes caen {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+.neutral-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #8b8577;
+  box-shadow: 0 0 0 1.5px var(--wood-0);
+}
+.battle-result {
+  margin-top: 0.15rem;
+  padding-top: 0.15rem;
+  border-top: 1px solid var(--vellum-line);
+  font-weight: 700;
+}
+.battle-prisoner {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-weight: 600;
+  color: var(--seal);
+}
+.replay-siege {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1;
+}
+.replay-siege small {
+  margin-top: 1px;
+  padding: 1px 4px;
+  font-size: 0.72rem;
+  color: #fff;
+  background: rgba(28, 20, 16, 0.88);
+  border-radius: 3px;
+}
+.hunger {
+  display: block;
+  width: 3rem;
+  height: 4px;
+  margin-top: 2px;
+  background: var(--wood-2);
+}
+.hunger i,
+.replay-progress i {
+  display: block;
+  height: 100%;
+  background: var(--brass-hi);
+}
+/* Fray Abundio cuenta la noche abajo; arriba, la barra con "Saltar". */
+.replay-chrome {
+  position: fixed;
+  left: 0;
+  right: 0;
+  z-index: 11;
+  max-width: 34rem;
+  margin: 0 auto;
+  box-shadow: 0 -6px 14px rgba(0, 0, 0, 0.4);
+}
+.replay-chrome[hidden] {
+  display: none;
+}
+.board.replaying .zoom {
+  display: none;
+}
+.replay-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.3rem 0.4rem 0.3rem 0.6rem;
+  font-family: var(--font-pixel);
+  font-size: 0.9rem;
+  color: var(--chalk);
+  background: var(--wood-1);
+  border-top: 1px solid var(--wood-edge);
+}
+.replay-bar > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.replay-progress {
+  display: block;
+  width: 6rem;
+  height: 5px;
+  background: var(--wood-2);
+}
+.replay-bar button {
+  min-height: 34px;
+  padding: 0.15rem 0.8rem;
+  font-size: 0.9rem;
+}
+.replay-caption {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.45rem;
+  padding: 0.4rem 0.5rem;
+  min-height: 3.6rem;
+  background: var(--vellum);
+  border-top: 2px solid var(--brass);
+}
+.replay-caption p {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: 0.95rem;
+  line-height: 1.3;
+  color: var(--ink);
+  font-style: italic;
+}
+.replay-caption .fray {
+  flex: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .replay-battle .smoke,
+  .battle-side .fallen {
+    animation: none;
+  }
+}

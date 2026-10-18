@@ -193,6 +193,21 @@ export function timeLeft(iso: string | null | undefined, now = Date.now()): stri
   return `faltan ${h} h ${m} min`;
 }
 
+const NIGHT_FMT = new Intl.DateTimeFormat("es-ES", { timeZone: "Europe/Madrid", weekday: "short", day: "numeric" });
+const NIGHT_LONG_FMT = new Intl.DateTimeFormat("es-ES", { timeZone: "Europe/Madrid", weekday: "long", day: "numeric" });
+
+/**
+ * Nombre de la noche `k` de la cola (0 = la próxima resolución). En las partidas
+ * con resolución diaria, el día ("jue 22"); si no, el número de resolución.
+ */
+export function nightLabel(p: { proximaResolucion?: number | null; resolucion?: string | null; diasResolucion?: number[] }, k: number, long = false): string {
+  const n = (p.proximaResolucion ?? 0) + k;
+  if (!p.resolucion || (p.diasResolucion?.length ?? 0) < 7) return `${long ? "la resolución" : "Res."} ${n}`;
+  const at = new Date(Date.parse(p.resolucion) + k * 864e5);
+  const text = (long ? NIGHT_LONG_FMT : NIGHT_FMT).format(at).replace(",", "");
+  return long ? `el ${text}` : text.charAt(0).toUpperCase() + text.slice(1);
+}
+
 /** "1 tropa", "3 tropas". */
 export function troops(n: number): string {
   return `${n} ${n === 1 ? "tropa" : "tropas"}`;
@@ -241,6 +256,8 @@ export function describeEvent(e: EventView, houses: HouseInfo[], tiles: TileView
       return `El apoyo de ${houseName(houses, d.house)} desde ${tile(d.from)} queda cortado por un ataque.`;
     case "movimiento":
       return `${houseName(houses, d.house)} mueve ${troops(d.troops)} a ${tile(d.to)}.`;
+    case "estandartes":
+      return `Se ven estandartes de ${withArticle(houseName(houses, d.house))} en ${tile(d.tile)} (${troops(d.troops)}), junto a ${tile(d.near)}.`;
     case "mantenimiento":
       return d.deserted > 0
         ? `Mantenimiento: costaba ${d.cost} de Pan y solo había ${d.paid}. Desertan: ${troops(d.deserted)}.`

@@ -1,17 +1,22 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { TILE_NAMES, areAdjacent, fortifyCost, marchKind, subUnits, unitsOf, type Tile, type Units } from "@reyes/engine";
+import { TILE_NAMES, areAdjacent, fortifyCost, marchKind, subUnits, threats, unitsOf, type Tile, type Units } from "@reyes/engine";
 import { api, type GameState, type OrderView, type TileView } from "../api";
 import { Icon, ShieldIcon, TileArt } from "../art";
 import { cellBox, sharedEdge, type Geo } from "../art/grid";
 import { geoOf } from "../art/world";
 import { WorldCanvas, useWorld } from "./WorldCanvas";
-import { HOUSE_COLORS, TERRAIN_NOTE, TERRITORY, TILE_LABEL, UNIT_LABEL, captainOf, houseName, troopsText, wallsLeft } from "../ui";
+import { HOUSE_COLORS, TERRAIN_NOTE, TERRITORY, TILE_LABEL, UNIT_LABEL, captainOf, houseName, nightLabel, troops as troopsWord, troopsText, wallsLeft, withArticle } from "../ui";
+import { asTile, nextResolution, nightOf, project, queueNights } from "../plan";
+import { NightReplay, replaySteps } from "./NightReplay";
 
 interface Props {
   state: GameState;
   draft: OrderView[];
   setDraft: (o: OrderView[]) => void;
   act: (fn: () => Promise<unknown>, ok?: string) => Promise<void>;
+  /** Noche de la cola que se está planeando (0 = la próxima resolución). */
+  night: number;
+  setNight: (n: number) => void;
 }
 
 type Mode = "mover" | "apoyar" | "sitiar";
@@ -24,8 +29,32 @@ const siegeable = (t: TileView, me: number | null | undefined) =>
 const NO_UNITS: Units = { mesnada: 0, jinetes: 0, catapultas: 0 };
 const RIDERS_ONLY = (n: number): Units => ({ mesnada: 0, jinetes: n, catapultas: 0 });
 
-export function MapView({ state, draft, setDraft, act }: Props) {
-  const tiles = state.casillas ?? [];
+/** La última noche vista en repetición, por partida (en este navegador). */
+function seenNight(game: number): number {
+  try {
+    return Number(localStorage.getItem(`noche:${game}`) ?? 0);
+  } catch {
+    return Number.POSITIVE_INFINITY;
+  }
+}
+function markSeen(game: number, n: number) {
+  try {
+    localStorage.setItem(`noche:${game}`, String(n));
+  } catch {
+    /* sin almacenamiento: se verá otra vez, no pasa nada */
+  }
+}
+
+export function MapView({ state, draft, setDraft, act, night, setNight }: Props) {
+  const now = state.casillas ?? [];
+  const next = nextResolution(state);
+  const nightsOpen = state.partida.estado === "active" && state.partida.ordenesAbiertas ? queueNights(state) : 1;
+  const k = Math.min(night, nightsOpen - 1);
+  // Noches en cola: el mapa muestra cómo quedaría si todo sale como esperas.
+  const plan = useMemo(() => (nightsOpen > 1 ? project(state, draft) : null), [state, draft, nightsOpen]);
+  const tiles = k > 0 && plan ? plan.maps[k]! : now;
+  const nightDraft = draft.filter((o) => nightOf(o, next) === next + k);
+  const otherNights = draft.filter((o) => nightOf(o, next) !== next + k);
   const cols = state.partida.columnas ?? 5;
   const me = state.yo.casa;
   const [selected, setSelected] = useState<number | null>(null);
@@ -44,6 +73,40 @@ export function MapView({ state, draft, setDraft, act }: Props) {
   const lastMoves = lastEvents
     .filter((e) => e.tipo === "movimiento")
     .map((e) => e.datos as { house: number; from: number; to: number; troops: number });
+  // Avisos: casillas tuyas que un enemigo a la vista puede atacar, y estandartes vistos esta noche.
+  const threatened = useMemo(() => (k === 0 && me != null ? threats(now, me) : []), [now, me, k]);
+  const threatAt = new Map(threatened.map((x) => [x.tile, x.by]));
+  const banners = k === 0 ? lastEvents.filter((e) => e.tipo === "estandartes").map((e) => e.datos as { house: number; tile: number; troops: number; near: number }) : [];
+  const bannerNear = new Map(banners.map((b) => [b.near, b]));
+
+  // Repetición de la noche: sale sola la primera vez que abres el mapa tras una resolución.
+  const replayable = useMemo(() => last > 0 && replaySteps(lastEvents, now).steps.length > 0, [JSON.stringify(lastEvents.map((e) => e.id)), now, last]);
+  const [replay, setReplay] = useState(false);
+  const [chrome, setChrome] = useState<HTMLDivElement | null>(null);
+  const [dock, setDock] = useState(64);
+  useEffect(() => {
+    if (replay) setDock(document.querySelector(".tabs")?.getBoundingClientRect().height ?? 64);
+  }, [replay]);
+  const boardRef = useRef<HTMLDivElement>(null);
+  /** Sube la página hasta que el mapa quede entero bajo la cabecera fija. */
+  const showBoard = () => {
+    const el = boardRef.current;
+    if (!el) return;
+    const header = document.querySelector(".topbar")?.getBoundingClientRect().height ?? 0;
+    window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - header - 8, behavior: "smooth" });
+  };
+  useEffect(() => {
+    if (!replayable || seenNight(state.partida.id) >= last) return;
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+    setNight(0);
+    setReplay(true);
+    showBoard();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [replayable, last, state.partida.id]);
+  const endReplay = () => {
+    markSeen(state.partida.id, last);
+    setReplay(false);
+  };
 
   // El dibujo del mundo: terreno, banderas, tropas a la vista, empalizadas y batallas.
   const world = useMemo(
@@ -126,12 +189,12 @@ export function MapView({ state, draft, setDraft, act }: Props) {
   };
   const points = (t: TileView, inset = 0) => geo.outline(t.x, t.y, inset).map(([x, y]) => `${x},${y}`).join(" ");
 
-  const committed = (tileId: number) => draft.filter((o) => o.desde === tileId).reduce((a, o) => a + o.tropas, 0);
+  const committed = (tileId: number) => nightDraft.filter((o) => o.desde === tileId).reduce((a, o) => a + o.tropas, 0);
   /** Tropas de cada tipo que quedan libres en una casilla tras las órdenes ya dadas. */
   const freeUnits = (tileId: number): Units => {
     const t = tiles.find((x) => x.id === tileId);
     if (!t || t.troops == null) return NO_UNITS;
-    return draft
+    return nightDraft
       .filter((o) => o.desde === tileId)
       .reduce((u, o) => subUnits(u, unitsOf({ troops: o.tropas, jinetes: o.jinetes, catapultas: o.catapultas })), unitsOf({ ...t, troops: t.troops }));
   };
@@ -182,9 +245,38 @@ export function MapView({ state, draft, setDraft, act }: Props) {
       .filter(([nx, ny]) => ownerAt(nx, ny) !== t.owner)
       .map(([nx, ny]) => ({ outer: sharedEdge(geo, t.x, t.y, nx, ny, 1.5), inner: sharedEdge(geo, t.x, t.y, nx, ny, 4) }));
 
+  const nightNames = Array.from({ length: nightsOpen }, (_, i) => nightLabel(state.partida, i));
   return (
     <div>
-      <div className="board">
+      {nightsOpen > 1 && (
+        <div className="nights" role="tablist" aria-label="Noche para la que das órdenes">
+          {nightNames.map((label, i) => {
+            const count = draft.filter((o) => nightOf(o, next) === next + i).length;
+            return (
+              <button
+                key={i}
+                role="tab"
+                aria-selected={k === i}
+                className={k === i ? "active" : ""}
+                onClick={() => {
+                  setNight(i);
+                  setCompose(null);
+                }}
+              >
+                {label}
+                {count > 0 && <span className="badge">{count}</span>}
+              </button>
+            );
+          })}
+        </div>
+      )}
+      {k > 0 && (
+        <p className="plan-note">
+          Órdenes en cola para {nightLabel(state.partida, k, true)}. El mapa muestra cómo quedaría si todo sale como esperas; las
+          demás casas también mueven, y al llegar la noche cada orden sale con las tropas que queden.
+        </p>
+      )}
+      <div className={`board${replay ? " replaying" : ""}${k > 0 ? " planning" : ""}`} ref={boardRef}>
         <button className="zoom" onClick={() => setClose(!close)} aria-pressed={!close}>
           {close ? "Ver todo el reino" : "Acercar"}
         </button>
@@ -211,6 +303,10 @@ export function MapView({ state, draft, setDraft, act }: Props) {
                 </g>
               );
             })}
+            {!replay &&
+              tiles
+                .filter((t) => threatAt.has(t.id))
+                .map((t) => <polygon key={`a${t.id}`} points={points(t, 2.5)} className="cell-threat" />)}
             {tiles.filter(isTarget).map((t) => (
               <polygon key={`t${t.id}`} points={points(t, 2)} className="cell-target" />
             ))}
@@ -245,9 +341,14 @@ export function MapView({ state, draft, setDraft, act }: Props) {
                       <Icon name="capitan" size={14} color={t.capitanes!.includes(me ?? -1) ? "#f1cf7d" : "#d9d2c3"} />
                     </span>
                   )}
-                  {battles.has(t.id) && (
+                  {k === 0 && battles.has(t.id) && (
                     <span className="tile-battle" aria-hidden title="Batalla en la última resolución">
                       <Icon name="ordenes" size={14} color="#f1cf7d" />
+                    </span>
+                  )}
+                  {bannerNear.has(t.id) && (
+                    <span className="tile-alert" aria-hidden title="Se ven estandartes al lado">
+                      <Icon name="estandarte" size={14} color={TERRITORY[state.casas.find((h) => h.id === bannerNear.get(t.id)!.house)?.color ?? ""] ?? "#fff"} />
                     </span>
                   )}
                 </div>
@@ -268,7 +369,26 @@ export function MapView({ state, draft, setDraft, act }: Props) {
                   const house = state.casas.find((h) => h.id === m.house);
                   return <Arrow key={`l${i}`} geo={geo} from={a} to={b} color={house ? TERRITORY[house.color] ?? "#ccc" : "#ccc"} width={1.5 + Math.min(3, m.troops / 4)} past />;
                 })}
-              {draft.map((o, i) => {
+              {/* Las órdenes de las otras noches de la cola, punteadas y apagadas: la ruta a varios días. */}
+              {!replay &&
+                otherNights.map((o, i) => {
+                  const a = byId.get(o.desde);
+                  const b = byId.get(o.hacia);
+                  if (!a || !b) return null;
+                  return (
+                    <Arrow
+                      key={`q${i}`}
+                      geo={geo}
+                      from={a}
+                      to={b}
+                      color={TERRITORY[mine?.color ?? ""] ?? "#f1cf7d"}
+                      width={1.2 + Math.min(2, o.tropas / 5)}
+                      dashed
+                      queued
+                    />
+                  );
+                })}
+              {!replay && nightDraft.map((o, i) => {
                 const a = byId.get(o.desde);
                 const b = byId.get(o.hacia);
                 if (!a || !b) return null;
@@ -286,10 +406,51 @@ export function MapView({ state, draft, setDraft, act }: Props) {
                 );
               })}
           </svg>
+          {replay && (
+            <NightReplay
+              geo={geo}
+              W={W}
+              H={H}
+              tiles={now}
+              houses={state.casas}
+              events={lastEvents}
+              seed={`${state.partida.id}:${last}`}
+              resolution={last}
+              onFocus={(x, y) => {
+                const el = viewport.current;
+                if (!el || !close) return;
+                const [cx, cy] = geo.center(x, y);
+                el.scrollTo({ left: cx * scale - el.clientWidth / 2, top: cy * scale - el.clientHeight / 2, behavior: "smooth" });
+              }}
+              onClose={endReplay}
+              chrome={chrome}
+            />
+          )}
         </div>
         </div>
       </div>
-      {(battles.size > 0 || lastMoves.length > 0) && (
+      {/* Franja de la repetición: fija abajo, encima de las pestañas, para que se lea siempre. */}
+      <div className="replay-chrome" ref={setChrome} style={{ bottom: dock }} hidden={!replay} />
+      {k === 0 && threatened.length > 0 && !replay && (
+        <p className="threat-note">
+          <span className="threat-swatch" aria-hidden />
+          {threatened.length === 1
+            ? `${tiles.find((t) => t.id === threatened[0]!.tile)?.nombre ?? "Una casilla"} está al alcance de ${withArticle(houseName(state.casas, threatened[0]!.by[0]))}.`
+            : `${threatened.length} casillas tuyas están al alcance de un enemigo a la vista.`}
+        </p>
+      )}
+      {banners.length > 0 && !replay && (
+        <ul className="banner-alerts">
+          {banners.map((b, i) => (
+            <li key={i}>
+              <Icon name="estandarte" size={18} color={TERRITORY[state.casas.find((h) => h.id === b.house)?.color ?? ""] ?? "#fff"} />
+              Se ven estandartes de {withArticle(houseName(state.casas, b.house))} en {now.find((t) => t.id === b.tile)?.nombre} ({troopsWord(b.troops)}), junto a{" "}
+              {now.find((t) => t.id === b.near)?.nombre}.
+            </li>
+          ))}
+        </ul>
+      )}
+      {k === 0 && (battles.size > 0 || lastMoves.length > 0) && (
         <div className="war-report">
           <span>
             <Icon name="ordenes" size={18} color="#f1cf7d" />
@@ -298,9 +459,23 @@ export function MapView({ state, draft, setDraft, act }: Props) {
               : "Movimientos de la última resolución"}
             {conquests > 0 && ` · ${conquests} ${conquests === 1 ? "casilla cambia" : "casillas cambian"} de bandera`}
           </span>
-          <button className="link" onClick={() => setShowLast(!showLast)} aria-pressed={showLast}>
-            {showLast ? "Ocultar" : "Ver en el mapa"}
-          </button>
+          <span className="war-actions">
+            {replayable && (
+              <button
+                className="link"
+                onClick={() => {
+                  setReplay(true);
+                  showBoard();
+                }}
+                disabled={replay}
+              >
+                Ver la noche
+              </button>
+            )}
+            <button className="link" onClick={() => setShowLast(!showLast)} aria-pressed={showLast}>
+              {showLast ? "Ocultar" : "Flechas"}
+            </button>
+          </span>
         </div>
       )}
 
@@ -313,10 +488,10 @@ export function MapView({ state, draft, setDraft, act }: Props) {
           available={freeUnits(compose.from)}
           engineTiles={engineTiles}
           captainHere={
-            !!byId.get(compose.from)?.capitanes?.includes(me ?? -1) && !draft.some((o) => o.capitan)
+            !!byId.get(compose.from)?.capitanes?.includes(me ?? -1) && !nightDraft.some((o) => o.capitan)
           }
           onAdd={(o) => {
-            setDraft([...draft, o]);
+            setDraft([...draft, { ...o, resolucion: next + k }]);
             setCompose(null);
           }}
         />
@@ -327,6 +502,7 @@ export function MapView({ state, draft, setDraft, act }: Props) {
             tile={tile}
             available={(tile.troops ?? 0) - committed(tile.id)}
             open={open}
+            planning={k > 0}
             onOrder={(mode) =>
               setCompose({ from: tile.id, mode, target: null, mix: freeUnits(tile.id), apoyaDesde: null })
             }
@@ -341,22 +517,6 @@ export function MapView({ state, draft, setDraft, act }: Props) {
   );
 }
 
-/** Una casilla tal como la entiende el motor. */
-function asTile(t: TileView): Tile {
-  return {
-    id: t.id,
-    x: t.x,
-    y: t.y,
-    type: t.type,
-    owner: t.owner,
-    troops: t.troops ?? 0,
-    ...(t.jinetes ? { jinetes: t.jinetes } : {}),
-    ...(t.catapultas ? { catapultas: t.catapultas } : {}),
-    fortifiedUntil: t.fortifiedUntil,
-    castleOf: t.castleOf ?? null,
-  };
-}
-
 /** Flecha de orden entre dos casillas, en píxeles del dibujo. */
 function Arrow({
   geo,
@@ -366,6 +526,7 @@ function Arrow({
   width,
   dashed,
   past,
+  queued,
   label,
 }: {
   geo: Geo;
@@ -375,6 +536,8 @@ function Arrow({
   width: number;
   dashed?: boolean;
   past?: boolean;
+  /** Orden de otra noche de la cola. */
+  queued?: boolean;
   label?: number;
 }) {
   const [ax, ay] = geo.center(from.x, from.y);
@@ -388,7 +551,7 @@ function Arrow({
   const ey = ay + (by - ay) * 0.78;
   const d = `M${sx},${sy} Q${mx},${my} ${ex},${ey}`;
   return (
-    <g className={past ? "arrow past" : "arrow"}>
+    <g className={past ? "arrow past" : queued ? "arrow queued" : "arrow"}>
       <path d={d} stroke="#1c1410" strokeWidth={width * 2 + 3} fill="none" strokeLinecap="round" strokeDasharray={dashed ? "8 6" : undefined} />
       <path d={d} stroke={color} strokeWidth={width * 2} fill="none" strokeLinecap="round" strokeDasharray={dashed ? "8 6" : undefined} markerEnd="url(#punta)" />
       {label != null && (
@@ -408,6 +571,7 @@ function TilePanel({
   tile,
   available,
   open,
+  planning,
   onOrder,
   onFortify,
 }: {
@@ -415,6 +579,8 @@ function TilePanel({
   tile: TileView;
   available: number;
   open: boolean;
+  /** Se están dando órdenes en cola: fortificar es de hoy, no se planea. */
+  planning?: boolean;
   onOrder: (mode: Mode) => void;
   onFortify: () => void;
 }) {
@@ -476,7 +642,7 @@ function TilePanel({
           {canSiege && <button onClick={() => onOrder("sitiar")}>Sitiar</button>}
         </div>
       )}
-      {mine && tile.type !== "castillo" && !fortified && (
+      {mine && !planning && tile.type !== "castillo" && !fortified && (
         <button className="secondary wide" onClick={onFortify}>
           <Icon name="muralla" size={18} color="#827d8a" /> Fortificar: {fortifyCost(tile).piedra} de Piedra, +25% de defensa{" "}
           {(state.partida.fortificarResoluciones ?? 2) === 1 ? "una resolución" : `${state.partida.fortificarResoluciones ?? 2} resoluciones`}

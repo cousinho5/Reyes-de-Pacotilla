@@ -14,6 +14,7 @@ import { generateMap } from "./mapgen";
 import { dealObjectives, objectiveMet, type ObjectiveKey } from "./objectives";
 import { computePrestige, isValidTrade, type AchievementKey, type PrestigeBreakdown } from "./prestige";
 import { gloryFromEvents, resolveCampaign } from "./combat";
+import { fitOrders } from "./plan";
 import { marchKind } from "./terrain";
 import type { MapLayoutOverride } from "./mapgen";
 import { GRID, PRESTIGE, RHYTHM, SPECIALTY_PAIRS, STARTING_RESOURCES, SIEGE, TERRAIN, TERRAIN_OFF, UNITS, CAPTAIN, GLORY } from "./rules";
@@ -555,10 +556,11 @@ function runGame(opts: SimOptions): SimGameResult {
         if (how === "mar") seaMoves++;
       }
     }
+    // Como el servidor: cada orden se ajusta a las tropas que haya al salir (órdenes en cola).
     const result = resolveCampaign({
       resolution,
       tiles,
-      orders,
+      orders: fitOrders(tiles, orders),
       captains: CAPTAIN.enabled ? houses.map((h) => h.captain) : [],
       absentHouses: absent,
       truceTiles: houses.flatMap((h) => h.truces.filter((t) => t.resolution === resolution).map((t) => t.tile)),

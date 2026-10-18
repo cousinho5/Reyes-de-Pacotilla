@@ -14,6 +14,9 @@ import {
   castleName,
   checkFortify,
   checkOrders,
+  fitOrders,
+  planNights,
+  QUEUE,
   checkRecruit,
   checkUpgrade,
   checkOffer,
@@ -534,6 +537,8 @@ app.get("/api/partidas/:id", async (c) => {
       /** Días con resolución (0 = lunes) y resoluciones que dura fortificar. */
       diasResolucion: rhythmOf(game).days,
       fortificarResoluciones: rhythmOf(game).fortify,
+      /** Noches seguidas para las que se pueden dejar órdenes (esta y las siguientes). */
+      nochesEnCola: QUEUE.nights,
     },
   };
   if (game.status === "lobby") {
@@ -553,11 +558,12 @@ app.get("/api/partidas/:id", async (c) => {
     loadBuildings(db, game.id),
     computeAllPrestige(db, game.id, houses, tiles, now),
     db.prepare(
-      "SELECT id, kind, from_tile_id, troops, jinetes, catapultas, captain, target_tile_id, supported_from_tile_id FROM orders WHERE house_id = ? AND resolution_no = ? ORDER BY id",
+      "SELECT id, resolution_no, kind, from_tile_id, troops, jinetes, catapultas, captain, target_tile_id, supported_from_tile_id FROM orders WHERE house_id = ? AND resolution_no >= ? ORDER BY resolution_no, id",
     )
       .bind(house.id, game.current_resolution + 1)
       .all<{
         id: number;
+        resolution_no: number;
         kind: "move" | "support" | "siege";
         from_tile_id: number;
         troops: number;
@@ -690,8 +696,10 @@ app.get("/api/partidas/:id", async (c) => {
       const caps = houses.filter((h) => h.captain_tile === t.id && (h.id === house.id || t.troops != null)).map((h) => h.id);
       return { ...t, nombre: names.get(t.id), ...(caps.length ? { capitanes: caps } : {}) };
     }),
+    // Las de la próxima resolución y las que quedan en cola para las siguientes.
     ordenes: orders.results.map((o) => ({
       id: o.id,
+      resolucion: o.resolution_no,
       tipo: o.kind === "move" ? "mover" : o.kind === "siege" ? "sitiar" : "apoyar",
       desde: o.from_tile_id,
       hacia: o.target_tile_id,
@@ -877,69 +885,99 @@ interface OrderInput {
   capitan?: boolean;
 }
 
-/** Sustituye todas las órdenes de la casa para la próxima resolución. */
+/**
+ * Sustituye todas las órdenes de la casa para la próxima resolución y las que
+ * deja en cola para las siguientes (diseño v3, fase 5: hasta QUEUE.nights noches).
+ * Las de esta noche se comprueban con el mapa de verdad; las de las noches
+ * siguientes, con lo que la casa ve proyectado noche a noche (como su botón
+ * Simular), y al llegar su noche se ajustan a las tropas que queden.
+ */
 app.put("/api/partidas/:id/ordenes", async (c) => {
   const m = await activeMembership(c);
   if (m instanceof Response) return m;
   const clock = clockOf(m.game)!;
   if (!ordersOpen(gameNow(m.game), clock)) return fail(c, 409, "Las órdenes ya están cerradas para esta resolución.");
-  const { ordenes } = await c.req.json<{ ordenes?: OrderInput[] }>().catch(() => ({ ordenes: undefined }));
-  if (!Array.isArray(ordenes) || ordenes.length > 60) return fail(c, 400, "Lista de órdenes no válida.");
-
-  const orders: Order[] = ordenes.map((o) =>
-    o.tipo === "mover"
-      ? {
-          kind: "move",
-          house: m.house.id,
-          from: Number(o.desde),
-          to: Number(o.hacia),
-          troops: Number(o.tropas),
-          ...orderTypes(o),
-          ...(o.capitan === true ? { captain: true } : {}),
-        }
-      : o.tipo === "sitiar"
-        ? { kind: "siege", house: m.house.id, from: Number(o.desde), target: Number(o.hacia), troops: Number(o.tropas), ...orderTypes(o) }
-        : {
-          kind: "support",
-          house: m.house.id,
-          from: Number(o.desde),
-          target: Number(o.hacia),
-          supportedFrom: o.apoyaDesde == null ? null : Number(o.apoyaDesde),
-          troops: Number(o.tropas),
-          ...orderTypes(o),
-        },
-  );
-  const tiles = toEngineTiles(await loadTiles(c.env.DB, m.game.id));
-  const { invalid } = checkOrders(tiles, orders, m.game.current_resolution + 1);
-  if (invalid.length > 0) return fail(c, 400, `Orden no válida: ${invalid[0]!.reason}.`);
-  const withCaptain = orders.filter((o) => o.kind === "move" && o.captain);
-  if (withCaptain.length > 1) return fail(c, 400, "El Capitán solo puede ir con un grupo.");
-  if (withCaptain.length === 1 && withCaptain[0]!.from !== m.house.captain_tile)
-    return fail(c, 400, "Tu Capitán no está en esa casilla.");
+  const { ordenes } = await c.req.json<{ ordenes?: (OrderInput & { resolucion?: number })[] }>().catch(() => ({ ordenes: undefined }));
+  if (!Array.isArray(ordenes) || ordenes.length > 60 * QUEUE.nights) return fail(c, 400, "Lista de órdenes no válida.");
 
   const n = m.game.current_resolution + 1;
+  const last = Math.min(n + QUEUE.nights - 1, totalResolutions(m.game.weeks, rhythmOf(m.game).days));
+  const nights: Order[][] = Array.from({ length: last - n + 1 }, () => []);
+  for (const o of ordenes) {
+    const r = o.resolucion == null ? n : Number(o.resolucion);
+    if (!Number.isInteger(r) || r < n || r > last) return fail(c, 400, "Solo se pueden dejar órdenes para las próximas noches.");
+    nights[r - n]!.push(
+      o.tipo === "mover"
+        ? {
+            kind: "move",
+            house: m.house.id,
+            from: Number(o.desde),
+            to: Number(o.hacia),
+            troops: Number(o.tropas),
+            ...orderTypes(o),
+            ...(o.capitan === true ? { captain: true } : {}),
+          }
+        : o.tipo === "sitiar"
+          ? { kind: "siege", house: m.house.id, from: Number(o.desde), target: Number(o.hacia), troops: Number(o.tropas), ...orderTypes(o) }
+          : {
+              kind: "support",
+              house: m.house.id,
+              from: Number(o.desde),
+              target: Number(o.hacia),
+              supportedFrom: o.apoyaDesde == null ? null : Number(o.apoyaDesde),
+              troops: Number(o.tropas),
+              ...orderTypes(o),
+            },
+    );
+  }
+  if (nights.some((x) => x.length > 60)) return fail(c, 400, "Demasiadas órdenes para una noche.");
+
+  const tiles = toEngineTiles(await loadTiles(c.env.DB, m.game.id));
+  // Esta noche: con el mapa de verdad.
+  const { invalid } = checkOrders(tiles, nights[0] ?? [], n);
+  if (invalid.length > 0) return fail(c, 400, `Orden no válida: ${invalid[0]!.reason}.`);
+  // Las siguientes: con lo que ve la casa, proyectado noche a noche.
+  const spied = await spiedHouses(c.env.DB, m.game, m.house.id);
+  const plan = withRhythm(rhythmOf(m.game), () =>
+    planNights(projectForHouse(tiles, m.house.id, spied), nights, m.house.id, m.house.captain_tile, n),
+  );
+  for (let i = 1; i < nights.length; i++) {
+    if (nights[i]!.length === 0) continue;
+    const before = plan[i - 1]!.tiles;
+    const queued = checkOrders(before, fitOrders(before, nights[i]!), n + i);
+    if (queued.invalid.length > 0) return fail(c, 400, `Orden en cola no válida (noche ${i + 1}): ${queued.invalid[0]!.reason}.`);
+  }
+  for (let i = 0; i < nights.length; i++) {
+    const withCaptain = nights[i]!.filter((o) => o.kind === "move" && o.captain);
+    const captainTile = i === 0 ? m.house.captain_tile : plan[i - 1]!.captainTile;
+    if (withCaptain.length > 1) return fail(c, 400, "El Capitán solo puede ir con un grupo cada noche.");
+    if (withCaptain.length === 1 && withCaptain[0]!.from !== captainTile) return fail(c, 400, "Tu Capitán no estará en esa casilla.");
+  }
+
   const statements = [
-    c.env.DB.prepare("DELETE FROM orders WHERE house_id = ? AND resolution_no = ?").bind(m.house.id, n),
-    ...orders.map((o) =>
-      c.env.DB.prepare(
-        "INSERT INTO orders (game_id, house_id, resolution_no, kind, from_tile_id, troops, jinetes, catapultas, captain, target_tile_id, supported_from_tile_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-      ).bind(
-        m.game.id,
-        m.house.id,
-        n,
-        o.kind,
-        o.from,
-        o.troops,
-        o.jinetes ?? 0,
-        o.catapultas ?? 0,
-        o.kind === "move" && o.captain ? 1 : 0,
-        o.kind === "move" ? o.to : o.target,
-        o.kind === "support" ? o.supportedFrom : null,
+    c.env.DB.prepare("DELETE FROM orders WHERE house_id = ? AND resolution_no >= ?").bind(m.house.id, n),
+    ...nights.flatMap((orders, i) =>
+      orders.map((o) =>
+        c.env.DB.prepare(
+          "INSERT INTO orders (game_id, house_id, resolution_no, kind, from_tile_id, troops, jinetes, catapultas, captain, target_tile_id, supported_from_tile_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        ).bind(
+          m.game.id,
+          m.house.id,
+          n + i,
+          o.kind,
+          o.from,
+          o.troops,
+          o.jinetes ?? 0,
+          o.catapultas ?? 0,
+          o.kind === "move" && o.captain ? 1 : 0,
+          o.kind === "move" ? o.to : o.target,
+          o.kind === "support" ? o.supportedFrom : null,
+        ),
       ),
     ),
   ];
   await c.env.DB.batch(statements);
-  return c.json({ ok: true, ordenes: orders.length });
+  return c.json({ ok: true, ordenes: nights.reduce((a, x) => a + x.length, 0) });
 });
 
 /**

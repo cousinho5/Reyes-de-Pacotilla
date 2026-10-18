@@ -11,6 +11,7 @@ import { Realm } from "../components/Realm";
 import { TestBench } from "../components/TestBench";
 import { TradePanel } from "../components/TradePanel";
 import { RESOURCE_LABEL, formatDay, formatShort, timeLeft } from "../ui";
+import { nextResolution, nightOf, pruneQueue } from "../plan";
 
 type Tab = "mapa" | "castillo" | "ordenes" | "comercio" | "reino";
 
@@ -19,6 +20,8 @@ export function Game({ id }: { id: number }) {
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("mapa");
   const [draft, setDraft] = useState<OrderView[]>([]);
+  // Noche de la cola que se planea en el mapa (0 = la próxima resolución).
+  const [night, setNight] = useState(0);
   const [toast, setToast] = useState<string | null>(null);
   // Mientras se guarda una orden, las recargas no pisan lo que se ve.
   const savingRef = useRef(false);
@@ -85,13 +88,26 @@ export function Game({ id }: { id: number }) {
     .findIndex((h) => h.id === me.id) + 1;
 
   // Cada cambio de órdenes se guarda al momento (no hay que "sellar").
-  const updateDraft = async (orders: OrderView[]) => {
-    const removed = orders.length < draft.length;
+  // Al quitar una orden, las de la cola que dependían de ella se quitan también.
+  const updateDraft = async (wanted: OrderView[]) => {
+    const removed = wanted.length < draft.length;
+    const { draft: orders, dropped } = pruneQueue(state, wanted);
+    const next = nextResolution(state);
+    const added = removed ? null : wanted[wanted.length - 1];
+    const queued = !!added && nightOf(added, next) > next;
     setDraft(orders);
     savingRef.current = true;
     try {
       await api.saveOrders(id, orders);
-      setToast(removed ? "Orden quitada." : "Orden guardada. Se cumplirá en la resolución.");
+      setToast(
+        removed
+          ? dropped > 0
+            ? `Orden quitada, y ${dropped} ${dropped === 1 ? "orden en cola que dependía" : "órdenes en cola que dependían"} de ella.`
+            : "Orden quitada."
+          : queued
+            ? "Orden en cola. Saldrá esa noche con las tropas que queden."
+            : "Orden guardada. Se cumplirá en la resolución.",
+      );
     } catch (err) {
       setToast((err as Error).message);
     } finally {
@@ -167,10 +183,18 @@ export function Game({ id }: { id: number }) {
       {state.prueba?.ahora && <TestBench state={state} gameId={id} act={act} />}
 
       <main className="game-body">
-        {tab === "mapa" && <MapView state={state} draft={draft} setDraft={updateDraft} act={act} />}
+        {tab === "mapa" && <MapView state={state} draft={draft} setDraft={updateDraft} act={act} night={night} setNight={setNight} />}
         {tab === "castillo" && <CastlePanel state={state} act={act} gameId={id} />}
         {tab === "ordenes" && (
-          <OrdersPanel state={state} draft={draft} setDraft={updateDraft} />
+          <OrdersPanel
+            state={state}
+            draft={draft}
+            setDraft={updateDraft}
+            onPlan={(n) => {
+              setNight(n);
+              setTab("mapa");
+            }}
+          />
         )}
         {tab === "comercio" && <TradePanel state={state} act={act} />}
         {tab === "reino" && <Realm state={state} act={act} />}

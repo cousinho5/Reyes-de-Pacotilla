@@ -1,64 +1,37 @@
 import { useMemo } from "react";
-import { resolveCampaign, type Order, type Tile } from "@reyes/engine";
 import type { GameState, OrderView } from "../api";
-import { describeEvent, formatWhen, troopsText } from "../ui";
+import { describeEvent, formatWhen, nightLabel, troopsText } from "../ui";
+import { nextResolution, nightOf, project, queueNights } from "../plan";
 
 interface Props {
   state: GameState;
   draft: OrderView[];
   setDraft: (o: OrderView[]) => void;
+  /** Ir al mapa a planear esa noche de la cola. */
+  onPlan: (night: number) => void;
 }
 
-export function OrdersPanel({ state, draft, setDraft }: Props) {
+export function OrdersPanel({ state, draft, setDraft, onPlan }: Props) {
   const tiles = state.casillas ?? [];
   const name = (id: number | null) => tiles.find((t) => t.id === id)?.nombre ?? "?";
   const open = !!state.partida.ordenesAbiertas;
+  const next = nextResolution(state);
+  const nights = open ? queueNights(state) : 1;
 
-  // Simular: el mismo motor que el servidor, con lo que esta casa ve.
+  // Simular varias noches: el mismo motor que el servidor, con lo que esta casa ve.
   // Lo que no ves (tropas ocultas y órdenes ajenas) no entra en la previsión.
   const forecast = useMemo(() => {
     if (draft.length === 0) return [];
-    const known: Tile[] = tiles.map((t) => ({
-      id: t.id,
-      x: t.x,
-      y: t.y,
-      type: t.type,
-      owner: t.owner,
-      troops: t.troops ?? 0,
-      ...(t.jinetes ? { jinetes: t.jinetes } : {}),
-      ...(t.catapultas ? { catapultas: t.catapultas } : {}),
-      fortifiedUntil: t.fortifiedUntil,
-      castleOf: t.castleOf ?? null,
-      ...(t.besiegedBy != null ? { besiegedBy: t.besiegedBy, siegeNights: t.siegeNights ?? 0 } : {}),
-    }));
-    const orders: Order[] = draft.map((o) =>
-      o.tipo === "mover"
-        ? { kind: "move", house: state.yo.casa, from: o.desde, to: o.hacia, troops: o.tropas, jinetes: o.jinetes, catapultas: o.catapultas, captain: o.capitan }
-        : o.tipo === "sitiar"
-          ? { kind: "siege", house: state.yo.casa, from: o.desde, target: o.hacia, troops: o.tropas, jinetes: o.jinetes, catapultas: o.catapultas }
-          : {
-            kind: "support",
-            house: state.yo.casa,
-            from: o.desde,
-            target: o.hacia,
-            supportedFrom: o.apoyaDesde,
-            troops: o.tropas,
-            jinetes: o.jinetes,
-            catapultas: o.catapultas,
-          },
+    const { nights: planned, maps } = project(state, draft);
+    return planned.map((p, k) =>
+      p.events
+        .filter((e) => e.type !== "movimiento")
+        .map((e, i) => ({ i, text: describeEvent({ id: i, tipo: e.type, resolucion: null, datos: e as never }, state.casas, maps[k] ?? tiles) }))
+        .filter((x): x is { i: number; text: string } => !!x.text),
     );
-    const myCaptain = tiles.find((t) => t.capitanes?.includes(state.yo.casa ?? -1))?.id ?? null;
-    const r = resolveCampaign({
-      resolution: (state.partida.resolucionActual ?? 0) + 1,
-      tiles: known,
-      orders,
-      captains: state.yo.casa != null && myCaptain != null ? [{ house: state.yo.casa, tile: myCaptain }] : [],
-    });
-    return r.events
-      .filter((e) => e.type !== "movimiento")
-      .map((e, i) => ({ i, text: describeEvent({ id: i, tipo: e.type, resolucion: null, datos: e as never }, state.casas, tiles) }))
-      .filter((x): x is { i: number; text: string } => !!x.text);
   }, [draft, tiles, state]);
+
+  const remove = (o: OrderView) => setDraft(draft.filter((x) => x !== o));
 
   return (
     <div>
@@ -68,60 +41,100 @@ export function OrdersPanel({ state, draft, setDraft }: Props) {
           Se cumplen todas a la vez el {formatWhen(state.partida.resolucion)}. Se guardan solas en cuanto las das y
           puedes quitarlas hasta el cierre ({formatWhen(state.partida.cierre)}). Nadie más las ve hasta entonces.
         </p>
-        {draft.length === 0 ? (
-          <p>Sin órdenes: tus tropas mantendrán sus posiciones. Para dar una, toca una casilla tuya en el mapa.</p>
-        ) : (
-          <ul className="list orders">
-            {draft.map((o, i) => (
-              <li key={i}>
-                <span>
-                  {o.tipo === "sitiar" ? (
-                    <>
-                      <strong>{troopsText(o.tropas, o.jinetes, o.catapultas)}</strong> de {name(o.desde)} sitian <strong>{name(o.hacia)}</strong>
-                    </>
-                  ) : o.tipo === "mover" ? (
-                    <>
-                      <strong>{troopsText(o.tropas, o.jinetes, o.catapultas)}</strong> de {name(o.desde)} → <strong>{name(o.hacia)}</strong>
-                      {o.capitan && " (con el Capitán)"}
-                    </>
-                  ) : (
-                    <>
-                      <strong>{troopsText(o.tropas, o.jinetes, o.catapultas)}</strong> de {name(o.desde)} apoyan{" "}
-                      {o.apoyaDesde ? (
-                        <>
-                          el ataque de {name(o.apoyaDesde)} sobre <strong>{name(o.hacia)}</strong>
-                        </>
-                      ) : (
-                        <>
-                          la defensa de <strong>{name(o.hacia)}</strong>
-                        </>
-                      )}
-                    </>
-                  )}
-                </span>
-                {open && (
-                  <button className="link" aria-label="Quitar orden" onClick={() => setDraft(draft.filter((_, j) => j !== i))}>
-                    Quitar
-                  </button>
-                )}
-              </li>
-            ))}
-          </ul>
+        {nights > 1 && (
+          <p className="muted">
+            También puedes dejar órdenes en cola para las {nights - 1 === 1 ? "siguiente noche" : `${nights - 1} noches siguientes`}: elige la
+            noche encima del mapa. Al llegar su noche, cada una sale con las tropas que queden.
+          </p>
         )}
+        {Array.from({ length: nights }, (_, k) => {
+          const list = draft.filter((o) => nightOf(o, next) === next + k);
+          if (k > 0 && list.length === 0) return null;
+          return (
+            <div key={k} className="night-orders">
+              {nights > 1 && (
+                <h3>
+                  {k === 0 ? `Próxima: ${nightLabel(state.partida, 0)}` : `En cola: ${nightLabel(state.partida, k)}`}
+                  {open && (
+                    <button className="link" onClick={() => onPlan(k)}>
+                      Ver en el mapa
+                    </button>
+                  )}
+                </h3>
+              )}
+              {list.length === 0 ? (
+                <p>Sin órdenes: tus tropas mantendrán sus posiciones. Para dar una, toca una casilla tuya en el mapa.</p>
+              ) : (
+                <ul className="list orders">
+                  {list.map((o, i) => (
+                    <li key={i}>
+                      <span>
+                        <OrderText o={o} name={name} />
+                      </span>
+                      {open && (
+                        <button className="link" aria-label="Quitar orden" onClick={() => remove(o)}>
+                          Quitar
+                        </button>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          );
+        })}
         {!open && <p className="error">Las órdenes están cerradas hasta la resolución.</p>}
       </section>
 
-      {forecast.length > 0 && (
+      {forecast.some((f) => f.length > 0) && (
         <section className="card">
           <h2>Simulación</h2>
           <p className="muted">Con lo que ves ahora. Las órdenes de las demás casas son secretas y pueden cambiarlo todo.</p>
-          <ul className="list">
-            {forecast.map((f) => (
-              <li key={f.i}>{f.text}</li>
-            ))}
-          </ul>
+          {forecast.map((lines, k) =>
+            lines.length === 0 ? null : (
+              <div key={k}>
+                {forecast.length > 1 && <h3>{nightLabel(state.partida, k)}</h3>}
+                <ul className="list">
+                  {lines.map((f) => (
+                    <li key={f.i}>{f.text}</li>
+                  ))}
+                </ul>
+              </div>
+            ),
+          )}
         </section>
       )}
     </div>
+  );
+}
+
+function OrderText({ o, name }: { o: OrderView; name: (id: number | null) => string }) {
+  const n = <strong>{troopsText(o.tropas, o.jinetes, o.catapultas)}</strong>;
+  if (o.tipo === "sitiar")
+    return (
+      <>
+        {n} de {name(o.desde)} sitian <strong>{name(o.hacia)}</strong>
+      </>
+    );
+  if (o.tipo === "mover")
+    return (
+      <>
+        {n} de {name(o.desde)} → <strong>{name(o.hacia)}</strong>
+        {o.capitan && " (con el Capitán)"}
+      </>
+    );
+  return (
+    <>
+      {n} de {name(o.desde)} apoyan{" "}
+      {o.apoyaDesde ? (
+        <>
+          el ataque de {name(o.apoyaDesde)} sobre <strong>{name(o.hacia)}</strong>
+        </>
+      ) : (
+        <>
+          la defensa de <strong>{name(o.hacia)}</strong>
+        </>
+      )}
+    </>
   );
 }

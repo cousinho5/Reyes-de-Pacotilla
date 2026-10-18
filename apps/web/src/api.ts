@@ -128,6 +128,8 @@ export interface OrderView {
   catapultas?: number;
   /** El Capitán va con este grupo. */
   capitan?: boolean;
+  /** Resolución para la que es (las siguientes a la próxima van en cola). */
+  resolucion?: number;
 }
 
 export interface EventView {
@@ -154,6 +156,8 @@ export interface GameState {
     diasResolucion?: number[];
     /** Resoluciones que dura fortificar. */
     fortificarResoluciones?: number;
+    /** Noches seguidas para las que se pueden dejar órdenes (esta y las siguientes). */
+    nochesEnCola?: number;
     proximaResolucion?: number | null;
     cierre?: string | null;
     resolucion?: string | null;

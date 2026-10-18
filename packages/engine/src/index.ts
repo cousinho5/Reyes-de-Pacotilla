@@ -4,6 +4,7 @@ export * from "./map";
 export * from "./terrain";
 export * from "./units";
 export * from "./combat";
+export * from "./plan";
 export * from "./economy";
 export * from "./prestige";
 export * from "./schedule";
