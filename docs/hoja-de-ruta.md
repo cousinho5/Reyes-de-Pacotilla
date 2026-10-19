@@ -7,7 +7,7 @@ Bloques de actualizaciones, en este orden. Primero se definen todos los bloques;
 | Bloque | Estado | Qué entra |
 | --- | --- | --- |
 | 1. Mapa y losetas | Decidido, siguiente en hacerse | Geografía, ríos, Prado, Aldea, Ruinas y marco de mar y montañas |
-| 2. Vista del castillo y construcciones | Por definir | Dibujo del castillo propio con sus banderas y sus edificios |
+| 2. Vista del castillo y construcciones | Decidido | Escena del castillo en pixel art, un dibujo por nivel de cada edificio y castillo que crece |
 | 3. Mejora del cronista | Por definir | Fray Abundio |
 | 4. Retoques sistema de batalla | Decidido | Apoyo sin origen, jinete más caro, Capitán libre, choques en el camino y fortificación con mantenimiento |
 | 5. Retoques recursos | Por definir |  |
@@ -38,9 +38,19 @@ Decidido el 18 de octubre a partir de Reyes de Pacotilla: evaluación del mapa y
 
 La partida piloto con amigos puede empezar tras la fase 1 o la 2.
 
-## Bloque 2: vista del castillo y construcciones **(por definir)**
+## Bloque 2: vista del castillo y construcciones **(decidido, pendiente de hacer)**
 
-En la pestaña Castillo se verá de verdad un dibujo de tu castillo, con tus banderas y el sitio de cada edificio. Cada mejora de un edificio se verá distinta. El resto, por definir: lo hablaremos y lo decidiremos todo antes de empezar.
+Decidido el 19 de octubre de 2026. Las decisiones y los pasos están en `docs/bloque2.md`. No cambia reglas.
+
+**Decisiones:**
+
+1. **Escena de frente** en la pestaña Castillo: tu castillo en el centro con tus banderas y tu escudo, y los cinco edificios alrededor. Pixel art muy detallado y bonito.
+2. **Un dibujo por nivel** de cada edificio (25 en total).
+3. **Tocar un edificio** abre su ficha y tocar el castillo abre Reclutar. Debajo, la lista de edificios, rehecha más bonita.
+4. **Lo que cuenta la escena** (guarnición, Capitán, obras, hora del día…): aplazado hasta ver el espacio que queda.
+5. **El castillo crece** de adorno según la suma de los niveles de tus edificios, en 5 etapas.
+6. **La loseta del castillo en el mapa** también cambia con su etapa.
+7. **Pequeñas animaciones**, apagadas si el móvil pide menos movimiento.
 
 ## Bloque 3: mejora del cronista **(por definir)**
 
