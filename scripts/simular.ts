@@ -14,7 +14,7 @@
 //   npm run simular -- --json simulacion.json   # además, todos los datos en JSON
 
 import { writeFileSync } from "node:fs";
-import { SIEGE } from "../packages/engine/src";
+import { BATTLE_TWEAKS, BOT_TWEAKS, FORTIFY_COST, SIEGE, UNITS } from "../packages/engine/src";
 import {
   CLASSIC_STRATEGIES,
   OBJECTIVES,
@@ -40,6 +40,31 @@ if (args.has("muralla-noche")) SIEGE.wallsPerNight = Number(args.get("muralla-no
 if (args.get("asedio-fortificadas") === "no") SIEGE.fortifiedTargets = false;
 // --asedio-castillo no: no se pueden rodear castillos.
 if (args.get("asedio-castillo") === "no") SIEGE.castleSides = 99;
+// Bloque 4 de la hoja de ruta (retoques del sistema de batalla):
+//   --apoyo-libre si               apoyar un ataque sin elegir de dónde viene
+//   --cruces si                    también chocan los grupos que se cruzan por el camino
+//   --fortificar-hasta-ataque si   la fortificación dura hasta que atacan la casilla
+//   --coste-fortificar 12          Piedra por fortificar
+//   --capitan-modo avance|solo     el Capitán acompaña los avances, o además va solo al frente
+//   --jinetes-pares 1 --jinetes-impares 0   parte de jinetes al reclutar según la casa (par o impar)
+//   --coste-jinete hierro:3,pan:2,oro:1     --carga 2     --mantener-jinete 1
+if (args.get("apoyo-libre") === "si") BATTLE_TWEAKS.supportAnyOrigin = true;
+if (args.get("cruces") === "si") BATTLE_TWEAKS.crossingClash = true;
+const untilAttacked = args.get("fortificar-hasta-ataque") === "si";
+if (untilAttacked) BATTLE_TWEAKS.fortifyUntilAttacked = true;
+if (args.has("coste-fortificar")) FORTIFY_COST.piedra = Number(args.get("coste-fortificar"));
+const captainMode = (args.get("capitan-modo") ?? "ataques") as typeof BOT_TWEAKS.captain;
+BOT_TWEAKS.captain = captainMode;
+if (captainMode === "solo") BATTLE_TWEAKS.captainAlone = true;
+if (args.has("jinetes-pares") || args.has("jinetes-impares")) {
+  const even = args.has("jinetes-pares") ? Number(args.get("jinetes-pares")) : null;
+  const odd = args.has("jinetes-impares") ? Number(args.get("jinetes-impares")) : null;
+  BOT_TWEAKS.riderShare = (house) => (house % 2 === 0 ? even : odd);
+}
+if (args.has("coste-jinete")) {
+  UNITS.jinetes.cost = Object.fromEntries(args.get("coste-jinete")!.split(",").map((kv) => [kv.split(":")[0], Number(kv.split(":")[1])]));
+}
+if (args.has("carga")) UNITS.jinetes.charge = Number(args.get("carga"));
 const weeks = Number(args.get("semanas") ?? 6) as 2 | 4 | 6 | 8;
 const mode = args.get("modo") ?? "mezcla";
 const [minPlayers, maxPlayers] = (args.get("jugadores") ?? "4-8").split("-").map(Number) as [number, number];
@@ -59,7 +84,7 @@ const started = Date.now();
 for (let i = 0; i < games; i++) {
   const players = minPlayers + Math.floor(rand() * (maxPlayers - minPlayers + 1));
   const strategies = Array.from({ length: players }, () => pool[Math.floor(rand() * pool.length)]!);
-  results.push(simulateGame({ seed: `sim-${i}`, strategies, weeks, events: args.get("eventos") !== "no", terrain: args.get("terreno") !== "no", units: args.get("tropas") !== "no", sieges: args.get("asedios") !== "no", captainGlory: args.get("capitan") !== "no" }));
+  results.push(simulateGame({ seed: `sim-${i}`, strategies, weeks, events: args.get("eventos") !== "no", terrain: args.get("terreno") !== "no", units: args.get("tropas") !== "no", sieges: args.get("asedios") !== "no", captainGlory: args.get("capitan") !== "no", ...(untilAttacked ? { fortify: 100000 } : {}) }));
 }
 const houses = results.flatMap((g) => g.houses.map((h) => ({ ...h, players: g.houses.length })));
 
@@ -185,6 +210,51 @@ table("Forma de la partida", ["dato", "valor"], [
   ["...y acabaron últimas igualmente", helped.length ? pct(helped.filter((h) => h.rank === h.players).length / helped.length) : "—"],
   ["Prestigio medio del ganador", f1(avg(houses.filter((h) => h.rank === 1).map((h) => h.prestige.total)))],
 ]);
+
+// ---------------------------------------------------------------------------
+// Bloque 4: retoques del sistema de batalla.
+const sumB = (k: keyof SimGameResult["battle"]) => results.reduce((a, r) => a + r.battle[k], 0);
+const per = (k: keyof SimGameResult["battle"]) => f1(sumB(k) / results.length);
+const capN = houses.reduce(
+  (a, h) => ({ castillo: a.castillo + h.captainNights.castillo, frente: a.frente + h.captainNights.frente, retaguardia: a.retaguardia + h.captainNights.retaguardia, preso: a.preso + h.captainNights.preso }),
+  { castillo: 0, frente: 0, retaguardia: 0, preso: 0 },
+);
+const capT = capN.castillo + capN.frente + capN.retaguardia + capN.preso || 1;
+const norm = (h: SimHouseResult & { players: number }) => (h.rank - 1) / Math.max(1, h.players - 1);
+const fighters = houses.filter((h) => h.war.combats > 0);
+const isLong = (h: SimHouseResult) => h.war.topEnemyCombats >= 10 && h.war.topEnemyCombats >= 0.8 * h.war.combats;
+const longWar = houses.filter(isLong);
+const rest = houses.filter((h) => !isLong(h));
+table("Bloque 4: batalla (por partida)", ["dato", "valor"], [
+  ["Choques frontales", per("clashes")],
+  ["Cruces por el camino (sin choque si no se activa)", per("crossings")],
+  ["Ataques con jinetes / a la carga", `${per("riderAttacks")} / ${per("chargeAttacks")}`],
+  ["Fortificaciones / casillas-noche fortificadas", `${per("fortifies")} / ${per("fortifiedNights")}`],
+  ["Ataques a casillas fortificadas (los toman)", `${per("attacksOnFortified")} (${pct(sumB("attacksOnFortifiedWon") / Math.max(1, sumB("attacksOnFortified")))})`],
+  ["Capitán: castillo / frente / retaguardia / preso", `${pct(capN.castillo / capT)} / ${pct(capN.frente / capT)} / ${pct(capN.retaguardia / capT)} / ${pct(capN.preso / capT)}`],
+  ["Ataques con el Capitán (por casa)", f1(avg(houses.map((h) => h.captainAttacks)))],
+]);
+table("Bloque 4: guerras (por casa)", ["dato", "valor"], [
+  ["Casas enemigas con las que combate", f1(avg(houses.map((h) => h.war.enemies)))],
+  ["Combates contra casas", f1(avg(houses.map((h) => h.war.combats)))],
+  ["Parte de esos combates contra la misma casa", pct(avg(fighters.map((h) => h.war.topEnemyCombats / h.war.combats)))],
+  ["Duración de la guerra principal (resoluciones)", f1(avg(fighters.map((h) => h.war.topEnemySpan)))],
+  ["Noches con dos frentes", f1(avg(houses.map((h) => h.war.twoFrontNights)))],
+  ["Casas encerradas en una guerra (10+ combates, 80% con la misma)", pct(longWar.length / houses.length)],
+  ["Puesto relativo en guerra larga / resto (0 = 1.º)", `${avg(longWar.map(norm)).toFixed(2)} / ${avg(rest.map(norm)).toFixed(2)}`],
+  ["Ganan en guerra larga / resto (x esperado)", `${f1(winStats(longWar).ratio)} / ${f1(winStats(rest).ratio)}`],
+]);
+if (BOT_TWEAKS.riderShare) {
+  table(
+    "Bloque 4: casas pares frente a impares (reclutan jinetes distinto)",
+    ["casas", "n", "gana", "x esperado", "puesto medio", "Prestigio", "territorio", "Mesnada", "Jinetes"],
+    [0, 1].map((par) => {
+      const g = houses.filter((h) => h.house % 2 === par);
+      const w = winStats(g);
+      return [par === 0 ? "pares" : "impares", g.length, pct(w.rate), f1(w.ratio), avg(g.map(norm)).toFixed(2), f1(avg(g.map((h) => h.prestige.total))), f1(avg(g.map((h) => h.prestige.territorio))), f1(avg(g.map((h) => h.recruitedHouse.mesnada))), f1(avg(g.map((h) => h.recruitedHouse.jinetes)))];
+    }),
+  );
+}
 
 const json = args.get("json");
 if (json) {

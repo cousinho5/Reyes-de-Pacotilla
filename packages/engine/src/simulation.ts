@@ -15,7 +15,9 @@ import { dealObjectives, objectiveMet, type ObjectiveKey } from "./objectives";
 import { computePrestige, isValidTrade, type AchievementKey, type PrestigeBreakdown } from "./prestige";
 import { gloryFromEvents, resolveCampaign } from "./combat";
 import { fitOrders } from "./plan";
-import { marchKind } from "./terrain";
+import { marchKind, marchPath } from "./terrain";
+import { areAdjacent } from "./map";
+import { isPlain, orderUnits } from "./units";
 import type { MapLayoutOverride } from "./mapgen";
 import { GRID, PRESTIGE, RHYTHM, SPECIALTY_PAIRS, STARTING_RESOURCES, SIEGE, TERRAIN, TERRAIN_OFF, UNITS, CAPTAIN, GLORY } from "./rules";
 import { totalOf } from "./trade";
@@ -135,6 +137,24 @@ export interface SimHouseResult {
   rankWeek2: number | null;
   /** Prestigio cada domingo. */
   prestigeBySunday: number[];
+  /** Tropas reclutadas por esta casa. */
+  recruitedHouse: { mesnada: number; jinetes: number; catapultas: number };
+  /** Guerras (combates contra otras casas, como atacante o defensor). */
+  war: {
+    /** Casas distintas con las que ha combatido. */
+    enemies: number;
+    /** Combates contra otras casas y contra la que más. */
+    combats: number;
+    topEnemyCombats: number;
+    /** Resoluciones entre el primer y el último combate contra esa casa. */
+    topEnemySpan: number;
+    /** Resoluciones con combates contra dos o más casas a la vez (en una ventana de 3 noches). */
+    twoFrontNights: number;
+  };
+  /** Noches del Capitán: en el castillo, en el frente, en la retaguardia, preso. */
+  captainNights: { castillo: number; frente: number; retaguardia: number; preso: number };
+  /** Ataques en los que fue el Capitán. */
+  captainAttacks: number;
 }
 
 export interface SimGameResult {
@@ -181,6 +201,22 @@ export interface SimGameResult {
   cardsPlayed: number;
   /** Mapa al final de la partida. */
   finalTiles: Tile[];
+  /** Datos del bloque 4 de la hoja de ruta. */
+  battle: {
+    /** Choques frontales (cambio de casilla o cruce). */
+    clashes: number;
+    /** Cruces sin choque: marchas de dos casillas que recorren al revés un tramo de otra casa. */
+    crossings: number;
+    /** Ataques de jinetes a la carga (llano sin murallas) y ataques con jinetes en total. */
+    chargeAttacks: number;
+    riderAttacks: number;
+    /** Fortificaciones hechas y casillas-noche fortificadas. */
+    fortifies: number;
+    fortifiedNights: number;
+    /** Ataques contra casillas fortificadas y cuántos la tomaron. */
+    attacksOnFortified: number;
+    attacksOnFortifiedWon: number;
+  };
 }
 
 interface HouseState {
@@ -208,6 +244,9 @@ interface HouseState {
   /** Puntos de Gloria (Prestigio) y su Capitán. */
   glory: number;
   captain: Captain;
+  recruitedHouse: { mesnada: number; jinetes: number; catapultas: number };
+  captainNights: { castillo: number; frente: number; retaguardia: number; preso: number };
+  captainAttacks: number;
 }
 
 export function simulateGame(opts: SimOptions): SimGameResult {
@@ -288,6 +327,9 @@ function runGame(opts: SimOptions): SimGameResult {
       siegeNights: 0,
       glory: 0,
       captain: { house: id, tile: startCastle(id), capturedBy: null, freeAt: null },
+      recruitedHouse: { mesnada: 0, jinetes: 0, catapultas: 0 },
+      captainNights: { castillo: 0, frente: 0, retaguardia: 0, preso: 0 },
+      captainAttacks: 0,
     };
   });
   const byId = new Map(houses.map((h) => [h.id, h]));
@@ -315,6 +357,9 @@ function runGame(opts: SimOptions): SimGameResult {
   let rankWeek2: Map<HouseId, number> | null = null;
   let firstHouseCombat: number | null = null;
   let firstHouseCombatDay: number | null = null;
+  const battle = { clashes: 0, crossings: 0, chargeAttacks: 0, riderAttacks: 0, fortifies: 0, fortifiedNights: 0, attacksOnFortified: 0, attacksOnFortifiedWon: 0 };
+  /** Combates entre casas: [casa, rival, resolución]. */
+  const fights: [HouseId, HouseId, number][] = [];
 
   const prestigeOf = (h: HouseState, day: number, objectiveMet?: boolean) => {
     const partners = new Set<HouseId>();
@@ -423,6 +468,10 @@ function runGame(opts: SimOptions): SimGameResult {
           if (h.levels[b] === 5 && !houses.some((o) => o.achievements.obra_maestra)) h.achievements.obra_maestra = 1;
         }
         for (const f of plan.fortify) tiles = tiles.map((t) => (t.id === f.tile ? { ...t, fortifiedUntil: f.until } : t));
+        battle.fortifies += plan.fortify.length;
+        h.recruitedHouse.mesnada += plan.recruit;
+        h.recruitedHouse.jinetes += plan.riders;
+        h.recruitedHouse.catapultas += plan.engines;
         if (plan.recruit > 0) tiles = tiles.map((t) => (t.castleOf === h.id ? { ...t, troops: t.troops + plan.recruit } : t));
         if (plan.riders > 0) tiles = tiles.map((t) => (t.castleOf === h.id ? addRecruits(t, plan.riders, "jinetes") : t));
         if (plan.engines > 0) tiles = tiles.map((t) => (t.castleOf === h.id ? addRecruits(t, plan.engines, "catapultas") : t));
@@ -546,6 +595,42 @@ function runGame(opts: SimOptions): SimGameResult {
       );
     }
     const before = new Map(tiles.map((t) => [t.id, t]));
+    // Bloque 4: cruces de marchas, cargas y Capitán.
+    {
+      const moves = orders.filter((o) => o.kind === "move") as Extract<Order, { kind: "move" }>[];
+      const paths = moves.map((o) => marchPath(before.get(o.from)!, before.get(o.to)!, tiles, o.house, orderUnits(o)).map((t) => t.id));
+      for (let i = 0; i < moves.length; i++) {
+        for (let j = i + 1; j < moves.length; j++) {
+          if (moves[i]!.house === moves[j]!.house) continue;
+          const a = paths[i]!;
+          const b = paths[j]!;
+          if (a.length < 3 && b.length < 3) continue;
+          let cross = false;
+          for (let x = 0; x + 1 < a.length; x++) for (let y = 0; y + 1 < b.length; y++) if (a[x] === b[y + 1] && a[x + 1] === b[y]) cross = true;
+          if (cross) battle.crossings++;
+        }
+      }
+      for (const o of moves) {
+        const to = before.get(o.to)!;
+        if (to.owner === o.house) continue;
+        if (o.captain) byId.get(o.house)!.captainAttacks++;
+        if ((o.jinetes ?? 0) > 0) {
+          battle.riderAttacks++;
+          if (isPlain(to.type) && !(to.type === "fortaleza" || (to.fortifiedUntil != null && to.fortifiedUntil >= resolution))) battle.chargeAttacks++;
+        }
+      }
+      battle.fortifiedNights += tiles.filter((t) => t.fortifiedUntil != null && t.fortifiedUntil >= resolution).length;
+      for (const h of houses) {
+        const c = h.captain;
+        if (c.tile == null) h.captainNights.preso++;
+        else {
+          const t = before.get(c.tile);
+          if (!t || t.castleOf === h.id) h.captainNights.castillo++;
+          else if (tiles.some((o) => o.owner !== h.id && o.type !== "castillo" && areAdjacent(o, t))) h.captainNights.frente++;
+          else h.captainNights.retaguardia++;
+        }
+      }
+    }
     for (const o of orders) {
       if (o.kind === "support") supports++;
       else if (o.kind === "siege") siegeOrders++;
@@ -601,7 +686,21 @@ function runGame(opts: SimOptions): SimGameResult {
         }
       }
       if (e.type === "rebote") bounces++;
+      if (e.type === "choque_frontal") {
+        battle.clashes++;
+        const [a, b] = e.sides;
+        if (a && b && a.house != null && b.house != null) fights.push([a.house, b.house, resolution], [b.house, a.house, resolution]);
+      }
       if (e.type !== "combate") continue;
+      {
+        const prev = before.get(e.tile);
+        if (prev && prev.owner != null && prev.fortifiedUntil != null && prev.fortifiedUntil >= resolution) {
+          battle.attacksOnFortified++;
+          if (e.conquered) battle.attacksOnFortifiedWon++;
+        }
+        const hs = [...new Set(e.sides.map((x) => x.house).filter((x): x is HouseId => x != null))];
+        for (const a of hs) for (const b of hs) if (a !== b) fights.push([a, b, resolution]);
+      }
       if (e.previousOwner == null) combatsVsNeutral++;
       else {
         combatsVsHouse++;
@@ -706,6 +805,7 @@ function runGame(opts: SimOptions): SimGameResult {
     events: weekEvents.map((e) => e.key),
     cardsPlayed,
     finalTiles: tiles,
+    battle,
     houses: final.map((f, i) => ({
       house: f.h.id,
       strategy: f.h.strategy,
@@ -726,6 +826,10 @@ function runGame(opts: SimOptions): SimGameResult {
       helpWeeks: f.h.helpWeeks,
       rankWeek2: rankWeek2?.get(f.h.id) ?? null,
       prestigeBySunday: f.h.prestigeBySunday,
+      recruitedHouse: f.h.recruitedHouse,
+      captainNights: f.h.captainNights,
+      captainAttacks: f.h.captainAttacks,
+      war: warStats(f.h.id, fights),
     })),
   };
 }
@@ -781,4 +885,20 @@ function proposeTrade(
 function ranks(totals: { house: HouseId; total: number }[]): Map<HouseId, number> {
   const sorted = [...totals].sort((a, b) => b.total - a.total || a.house - b.house);
   return new Map(sorted.map((t, i) => [t.house, i + 1]));
+}
+
+function warStats(house: HouseId, fights: [HouseId, HouseId, number][]): SimHouseResult["war"] {
+  const mine = fights.filter((f) => f[0] === house);
+  const byEnemy = new Map<HouseId, number[]>();
+  for (const [, b, r] of mine) byEnemy.set(b, [...(byEnemy.get(b) ?? []), r]);
+  const top = [...byEnemy.entries()].sort((a, b) => b[1].length - a[1].length || a[0] - b[0])[0];
+  const nights = [...new Set(mine.map((f) => f[2]))];
+  const twoFront = nights.filter((r) => new Set(mine.filter((f) => Math.abs(f[2] - r) <= 1).map((f) => f[1])).size >= 2).length;
+  return {
+    enemies: byEnemy.size,
+    combats: mine.length,
+    topEnemyCombats: top ? top[1].length : 0,
+    topEnemySpan: top ? Math.max(...top[1]) - Math.min(...top[1]) + 1 : 0,
+    twoFrontNights: twoFront,
+  };
 }

@@ -110,6 +110,27 @@ export function marchKind(from: Tile, to: Tile, tiles: Tile[], house: HouseId, u
   return null;
 }
 
+/**
+ * Casillas que recorre una marcha, de salida a llegada: [from, to] si se tocan
+ * (o por mar), [from, en medio, to] por camino o a la carga. La casilla de en
+ * medio se elige como en `marchKind`.
+ */
+export function marchPath(from: Tile, to: Tile, tiles: Tile[], house: HouseId, units?: Units): Tile[] {
+  const kind = marchKind(from, to, tiles, house, units);
+  if (kind === "camino") {
+    const roads = roadSet(tiles);
+    const mid = tiles.find(
+      (m) => m.owner === house && areAdjacent(from, m) && areAdjacent(m, to) && roads.has(pairKey(from, m)) && roads.has(pairKey(m, to)),
+    );
+    if (mid) return [from, mid, to];
+  }
+  if (kind === "carga") {
+    const mid = tiles.find((m) => m.owner === house && isPlain(m.type) && areAdjacent(from, m) && areAdjacent(m, to));
+    if (mid) return [from, mid, to];
+  }
+  return [from, to];
+}
+
 /** Bonificación de defensa del terreno de una casilla. */
 export function terrainDefense(type: TileType): number {
   return TERRAIN.defense[type] ?? 0;

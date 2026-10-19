@@ -95,6 +95,28 @@ export const QUEUE = {
   nights: 3,
 };
 
+/**
+ * Retoques del sistema de batalla en estudio (hoja de ruta, bloque 4). Todos
+ * apagados: el juego funciona como siempre. El simulador los enciende para
+ * comparar (`npm run simular -- --apoyo-libre si`, `--cruces si`, `--fortificar-hasta-ataque si`).
+ * - `supportAnyOrigin`: un apoyo al ataque con origen `ANY_ORIGIN` vale para
+ *   los ataques de la casa que apoya a esa casilla, vengan de donde vengan.
+ * - `crossingClash`: también chocan de frente dos grupos que se cruzan por el
+ *   camino (una marcha de dos casillas que recorre al revés la de otra casa).
+ * - `captainAlone`: el Capitán se mueve solo, sin tropas, a una casilla propia.
+ * - `fortifyUntilAttacked`: un ataque a una casilla fortificada le quita la
+ *   fortificación aunque fracase (la duración se elige al fortificar).
+ */
+export const BATTLE_TWEAKS = {
+  supportAnyOrigin: false,
+  crossingClash: false,
+  fortifyUntilAttacked: false,
+  /** El Capitán puede moverse solo (orden de mover con 0 tropas) entre casillas propias. */
+  captainAlone: false,
+};
+/** Origen de un apoyo al ataque que vale para cualquier ataque propio (con `supportAnyOrigin`). */
+export const ANY_ORIGIN = -1;
+
 export const GLORY = {
   enabled: true,
   perVictory: 1,

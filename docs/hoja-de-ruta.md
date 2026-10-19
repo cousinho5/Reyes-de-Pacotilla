@@ -2,7 +2,7 @@
 
 Actualizada el 19 de octubre de 2026 · copia del documento «Reyes de Pacotilla: hoja de ruta» (claude.ai)
 
-Cuatro bloques de actualizaciones, en este orden. El primero ya está decidido; los otros tres se definirán cuando lleguemos. Se pueden añadir o mover bloques sobre la marcha.
+Bloques de actualizaciones, en este orden. El primero ya está decidido; los demás se definirán cuando lleguemos. Se pueden añadir o mover bloques sobre la marcha.
 
 | Bloque | Estado | Qué entra |
 | --- | --- | --- |
@@ -13,6 +13,7 @@ Cuatro bloques de actualizaciones, en este orden. El primero ya está decidido; 
 | 5. Retoques recursos | Por definir |  |
 | 3. Optimización y controles en móvil | Por definir | Rendimiento y manejo con el dedo |
 | 7.  Mejorar pagina de inicio del juego | Por definir | Mejorar visualmente la pantalla de inicio al acceder al juego. |
+| 8. Alianzas | Decidido | Alianzas formales: paso por las casillas del aliado, ruptura con aviso de tres días y ataques conjuntos |
 
 ## Bloque 1: mapa y losetas
 
@@ -65,3 +66,26 @@ Por definir. Lo hablaremos y lo decidiremos todo antes de empezar.
 Por definir. Lo hablaremos y lo decidiremos todo antes de empezar.
 
 ## Bloque 7: Mejorar pagina de inicio del juego **(por definir)**
+
+## Bloque 8: Alianzas **(decidido, pendiente de hacer)**
+
+Propuesto y decidido el 19 de octubre de 2026, a partir de Reyes de Pacotilla: investigación de las alianzas. Las reglas completas y los pasos para hacerlo están en `docs/alianzas.md`. Ya existe una base: la tabla `pacts` de la base de datos (sin uso todavía) y los apoyos entre casas distintas.
+
+**Decisiones:**
+
+- **Paso libre.** Si estás aliado con otra casa, puedes entrar en sus casillas sin atacarla y moverte por ellas. Las tropas aliadas no pueden entrar en el castillo del otro.
+- **Tropas de paso.** Las tropas aliadas que estén en una casilla del otro suman a su defensa si la atacan.
+- **Visión compartida.** Los aliados ven lo que ve el otro.
+- **Aviso de Fray Abundio** cuando un aliado acumula muchas tropas dentro de tus casillas.
+- **Ruptura con aviso.** Una alianza se puede romper en cualquier momento, también al final de la partida, y romperla con aviso no cuesta nada.
+  - A la otra casa le sale un mensaje: la alianza deja de existir en tres días (tres resoluciones). El aviso sale también en el boletín, para toda la mesa.
+  - Durante el aviso se corta la visión compartida, ninguno puede atacar al otro y no se puede entrar en casillas del otro. Sí se pueden mover las tropas propias que ya estén dentro, para sacarlas.
+  - Cuando desaparece, las tropas que sigan en casillas de la otra casa vuelven al momento a la casilla propia más cercana.
+  - Quien rompe no puede aliarse otra vez durante una semana.
+  - Atacar a un aliado sin romper antes la alianza no es posible.
+- **Ataque conjunto.** Si dos aliados entran a la vez en la casilla de una casa que no pertenece a la alianza, hay una sola batalla: se suman las tropas de los dos contra las del otro. Las bajas se reparten entre los dos en proporción a lo que llevó cada uno. Si ganan, se queda la casilla el aliado que entró con más tropas; en caso de empate, quien dio antes la orden.
+- **Sin límite de alianzas** por ahora. Cada alianza es entre dos casas: si A está aliada con B y B con C, A y C no lo están.
+- **Un solo ganador.** Las alianzas no cuentan para ganar.
+- **Los bots** aprenden a proponer, aceptar y romper alianzas, para que las partidas de prueba se parezcan a las reales.
+
+**Por pensar más adelante:** una mecánica de traición propia (no entra en la primera versión).

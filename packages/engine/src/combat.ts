@@ -17,7 +17,7 @@
 // - Dos grupos que se cambian de casilla chocan a medio camino sin
 //   bonificación; el ganador sigue y el perdedor se repliega.
 
-import { CAPTAIN, DEFENSE_BONUS, GLORY, SIEGE, UNITS } from "./rules";
+import { ANY_ORIGIN, BATTLE_TWEAKS, CAPTAIN, DEFENSE_BONUS, GLORY, SIEGE, UNITS } from "./rules";
 import {
   addUnits,
   canEnter,
@@ -33,7 +33,7 @@ import {
   type Units,
 } from "./units";
 import { areAdjacent } from "./map";
-import { marchKind, terrainDefense } from "./terrain";
+import { marchKind, marchPath, terrainDefense } from "./terrain";
 import type {
   CampaignEvent,
   CampaignInput,
@@ -192,8 +192,15 @@ export function resolveCampaign(input: CampaignInput): CampaignResult {
     return !cut;
   });
 
+  // Con BATTLE_TWEAKS.supportAnyOrigin, un apoyo con origen ANY_ORIGIN suma una
+  // sola vez a la casa que apoya: al primero de sus ataques que siga en pie.
   const attackSupport = (m: Move) =>
-    activeSupports.filter((s) => s.target === m.to && s.supportedFrom === m.from && !isOwnTileAgainst(s, m, tiles));
+    activeSupports.filter((s) => {
+      if (s.target !== m.to || isOwnTileAgainst(s, m, tiles)) return false;
+      if (s.supportedFrom === m.from) return true;
+      if (!BATTLE_TWEAKS.supportAnyOrigin || s.supportedFrom !== ANY_ORIGIN || s.house !== m.house) return false;
+      return moves.find((x) => x.house === m.house && x.to === m.to && !x.failed) === m;
+    });
   // Tambores de guerra: la fuerza de los ataques de esa casa sube un porcentaje.
   // Los jinetes cargan (fuerza 2) contra una casilla llana sin murallas.
   const attackStrength = (m: Move) => {
@@ -208,11 +215,26 @@ export function resolveCampaign(input: CampaignInput): CampaignResult {
     (rawStrength(m.units, { type: "campos" }) + (m.captain ? CAPTAIN.strength : 0)) *
     (1 + (input.attackBonus?.[m.house] ?? 0) + (input.attackBonusAll ?? 0));
 
-  // 4. Choques frontales: dos casas que se cambian de casilla.
+  // 4. Choques frontales: dos casas que se cambian de casilla. Con
+  // BATTLE_TWEAKS.crossingClash, también las que se cruzan por el camino: una
+  // marcha de dos casillas que recorre al revés un tramo de la otra.
+  const paths = new Map<Move, TileId[]>(
+    moves.map((m) => [m, marchPath(input.tiles.find((t) => t.id === m.from)!, input.tiles.find((t) => t.id === m.to)!, input.tiles, m.house, m.units).map((t) => t.id)]),
+  );
+  const crosses = (a: Move, b: Move) => {
+    const pa = paths.get(a)!;
+    const pb = paths.get(b)!;
+    if (pa.length < 3 && pb.length < 3) return false;
+    for (let i = 0; i + 1 < pa.length; i++) {
+      for (let j = 0; j + 1 < pb.length; j++) if (pa[i] === pb[j + 1] && pa[i + 1] === pb[j]) return true;
+    }
+    return false;
+  };
   for (const a of moves) {
     for (const b of moves) {
       if (a === b || a.failed || b.failed || a.house === b.house) continue;
-      if (a.from !== b.to || a.to !== b.from || a.from > b.from) continue;
+      const swap = a.from === b.to && a.to === b.from;
+      if (swap ? a.from > b.from : !(BATTLE_TWEAKS.crossingClash && crosses(a, b) && moves.indexOf(a) < moves.indexOf(b))) continue;
       const sa = clashStrength(a);
       const sb = clashStrength(b);
       let winner: HouseId | null = null;
@@ -321,6 +343,9 @@ export function resolveCampaign(input: CampaignInput): CampaignResult {
         from: unique(a.moves.map((m) => m.from)),
       })),
     ];
+
+    // Con BATTLE_TWEAKS.fortifyUntilAttacked, el ataque gasta la fortificación.
+    if (BATTLE_TWEAKS.fortifyUntilAttacked) tile.fortifiedUntil = null;
 
     if (defenderOnTop) {
       // Gana el defensor (también en empate).
@@ -530,6 +555,13 @@ function resolveSieges(
 }
 
 function validate(order: Order, tiles: Map<TileId, Tile>, resolution?: number): string | null {
+  const captainAlone = BATTLE_TWEAKS.captainAlone && order.kind === "move" && order.troops === 0 && !!order.captain;
+  if (captainAlone) {
+    const to = tiles.get(order.to);
+    if (!tiles.get(order.from) || tiles.get(order.from)!.owner !== order.house) return "la casilla de origen no es de esa casa";
+    if (!to || to.owner !== order.house) return "el Capitán solo puede ir solo a una casilla propia";
+    return marchKind(tiles.get(order.from)!, to, [...tiles.values()], order.house) ? null : "el destino no es adyacente ni se llega por camino";
+  }
   if (!Number.isInteger(order.troops) || order.troops <= 0) return "el número de tropas debe ser un entero positivo";
   const j = order.jinetes ?? 0;
   const c = order.catapultas ?? 0;
@@ -575,7 +607,10 @@ function validateSupport(order: SupportOrder, from: Tile, tiles: Map<TileId, Til
   if (!target) return "la casilla apoyada no existe";
   if (!areAdjacent(from, target)) return "la casilla apoyada no es adyacente";
   if (target.type === "castillo") return "los castillos no se pueden atacar ni hace falta defenderlos";
-  if (order.supportedFrom !== null) {
+  if (order.supportedFrom === ANY_ORIGIN) {
+    if (!BATTLE_TWEAKS.supportAnyOrigin) return "el ataque apoyado no es posible";
+    if (target.owner === order.house) return "no puedes apoyar un ataque contra tu propia casilla";
+  } else if (order.supportedFrom !== null) {
     const origin = tiles.get(order.supportedFrom);
     if (!origin) return "el origen del ataque apoyado no existe";
     if (!areAdjacent(origin, target)) return "el ataque apoyado no es posible";
