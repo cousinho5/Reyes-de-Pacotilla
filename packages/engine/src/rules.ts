@@ -131,6 +131,12 @@ export const TROOP_COST: Partial<Resources> = { hierro: 2, pan: 2 };
 
 /** Coste de fortificar una casilla. Lo que dura va en RHYTHM. */
 export const FORTIFY_COST: Partial<Resources> = { piedra: 8 };
+/**
+ * Mantenimiento de cada casilla fortificada, el domingo (bloque 4, en estudio).
+ * Vacío = sin mantenimiento. Pensado para la fortificación que dura hasta que
+ * la atacan (`BATTLE_TWEAKS.fortifyUntilAttacked`).
+ */
+export const FORTIFY_UPKEEP: Partial<Resources> = {};
 
 /**
  * Forma de las casillas (diseño v3, propuesta del nuevo sistema de guerra).

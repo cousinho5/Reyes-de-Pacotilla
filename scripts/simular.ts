@@ -14,7 +14,7 @@
 //   npm run simular -- --json simulacion.json   # además, todos los datos en JSON
 
 import { writeFileSync } from "node:fs";
-import { BATTLE_TWEAKS, BOT_TWEAKS, FORTIFY_COST, SIEGE, UNITS } from "../packages/engine/src";
+import { BATTLE_TWEAKS, BOT_TWEAKS, FORTIFY_COST, FORTIFY_UPKEEP, SIEGE, UNITS } from "../packages/engine/src";
 import {
   CLASSIC_STRATEGIES,
   OBJECTIVES,
@@ -53,6 +53,10 @@ if (args.get("cruces") === "si") BATTLE_TWEAKS.crossingClash = true;
 const untilAttacked = args.get("fortificar-hasta-ataque") === "si";
 if (untilAttacked) BATTLE_TWEAKS.fortifyUntilAttacked = true;
 if (args.has("coste-fortificar")) FORTIFY_COST.piedra = Number(args.get("coste-fortificar"));
+// --mantener-fortificacion piedra:2   coste de cada casilla fortificada el domingo
+if (args.has("mantener-fortificacion")) {
+  for (const kv of args.get("mantener-fortificacion")!.split(",")) FORTIFY_UPKEEP[kv.split(":")[0] as "piedra"] = Number(kv.split(":")[1]);
+}
 const captainMode = (args.get("capitan-modo") ?? "ataques") as typeof BOT_TWEAKS.captain;
 BOT_TWEAKS.captain = captainMode;
 if (captainMode === "solo") BATTLE_TWEAKS.captainAlone = true;
@@ -65,6 +69,8 @@ if (args.has("coste-jinete")) {
   UNITS.jinetes.cost = Object.fromEntries(args.get("coste-jinete")!.split(",").map((kv) => [kv.split(":")[0], Number(kv.split(":")[1])]));
 }
 if (args.has("carga")) UNITS.jinetes.charge = Number(args.get("carga"));
+// --atrincherar pares: las casas pares fortifican toda su frontera con otras casas.
+if (args.get("atrincherar") === "pares") BOT_TWEAKS.fortifyFrontier = (house) => house % 2 === 0;
 const weeks = Number(args.get("semanas") ?? 6) as 2 | 4 | 6 | 8;
 const mode = args.get("modo") ?? "mezcla";
 const [minPlayers, maxPlayers] = (args.get("jugadores") ?? "4-8").split("-").map(Number) as [number, number];
@@ -230,6 +236,7 @@ table("Bloque 4: batalla (por partida)", ["dato", "valor"], [
   ["Cruces por el camino (sin choque si no se activa)", per("crossings")],
   ["Ataques con jinetes / a la carga", `${per("riderAttacks")} / ${per("chargeAttacks")}`],
   ["Fortificaciones / casillas-noche fortificadas", `${per("fortifies")} / ${per("fortifiedNights")}`],
+  ["Mantenimiento de fortificaciones pagado / desmanteladas", `${per("fortifyUpkeep")} / ${per("fortifyDropped")}`],
   ["Ataques a casillas fortificadas (los toman)", `${per("attacksOnFortified")} (${pct(sumB("attacksOnFortifiedWon") / Math.max(1, sumB("attacksOnFortified")))})`],
   ["Capitán: castillo / frente / retaguardia / preso", `${pct(capN.castillo / capT)} / ${pct(capN.frente / capT)} / ${pct(capN.retaguardia / capT)} / ${pct(capN.preso / capT)}`],
   ["Ataques con el Capitán (por casa)", f1(avg(houses.map((h) => h.captainAttacks)))],
@@ -244,9 +251,9 @@ table("Bloque 4: guerras (por casa)", ["dato", "valor"], [
   ["Puesto relativo en guerra larga / resto (0 = 1.º)", `${avg(longWar.map(norm)).toFixed(2)} / ${avg(rest.map(norm)).toFixed(2)}`],
   ["Ganan en guerra larga / resto (x esperado)", `${f1(winStats(longWar).ratio)} / ${f1(winStats(rest).ratio)}`],
 ]);
-if (BOT_TWEAKS.riderShare) {
+if (BOT_TWEAKS.riderShare || BOT_TWEAKS.fortifyFrontier) {
   table(
-    "Bloque 4: casas pares frente a impares (reclutan jinetes distinto)",
+    "Bloque 4: casas pares frente a impares",
     ["casas", "n", "gana", "x esperado", "puesto medio", "Prestigio", "territorio", "Mesnada", "Jinetes"],
     [0, 1].map((par) => {
       const g = houses.filter((h) => h.house % 2 === par);

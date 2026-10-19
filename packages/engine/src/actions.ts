@@ -3,8 +3,8 @@
 
 import { canAfford, upgradeCost, weeklyUpkeep } from "./economy";
 import { distance } from "./map";
-import { FORTIFY_COST, RHYTHM, TERRAIN, TROOP_COST, TROOPS_PER_PAN, UNITS } from "./rules";
-import type { BuildingKind, HouseId, Resources, Tile } from "./types";
+import { FORTIFY_COST, FORTIFY_UPKEEP, RHYTHM, TERRAIN, TROOP_COST, TROOPS_PER_PAN, UNITS } from "./rules";
+import type { BuildingKind, HouseId, Resource, Resources, Tile } from "./types";
 import { clampUnits, setUnits, unitsOf, upkeepTroops, type UnitKind } from "./units";
 
 export type ActionResult<T> = { ok: true; value: T } | { ok: false; error: string };
@@ -112,6 +112,39 @@ export function applyUpkeep(tiles: Tile[], house: HouseId, pan: number, factor =
   }
   // Desertan primero los de la Mesnada; si no queda, Jinetes y Catapultas.
   return { cost, paid: pan, deserted, tiles: tiles.map((t) => clampUnits(updated.get(t.id)!)) };
+}
+
+/**
+ * Mantenimiento de las fortificaciones (FORTIFY_UPKEEP) el domingo. `keep`
+ * dice qué casillas quiere conservar la casa; las demás se desmantelan sin
+ * coste. Si no llega para todas, se conservan en orden de id hasta donde llegue.
+ */
+export function applyFortifyUpkeep(
+  tiles: Tile[],
+  house: HouseId,
+  have: Resources,
+  resolution: number,
+  keep: (t: Tile) => boolean = () => true,
+): { tiles: Tile[]; cost: Resources; dropped: number } {
+  const cost: Resources = { pan: 0, madera: 0, piedra: 0, hierro: 0, oro: 0 };
+  const per = Object.entries(FORTIFY_UPKEEP) as [Resource, number][];
+  if (per.every(([, v]) => !v)) return { tiles, cost, dropped: 0 };
+  const left = { ...have };
+  let dropped = 0;
+  const out = tiles.map((t) => {
+    if (t.owner !== house || t.fortifiedUntil == null || t.fortifiedUntil < resolution) return t;
+    const afford = per.every(([r, v]) => left[r] >= v);
+    if (!keep(t) || !afford) {
+      dropped++;
+      return { ...t, fortifiedUntil: null };
+    }
+    for (const [r, v] of per) {
+      left[r] -= v;
+      cost[r] += v;
+    }
+    return t;
+  });
+  return { tiles: out, cost, dropped };
 }
 
 /** Casa última en Prestigio (en empate, la de menor id, para ser deterministas). */
