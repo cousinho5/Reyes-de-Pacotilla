@@ -9,6 +9,7 @@ import { unitsOf } from "../units";
 import { BUILDINGS, RESOURCES, type BuildingKind, type Resource, type Resources, type TileId } from "../types";
 import { militaryNeed, targets } from "./orders";
 import { PRESTIGE_UNIT, valueOf, type Situation } from "./view";
+import { BOT_TWEAKS } from "./personality";
 
 export interface DayPlan {
   /** Mejoras en orden (puede haber varias el mismo día). */
@@ -111,7 +112,9 @@ export function planDay(s: Situation): DayPlan {
       if (n > 0 && (urgent || !blocked(recruitCost(n), false))) {
         const score = p.military * (urgent ? 2.2 : 1.3);
         // Una parte, jinetes: más cuantas más ganas de atacar a otras casas (si llega el Oro).
-        let k = UNITS.enabled ? Math.floor(n * Math.max(0, Math.min(0.6, 0.25 + 0.3 * (p.houseBias - 0.3)))) : 0;
+        const forced = BOT_TWEAKS.riderShare?.(view.house) ?? null;
+        const share = forced ?? Math.max(0, Math.min(0.6, 0.25 + 0.3 * (p.houseBias - 0.3)));
+        let k = UNITS.enabled ? Math.floor(n * share) : 0;
         const mix = (k: number) => {
           const a = recruitCost(n - k);
           const b = recruitCost(k, "jinetes");

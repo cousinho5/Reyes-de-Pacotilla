@@ -9,10 +9,11 @@ import { checkOrders, defenseMultiplier, walled } from "../combat";
 import { areAdjacent } from "../map";
 import { marchKind } from "../terrain";
 import { tilePrestige } from "../prestige";
-import { CAPTAIN, OBJECTIVE_TARGETS, PRESTIGE, SIEGE, STRETCH_FREE_TILES, STRETCH_PAN, TILE_PRODUCTION, TROOP_COST, UNITS } from "../rules";
+import { ANY_ORIGIN, BATTLE_TWEAKS, CAPTAIN, OBJECTIVE_TARGETS, PRESTIGE, SIEGE, STRETCH_FREE_TILES, STRETCH_PAN, TILE_PRODUCTION, TROOP_COST, UNITS } from "../rules";
 import { isPlain, totalUnits, unitFields, unitsOf, type UnitKind, type Units } from "../units";
 import type { Order, Tile, TileId } from "../types";
 import { PRESTIGE_UNIT, valueOf, type Situation } from "./view";
+import { BOT_TWEAKS } from "./personality";
 
 export interface Target {
   tile: Tile;
@@ -142,7 +143,8 @@ export function planOrders(s: Situation): Order[] {
       .sort((a, b) => b.n - a.n || Number(a.far) - Number(b.far) || a.t.id - b.t.id);
     const main = mains[0];
     if (!main) continue;
-    const helpers = (main.far ? [] : target.from)
+    // Con apoyo libre, también se apoyan las marchas por camino o a la carga.
+    const helpers = (main.far && !BATTLE_TWEAKS.supportAnyOrigin ? [] : target.from)
       .filter((t) => t.id !== main.t.id)
       .map((t) => ({ t, n: room(t) }))
       .filter((x) => x.n > 0)
@@ -160,7 +162,8 @@ export function planOrders(s: Situation): Order[] {
     for (const h of helpers) {
       if (missing <= 0) break;
       const n = Math.min(h.n, missing + 1);
-      orders.push({ kind: "support", house, from: h.t.id, target: target.tile.id, supportedFrom: main.t.id, troops: n });
+      const supportedFrom = BATTLE_TWEAKS.supportAnyOrigin ? ANY_ORIGIN : main.t.id;
+      orders.push({ kind: "support", house, from: h.t.id, target: target.tile.id, supportedFrom, troops: n });
       supportUsed.set(h.t.id, (supportUsed.get(h.t.id) ?? 0) + n);
       // Lo que apoya ya no puede moverse a otro sitio.
       free.set(h.t.id, Math.max(0, Math.min(free.get(h.t.id) ?? 0, room(h.t))));
@@ -235,8 +238,27 @@ export function planOrders(s: Situation): Order[] {
       .filter((o) => (areAdjacent(o, t) || marchKind(t, o, view.tiles, house) === "camino") && (distance.get(o.id) ?? Infinity) < d)
       .sort((a, b) => (s.threat.get(b.id) ?? 0) - (s.threat.get(a.id) ?? 0) || distance.get(a.id)! - distance.get(b.id)! || a.id - b.id)[0];
     if (step) {
-      orders.push({ kind: "move", house, from: t.id, to: step.id, troops: n });
+      // Variante: el Capitán acompaña a las tropas que avanzan al frente.
+      const withCaptain =
+        CAPTAIN.enabled && BOT_TWEAKS.captain !== "ataques" && view.captainTile === t.id && !orders.some((o) => o.kind === "move" && o.captain);
+      orders.push({ kind: "move", house, from: t.id, to: step.id, troops: n, ...(withCaptain ? { captain: true } : {}) });
       free.set(t.id, 0);
+    }
+  }
+
+  // Variante: el Capitán va solo hacia la casilla del frente con más tropas.
+  if (CAPTAIN.enabled && BATTLE_TWEAKS.captainAlone && BOT_TWEAKS.captain === "solo" && view.captainTile != null && !orders.some((o) => o.kind === "move" && o.captain)) {
+    const here = own.find((t) => t.id === view.captainTile);
+    const d = here ? distance.get(here.id) : undefined;
+    if (here && d != null) {
+      const front = own.filter((t) => distance.get(t.id) === 0 && t.type !== "castillo");
+      const best = front.sort((a, b) => b.troops - a.troops || a.id - b.id)[0];
+      if (best && best.id !== here.id) {
+        const step = own
+          .filter((o) => o.id !== here.id && marchKind(here, o, view.tiles, house) != null && (distance.get(o.id) ?? Infinity) <= d)
+          .sort((a, b) => (distance.get(a.id) ?? 99) - (distance.get(b.id) ?? 99) || (a.id === best.id ? -1 : b.id === best.id ? 1 : 0) || b.troops - a.troops || a.id - b.id)[0];
+        if (step) orders.push({ kind: "move", house, from: here.id, to: step.id, troops: 0, captain: true });
+      }
     }
   }
 
@@ -267,6 +289,10 @@ function assignUnits(orders: Order[], s: Situation): Order[] {
     .sort((a, b) => a.rank - b.rank || a.i - b.i);
   for (const { o } of ranked) {
     if (!pool.has(o.from)) continue;
+    if (o.kind === "move" && o.troops === 0 && o.captain) {
+      out.push(o);
+      continue;
+    }
     const dest = byId.get(o.kind === "move" ? o.to : o.target)!;
     const hostile = o.kind === "move" && dest.owner !== s.view.house;
     const charge = hostile && isPlain(dest.type) && !walled(dest, res);
