@@ -69,7 +69,7 @@ Por definir. Lo hablaremos y lo decidiremos todo antes de empezar.
 
 ## Bloque 8: Alianzas **(decidido, pendiente de hacer)**
 
-Propuesto y decidido el 19 de octubre de 2026, a partir de Reyes de Pacotilla: investigación de las alianzas. Ya existe una base: la tabla `pacts` de la base de datos (sin uso todavía) y los apoyos entre casas distintas.
+Propuesto y decidido el 19 de octubre de 2026, a partir de Reyes de Pacotilla: investigación de las alianzas. Las reglas completas y los pasos para hacerlo están en `docs/alianzas.md`. Ya existe una base: la tabla `pacts` de la base de datos (sin uso todavía) y los apoyos entre casas distintas.
 
 **Decisiones:**
 
