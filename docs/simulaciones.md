@@ -71,7 +71,7 @@ La fortificación que dura hasta que atacan la casilla necesita un freno. Se pro
 - Atrincherarse no compensa a los bots ni gratis: las casas que fortifican toda la frontera ganan 0,3 veces lo esperado frente a 1,6 las demás. Se gastan la Piedra y dejan de construir.
 - El Oro no frena: sobra tanto que casi nadie desmantela (5 por partida con las casas atrincheradas). La Piedra sí: con 2 se desmantelan 21 por partida.
 - Con 2 de Piedra, la Piedra sin gastar vuelve a la de hoy (81 frente a 82) y las fortificaciones siguen durando un 55% más que hoy. Ninguna variante cambia el equilibrio entre personalidades ni la bola de nieve.
-- **Recomendado: 2 de Piedra por casilla fortificada cada domingo.**
+- **Elegido: 2 de Piedra por casilla fortificada cada domingo.**
 
 ## Repetición, avisos y órdenes en cola (18 de octubre de 2026, fase 5 del sistema de guerra v3, aplicado)
 

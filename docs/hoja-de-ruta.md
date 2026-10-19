@@ -52,11 +52,11 @@ Decidido el 19 de octubre de 2026 a partir de «Reyes de Pacotilla: investigaci�
 
 **Decisiones:**
 
-1. **Apoyo sin elegir origen.** Eliges una casilla y marcas «apoyar ataque»: apoyas el primer ataque que llegue a esa casilla esa noche, sea tuyo o de otra casa. Falta concretar qué es «el primero» cuando todo se resuelve a la vez.
+1. **Apoyo sin elegir origen.** Eliges una casilla y marcas «apoyar ataque»: apoyas el primer ataque que llegue a esa casilla esa noche, sea tuyo o de otra casa. Si dos casas atacan esa casilla la misma noche, el primero es siempre el tuyo si atacas tú; si no, el de la orden que se dio antes. Tu apoyo puede acabar ayudando a un enemigo que se adelantó.
 2. **Mesnada frente a jinetes.** El jinete pasa a costar 3 Hierro + 2 Pan + 3 Oro (antes 1 Oro).
 3. **Capitán como unidad propia.** Se puede mover solo entre casillas propias, también a una vacía, sin atacar. Si atacan la casilla donde está solo, cae preso. Se libera a las 7 noches o con un rescate negociado: quien lo tiene pide un precio y su casa acepta o no.
 4. **Cruces en el camino.** Si dos grupos se cruzan por el camino (por ejemplo, Mesnada de A a B y jinetes de C a A pasando por B), combaten como en un choque frontal.
-5. **Fortificación hasta que la atacan.** Dura hasta el primer ataque, gane o pierda. Cada domingo se paga un mantenimiento por casilla fortificada; si no se paga, se desmantela. Coste recomendado tras simular: 2 de Piedra por casilla.
+5. **Fortificación hasta que la atacan.** Dura hasta el primer ataque, gane o pierda. Cada domingo se paga un mantenimiento por casilla fortificada; si no se paga, se desmantela. Cuesta 2 de Piedra por casilla (elegido tras simular, ver `docs/simulaciones.md`).
 6. ~~Dos guerras a la vez~~: descartado.
 
 ## Bloque 5: Retoques recursos **(por definir)**
