@@ -2,7 +2,7 @@
 
 Actualizada el 19 de octubre de 2026 · copia del documento «Reyes de Pacotilla: hoja de ruta» (claude.ai)
 
-Bloques de actualizaciones, en este orden. El primero ya está decidido; los demás se definirán cuando lleguemos. Se pueden añadir o mover bloques sobre la marcha.
+Bloques de actualizaciones, en este orden. Primero se definen todos los bloques; después se hacen uno a uno. Se pueden añadir o mover bloques sobre la marcha.
 
 | Bloque | Estado | Qué entra |
 | --- | --- | --- |
@@ -11,8 +11,8 @@ Bloques de actualizaciones, en este orden. El primero ya está decidido; los dem
 | 3. Mejora del cronista | Por definir | Fray Abundio |
 | 4. Retoques sistema de batalla | Decidido | Apoyo sin origen, jinete más caro, Capitán libre, choques en el camino y fortificación con mantenimiento |
 | 5. Retoques recursos | Por definir |  |
-| 3. Optimización y controles en móvil | Por definir | Rendimiento y manejo con el dedo |
-| 7.  Mejorar pagina de inicio del juego | Por definir | Mejorar visualmente la pantalla de inicio al acceder al juego. |
+| 6. Optimización y controles en móvil | Por definir | Rendimiento y manejo con el dedo |
+| 7. Mejorar pagina de inicio del juego | Por definir | Mejorar visualmente la pantalla de inicio al acceder al juego. |
 | 8. Alianzas | Decidido | Alianzas formales: paso por las casillas del aliado, ruptura con aviso de tres días y ataques conjuntos |
 
 ## Bloque 1: mapa y losetas
@@ -48,7 +48,7 @@ Por definir. Lo hablaremos y lo decidiremos todo antes de empezar.
 
 ## Bloque 4: retoques del sistema de batalla **(decidido, pendiente de hacer)**
 
-Decidido el 19 de octubre de 2026 a partir de «Reyes de Pacotilla: investigación del bloque 4» y del documento de trabajo del bloque 4. Cada punto se hace con su prueba, su simulación en `docs/simulaciones.md` y la sección 8 de `docs/diseno.md`. El motor ya tiene casi todo detrás de `BATTLE_TWEAKS` (`rules.ts`), apagado.
+Decidido el 19 de octubre de 2026 a partir de «Reyes de Pacotilla: investigación del bloque 4». Las reglas completas y los pasos para hacerlo están en `docs/bloque4.md`. Cada punto se hace con su prueba, su simulación en `docs/simulaciones.md` y la sección 8 de `docs/diseno.md`. El motor ya tiene casi todo detrás de `BATTLE_TWEAKS` (`rules.ts`), apagado.
 
 **Decisiones:**
 

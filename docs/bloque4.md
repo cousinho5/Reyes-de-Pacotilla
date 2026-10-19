@@ -1,0 +1,127 @@
+# Bloque 4: retoques del sistema de batalla
+
+Decidido el 19 de octubre de 2026 · copia del documento «Reyes de Pacotilla: bloque 4, retoques del sistema de batalla» (claude.ai). Los datos vienen de «Reyes de Pacotilla: investigación del bloque 4» y de simulaciones de 300 partidas con bots, de 4 a 8 casas y 6 semanas (`docs/simulaciones.md`).
+
+Cada punto se hace en una solicitud de cambios propia, con su prueba, su simulación antes y después anotada en `docs/simulaciones.md` y la actualización de la sección 8 de `docs/diseno.md`. Varios ya están en el motor detrás de `BATTLE_TWEAKS` (`packages/engine/src/rules.ts`), apagados: el juego no cambia hasta encenderlos.
+
+## Resumen
+
+| Punto | Decisión | En el motor |
+| --- | --- | --- |
+| 1. Apoyo sin elegir origen | Apoyas el primer ataque que llegue a la casilla esa noche: el tuyo si atacas tú; si no, el que se ordenó antes | Parcial (`supportAnyOrigin`, solo ataques propios) |
+| 2. Mesnada frente a jinetes | El jinete cuesta 3 de Oro en vez de 1 | No |
+| 3. Capitán como unidad propia | Se mueve solo; cae preso si lo atacan; libre a las 7 noches o con rescate negociado | Parcial (`captainAlone`, sin rescate) |
+| 4. Jinetes que se cruzan | El cruce por el camino es un choque frontal | Sí (`crossingClash`) |
+| 5. Fortificación hasta que la atacan | Mantenimiento de 2 de Piedra por casilla cada domingo | Sí (`fortifyUntilAttacked`, `FORTIFY_UPKEEP` vacío) |
+| 6. Dos guerras a la vez | Descartado | — |
+
+## Punto 1: apoyo sin elegir origen
+
+**Hoy.** Para apoyar un ataque hay que elegir desde qué casilla sale («Un ataque que sale de X»), y esa casilla tiene que ser vecina del objetivo. Por eso no se puede apoyar una marcha por camino ni una carga de jinetes.
+
+**Decisión.** Eliges una casilla y marcas «apoyar ataque». Apoyas el **primer ataque que llegue a esa casilla esa noche**, sea tuyo o de otra casa; no se elige ni origen ni casa. Si esa noche atacan la casilla varias casas:
+
+- si atacas tú, el primero es siempre el tuyo;
+- si no, es el de la orden que se dio antes.
+
+Tu apoyo puede acabar ayudando a un enemigo que se adelantó: es parte del riesgo. Si atacas desde dos sitios, el apoyo suma una sola vez.
+
+**Datos.** Con el apoyo libre a los ataques propios no se desequilibran las personalidades. Hay un 20% más de combates entre casas, porque se pueden apoyar las marchas largas, y menos partidas decididas por desempate (del 7% al 2%).
+
+**Pasos:**
+
+1. Motor: el apoyo apunta a una casilla y se asigna al primer ataque según la regla de arriba (hoy `supportAnyOrigin` solo cubre los ataques de la propia casa). Hace falta la hora de cada orden en la entrada de `resolveCampaign`.
+2. Migración nueva: columna `orders.supports_any`. La columna del origen apunta a una casilla y no admite «cualquiera».
+3. Servidor: guardar y leer la nueva forma de apoyo en `app.ts`, `jobs.ts` y `pruebas.ts`.
+4. Cliente: en «¿Qué apoyas?», la opción «El primer ataque a X»; en la pestaña Órdenes, el texto «apoyan el primer ataque sobre X». La repetición de la noche dice a quién acabó apoyando.
+5. Pruebas (ya hay tres en `bloque4.test.ts`; faltan las de varias casas) y sección 8 del diseño.
+
+## Punto 2: Mesnada frente a jinetes
+
+**Hoy.**
+
+|  | Coste | Fuerza |
+| --- | --- | --- |
+| Mesnada | 2 Hierro + 2 Pan | 1 |
+| Jinete | 3 Hierro + 2 Pan + 1 Oro | 2 a la carga en llano sin murallas; 1 defendiendo; 0,5 en el bosque; no sube a la montaña; avanza dos casillas en llano |
+
+El Oro sobra (unas 165 monedas por casa al final), así que en la práctica el jinete cuesta solo 1 Hierro más.
+
+**Decisión.** El jinete pasa a costar 3 Hierro + 2 Pan + **3 Oro**. El freno a la carga (que la Mesnada aguante la carga, como un lancero) queda para más adelante.
+
+**Datos.** Con los bots, las casas que solo reclutan jinetes ganan menos (0,6 a 0,8 veces lo esperado) que las que solo reclutan Mesnada (1,2 a 1,4). Pero los bots usan mal los jinetes, y una persona que elige bien las cargas les saca más.
+
+**Pasos:**
+
+1. Cambiar `UNITS.jinetes.cost` en `rules.ts`.
+2. Simular antes y después, y anotarlo.
+3. Revisar los textos del cliente que muestran el coste.
+
+## Punto 3: el Capitán como unidad propia
+
+**Hoy.** El Capitán solo viaja con un ataque que sale de su casilla. Pasa el 15% de las noches parado en el castillo, donde no sirve de nada (los castillos no se pueden atacar).
+
+**Decisión.**
+
+- El Capitán se puede mover solo, sin tropas, entre casillas propias, también a una vacía. Solo no ataca.
+- Si atacan la casilla donde está solo, **cae preso**.
+- Se libera **a las 7 noches** o con un **rescate negociado**: quien lo tiene pide un precio en Oro y su casa acepta o no.
+- Sigue sumando +2 al grupo con el que ataca o defiende.
+
+**Datos.** Con el Capitán libre, sus ataques pasan de 3,6 a 6,2 por casa, la toma de casillas sube del 73% al 78% y hay un 17% más de combates entre casas. No ayuda al que ya va primero («el líder de la semana 2 gana» baja del 29% al 26%).
+
+**Pasos:**
+
+1. Encender `captainAlone` (ya probado en el motor).
+2. Servidor: aceptar la orden de mover al Capitán con 0 tropas. Rescate: quien lo tiene propone un precio, la otra casa lo acepta o lo rechaza; el pago va en un `db.batch()`.
+3. Cliente: botón «Mover al Capitán» en su casilla, ficha propia en el mapa y la negociación del rescate.
+4. Bots: llevar al Capitán al frente (ya está en el simulador) y saber pedir y pagar rescates.
+5. Diseño, sección 8.11.
+
+## Punto 4: jinetes que se cruzan
+
+**Hoy.** Con las casillas A, B y C en fila, si 3 Mesnadas van de A a B y 4 jinetes cargan de C a A pasando por B, no combaten: cada uno entra en la casilla del otro.
+
+**Decisión.** El cruce es un choque frontal: los dos grupos combaten por el camino, sin terreno ni cargas, y el ganador sigue hasta su destino.
+
+**Datos.** Con los bots pasa poco (0,6 veces por partida) y arreglarlo no cambia el equilibrio. Las personas buscarán este hueco más que los bots.
+
+**Pasos:**
+
+1. Encender `crossingClash` (ya hecho y probado).
+2. Repetición de la noche: el choque se dibuja en la casilla de en medio y el texto dice «chocan por el camino».
+3. Proyección del cliente: los avisos de amenazas tienen en cuenta el cruce.
+4. Diseño, sección 8.4 (casos especiales).
+
+## Punto 5: fortificación hasta que la atacan
+
+**Hoy.** Fortificar cuesta 8 de Piedra y da +25% de defensa durante 4 noches. Se pierde si la casilla cambia de manos.
+
+**Decisión.**
+
+- La fortificación dura hasta que atacan la casilla. El primer ataque, gane o pierda, la quita. Las catapultas y los asedios siguen desgastándola.
+- Cada domingo se pagan **2 de Piedra por casilla fortificada**. Si no llega, se desmantelan las que no se pueden pagar.
+
+**Datos.** Se simuló el mantenimiento con 1 a 4 de Piedra y con 2 o 4 de Oro, también con casas que fortifican toda su frontera:
+
+- El Oro no frena: sobra tanto que casi nadie desmantela.
+- Con 2 de Piedra, quien se atrinchera en toda la frontera pierde unas 21 fortificaciones por partida; la Piedra sin gastar vuelve a la de hoy, y las fortificaciones siguen durando un 55% más que hoy.
+- Ninguna variante cambia el equilibrio entre personalidades.
+
+**Pasos:**
+
+1. Encender `fortifyUntilAttacked` y poner `FORTIFY_UPKEEP = { piedra: 2 }` en `rules.ts`.
+2. Servidor: cobrar el mantenimiento el domingo en `jobs.ts`, con `applyFortifyUpkeep` (ya en `actions.ts`), en el mismo lote que el mantenimiento de tropas.
+3. Partidas en curso: sus fortificaciones duran lo que ya decían.
+4. Cliente: texto «hasta que la ataquen» y aviso del mantenimiento del domingo.
+5. Bots: decidir qué fortificaciones mantener.
+6. Diseño y simulación anotada.
+
+## Punto 6: dos guerras a la vez
+
+Descartado.
+
+## Lo que se queda para otros bloques
+
+- **El Oro** (bloque 5): el jinete a 3 de Oro y el rescate del Capitán son salidas para el Oro. Conviene revisarlo junto con el bloque 5.
+- **Alianzas** (bloque 8): el apoyo a otras casas del punto 1 convive con el apoyo entre aliados.
