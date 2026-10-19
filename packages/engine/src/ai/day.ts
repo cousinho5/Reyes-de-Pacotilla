@@ -6,6 +6,7 @@ import { defenseMultiplier, walled } from "../combat";
 import { canAfford, upgradeCost, weeklyUpkeep } from "../economy";
 import { BUILDING_PRODUCTION, BUILDING_RESOURCE, OBJECTIVE_TARGETS, PRESTIGE, UNITS } from "../rules";
 import { unitsOf } from "../units";
+import { areAdjacent } from "../map";
 import { BUILDINGS, RESOURCES, type BuildingKind, type Resource, type Resources, type TileId } from "../types";
 import { militaryNeed, targets } from "./orders";
 import { PRESTIGE_UNIT, valueOf, type Situation } from "./view";
@@ -66,6 +67,17 @@ export function planDay(s: Situation): DayPlan {
     if (!check.ok) continue;
     plan.fortify.push({ tile: t.id, until: check.value.fortifiedUntil });
     spend(check.value.cost);
+  }
+  // Variante del simulador: fortificar toda la frontera con otras casas.
+  if (BOT_TWEAKS.fortifyFrontier?.(view.house)) {
+    for (const t of own) {
+      if (t.type === "castillo" || plan.fortify.some((f) => f.tile === t.id)) continue;
+      if (!s.seen.some((o) => o.owner != null && o.owner !== view.house && areAdjacent(o, t))) continue;
+      const check = checkFortify(t, view.house, view.nextResolution, res);
+      if (!check.ok) continue;
+      plan.fortify.push({ tile: t.id, until: check.value.fortifiedUntil });
+      spend(check.value.cost);
+    }
   }
 
   // 2. Mejoras y tropas, eligiendo cada vez lo que más rinde.

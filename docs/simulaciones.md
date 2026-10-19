@@ -53,6 +53,26 @@ npm run simular -- --semanas 4                    # duración de la partida
 npm run simular -- --json datos.json              # además, todos los datos
 ```
 
+## Mantenimiento de fortificaciones (19 de octubre de 2026, bloque 4, sin aplicar)
+
+La fortificación que dura hasta que atacan la casilla necesita un freno. Se probó un mantenimiento cada domingo por casilla fortificada (`FORTIFY_UPKEEP`; las casas pagan las de frontera y quitan las demás; si no llega, se desmantelan). 300 partidas por variante, con `--fortificar-hasta-ataque si --mantener-fortificacion piedra:N`. Las variantes «atrincheradas» (`--atrincherar pares`) hacen que las casas pares fortifiquen toda su frontera cada día, como haría una persona que se encierra.
+
+| Variante | Casillas-noche fortificadas | Mantenimiento pagado / desmanteladas | Piedra sin gastar (arquitecta) | Atrincheradas: pagado / desmanteladas | Casas pares atrincheradas (x esperado) |
+| --- | --- | --- | --- | --- | --- |
+| Hoy (4 noches) | 155 | — | 82 | — | 0,3 |
+| Hasta que la atacan, gratis | 261 | 0 / 0 | 97 | 0 / 0 | 0,3 |
+| 1 Piedra | 244 | 37 / 2 | 90 | 42 / 15 | 0,4 |
+| **2 Piedra** | 242 | 73 / 3 | 81 | 68 / 21 | 0,4 |
+| 3 Piedra | 238 | 105 / 3 | 75 | 83 / 26 | 0,4 |
+| 4 Piedra | 236 | 138 / 4 | 71 | 96 / 30 | 0,4 |
+| 2 Oro | 247 | 75 / 2 | 95 | 108 / 5 | 0,3 |
+| 4 Oro | 246 | 150 / 2 | 99 | 216 / 5 | 0,3 |
+
+- Atrincherarse no compensa a los bots ni gratis: las casas que fortifican toda la frontera ganan 0,3 veces lo esperado frente a 1,6 las demás. Se gastan la Piedra y dejan de construir.
+- El Oro no frena: sobra tanto que casi nadie desmantela (5 por partida con las casas atrincheradas). La Piedra sí: con 2 se desmantelan 21 por partida.
+- Con 2 de Piedra, la Piedra sin gastar vuelve a la de hoy (81 frente a 82) y las fortificaciones siguen durando un 55% más que hoy. Ninguna variante cambia el equilibrio entre personalidades ni la bola de nieve.
+- **Elegido: 2 de Piedra por casilla fortificada cada domingo.**
+
 ## Repetición, avisos y órdenes en cola (18 de octubre de 2026, fase 5 del sistema de guerra v3, aplicado)
 
 No cambia valores del juego: añade la repetición de la noche, los avisos y las órdenes en cola. La única regla nueva es que una orden sale con las tropas que queden en su casilla. El simulador la aplica igual que el servidor (`fitOrders` antes de `resolveCampaign`). Con 100 partidas de 6 semanas las cifras siguen en la línea de la fase 4: 6,1 Capitanes capturados por partida, el líder de la semana 2 gana el 21% y el Prestigio medio del ganador es 72,5. Los bots no usan la cola; lo que aporte se verá en la partida piloto.

@@ -60,7 +60,13 @@ export function chooseObjective(options: readonly ObjectiveKey[], p: Personality
  * - `captain`: cómo mueve al Capitán: "ataques" (solo con los ataques, como siempre),
  *   "avance" (también con las tropas que avanzan al frente) o "solo" (además, solo, hacia el frente).
  */
-export const BOT_TWEAKS: { riderShare: ((house: number) => number | null) | null; captain: "ataques" | "avance" | "solo" } = {
+export const BOT_TWEAKS: {
+  riderShare: ((house: number) => number | null) | null;
+  captain: "ataques" | "avance" | "solo";
+  /** Casas que fortifican toda su frontera con otras casas en cuanto pueden (para medir el atrincheramiento). */
+  fortifyFrontier: ((house: number) => boolean) | null;
+} = {
   riderShare: null,
+  fortifyFrontier: null,
   captain: "ataques",
 };

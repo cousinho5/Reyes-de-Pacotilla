@@ -6,7 +6,7 @@
 //
 // Si cambia el orden de las tareas en jobs.ts, hay que cambiarlo aquí también.
 
-import { addRecruits, applyUpkeep, lastPlace } from "./actions";
+import { addRecruits, applyFortifyUpkeep, applyUpkeep, lastPlace } from "./actions";
 import { planAutopilot, type AutopilotPlan, type AutopilotTemplate } from "./autopilot";
 import { botAcceptsOffer, planBotOrders } from "./bots";
 import { dailyProduction } from "./economy";
@@ -216,6 +216,9 @@ export interface SimGameResult {
     /** Ataques contra casillas fortificadas y cuántos la tomaron. */
     attacksOnFortified: number;
     attacksOnFortifiedWon: number;
+    /** Piedra u Oro pagados por mantener fortificaciones y fortificaciones desmanteladas. */
+    fortifyUpkeep: number;
+    fortifyDropped: number;
   };
 }
 
@@ -357,7 +360,7 @@ function runGame(opts: SimOptions): SimGameResult {
   let rankWeek2: Map<HouseId, number> | null = null;
   let firstHouseCombat: number | null = null;
   let firstHouseCombatDay: number | null = null;
-  const battle = { clashes: 0, crossings: 0, chargeAttacks: 0, riderAttacks: 0, fortifies: 0, fortifiedNights: 0, attacksOnFortified: 0, attacksOnFortifiedWon: 0 };
+  const battle = { clashes: 0, crossings: 0, chargeAttacks: 0, riderAttacks: 0, fortifies: 0, fortifiedNights: 0, attacksOnFortified: 0, attacksOnFortifiedWon: 0, fortifyUpkeep: 0, fortifyDropped: 0 };
   /** Combates entre casas: [casa, rival, resolución]. */
   const fights: [HouseId, HouseId, number][] = [];
 
@@ -729,6 +732,14 @@ function runGame(opts: SimOptions): SimGameResult {
         tiles = upkeep.tiles;
         h.res.pan -= upkeep.paid;
         h.deserted += upkeep.deserted;
+        // Mantenimiento de las fortificaciones: los bots conservan las que lindan con otra casa.
+        const fort = applyFortifyUpkeep(tiles, h.id, h.res, resolution + 1, (t) =>
+          tiles.some((o) => o.owner != null && o.owner !== h.id && areAdjacent(o, t)),
+        );
+        tiles = fort.tiles;
+        for (const r of RESOURCES) h.res[r] -= fort.cost[r];
+        battle.fortifyUpkeep += fort.cost.piedra + fort.cost.oro;
+        battle.fortifyDropped += fort.dropped;
       }
       const totals = houses.map((h) => ({ house: h.id, total: prestigeOf(h, day).total }));
       totals.forEach((t) => byId.get(t.house)!.prestigeBySunday.push(t.total));
