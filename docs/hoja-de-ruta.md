@@ -2,7 +2,7 @@
 
 Actualizada el 19 de octubre de 2026 · copia del documento «Reyes de Pacotilla: hoja de ruta» (claude.ai)
 
-Cuatro bloques de actualizaciones, en este orden. El primero ya está decidido; los otros tres se definirán cuando lleguemos. Se pueden añadir o mover bloques sobre la marcha.
+Bloques de actualizaciones, en este orden. El primero ya está decidido; los demás se definirán cuando lleguemos. Se pueden añadir o mover bloques sobre la marcha.
 
 | Bloque | Estado | Qué entra |
 | --- | --- | --- |
@@ -13,6 +13,7 @@ Cuatro bloques de actualizaciones, en este orden. El primero ya está decidido; 
 | 5. Retoques recursos | Por definir |  |
 | 3. Optimización y controles en móvil | Por definir | Rendimiento y manejo con el dedo |
 | 7.  Mejorar pagina de inicio del juego | Por definir | Mejorar visualmente la pantalla de inicio al acceder al juego. |
+| 8. Alianzas | Por definir | Alianzas formales: paso por las casillas del aliado, ruptura con aviso de tres días y ataques conjuntos |
 
 ## Bloque 1: mapa y losetas
 
@@ -65,3 +66,13 @@ Por definir. Lo hablaremos y lo decidiremos todo antes de empezar.
 Por definir. Lo hablaremos y lo decidiremos todo antes de empezar.
 
 ## Bloque 7: Mejorar pagina de inicio del juego **(por definir)**
+
+## Bloque 8: Alianzas **(por definir)**
+
+Propuesta del 19 de octubre de 2026:
+
+- **Paso libre.** Si estás aliado con otra casa, puedes entrar en sus casillas sin atacarla y moverte por ellas.
+- **Ruptura con aviso.** Una alianza se puede romper. Al hacerlo, a la otra casa le sale un mensaje: la alianza dejará de existir en tres días. Cuando desaparece, las tropas que sigan en casillas de la otra casa vuelven al momento a la casilla propia más cercana.
+- **Ataque conjunto.** Si dos aliados entran a la vez en la casilla de una casa que no pertenece a la alianza, hay una sola batalla: se suman las tropas de los dos aliados contra las del otro. Si ganan, se queda la casilla el aliado que entró con más tropas. Las bajas se reparten entre los dos en proporción a lo que llevó cada uno.
+
+Ya existe una base: la tabla `pacts` de la base de datos (pactos de no agresión con nombre solemne, sin uso todavía) y los apoyos entre casas distintas. Queda por decidir, entre otras cosas: cuántos aliados puede tener una casa, si se comparte la vista del mapa, si se puede entrar en el castillo del aliado, qué pasa en un empate de tropas en el ataque conjunto y si la alianza cuenta para ganar o sigue habiendo un solo ganador.
