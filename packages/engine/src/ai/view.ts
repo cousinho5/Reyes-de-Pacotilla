@@ -141,7 +141,7 @@ export function situation(view: AiView, p: Personality): Situation {
  * bajo si le sobra. Mira el gasto de la próxima semana: mantenimiento,
  * tropas que quiere, mejoras que le interesan y fortificaciones.
  */
-function resourceValues(s: Situation): Resources {
+function resourceValues(s: Situation, have: Resources = s.view.resources): Resources {
   const { view, p, own } = s;
   const demand: Resources = { pan: 0, madera: 0, piedra: 0, hierro: 0, oro: 0 };
   const troops = own.reduce((a, t) => a + t.troops, 0);
@@ -157,7 +157,7 @@ function resourceValues(s: Situation): Resources {
   }
   // Lo que le falta para la mejora que está ahorrando pesa el doble.
   if (s.savingFor) {
-    for (const [r, v] of Object.entries(s.savingFor) as [Resource, number][]) demand[r] += 2 * Math.max(0, v - view.resources[r]);
+    for (const [r, v] of Object.entries(s.savingFor) as [Resource, number][]) demand[r] += 2 * Math.max(0, v - have[r]);
   }
   if ([...s.threat.values()].some((x) => x > 0)) {
     for (const [r, v] of Object.entries(FORTIFY_COST) as [Resource, number][]) demand[r] += v;
@@ -166,13 +166,18 @@ function resourceValues(s: Situation): Resources {
   // Al final de la partida los recursos guardados no valen nada (salvo el Oro, que da Riqueza).
   const ending = clamp(s.daysLeft / 7, 0.05, 1);
   for (const r of RESOURCES) {
-    const supply = view.resources[r] + s.income[r] * 4;
+    const supply = have[r] + s.income[r] * 4;
     out[r] = clamp((demand[r] + 5) / (supply + 5), 0.15, 3) * ending;
   }
   // El Oro también da Prestigio de Riqueza (hasta el tope).
   const goldCap = PRESTIGE.goldPerPoint * PRESTIGE.goldMax;
-  if (view.resources.oro < goldCap) out.oro = Math.max(out.oro, PRESTIGE_UNIT / PRESTIGE.goldPerPoint);
+  if (have.oro < goldCap) out.oro = Math.max(out.oro, PRESTIGE_UNIT / PRESTIGE.goldPerPoint);
   return out;
+}
+
+/** Valor de cada recurso si tuviera `have` en vez de lo que tiene (para comprar y vender a la Corona). */
+export function valuesWith(s: Situation, have: Resources): Resources {
+  return resourceValues(s, have);
 }
 
 function s_daysLeft(view: AiView): number {

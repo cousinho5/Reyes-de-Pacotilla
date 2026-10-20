@@ -14,7 +14,7 @@
 //   npm run simular -- --json simulacion.json   # además, todos los datos en JSON
 
 import { writeFileSync } from "node:fs";
-import { BATTLE_TWEAKS, BOT_TWEAKS, FORTIFY_COST, FORTIFY_UPKEEP, SIEGE, UNITS } from "../packages/engine/src";
+import { BATTLE_TWEAKS, BOT_TWEAKS, CROWN, ECONOMY_TWEAKS, FORTIFY_COST, FORTIFY_UPKEEP, PRESTIGE, SIEGE, UNITS, UPGRADE_COST } from "../packages/engine/src";
 import {
   CLASSIC_STRATEGIES,
   OBJECTIVES,
@@ -71,6 +71,32 @@ if (args.has("coste-jinete")) {
 if (args.has("carga")) UNITS.jinetes.charge = Number(args.get("carga"));
 // --atrincherar pares: las casas pares fortifican toda su frontera con otras casas.
 if (args.get("atrincherar") === "pares") BOT_TWEAKS.fortifyFrontier = (house) => house % 2 === 0;
+// Bloque 5 de la hoja de ruta (recursos):
+//   --oro-mejora 5,10,20,30   Oro que se suma al coste de subir a los niveles 2, 3, 4 y 5
+//   --riqueza-tope 10         Prestigio máximo por el Oro guardado
+if (args.has("oro-mejora")) {
+  args.get("oro-mejora")!.split(",").forEach((n, i) => {
+    const cost = UPGRADE_COST[(i + 2) as 2 | 3 | 4 | 5];
+    cost.oro = (cost.oro ?? 0) + Number(n);
+  });
+}
+if (args.has("riqueza-tope")) PRESTIGE.goldMax = Number(args.get("riqueza-tope"));
+//   --corona si                     cambio con la Corona a precio dinámico (CROWN en rules.ts)
+//   --mercenarios alquiler|soldada  mercenarios con Oro (MERCENARIES en rules.ts)
+//   --mejora-madera-piedra 1.3      multiplica la Madera y la Piedra de las mejoras
+if (args.get("corona") === "si") ECONOMY_TWEAKS.crown = true;
+if (args.has("corona-base")) CROWN.base = Number(args.get("corona-base"));
+//   --corona-referencia oro|media   --corona-compra 0.4 (lo que paga la Corona respecto al precio)
+if (args.has("corona-referencia")) CROWN.reference = args.get("corona-referencia") as "oro" | "media";
+if (args.has("corona-compra")) CROWN.buyMarkdown = Number(args.get("corona-compra"));
+if (args.has("mercenarios")) ECONOMY_TWEAKS.mercenaries = args.get("mercenarios") as "alquiler" | "soldada";
+if (args.has("mejora-madera-piedra")) {
+  const k = Number(args.get("mejora-madera-piedra"));
+  for (const cost of Object.values(UPGRADE_COST)) {
+    if (cost.madera) cost.madera = Math.round(cost.madera * k);
+    if (cost.piedra) cost.piedra = Math.round(cost.piedra * k);
+  }
+}
 const weeks = Number(args.get("semanas") ?? 6) as 2 | 4 | 6 | 8;
 const mode = args.get("modo") ?? "mezcla";
 const [minPlayers, maxPlayers] = (args.get("jugadores") ?? "4-8").split("-").map(Number) as [number, number];
@@ -261,6 +287,19 @@ if (BOT_TWEAKS.riderShare || BOT_TWEAKS.fortifyFrontier) {
       return [par === 0 ? "pares" : "impares", g.length, pct(w.rate), f1(w.ratio), avg(g.map(norm)).toFixed(2), f1(avg(g.map((h) => h.prestige.total))), f1(avg(g.map((h) => h.prestige.territorio))), f1(avg(g.map((h) => h.recruitedHouse.mesnada))), f1(avg(g.map((h) => h.recruitedHouse.jinetes)))];
     }),
   );
+}
+
+if (ECONOMY_TWEAKS.crown || ECONOMY_TWEAKS.mercenaries) {
+  const sum = (f: (g: SimGameResult) => number) => f1(avg(results.map(f)));
+  const res = (k: "crownBought" | "crownSold") => RESOURCES.filter((r) => r !== "oro").map((r) => `${r} ${sum((g) => g.economy[k][r])}`).join(", ");
+  table("Bloque 5: Oro (por partida)", ["dato", "valor"], [
+    ["Comprado a la Corona", res("crownBought")],
+    ["Vendido a la Corona", res("crownSold")],
+    ["Precio medio de la Corona (Oro por unidad)", RESOURCES.filter((r) => r !== "oro").map((r) => `${r} ${avg(results.map((g) => g.economy.crownPrice[r])).toFixed(2)}`).join(", ")],
+    ["Oro pagado / cobrado a la Corona", `${sum((g) => g.economy.crownGoldPaid)} / ${sum((g) => g.economy.crownGoldReceived)}`],
+    ["Mercenarios contratados / Oro gastado en ellos", `${sum((g) => g.economy.mercsHired)} / ${sum((g) => g.economy.mercsGold)}`],
+    ["Mercenarios que desertan sin soldada", sum((g) => g.economy.mercsDeserted)],
+  ]);
 }
 
 const json = args.get("json");

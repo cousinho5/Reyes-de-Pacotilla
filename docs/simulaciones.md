@@ -53,6 +53,37 @@ npm run simular -- --semanas 4                    # duración de la partida
 npm run simular -- --json datos.json              # además, todos los datos
 ```
 
+## Recursos y usos del Oro (20 de octubre de 2026, bloque 5, sin aplicar)
+
+300 partidas por variante, de 4 a 8 casas y 6 semanas. Todas las variantes con algo nuevo llevan el Oro en las mejoras (`--oro-mejora 5,10,20,0`, que suma Oro a los niveles 2, 3 y 4; el 5 ya pedía 30).
+
+| Variante | Oro sin gastar (por casa) | Oro en la subasta (por partida) | Casas con deserciones | Mesnada reclutada | Guerrero / arquitecta (x esperado) |
+| --- | --- | --- | --- | --- | --- |
+| Hoy | 170 | 388 | 14% | 648 | 1,3 / 0,7 |
+| **Oro en las mejoras 5/10/20/30** | 116 | 264 | 13% | 646 | 1,5 / 0,6 |
+| Oro en las mejoras 10/20/30/40 | 78 | 165 | 13% | 637 | 1,4 / 0,6 |
+| + Corona que compra y vende, precio frente al Oro | 83 | 55 | 32% | 570 | 1,0 / 0,7 |
+| + Corona que compra y vende, precio ×2 | 240 | 789 | 4% | 383 | 1,4 / 0,4 |
+| + Corona, precio frente a la media ×2, compra a 0,4 | 157 | 271 | 32% | 580 | 1,6 / 0,4 |
+| **+ Corona que solo vende, precio frente a la media ×2** | 106 | 224 | 14% | 647 | 1,5 / 0,6 |
+| **+ Mercenarios de alquiler** | 85 | 245 | 11% | 644 | 1,3 / 0,7 |
+| + Mercenarios con soldada | 73 | 230 | 11% | 644 | 1,5 / 0,7 |
+| + Corona (frente al Oro) y alquiler, Riqueza hasta 10 / hasta 5 | 68 / 67 | 43 / 43 | 31% | 571 | 0,9 / 0,7 |
+
+- Si la Corona compra, los bots le venden el Pan y el Hierro para juntar Oro y no pueden mantener las tropas; con precios altos, venderle es una fábrica de Oro (2.173 por partida). **Elegido: la Corona solo vende.** Se gastan unos 106 de Oro por partida en ella, sobre todo en Madera.
+- Mercenarios: 34 por partida (203 de Oro) de alquiler y 41 (293 de Oro) con soldada; ninguno cambia el equilibrio. **Elegido: alquiler.**
+- Riqueza: con los usos nuevos nadie llega al tope, así que bajarlo no cambia nada. **Se queda como hoy.**
+
+Madera y Piedra (con el Oro en las mejoras, la fortificación hasta que la atacan y 2 de Piedra de mantenimiento):
+
+| Variante | Madera / Piedra sin gastar | Prestigio por edificios | «niveles 17» cumplido | Guerrero / arquitecta |
+| --- | --- | --- | --- | --- |
+| Mejoras como hoy | 96 / 77 | 10,5 | 26% | 1,5 / 0,6 |
+| **+15% de Madera y Piedra** | 73 / 58 | 10,3 | 12% | 1,6 / 0,6 |
+| +30% | 56 / 42 | 9,9 | 7% | 1,8 / 0,6 |
+
+- **Elegido: +15%**, con el objetivo «niveles 17» a 16 (sin simular todavía).
+
 ## Mantenimiento de fortificaciones (19 de octubre de 2026, bloque 4, sin aplicar)
 
 La fortificación que dura hasta que atacan la casilla necesita un freno. Se probó un mantenimiento cada domingo por casilla fortificada (`FORTIFY_UPKEEP`; las casas pagan las de frontera y quitan las demás; si no llega, se desmantelan). 300 partidas por variante, con `--fortificar-hasta-ataque si --mantener-fortificacion piedra:N`. Las variantes «atrincheradas» (`--atrincherar pares`) hacen que las casas pares fortifiquen toda su frontera cada día, como haría una persona que se encierra.

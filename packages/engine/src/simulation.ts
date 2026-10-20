@@ -17,9 +17,10 @@ import { gloryFromEvents, resolveCampaign } from "./combat";
 import { fitOrders } from "./plan";
 import { marchKind, marchPath } from "./terrain";
 import { areAdjacent } from "./map";
-import { isPlain, orderUnits } from "./units";
+import { clampUnits, isPlain, orderUnits } from "./units";
+import { crownPrices } from "./crown";
 import type { MapLayoutOverride } from "./mapgen";
-import { GRID, PRESTIGE, RHYTHM, SPECIALTY_PAIRS, STARTING_RESOURCES, SIEGE, TERRAIN, TERRAIN_OFF, UNITS, CAPTAIN, GLORY } from "./rules";
+import { CROWN, ECONOMY_TWEAKS, MERCENARIES, TROOPS_PER_PAN, GRID, PRESTIGE, RHYTHM, SPECIALTY_PAIRS, STARTING_RESOURCES, SIEGE, TERRAIN, TERRAIN_OFF, UNITS, CAPTAIN, GLORY } from "./rules";
 import { totalOf } from "./trade";
 import { auctionLots, doubleLot, resolveAuction, type Bid } from "./auction";
 import {
@@ -42,7 +43,9 @@ import {
   offerGain,
   planBids,
   planCards,
+  planCrown,
   planDay,
+  planMercenaries,
   planOrders,
   proposeOffer,
   situation,
@@ -220,6 +223,18 @@ export interface SimGameResult {
     fortifyUpkeep: number;
     fortifyDropped: number;
   };
+  /** Datos del bloque 5 de la hoja de ruta: cambio con la Corona y mercenarios. */
+  economy: {
+    crownBought: Resources;
+    crownSold: Resources;
+    crownGoldPaid: number;
+    crownGoldReceived: number;
+    mercsHired: number;
+    mercsGold: number;
+    mercsDeserted: number;
+    /** Precio medio que cobra la Corona por cada recurso (media de los días). */
+    crownPrice: Resources;
+  };
 }
 
 interface HouseState {
@@ -250,6 +265,10 @@ interface HouseState {
   recruitedHouse: { mesnada: number; jinetes: number; catapultas: number };
   captainNights: { castillo: number; frente: number; retaguardia: number; preso: number };
   captainAttacks: number;
+  /** Bloque 5: lo comprado y vendido a la Corona esta semana, y sus mercenarios. */
+  crownWeek: { buy: Resources; sell: Resources };
+  mercs: { n: number; until: number }[];
+  mercsWeek: number;
 }
 
 export function simulateGame(opts: SimOptions): SimGameResult {
@@ -333,6 +352,9 @@ function runGame(opts: SimOptions): SimGameResult {
       recruitedHouse: { mesnada: 0, jinetes: 0, catapultas: 0 },
       captainNights: { castillo: 0, frente: 0, retaguardia: 0, preso: 0 },
       captainAttacks: 0,
+      crownWeek: { buy: zeroRes(), sell: zeroRes() },
+      mercs: [],
+      mercsWeek: 0,
     };
   });
   const byId = new Map(houses.map((h) => [h.id, h]));
@@ -360,6 +382,22 @@ function runGame(opts: SimOptions): SimGameResult {
   let rankWeek2: Map<HouseId, number> | null = null;
   let firstHouseCombat: number | null = null;
   let firstHouseCombatDay: number | null = null;
+  const economy = { crownBought: zeroRes(), crownSold: zeroRes(), crownGoldPaid: 0, crownGoldReceived: 0, mercsHired: 0, mercsGold: 0, mercsDeserted: 0, crownPrice: zeroRes() };
+  /** Compras (+) y ventas (-) a la Corona: [día, recurso, unidades]. */
+  const crownLog: [number, Resource, number][] = [];
+  /** Quita `n` tropas de una casa (mercenarios que se van): primero del castillo, luego de las casillas con más. */
+  const dismiss = (h: HouseState, n: number) => {
+    const own = tiles.filter((t) => t.owner === h.id).sort((a, b) => Number(b.castleOf === h.id) - Number(a.castleOf === h.id) || b.troops - a.troops);
+    const cut = new Map<number, number>();
+    for (const t of own) {
+      if (n <= 0) break;
+      const k = Math.min(t.troops, n);
+      cut.set(t.id, k);
+      n -= k;
+    }
+    tiles = tiles.map((t) => (cut.has(t.id) ? clampUnits({ ...t, troops: t.troops - cut.get(t.id)! }) : t));
+  };
+  const mercCount = (h: HouseState) => h.mercs.reduce((a, m) => a + m.n, 0);
   const battle = { clashes: 0, crossings: 0, chargeAttacks: 0, riderAttacks: 0, fortifies: 0, fortifiedNights: 0, attacksOnFortified: 0, attacksOnFortifiedWon: 0, fortifyUpkeep: 0, fortifyDropped: 0 };
   /** Combates entre casas: [casa, rival, resolución]. */
   const fights: [HouseId, HouseId, number][] = [];
@@ -460,6 +498,71 @@ function runGame(opts: SimOptions): SimGameResult {
       for (const r of RESOURCES) h.res[r] += p[r];
     }
 
+    // 1b. Bloque 5: los mercenarios de alquiler que cumplen se van; los muertos en
+    // combate dejan de contar; cada lunes se renuevan los topes de la semana.
+    for (const h of houses) {
+      if (day % 7 === 0) {
+        h.crownWeek = { buy: zeroRes(), sell: zeroRes() };
+        h.mercsWeek = 0;
+      }
+      const gone = h.mercs.filter((m) => m.until <= day).reduce((a, m) => a + m.n, 0);
+      h.mercs = h.mercs.filter((m) => m.until > day);
+      if (gone > 0) dismiss(h, gone);
+      const alive = tiles.filter((t) => t.owner === h.id).reduce((a, t) => a + t.troops, 0);
+      let extra = mercCount(h) - alive;
+      for (const m of h.mercs) {
+        if (extra <= 0) break;
+        const k = Math.min(m.n, extra);
+        m.n -= k;
+        extra -= k;
+      }
+      h.mercs = h.mercs.filter((m) => m.n > 0);
+    }
+
+    // 1c. Bloque 5: cambio con la Corona, antes de gastar.
+    if (ECONOMY_TWEAKS.crown) {
+      const pre = ranking(day);
+      {
+        const realm = zeroRes();
+        for (const o of houses) for (const r of RESOURCES) realm[r] += o.res[r];
+        const net = zeroRes();
+        for (const [d, r, n] of crownLog) if (day - d < 7) net[r] += n;
+        const prices = crownPrices(realm, net);
+        for (const r of RESOURCES) economy.crownPrice[r] += prices.sell[r] / totalDays;
+      }
+      for (const h of houses) {
+        if (!isSmart(h.strategy)) continue;
+        const realm = zeroRes();
+        for (const o of houses) for (const r of RESOURCES) realm[r] += o.res[r];
+        const net = zeroRes();
+        for (const [d, r, n] of crownLog) if (day - d < 7) net[r] += n;
+        const prices = crownPrices(realm, net);
+        const room = { buy: zeroRes(), sell: zeroRes() };
+        for (const r of RESOURCES) {
+          room.buy[r] = CROWN.weeklyCap - h.crownWeek.buy[r];
+          room.sell[r] = CROWN.weeklyCap - h.crownWeek.sell[r];
+        }
+        const plan = planCrown(situation(viewOf(h, day, pre), PERSONALITIES[h.strategy]), prices, room);
+        if (h.res.oro - plan.gold < 0) continue;
+        h.res.oro -= plan.gold;
+        if (plan.gold > 0) economy.crownGoldPaid += plan.gold;
+        else economy.crownGoldReceived -= plan.gold;
+        for (const r of RESOURCES) {
+          const n = plan.units[r];
+          if (!n) continue;
+          h.res[r] += n;
+          crownLog.push([day, r, n]);
+          if (n > 0) {
+            h.crownWeek.buy[r] += n;
+            economy.crownBought[r] += n;
+          } else {
+            h.crownWeek.sell[r] -= n;
+            economy.crownSold[r] -= n;
+          }
+        }
+      }
+    }
+
     // 2. Acciones del día según la estrategia.
     const morning = ranking(day);
     for (const h of houses) {
@@ -482,6 +585,20 @@ function runGame(opts: SimOptions): SimGameResult {
         recruited.catapultas += plan.engines;
         recruited.mesnada += plan.recruit;
         h.helpChoice = plan.help;
+        // Bloque 5: mercenarios con Oro para lo que no llega a reclutar.
+        const mode = ECONOMY_TWEAKS.mercenaries;
+        if (mode) {
+          const hire = planMercenaries(situation(viewOf(h, day, morning), PERSONALITIES[h.strategy]), mode, plan.recruit + plan.riders, MERCENARIES.weeklyCap - h.mercsWeek);
+          if (hire > 0) {
+            const gold = hire * (mode === "alquiler" ? MERCENARIES.hire : MERCENARIES.signOn);
+            h.res.oro -= gold;
+            economy.mercsGold += gold;
+            economy.mercsHired += hire;
+            h.mercsWeek += hire;
+            h.mercs.push({ n: hire, until: mode === "alquiler" ? day + MERCENARIES.days : Infinity });
+            tiles = tiles.map((t) => (t.castleOf === h.id ? { ...t, troops: t.troops + hire } : t));
+          }
+        }
         // Cartas de efecto inmediato (Tregua y Tambores esperan al día de la resolución).
         const cards = planCards(situation(viewOf(h, day, morning), PERSONALITIES[h.strategy]), h.hand, false);
         for (const c of cards) playCard(h, c.card, c.params);
@@ -728,9 +845,23 @@ function runGame(opts: SimOptions): SimGameResult {
     if (weekday === 6) {
       for (const h of houses) {
         const ev = weekEvents[week0 - 1];
-        const upkeep = applyUpkeep(tiles, h.id, h.res.pan, ev ? eventUpkeepFactor(ev) : 1);
+        // Los mercenarios no comen: la Corona pone su Pan (bloque 5).
+        const mercPan = Math.floor(mercCount(h) / TROOPS_PER_PAN);
+        const upkeep = applyUpkeep(tiles, h.id, h.res.pan + mercPan, ev ? eventUpkeepFactor(ev) : 1);
         tiles = upkeep.tiles;
-        h.res.pan -= upkeep.paid;
+        h.res.pan -= Math.max(0, upkeep.paid - mercPan);
+        // Soldada: se paga en Oro; los que no cobran se van.
+        if (ECONOMY_TWEAKS.mercenaries === "soldada") {
+          const count = mercCount(h);
+          const paid = Math.min(count, Math.floor(h.res.oro / MERCENARIES.wage));
+          h.res.oro -= paid * MERCENARIES.wage;
+          economy.mercsGold += paid * MERCENARIES.wage;
+          if (paid < count) {
+            economy.mercsDeserted += count - paid;
+            dismiss(h, count - paid);
+            h.mercs = paid > 0 ? [{ n: paid, until: Infinity }] : [];
+          }
+        }
         h.deserted += upkeep.deserted;
         // Mantenimiento de las fortificaciones: los bots conservan las que lindan con otra casa.
         const fort = applyFortifyUpkeep(tiles, h.id, h.res, resolution + 1, (t) =>
@@ -817,6 +948,7 @@ function runGame(opts: SimOptions): SimGameResult {
     cardsPlayed,
     finalTiles: tiles,
     battle,
+    economy,
     houses: final.map((f, i) => ({
       house: f.h.id,
       strategy: f.h.strategy,
@@ -912,4 +1044,8 @@ function warStats(house: HouseId, fights: [HouseId, HouseId, number][]): SimHous
     topEnemySpan: top ? Math.max(...top[1]) - Math.min(...top[1]) + 1 : 0,
     twoFrontNights: twoFront,
   };
+}
+
+function zeroRes(): Resources {
+  return { pan: 0, madera: 0, piedra: 0, hierro: 0, oro: 0 };
 }
