@@ -1,6 +1,6 @@
 # Bloque 13: historia y cinemáticas
 
-Decidido el 20 de octubre de 2026 · copia del documento «Reyes de Pacotilla: bloque 13, historia y cinemáticas» (claude.ai), que tiene además la maqueta animada de las cinco cinemáticas. No cambia reglas.
+Decidido el 20 de octubre de 2026 · copia del documento «Reyes de Pacotilla: bloque 13, historia y cinemáticas» (claude.ai), que tiene además la maqueta animada de las cinco cinemáticas. La maqueta también está en el repositorio: `docs/maquetas/bloque13-cinematicas.html` se abre en el navegador (mejor con el ancho de un móvil) y sus fuentes, con los dibujos nuevos como capas de píxeles hechas con código, están en `docs/maquetas/bloque13/` (cómo rehacerla, en `construir.mjs`). No cambia reglas.
 
 Este bloque decide cómo se cuenta la historia que ya existe (diseño, sección 15): el rey Aldric muere atragantado con un hueso de pollo («combate singular contra un ave», según Fray Abundio), su testamento solo dice «que gobierne el más capaz», las llaves del tesoro han desaparecido y empieza el interregno. Ya está decidido en otros bloques: el Fray Abundio nuevo de 48x48, el banco de frases y la Crónica Definitiva (bloque 3), el rendimiento en móviles y «reducir movimiento» (bloque 6) y la pantalla «La coronación» de Reino (bloque 11).
 
