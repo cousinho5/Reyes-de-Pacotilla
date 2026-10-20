@@ -139,6 +139,50 @@ export const FORTIFY_COST: Partial<Resources> = { piedra: 8 };
 export const FORTIFY_UPKEEP: Partial<Resources> = {};
 
 /**
+ * Bloque 5 de la hoja de ruta (recursos), en estudio. Apagado: solo lo usa el simulador.
+ * - `crown`: cambio con la Corona a precio dinámico (CROWN).
+ * - `mercenaries`: "alquiler" (se pagan al contratarlos y se van solos) o
+ *   "soldada" (cobran cada domingo y desertan si no se les paga). Ver MERCENARIES.
+ */
+export const ECONOMY_TWEAKS: { crown: boolean; mercenaries: null | "alquiler" | "soldada" } = {
+  crown: false,
+  mercenaries: null,
+};
+
+/**
+ * Cambio con la Corona (bloque 5, en estudio). Precio en Oro de 1 unidad:
+ * (Oro del reino / ese recurso en el reino) ^ `scarcity`, corregido por lo que
+ * se ha comprado y vendido a la Corona en los últimos 7 días. La Corona vende
+ * más caro (`sellMarkup`) y compra más barato (`buyMarkdown`).
+ */
+export const CROWN = {
+  /** Precio de partida (en Oro) de una unidad cuando el recurso abunda tanto como el Oro. */
+  base: 1,
+  /** Con qué se compara la escasez: con el Oro del reino o con la media de los otros cuatro recursos. */
+  reference: "oro" as "oro" | "media",
+  scarcity: 0.5,
+  demandStep: 0.01,
+  sellMarkup: 1.3,
+  buyMarkdown: 0.7,
+  min: 0.25,
+  max: 10,
+  /** Unidades de cada recurso que una casa puede comprar, y vender, por semana. */
+  weeklyCap: 20,
+};
+
+/** Mercenarios (bloque 5, en estudio). No comen Pan. */
+export const MERCENARIES = {
+  /** Alquiler: Oro por tropa y días que se quedan. */
+  hire: 6,
+  days: 7,
+  /** Soldada: Oro por tropa al contratarla y cada domingo. */
+  signOn: 4,
+  wage: 2,
+  /** Tropas que una casa puede contratar por semana. */
+  weeklyCap: 5,
+};
+
+/**
  * Forma de las casillas (diseño v3, propuesta del nuevo sistema de guerra).
  * - "square": cuadrícula con 4 vecinas (el juego de ahora).
  * - "hex": hexágonos con el pico arriba y las filas impares desplazadas media

@@ -93,6 +93,13 @@ function objectiveBonus(s: Situation, t: Tile): number {
 
 /** Tropas que le faltan al bot para defenderse y para su mejor ataque. */
 export function militaryNeed(s: Situation): number {
+  const troops = s.own.reduce((a, t) => a + t.troops, 0);
+  // Nunca más tropas de las que puede alimentar.
+  return Math.max(0, Math.min(Math.max(0, s.sustainableTroops - troops), militaryWant(s)));
+}
+
+/** Tropas que querría tener de más, sin mirar si puede alimentarlas. */
+export function militaryWant(s: Situation): number {
   let defense = 0;
   for (const t of s.own) {
     const danger = s.threat.get(t.id) ?? 0;
@@ -111,9 +118,7 @@ export function militaryNeed(s: Situation): number {
   // Además, cada personalidad quiere un ejército de base según lo que controla.
   const controlled = s.own.filter((t) => t.type !== "castillo").length;
   const baseline = Math.round(s.p.military * (8 + 3 * controlled)) - troops;
-  const want = Math.max(Math.round((defense + attack) * s.p.military), baseline);
-  // Nunca más tropas de las que puede alimentar.
-  return Math.max(0, Math.min(Math.max(0, s.sustainableTroops - troops), want));
+  return Math.max(0, Math.round((defense + attack) * s.p.military), baseline);
 }
 
 export function planOrders(s: Situation): Order[] {

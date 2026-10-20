@@ -6,6 +6,7 @@ export * from "./units";
 export * from "./combat";
 export * from "./plan";
 export * from "./economy";
+export * from "./crown";
 export * from "./prestige";
 export * from "./schedule";
 export * from "./names";
