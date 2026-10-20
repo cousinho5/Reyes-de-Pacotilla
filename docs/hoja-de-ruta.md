@@ -16,7 +16,7 @@ Primero se definen todos los bloques; después se hacen uno a uno, en el orden d
 | 8.º | 2. Vista del castillo y construcciones | Decidido | Escena del castillo en pixel art, un dibujo por nivel de cada edificio y castillo que crece |
 | 9.º | 10. Diseño de la sección Comercio | Decidido | Lo urgente arriba, oferta en dos líneas con «Precio justo», valor en Oro de la Corona, aceptar en gris, ofertas que caducan, Corona en Comercio e hilo del trato con frase |
 | 10.º | 3. Mejora del cronista | Decidido | Fray Abundio: dos boletines por semana, repetición narrada, frases nuevas, memoria, proclamas y dibujo nuevo |
-| 11.º | 11. Diseño de la sección Reino | Por definir | Mejorar el diseño de la pestaña Reino |
+| 11.º | 11. Diseño de la sección Reino | Decidido | Clasificación con podio y flechas arriba, gráfica de la carrera, boletín en tarjeta, crónica por noches, ficha de casa, tira de diplomacia y pantalla de coronación |
 | 12.º | 13. Historia y cinemáticas | Por definir | Historia del juego y cinemáticas |
 | 13.º | 7. Mejorar pagina de inicio del juego | Por definir | Mejorar visualmente la pantalla de inicio al acceder al juego. |
 
@@ -179,9 +179,21 @@ Decidido el 20 de octubre de 2026. Las decisiones y los pasos están en `docs/bl
 7. **Corona y mercenarios:** la Corona en Comercio; los mercenarios en Castillo.
 8. **Contraofertas:** hilo en una tarjeta y frase corta.
 
-## Bloque 11: diseño de la sección Reino **(por definir)**
+## Bloque 11: diseño de la sección Reino **(decidido, pendiente de hacer)**
 
-Por definir. Lo hablaremos y lo decidiremos todo antes de empezar.
+Decidido el 20 de octubre de 2026. Las decisiones y los pasos están en `docs/bloque11.md`; la maqueta, en el documento del bloque. No cambia reglas.
+
+**Decisiones:**
+
+1. **Orden:** clasificación, gráfica, boletín, crónica y diplomacia.
+2. **Clasificación:** podio, flechas desde la noche anterior, barras y tu casa resaltada.
+3. **Gráfica:** Prestigio por semana, tu línea gruesa.
+4. **Boletín:** tarjeta con Fray Abundio, titular, «Leer el boletín» y «Sobornar».
+5. **Crónica:** esta semana por noches, con filtros.
+6. **Ficha de casa:** hoja inferior con escudo, cifras, Prestigio y relación contigo.
+7. **Diplomacia:** tira con lo pendiente y «Proponer alianza» en la ficha.
+8. **Final:** pantalla «La coronación».
+9. **Movimiento:** ligero, respeta «reducir movimiento».
 
 ## Bloque 12: diseño de la sección Órdenes **(decidido, pendiente de hacer)**
 
