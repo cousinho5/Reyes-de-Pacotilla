@@ -8,7 +8,7 @@ Bloques de actualizaciones, en este orden. Primero se definen todos los bloques;
 | --- | --- | --- |
 | 1. Mapa y losetas | Decidido, siguiente en hacerse | Geografía, ríos, Prado, Aldea, Ruinas y marco de mar y montañas |
 | 2. Vista del castillo y construcciones | Decidido | Escena del castillo en pixel art, un dibujo por nivel de cada edificio y castillo que crece |
-| 3. Mejora del cronista | Por definir | Fray Abundio |
+| 3. Mejora del cronista | Decidido | Fray Abundio: dos boletines por semana, repetición narrada, frases nuevas, memoria, proclamas y dibujo nuevo |
 | 4. Retoques sistema de batalla | Decidido | Apoyo sin origen, jinete más caro, Capitán libre, choques en el camino y fortificación con mantenimiento |
 | 5. Retoques recursos | Por definir |  |
 | 6. Optimización y controles en móvil | Por definir | Rendimiento y manejo con el dedo |
@@ -52,9 +52,23 @@ Decidido el 19 de octubre de 2026. Las decisiones y los pasos están en `docs/bl
 6. **La loseta del castillo en el mapa** también cambia con su etapa.
 7. **Pequeñas animaciones**, apagadas si el móvil pide menos movimiento.
 
-## Bloque 3: mejora del cronista **(por definir)**
+## Bloque 3: mejora del cronista **(decidido, pendiente de hacer)**
 
-Por definir. Lo hablaremos y lo decidiremos todo antes de empezar.
+Decidido el 20 de octubre de 2026. Las decisiones y los pasos están en `docs/bloque3.md`. No cambia reglas.
+
+**Decisiones:**
+
+1. **Dos boletines por semana**, miércoles y domingo.
+2. **Fray Abundio narra la repetición de la noche**, con una frase por paso.
+3. **Frases nuevas** para asedios, Capitán, Gloria, batalla, hambre, la Corona y alianzas.
+4. **Crónica Definitiva** al acabar la partida, en un pergamino especial.
+5. **Memoria:** rivalidades, venganzas, récords y remontadas.
+6. **Proclamas:** una frase propia por casa y semana (hasta 140 letras) en el boletín.
+7. **Frases variadas** en mensajes y notificaciones.
+8. **Boletín emergente** una vez al publicarse, con cruceta para cerrar.
+9. ~~Voz~~: descartado de momento.
+10. **Casas en su color** en los textos del cronista.
+11. **Fray Abundio nuevo**, de 48x48 y animado.
 
 ## Bloque 4: retoques del sistema de batalla **(decidido, pendiente de hacer)**
 
