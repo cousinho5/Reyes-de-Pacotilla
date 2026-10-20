@@ -17,7 +17,7 @@ Primero se definen todos los bloques; después se hacen uno a uno, en el orden d
 | 9.º | 10. Diseño de la sección Comercio | Decidido | Lo urgente arriba, oferta en dos líneas con «Precio justo», valor en Oro de la Corona, aceptar en gris, ofertas que caducan, Corona en Comercio e hilo del trato con frase |
 | 10.º | 3. Mejora del cronista | Decidido | Fray Abundio: dos boletines por semana, repetición narrada, frases nuevas, memoria, proclamas y dibujo nuevo |
 | 11.º | 11. Diseño de la sección Reino | Decidido | Clasificación con podio y flechas arriba, gráfica de la carrera, boletín en tarjeta, crónica por noches, ficha de casa, tira de diplomacia y pantalla de coronación |
-| 12.º | 13. Historia y cinemáticas | Por definir | Historia del juego y cinemáticas |
+| 12.º | 13. Historia y cinemáticas | Decidido | Cinco cinemáticas en pixel art: prólogo de la muerte de Aldric, coronación con mapa por semanas y títulos cómicos, viñetas de eventos, última semana y fantasma de Aldric; sin sonido de momento |
 | 13.º | 7. Mejorar pagina de inicio del juego | Por definir | Mejorar visualmente la pantalla de inicio al acceder al juego. |
 
 **Por qué este orden:**
@@ -211,6 +211,20 @@ Decidido el 20 de octubre de 2026. Las decisiones y los pasos están en `docs/bl
 8. **Repetir:** «Repetir cada noche» en asedios y apoyos a la defensa.
 9. **Quitar:** papelera de 48x48 con «Deshacer».
 
-## Bloque 13: historia y cinemáticas **(por definir)**
+## Bloque 13: historia y cinemáticas **(decidido, pendiente de hacer)**
 
-Por definir. Lo hablaremos y lo decidiremos todo antes de empezar.
+Decidido el 20 de octubre de 2026. Las decisiones y los pasos están en `docs/bloque13.md`; la maqueta animada, en el documento del bloque. No cambia reglas.
+
+**Decisiones:**
+
+1. **Qué cinemáticas:** prólogo, coronación, evento de la semana, última semana y fantasma de Aldric.
+2. **Prólogo:** 6 escenas, unos 45 segundos, muy detallado.
+3. **Coronación:** campanas, mapa entero semana a semana, objetivos secretos, títulos, podio y corona.
+4. **Títulos:** uno cómico por casa, calculado de lo que hizo.
+5. **Eventos:** viñeta propia para 6 a 8 eventos y el pregonero para el resto.
+6. **Tus grandes momentos:** descartado.
+7. **Sonido:** ninguno de momento; la música llegará más adelante.
+8. **Cómo salen:** a pantalla completa la primera vez, en orden.
+9. **Volver a verlas:** lista en Reino.
+10. **Compartir:** enlace a la coronación cuando la partida ha acabado.
+11. **Dibujo:** al nivel del Fray de 48x48, con más fotogramas.
