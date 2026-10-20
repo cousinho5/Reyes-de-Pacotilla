@@ -14,7 +14,7 @@ Primero se definen todos los bloques; después se hacen uno a uno, en el orden d
 | 6.º | 9. Diseño de la sección Mapa | Decidido | Capas (con Alcance automático), escudos y nombres, tropas por color y tipo, niebla con recuerdo, botones de salto, barra de avisos y leyenda |
 | 7.º | 12. Diseño de la sección Órdenes | Decidido | Verbo según el destino, botones de tropas, cambiar órdenes, tarjetas agrupadas, simulación con «¿Y si atacan?», repetir asedios y aviso 1 hora antes del cierre |
 | 8.º | 2. Vista del castillo y construcciones | Decidido | Escena del castillo en pixel art, un dibujo por nivel de cada edificio y castillo que crece |
-| 9.º | 10. Diseño de la sección Comercio | Por definir | Mejorar el diseño de la pestaña Comercio |
+| 9.º | 10. Diseño de la sección Comercio | Decidido | Lo urgente arriba, oferta en dos líneas con «Precio justo», valor en Oro de la Corona, aceptar en gris, ofertas que caducan, Corona en Comercio e hilo del trato con frase |
 | 10.º | 3. Mejora del cronista | Decidido | Fray Abundio: dos boletines por semana, repetición narrada, frases nuevas, memoria, proclamas y dibujo nuevo |
 | 11.º | 11. Diseño de la sección Reino | Por definir | Mejorar el diseño de la pestaña Reino |
 | 12.º | 13. Historia y cinemáticas | Por definir | Historia del juego y cinemáticas |
@@ -164,9 +164,20 @@ Decidido el 20 de octubre de 2026. Las decisiones y los pasos están en `docs/bl
 7. **Noches en cola:** etiqueta «Planeando: …» en la esquina.
 8. **Leyenda:** botón «?», sin primeros pasos.
 
-## Bloque 10: diseño de la sección Comercio **(por definir)**
+## Bloque 10: diseño de la sección Comercio **(decidido, pendiente de hacer)**
 
-Por definir. Lo hablaremos y lo decidiremos todo antes de empezar.
+Decidido el 20 de octubre de 2026. Las decisiones y los pasos están en `docs/bloque10.md`. Solo cambia una regla: las ofertas caducan.
+
+**Decisiones:**
+
+1. **Orden:** Para ti, Mercado y Tus ofertas arriba; la subasta en una línea si está cerrada.
+2. **Hacer una oferta:** dos líneas Das y Pides, con «Precio justo».
+3. **Precio:** valor en Oro con los precios de la Corona, sin etiquetas.
+4. **Aceptar:** en gris si falta algo, con filtro «solo las que puedo aceptar».
+5. **Caducidad:** a las 3 resoluciones.
+6. **Qué busca cada casa:** nada nuevo; se publica una oferta.
+7. **Corona y mercenarios:** la Corona en Comercio; los mercenarios en Castillo.
+8. **Contraofertas:** hilo en una tarjeta y frase corta.
 
 ## Bloque 11: diseño de la sección Reino **(por definir)**
 

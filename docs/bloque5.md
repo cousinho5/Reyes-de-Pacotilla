@@ -85,7 +85,7 @@ El mantenimiento de las fortificaciones solo gasta unos 72 de Piedra por partida
 1. **Punto 1 y punto 6:** cambiar `UPGRADE_COST` en `rules.ts` (Oro en todos los niveles y un 15% más de Madera y Piedra, redondeado) y `OBJECTIVE_TARGETS` (`gold` a 100, `totalLevels` a 16). Simular las dos cosas juntas antes y después (`--oro-mejora 5,10,20,0 --mejora-madera-piedra 1.15`) y revisar los objetivos.
 2. **Cambio con la Corona:** pasar a `rules.ts` los valores elegidos (`reference: "media"`, `base: 2`, solo venta) y quitar la compra de `crown.ts`. Migración nueva para las compras a la Corona (casa, día, recurso, unidades). Acción en `app.ts` con el precio calculado en el servidor y el cobro en un `db.batch()`. El cliente solo recibe el precio, no lo que guarda el reino.
 3. **Mercenarios:** migración nueva (casa, cuántos, día en que se van). Acción en `app.ts`; en `jobs.ts`, quitar los que cumplen y descontarlos del mantenimiento del domingo, en el mismo orden que el simulador.
-4. **Cliente:** coste en Oro en las fichas de los edificios; «Cambio con la Corona» y «Mercenarios» en la pestaña Castillo, con el precio de hoy y lo que queda del tope de la semana.
+4. **Cliente:** coste en Oro en las fichas de los edificios; «Cambio con la Corona» en la pestaña Comercio y «Mercenarios» en la pestaña Castillo (bloque 10), con el precio de hoy y lo que queda del tope de la semana.
 5. **Bots:** ya saben comprar a la Corona y contratar mercenarios (`packages/engine/src/ai/oro.ts`); las partidas de prueba (`pruebas.ts`) tienen que usarlo.
 6. **Cronista:** frases para las compras a la Corona y los mercenarios que se van (encaja con el bloque 3).
 7. **Diseño:** secciones de economía, objetivos y Prestigio de `docs/diseno.md`.
