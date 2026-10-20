@@ -14,7 +14,7 @@
 //   npm run simular -- --json simulacion.json   # además, todos los datos en JSON
 
 import { writeFileSync } from "node:fs";
-import { BATTLE_TWEAKS, BOT_TWEAKS, FORTIFY_COST, FORTIFY_UPKEEP, SIEGE, UNITS } from "../packages/engine/src";
+import { BATTLE_TWEAKS, BOT_TWEAKS, FORTIFY_COST, FORTIFY_UPKEEP, PRESTIGE, SIEGE, UNITS, UPGRADE_COST } from "../packages/engine/src";
 import {
   CLASSIC_STRATEGIES,
   OBJECTIVES,
@@ -71,6 +71,16 @@ if (args.has("coste-jinete")) {
 if (args.has("carga")) UNITS.jinetes.charge = Number(args.get("carga"));
 // --atrincherar pares: las casas pares fortifican toda su frontera con otras casas.
 if (args.get("atrincherar") === "pares") BOT_TWEAKS.fortifyFrontier = (house) => house % 2 === 0;
+// Bloque 5 de la hoja de ruta (recursos):
+//   --oro-mejora 5,10,20,30   Oro que se suma al coste de subir a los niveles 2, 3, 4 y 5
+//   --riqueza-tope 10         Prestigio máximo por el Oro guardado
+if (args.has("oro-mejora")) {
+  args.get("oro-mejora")!.split(",").forEach((n, i) => {
+    const cost = UPGRADE_COST[(i + 2) as 2 | 3 | 4 | 5];
+    cost.oro = (cost.oro ?? 0) + Number(n);
+  });
+}
+if (args.has("riqueza-tope")) PRESTIGE.goldMax = Number(args.get("riqueza-tope"));
 const weeks = Number(args.get("semanas") ?? 6) as 2 | 4 | 6 | 8;
 const mode = args.get("modo") ?? "mezcla";
 const [minPlayers, maxPlayers] = (args.get("jugadores") ?? "4-8").split("-").map(Number) as [number, number];
