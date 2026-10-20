@@ -11,7 +11,7 @@ Primero se definen todos los bloques; después se hacen uno a uno, en el orden d
 | 3.º | 5. Retoques recursos | Decidido | Oro en todas las mejoras, cambio con la Corona, mercenarios de alquiler y mejoras con algo más de Madera y Piedra |
 | 4.º | 8. Alianzas | Decidido | Alianzas formales: paso por las casillas del aliado, ruptura con aviso de tres días y ataques conjuntos |
 | 5.º | 6. Optimización y controles en móvil | Decidido | Mapa guardado y dibujado en segundo plano, zoom con pinza, ficha que sube desde abajo, órdenes arrastrando, botones de 48 y juego sin conexión |
-| 6.º | 9. Diseño de la sección Mapa | Por definir | Mejorar el diseño de la pestaña Mapa |
+| 6.º | 9. Diseño de la sección Mapa | Decidido | Capas (con Alcance automático), escudos y nombres, tropas por color y tipo, niebla con recuerdo, botones de salto, barra de avisos y leyenda |
 | 7.º | 12. Diseño de la sección Órdenes | Por definir | Mejorar el diseño de la pestaña Órdenes |
 | 8.º | 2. Vista del castillo y construcciones | Decidido | Escena del castillo en pixel art, un dibujo por nivel de cada edificio y castillo que crece |
 | 9.º | 10. Diseño de la sección Comercio | Por definir | Mejorar el diseño de la pestaña Comercio |
@@ -149,9 +149,20 @@ Propuesto y decidido el 19 de octubre de 2026, a partir de Reyes de Pacotilla: i
 
 **Por pensar más adelante:** una mecánica de traición propia (no entra en la primera versión).
 
-## Bloque 9: diseño de la sección Mapa **(por definir)**
+## Bloque 9: diseño de la sección Mapa **(decidido, pendiente de hacer)**
 
-Por definir. Lo hablaremos y lo decidiremos todo antes de empezar.
+Decidido el 20 de octubre de 2026. Las decisiones y los pasos están en `docs/bloque9.md`. No cambia reglas.
+
+**Decisiones:**
+
+1. **Capas:** Territorio, Recursos, Defensa y Alcance; la de Alcance sale sola al elegir una casilla tuya (a prueba).
+2. **Nombres y casas:** nombres de casa con todo el reino y de casilla de cerca; escudo en lugar del banderín.
+3. **Tropas:** etiqueta del color de la casa, iconos de Jinetes y Catapultas, y «6 → 2» en la noche planeada.
+4. **Niebla:** dos niveles y recuerdo de las últimas tropas vistas, guardado por casa.
+5. **Orientarse:** botones «Mi castillo» y «Siguiente ejército», sin minimapa.
+6. **Avisos:** barra fina sobre las pestañas y marcas en las casillas, con flecha en el borde.
+7. **Noches en cola:** etiqueta «Planeando: …» en la esquina.
+8. **Leyenda:** botón «?», sin primeros pasos.
 
 ## Bloque 10: diseño de la sección Comercio **(por definir)**
 
