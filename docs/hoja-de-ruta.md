@@ -12,7 +12,7 @@ Primero se definen todos los bloques; después se hacen uno a uno, en el orden d
 | 4.º | 8. Alianzas | Decidido | Alianzas formales: paso por las casillas del aliado, ruptura con aviso de tres días y ataques conjuntos |
 | 5.º | 6. Optimización y controles en móvil | Decidido | Mapa guardado y dibujado en segundo plano, zoom con pinza, ficha que sube desde abajo, órdenes arrastrando, botones de 48 y juego sin conexión |
 | 6.º | 9. Diseño de la sección Mapa | Decidido | Capas (con Alcance automático), escudos y nombres, tropas por color y tipo, niebla con recuerdo, botones de salto, barra de avisos y leyenda |
-| 7.º | 12. Diseño de la sección Órdenes | Por definir | Mejorar el diseño de la pestaña Órdenes |
+| 7.º | 12. Diseño de la sección Órdenes | Decidido | Verbo según el destino, botones de tropas, cambiar órdenes, tarjetas agrupadas, simulación con «¿Y si atacan?», repetir asedios y aviso 1 hora antes del cierre |
 | 8.º | 2. Vista del castillo y construcciones | Decidido | Escena del castillo en pixel art, un dibujo por nivel de cada edificio y castillo que crece |
 | 9.º | 10. Diseño de la sección Comercio | Por definir | Mejorar el diseño de la pestaña Comercio |
 | 10.º | 3. Mejora del cronista | Decidido | Fray Abundio: dos boletines por semana, repetición narrada, frases nuevas, memoria, proclamas y dibujo nuevo |
@@ -172,9 +172,21 @@ Por definir. Lo hablaremos y lo decidiremos todo antes de empezar.
 
 Por definir. Lo hablaremos y lo decidiremos todo antes de empezar.
 
-## Bloque 12: diseño de la sección Órdenes **(por definir)**
+## Bloque 12: diseño de la sección Órdenes **(decidido, pendiente de hacer)**
 
-Por definir. Lo hablaremos y lo decidiremos todo antes de empezar.
+Decidido el 20 de octubre de 2026. Las decisiones y los pasos están en `docs/bloque12.md`. No cambia reglas de combate.
+
+**Decisiones:**
+
+1. **Cuántas tropas:** botones «−» y «+», con «Todas» y «La mitad».
+2. **Tipo de orden:** el destino propone el verbo (Mover, Atacar, Entrar, Apoyar, Sitiar) y se puede cambiar.
+3. **Cambiar una orden:** tocar su flecha o su línea la abre.
+4. **Dónde se repasan:** pestaña Órdenes rediseñada y etiqueta en el mapa con la lista rápida.
+5. **Avisos:** notificación diaria 1 hora antes del cierre, que pide dar órdenes a quien no las ha dado.
+6. **Lista:** tarjetas agrupadas por objetivo, con la cuenta de fuerza.
+7. **Simulación:** resultado en cada orden y botón «¿Y si atacan?».
+8. **Repetir:** «Repetir cada noche» en asedios y apoyos a la defensa.
+9. **Quitar:** papelera de 48x48 con «Deshacer».
 
 ## Bloque 13: historia y cinemáticas **(por definir)**
 
