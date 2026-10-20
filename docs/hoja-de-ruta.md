@@ -14,6 +14,11 @@ Bloques de actualizaciones, en este orden. Primero se definen todos los bloques;
 | 6. Optimización y controles en móvil | Por definir | Rendimiento y manejo con el dedo |
 | 7. Mejorar pagina de inicio del juego | Por definir | Mejorar visualmente la pantalla de inicio al acceder al juego. |
 | 8. Alianzas | Decidido | Alianzas formales: paso por las casillas del aliado, ruptura con aviso de tres días y ataques conjuntos |
+| 9. Diseño de la sección Mapa | Por definir | Mejorar el diseño de la pestaña Mapa |
+| 10. Diseño de la sección Comercio | Por definir | Mejorar el diseño de la pestaña Comercio |
+| 11. Diseño de la sección Reino | Por definir | Mejorar el diseño de la pestaña Reino |
+| 12. Diseño de la sección Órdenes | Por definir | Mejorar el diseño de la pestaña Órdenes |
+| 13. Historia y cinemáticas | Por definir | Historia del juego y cinemáticas |
 
 ## Bloque 1: mapa y losetas
 
@@ -124,3 +129,23 @@ Propuesto y decidido el 19 de octubre de 2026, a partir de Reyes de Pacotilla: i
 - **Los bots** aprenden a proponer, aceptar y romper alianzas, para que las partidas de prueba se parezcan a las reales.
 
 **Por pensar más adelante:** una mecánica de traición propia (no entra en la primera versión).
+
+## Bloque 9: diseño de la sección Mapa **(por definir)**
+
+Por definir. Lo hablaremos y lo decidiremos todo antes de empezar.
+
+## Bloque 10: diseño de la sección Comercio **(por definir)**
+
+Por definir. Lo hablaremos y lo decidiremos todo antes de empezar.
+
+## Bloque 11: diseño de la sección Reino **(por definir)**
+
+Por definir. Lo hablaremos y lo decidiremos todo antes de empezar.
+
+## Bloque 12: diseño de la sección Órdenes **(por definir)**
+
+Por definir. Lo hablaremos y lo decidiremos todo antes de empezar.
+
+## Bloque 13: historia y cinemáticas **(por definir)**
+
+Por definir. Lo hablaremos y lo decidiremos todo antes de empezar.
