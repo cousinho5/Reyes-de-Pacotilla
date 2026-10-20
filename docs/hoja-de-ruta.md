@@ -10,7 +10,7 @@ Primero se definen todos los bloques; después se hacen uno a uno, en el orden d
 | 2.º | 4. Retoques sistema de batalla | Decidido | Apoyo sin origen, jinete más caro, Capitán libre, choques en el camino y fortificación con mantenimiento |
 | 3.º | 5. Retoques recursos | Decidido | Oro en todas las mejoras, cambio con la Corona, mercenarios de alquiler y mejoras con algo más de Madera y Piedra |
 | 4.º | 8. Alianzas | Decidido | Alianzas formales: paso por las casillas del aliado, ruptura con aviso de tres días y ataques conjuntos |
-| 5.º | 6. Optimización y controles en móvil | Por definir | Rendimiento y manejo con el dedo |
+| 5.º | 6. Optimización y controles en móvil | Decidido | Mapa guardado y dibujado en segundo plano, zoom con pinza, ficha que sube desde abajo, órdenes arrastrando, botones de 48 y juego sin conexión |
 | 6.º | 9. Diseño de la sección Mapa | Por definir | Mejorar el diseño de la pestaña Mapa |
 | 7.º | 12. Diseño de la sección Órdenes | Por definir | Mejorar el diseño de la pestaña Órdenes |
 | 8.º | 2. Vista del castillo y construcciones | Decidido | Escena del castillo en pixel art, un dibujo por nivel de cada edificio y castillo que crece |
@@ -109,9 +109,20 @@ Decidido el 20 de octubre de 2026. Las decisiones, los datos y los pasos están 
 5. **Riqueza:** como hoy.
 6. **Madera y Piedra:** las mejoras piden un 15% más. El objetivo «niveles 17» baja a 16.
 
-## Bloque 6: optimización y controles en móvil **(por definir)**
+## Bloque 6: optimización y controles en móvil **(decidido, pendiente de hacer)**
 
-Por definir. Lo hablaremos y lo decidiremos todo antes de empezar.
+Decidido el 20 de octubre de 2026. Las medidas, las decisiones y los pasos están en `docs/bloque6.md`. No cambia reglas.
+
+**Decisiones:**
+
+1. **Dibujo del mapa:** se guarda en el móvil y se prepara en segundo plano, con una vista previa mientras tanto.
+2. **Zoom:** pinza y doble toque en 3 niveles; el botón se queda.
+3. **Ficha de la casilla:** hoja que sube desde abajo, sin tapar la casilla.
+4. **Mapa a toda pantalla** con una barra fina de recursos; reloj y evento en una etiqueta.
+5. **Todo lo que se toca, de 48x48** como mínimo.
+6. **Órdenes con el dedo:** arrastrar de una casilla a otra (con confirmación) y mantener pulsado para la información rápida.
+7. **Sin conexión:** abre al instante y enseña lo último visto; letras más ligeras y cada pestaña al abrirla.
+8. **Detalles:** muesca y bordes, sin zoom de página con la pinza ni el doble toque (solo el mapa), ayudas al tocar, altura correcta, vibración opcional y repetición más ligera.
 
 ## Bloque 7: Mejorar pagina de inicio del juego **(por definir)**
 
