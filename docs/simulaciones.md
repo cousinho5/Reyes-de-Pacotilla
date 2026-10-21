@@ -53,6 +53,24 @@ npm run simular -- --semanas 4                    # duración de la partida
 npm run simular -- --json datos.json              # además, todos los datos
 ```
 
+## Ríos, puentes y lagos (21 de octubre de 2026, fase 2 del bloque 1, aplicado)
+
+`npm run simular -- --partidas 1500 --rios no` frente a la misma orden con ríos, con dos tandas de semillas (`--semilla b` para la segunda). Ríos y lagos: 1 de cada con 4-5 casas y 2 con 6 o más; atacar cruzando un río sin puente da +25% al defensor.
+
+| dato | sin ríos (tanda 1 / 2) | con ríos (tanda 1 / 2) |
+| --- | --- | --- |
+| El líder de la semana 2 gana | 30% / 32% | 32% / 29% |
+| Casas con deserciones | 12% / 11% | 10% / 10% |
+| Combates entre casas con 6 casas | 72,8 / 73,1 | 62,5 / 63,1 |
+| Neutrales tomadas con 6 casas | 85% / 85% | 83% / 83% |
+| Ataques cruzando un río (los ganan) | 0 | 7,7 (59%) |
+| Casas encerradas en una guerra | 33% / 32% | 37% / 38% |
+| Objetivo «puerto y montaña» cumplido | 28% / 26% | 23% / 24% |
+
+- **Se da por buena:** «el líder de la semana 2 gana» queda igual (31% de media sin ríos, 30,5% con ríos) y ningún castillo queda encerrado (lo comprueba `rios.test.ts` en 5 mapas por tamaño).
+- Los ríos y lagos frenan algo la guerra: unos 10 combates menos entre casas por partida con 6-7 casas, y las guerras se quedan más entre dos vecinos (encerradas 33% → 37%). Es lo esperado: un río hace de frontera.
+- La primera tanda salió con muchos menos combates (38,6 con 6 casas) porque los bots apuntaban a los lagos y perdían el ataque en una orden inválida. Ahora los bots no los cuentan como objetivo ni como frontera, y un lago da 0 de Prestigio.
+
 ## Mapa con geografía y Prado (21 de octubre de 2026, fase 1 del bloque 1, aplicado)
 
 Generador nuevo (`generateGeographicMap`, valores en `MAP_GEN`): altura y humedad con ruido, costa en dos lados opuestos, ajuste de salida y pulido de justicia. El de antes se compara con `--geografia no`.

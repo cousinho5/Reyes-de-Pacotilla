@@ -19,6 +19,7 @@ const VALUE: Record<TileType, number> = {
   bosque: 0,
   paramo: -0.5,
   prado: -0.5,
+  lago: -10,
   castillo: -1,
 };
 
@@ -43,7 +44,7 @@ export function planBotOrders(input: BotOrdersInput): MoveOrder[] {
   const absent = new Set(input.absentHouses ?? []);
   const margins = input.margins ?? { neutral: BOT.marginNeutral, house: BOT.marginHouse };
   const attackable = (t: Tile) =>
-    t.owner !== input.house && t.type !== "castillo" && (input.attackHouses !== false || t.owner == null);
+    t.owner !== input.house && t.type !== "castillo" && t.type !== "lago" && (input.attackHouses !== false || t.owner == null);
   const own = input.tiles.filter((t) => t.owner === input.house).sort((a, b) => a.id - b.id);
   const targeted = new Set<number>();
   const orders: MoveOrder[] = [];

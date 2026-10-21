@@ -138,6 +138,7 @@ Con 6 vecinas los castillos quedan más cerca, así que los mapas hexagonales ti
   - **Ajuste de salida:** si a un castillo le falta un recurso básico (Pan, Madera, Piedra o Hierro) a 2 pasos, se cambia una casilla suya repetida, o un Prado, por una del tipo que falta. Después, al castillo peor situado se le cambia un Prado cercano por una casilla productiva de más lejos mientras el mapa gane en justicia.
   - De los 600 mapas probados gana el que mejor junta justicia y terreno agrupado. Resultado (40 mapas por número de casas): un 50-110% más de vecinas del mismo terreno que antes y una diferencia de entorno entre castillos de 0,4-0,5 de mediana (antes 0,7-1,1). Datos en `docs/simulaciones.md`.
   - **Marco:** alrededor del tablero se dibuja mar en los lados con costa y montañas en los otros dos. No se juega: solo hace que el reino parezca parte de un mundo.
+  - **Ríos y lagos (fase 2).** Los ríos nacen junto a una montaña y bajan siempre hacia lo más bajo, por los lados entre casillas, hasta el mar: uno con 4 o 5 casas y dos con 6 o más. Los **lagos** (uno con 4 o 5 casas, dos con 6 o más) ocupan el sitio de un páramo, en lo bajo y húmedo, nunca junto a un castillo, en la orilla ni partiendo el mapa en dos. En un lago no se puede entrar. Regla de los ríos en la sección 8.8.
 
 ### 6.2 Qué ve cada jugador (niebla de guerra)
 
@@ -293,8 +294,11 @@ El botón **Simular** aplica tus órdenes al estado que conoces y te enseña el 
 | Cantera | +25% | Fortificar aquí cuesta 4 de Piedra en vez de 8. |
 | Montaña | +50% | **Atalaya:** desde una montaña tuya ves las casillas a dos pasos. |
 | Fortaleza | +50% | Como hasta ahora. |
+| Lago | — | No se puede entrar ni da Prestigio (bloque 1). |
 
 El terreno se suma a las demás bonificaciones del defensor y el tope sigue en x2.
+
+- **Ríos (bloque 1, fase 2).** Corren por los lados entre casillas, de las montañas a la costa. **Atacar cruzando un río da +25% al defensor**: cuenta el último tramo de la marcha (en una de dos casillas, el de la casilla de en medio al destino). Donde un camino cruza el río hay un **puente** y no cuenta. Si varias casas atacan la misma casilla, cada una lucha con su río: es como si su fuerza se dividiera por lo que sube la defensa. El tope x2 sigue. Los choques frontales no miran el río.
 
 - **Caminos.** Los que se dibujan entre los castillos y las fortalezas cuentan: un grupo avanza **dos casillas en una noche** siguiendo el camino si la casilla de en medio es suya. Ese ataque no admite apoyos.
 - **Travesía.** Desde un puerto tuyo, un grupo llega a **cualquier otro puerto en una noche**, también para atacarlo. Tampoco admite apoyos. La propuesta decía dos noches, pero eso exigía guardar tropas "en el mar" entre resoluciones; con una noche y sin apoyos el puerto ya gana valor sin complicar las reglas.

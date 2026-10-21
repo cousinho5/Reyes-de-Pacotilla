@@ -21,7 +21,7 @@ const asTile = (t: SeenTile): Tile => ({ ...t, troops: t.troops ?? 0 });
 function reaches(from: Tile, to: Tile, tiles: Tile[]): boolean {
   if (from.owner == null) return false;
   const u = unitsOf(from);
-  if (to.type === "castillo") return false;
+  if (to.type === "castillo" || to.type === "lago") return false;
   if (to.type === "montana" && u.mesnada === 0) return false;
   if (marchKind(from, to, tiles, from.owner) != null) return true;
   // A la carga solo van los jinetes, solos.

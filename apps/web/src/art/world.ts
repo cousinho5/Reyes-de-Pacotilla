@@ -15,7 +15,7 @@
 // Todo es determinista: la misma partida da el mismo dibujo. Sin animación:
 // el mapa está quieto y solo cambia cuando cambia la partida.
 
-import { GRID, roadEdges as engineRoadEdges, type TileType } from "@reyes/engine";
+import { GRID, neighbourCoords, roadEdges as engineRoadEdges, type TileType } from "@reyes/engine";
 import { CELL } from "./cell";
 import { edgeDistance, makeGeo, type Geo, type GridKind } from "./grid";
 import type { Palette } from "./Pixels";
@@ -42,6 +42,8 @@ export interface WorldCell {
   besieger?: string | null;
   /** Fuera de la vista de la casa. */
   fogged?: boolean;
+  /** Ríos por los lados de la casilla (bloque 1): un bit por lado, como `Tile.river`. */
+  river?: number;
 }
 
 export interface WorldOptions {
@@ -95,6 +97,7 @@ const GROUND_OF: Record<TileType, Ground> = {
   fortaleza: "dust",
   paramo: "barren",
   prado: "meadow",
+  lago: "meadow",
 };
 
 const RAMPS: Record<Ground, Ramp> = {
@@ -327,6 +330,86 @@ export function renderWorld(opts: WorldOptions): WorldImage {
       }
     }
   }
+  // 2a. Lagos (bloque 1): el agua llena casi toda la casilla, con orilla irregular.
+  for (const l of cells.filter((c) => c.type === "lago")) {
+    const [cx, cy] = geo.center(l.x, l.y);
+    for (let py = Math.floor(cy - 32); py < cy + 32; py++) {
+      for (let px = Math.floor(cx - 32); px < cx + 32; px++) {
+        if (px < 0 || py < 0 || px >= W || py >= H) continue;
+        if (Math.abs((px - cx) / 25) ** 2.4 + Math.abs((py - cy) / 23) ** 2.4 < 0.85 + wobble(px, py)) water[py * W + px] = 1;
+      }
+    }
+  }
+  // 2a'. Ríos (bloque 1): una franja de agua a lo largo de cada lado con río.
+  // Por fuera del mapa siguen hasta el borde del dibujo (desembocan en el mar).
+  const riverPix = new Uint8Array(W * H);
+  const riverDot = (x: number, y: number) => {
+    for (let oy = -4; oy <= 4; oy++) {
+      for (let ox = -4; ox <= 4; ox++) {
+        if (ox * ox + oy * oy > 14) continue;
+        const rx = Math.round(x + ox);
+        const ry = Math.round(y + oy);
+        if (rx < 0 || ry < 0 || rx >= W || ry >= H) continue;
+        water[ry * W + rx] = 1;
+        riverPix[ry * W + rx] = 1;
+      }
+    }
+  };
+  // Extremos de cada tramo: los que solo tocan un tramo son la fuente o la desembocadura.
+  const ends = new Map<string, { x: number; y: number; n: number }>();
+  const seenSide = new Set<string>();
+  for (const c of cells) {
+    if (!c.river) continue;
+    neighbourCoords(c).forEach((n, side) => {
+      if (!(c.river! & (1 << side))) return;
+      const key = [`${c.x},${c.y}`, `${n.x},${n.y}`].sort().join("|");
+      if (seenSide.has(key)) return;
+      seenSide.add(key);
+      const [ax, ay] = geo.center(c.x, c.y);
+      const [bx, by] = geo.center(n.x, n.y);
+      const d = Math.hypot(bx - ax, by - ay);
+      const mx = (ax + bx) / 2;
+      const my = (ay + by) / 2;
+      // El lado es perpendicular a la línea entre centros y mide d/√3.
+      const ux = -(by - ay) / d;
+      const uy = (bx - ax) / d;
+      const half = d / Math.sqrt(3) / 2;
+      for (const sgn of [-1, 1]) {
+        const ex = mx + ux * half * sgn;
+        const ey = my + uy * half * sgn;
+        const k = `${Math.round(ex / 2)},${Math.round(ey / 2)}`;
+        const e = ends.get(k) ?? { x: ex, y: ey, n: 0 };
+        e.n++;
+        ends.set(k, e);
+      }
+      for (let t = -half - 1; t <= half + 1; t += 0.5) {
+        const wob = Math.sin((t / half) * Math.PI + c.x * 3 + c.y) * 1.2;
+        riverDot(mx + ux * t + ((bx - ax) / d) * wob, my + uy * t + ((by - ay) / d) * wob);
+      }
+    });
+  }
+  // Desembocadura: desde el extremo junto a la costa, el río sigue recto hasta el mar.
+  if (opts.coast) {
+    for (const e of ends.values()) {
+      if (e.n !== 1) continue;
+      const [gx, gy] = geo.cellAt(e.x, e.y);
+      const horizontal = opts.coast === "oeste-este";
+      const onShore = horizontal ? gx === 0 || gx === cols - 1 : gy === 0 || gy === rows - 1;
+      if (!onShore) continue;
+      const [cx, cy] = geo.center(gx, gy);
+      const dx = horizontal ? (gx === 0 ? -1 : 1) : 0;
+      const dy = horizontal ? 0 : gy === 0 ? -1 : 1;
+      // Solo si el extremo da hacia fuera del mapa.
+      if ((horizontal ? (e.x - cx) * dx : (e.y - cy) * dy) <= 0) continue;
+      for (let step = 0; step < M + CELL; step++) {
+        const x = e.x + dx * step;
+        const y = e.y + dy * step;
+        if (x < 0 || y < 0 || x >= W || y >= H) break;
+        riverDot(x, y);
+      }
+    }
+  }
+
   // 2b. Marco (bloque 1): fuera del tablero, mar en los lados con costa.
   const frameSide = opts.coast ? frameSides(geo, opts.coast) : null;
   if (frameSide) {
@@ -387,8 +470,10 @@ export function renderWorld(opts: WorldOptions): WorldImage {
           if (ox * ox + oy * oy > 5) continue;
           const rx = Math.round(x + ox);
           const ry = Math.round(y + oy);
-          if (!cv.inside(rx, ry) || water[ry * W + rx]) continue;
-          road[ry * W + rx] = 1;
+          if (!cv.inside(rx, ry)) continue;
+          // Sobre un río, el camino pasa por un puente; en el mar o un lago, no pasa.
+          if (water[ry * W + rx] && !riverPix[ry * W + rx]) continue;
+          road[ry * W + rx] = water[ry * W + rx] ? 2 : 1;
         }
       }
     }
@@ -397,6 +482,12 @@ export function renderWorld(opts: WorldOptions): WorldImage {
     if (!road[i]) continue;
     const x = i % W;
     const y = Math.floor(i / W);
+    if (road[i] === 2) {
+      // Puente de tablones con barandilla oscura.
+      const rail = road[i - W] !== 2 || road[i + W] !== 2 || road[i - 1] !== 2 || road[i + 1] !== 2;
+      cv.data[i] = rail ? "h" : (x + y) % 3 === 0 ? "H" : "j";
+      continue;
+    }
     const edge = !road[i - 1] || !road[i + 1] || !road[i - W] || !road[i + W];
     // Roderas: dos líneas algo más oscuras en el centro del camino.
     cv.data[i] = edge ? "E" : noise(x, y, 9) > 0.8 ? "F" : noise(x, y, 10) > 0.85 ? "E" : "f";
@@ -719,6 +810,18 @@ function boat(layer: Layer, x: number, y: number, size: number, flag: [string, s
 // Terrenos
 
 const DRAW: Record<TileType, (ctx: CellCtx) => void> = {
+  // Lago (bloque 1): el agua se dibuja con el resto del agua; aquí, unos juncos.
+  lago(ctx) {
+    const { cv, x0, y0, s } = ctx;
+    for (let i = 0; i < 7; i++) {
+      const rx = x0 + 8 + Math.floor(noise(s, i, 91) * 48);
+      const ry = y0 + 8 + Math.floor(noise(s, i + 4, 91) * 48);
+      if (!ctx.isWater(rx, ry) || ctx.isWater(rx, ry + 3)) continue;
+      cv.set(rx, ry, "3");
+      cv.set(rx, ry - 1, "4");
+      cv.set(rx + 1, ry - 2, "w");
+    }
+  },
   paramo(ctx) {
     const { cv, x0, y0, s } = ctx;
     // Grietas de tierra seca: líneas quebradas en coordenadas del mundo.

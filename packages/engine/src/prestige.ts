@@ -36,6 +36,7 @@ export interface PrestigeBreakdown {
 
 /** Prestigio de territorio de una casilla. */
 export function tilePrestige(type: TileType): number {
+  if (type === "lago") return 0;
   if (type === "fortaleza") return PRESTIGE.perFortress;
   if (type === "paramo" || type === "prado") return PRESTIGE.perWasteland;
   return PRESTIGE.perTile;

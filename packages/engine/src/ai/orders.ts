@@ -6,10 +6,10 @@
 // 3. Avance: lo que queda en el interior se acerca a la frontera.
 
 import { checkOrders, defenseMultiplier, walled } from "../combat";
-import { areAdjacent } from "../map";
-import { marchKind } from "../terrain";
+import { areAdjacent, riverBetween } from "../map";
+import { bridgeBetween, marchKind } from "../terrain";
 import { tilePrestige } from "../prestige";
-import { ANY_ORIGIN, BATTLE_TWEAKS, CAPTAIN, OBJECTIVE_TARGETS, PRESTIGE, SIEGE, STRETCH_FREE_TILES, STRETCH_PAN, TILE_PRODUCTION, TROOP_COST, UNITS } from "../rules";
+import { ANY_ORIGIN, BATTLE_TWEAKS, CAPTAIN, OBJECTIVE_TARGETS, PRESTIGE, SIEGE, STRETCH_FREE_TILES, STRETCH_PAN, TILE_PRODUCTION, TROOP_COST, RIVERS, UNITS } from "../rules";
 import { isPlain, totalUnits, unitFields, unitsOf, type UnitKind, type Units } from "../units";
 import type { Order, Tile, TileId } from "../types";
 import { PRESTIGE_UNIT, valueOf, type Situation } from "./view";
@@ -37,7 +37,7 @@ export function targets(s: Situation): Target[] {
   const troopValue = valueOf(s.values, TROOP_COST);
   const weeksLeft = s.daysLeft / 7;
   for (const t of seen) {
-    if (t.owner === view.house || t.type === "castillo") continue;
+    if (t.owner === view.house || t.type === "castillo" || t.type === "lago") continue;
     // La Paz del Rey: no se puede atacar a otras casas en esta resolución.
     if (view.combat?.peace && t.owner != null) continue;
     const from = own.filter((o) => areAdjacent(o, t));
@@ -45,8 +45,12 @@ export function targets(s: Situation): Target[] {
     if (from.length === 0 && reach.length === 0) continue;
     // Las catapultas propias que pueden ir al ataque abren brecha en las murallas.
     const cats = UNITS.enabled ? [...from, ...reach].reduce((a, o) => a + unitsOf(o).catapultas, 0) : 0;
+    // Río (bloque 1): si todos los ataques posibles lo cruzan sin puente, la defensa sube.
+    const river =
+      RIVERS.enabled && reach.length === 0 && from.every((o) => riverBetween(o, t) && !bridgeBetween(o, t, view.tiles)) ? RIVERS.defense : 0;
     let defense =
-      t.troops * defenseMultiplier(t, view.nextResolution, false, view.combat?.defenseBonus ?? 0, cats * UNITS.catapultas.breach);
+      t.troops *
+      defenseMultiplier(t, view.nextResolution, false, (view.combat?.defenseBonus ?? 0) + river, cats * UNITS.catapultas.breach);
     if (t.owner != null) {
       // Puede recibir apoyos de sus casillas vecinas.
       const helpers = seen.filter((o) => o.owner === t.owner && o.id !== t.id && areAdjacent(o, t));
@@ -329,7 +333,7 @@ function frontierDistance(s: Situation): Map<TileId, number> {
   const dist = new Map<TileId, number>();
   const border = (t: Tile) =>
     (s.threat.get(t.id) ?? 0) > 0 ||
-    s.seen.some((o) => o.owner !== s.view.house && o.type !== "castillo" && areAdjacent(o, t));
+    s.seen.some((o) => o.owner !== s.view.house && o.type !== "castillo" && o.type !== "lago" && areAdjacent(o, t));
   let queue = s.own.filter(border);
   for (const t of queue) dist.set(t.id, 0);
   for (let d = 1; queue.length > 0; d++) {

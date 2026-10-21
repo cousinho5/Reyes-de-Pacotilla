@@ -21,7 +21,8 @@ export type TileType =
   | "puerto"
   | "fortaleza"
   | "paramo"
-  | "prado";
+  | "prado"
+  | "lago";
 
 export interface Tile {
   id: TileId;
@@ -45,6 +46,12 @@ export interface Tile {
   /** Asedio (diseño v3): casa que tiene sitiada la casilla y noches que lleva. */
   besiegedBy?: HouseId | null;
   siegeNights?: number;
+  /**
+   * Ríos (bloque 1): un bit por cada lado de la casilla por el que pasa un río,
+   * en el orden de `neighbourCoords`. Los lados hacia fuera del mapa también
+   * cuentan (para dibujar dónde desemboca).
+   */
+  river?: number;
 }
 
 export interface MoveOrder {
@@ -158,6 +165,8 @@ export type CampaignEvent =
         supporters: HouseId[];
         /** Ataque: casillas de las que salen sus tropas (para la repetición de la noche). */
         from?: TileId[];
+        /** Ataque: alguno de sus grupos entra cruzando un río sin puente (bloque 1). */
+        river?: boolean;
       }[];
     }
   | {

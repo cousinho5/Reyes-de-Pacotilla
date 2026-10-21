@@ -12,10 +12,11 @@
 //   npm run simular -- --asedios no       # sin asedios, para comparar
 //   npm run simular -- --capitan no       # sin Capitán ni Gloria, para comparar
 //   npm run simular -- --geografia no     # mapa de antes del bloque 1 (sin geografía ni Prado), para comparar
+//   npm run simular -- --rios no          # sin ríos ni lagos, para comparar
 //   npm run simular -- --json simulacion.json   # además, todos los datos en JSON
 
 import { writeFileSync } from "node:fs";
-import { BATTLE_TWEAKS, BOT_TWEAKS, CROWN, ECONOMY_TWEAKS, MAP_GEN, FORTIFY_COST, FORTIFY_UPKEEP, PRESTIGE, SIEGE, UNITS, UPGRADE_COST } from "../packages/engine/src";
+import { BATTLE_TWEAKS, BOT_TWEAKS, CROWN, ECONOMY_TWEAKS, MAP_GEN, RIVERS, FORTIFY_COST, FORTIFY_UPKEEP, PRESTIGE, SIEGE, UNITS, UPGRADE_COST } from "../packages/engine/src";
 import {
   CLASSIC_STRATEGIES,
   OBJECTIVES,
@@ -87,6 +88,8 @@ if (args.has("riqueza-tope")) PRESTIGE.goldMax = Number(args.get("riqueza-tope")
 //   --mejora-madera-piedra 1.3      multiplica la Madera y la Piedra de las mejoras
 // Bloque 1: --geografia no usa el generador de mapas de antes (sin geografía ni Prado).
 if (args.get("geografia") === "no") MAP_GEN.geography = false;
+// --rios no: sin ríos ni lagos (fase 2 del bloque 1), para comparar.
+if (args.get("rios") === "no") RIVERS.enabled = false;
 // --campos 0.2: parte de campos en el mapa con geografía (lo que falte hasta 0,2 es Prado).
 if (args.has("campos")) {
   MAP_GEN.mix.campos = Number(args.get("campos"));
@@ -120,13 +123,13 @@ const pool = (args.get("estrategias")?.split(",") ?? pools[mode] ?? pools.mezcla
 const unknown = pool.filter((p) => !STRATEGIES.includes(p));
 if (unknown.length) throw new Error(`Estrategias desconocidas: ${unknown.join(", ")}. Hay: ${STRATEGIES.join(", ")}`);
 
-const rand = seededRandom(`simulacion-${games}-${weeks}-${mode}`);
+const rand = seededRandom(`simulacion-${games}-${weeks}-${mode}${args.get("semilla") ?? ""}`);
 const results: SimGameResult[] = [];
 const started = Date.now();
 for (let i = 0; i < games; i++) {
   const players = minPlayers + Math.floor(rand() * (maxPlayers - minPlayers + 1));
   const strategies = Array.from({ length: players }, () => pool[Math.floor(rand() * pool.length)]!);
-  results.push(simulateGame({ seed: `sim-${i}`, strategies, weeks, events: args.get("eventos") !== "no", terrain: args.get("terreno") !== "no", units: args.get("tropas") !== "no", sieges: args.get("asedios") !== "no", captainGlory: args.get("capitan") !== "no", ...(untilAttacked ? { fortify: 100000 } : {}) }));
+  results.push(simulateGame({ seed: `sim-${args.get("semilla") ?? ""}${i}`, strategies, weeks, events: args.get("eventos") !== "no", terrain: args.get("terreno") !== "no", units: args.get("tropas") !== "no", sieges: args.get("asedios") !== "no", captainGlory: args.get("capitan") !== "no", ...(untilAttacked ? { fortify: 100000 } : {}) }));
 }
 const houses = results.flatMap((g) => g.houses.map((h) => ({ ...h, players: g.houses.length })));
 
@@ -154,7 +157,7 @@ function winStats(group: (SimHouseResult & { players: number })[]) {
 }
 
 console.log(
-  `# Simulación: ${games} partidas de ${weeks} semanas, ${minPlayers}-${maxPlayers} casas, modo ${mode}${args.get("eventos") === "no" ? ", sin eventos" : ""}${args.get("terreno") === "no" ? ", sin terreno" : ""}${args.get("tropas") === "no" ? ", solo Mesnada" : ""}${args.get("asedios") === "no" ? ", sin asedios" : ""}${args.get("capitan") === "no" ? ", sin Capitán ni Gloria" : ""}${args.get("geografia") === "no" ? ", mapa sin geografía" : ""}`,
+  `# Simulación: ${games} partidas de ${weeks} semanas, ${minPlayers}-${maxPlayers} casas, modo ${mode}${args.get("eventos") === "no" ? ", sin eventos" : ""}${args.get("terreno") === "no" ? ", sin terreno" : ""}${args.get("tropas") === "no" ? ", solo Mesnada" : ""}${args.get("asedios") === "no" ? ", sin asedios" : ""}${args.get("capitan") === "no" ? ", sin Capitán ni Gloria" : ""}${args.get("geografia") === "no" ? ", mapa sin geografía" : ""}${args.get("rios") === "no" ? ", sin ríos ni lagos" : ""}`,
 );
 console.log(`(${((Date.now() - started) / 1000).toFixed(1)} s)`);
 
@@ -274,6 +277,7 @@ table("Bloque 4: batalla (por partida)", ["dato", "valor"], [
   ["Fortificaciones / casillas-noche fortificadas", `${per("fortifies")} / ${per("fortifiedNights")}`],
   ["Mantenimiento de fortificaciones pagado / desmanteladas", `${per("fortifyUpkeep")} / ${per("fortifyDropped")}`],
   ["Ataques a casillas fortificadas (los toman)", `${per("attacksOnFortified")} (${pct(sumB("attacksOnFortifiedWon") / Math.max(1, sumB("attacksOnFortified")))})`],
+  ["Bloque 1: ataques cruzando un río (los ganan)", `${per("riverAttacks")} (${pct(sumB("riverAttacksWon") / Math.max(1, sumB("riverAttacks")))})`],
   ["Capitán: castillo / frente / retaguardia / preso", `${pct(capN.castillo / capT)} / ${pct(capN.frente / capT)} / ${pct(capN.retaguardia / capT)} / ${pct(capN.preso / capT)}`],
   ["Ataques con el Capitán (por casa)", f1(avg(houses.map((h) => h.captainAttacks)))],
 ]);

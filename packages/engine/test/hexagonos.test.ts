@@ -50,9 +50,10 @@ describe("Casillas hexagonales (diseño v3)", () => {
         const map = generateMap(`${seed}-${n}`, housesFor(n));
         expect(map.tiles).toHaveLength(cols * rows);
         const castles = map.tiles.filter((t) => t.type === "castillo");
-        const split = wastelandSplit(MAP_LAYOUT_HEX[n as 4].paramos);
+        const split = wastelandSplit(MAP_LAYOUT_HEX[n as 4].paramos, n);
         expect(map.tiles.filter((t) => t.type === "paramo")).toHaveLength(split.paramos);
         expect(map.tiles.filter((t) => t.type === "prado").length).toBeGreaterThanOrEqual(split.prados);
+        expect(map.tiles.filter((t) => t.type === "lago")).toHaveLength(split.lakes);
         for (const c of castles) {
           for (const o of castles) if (o !== c) expect(distance(c, o)).toBeGreaterThanOrEqual(2);
           for (const t of map.tiles)

@@ -2,8 +2,8 @@
 // mar y lo que cada casilla hace al combate y a la vista. Los valores, en
 // rules.ts (TERRAIN).
 
-import { areAdjacent, distance } from "./map";
-import { TERRAIN, UNITS } from "./rules";
+import { areAdjacent, distance, riverBetween } from "./map";
+import { RIVERS, TERRAIN, UNITS } from "./rules";
 import { isPlain, type Units } from "./units";
 import type { HouseId, Tile, TileType } from "./types";
 
@@ -43,7 +43,7 @@ export function roadEdges<T extends Cell>(cells: T[]): [T, T][] {
       for (const n of neighbours(cur)) {
         if (prev.has(n)) continue;
         const goal = goals.includes(n);
-        if (!goal && (n.type === "montana" || n.type === "puerto" || n.type === "castillo")) continue;
+        if (!goal && (n.type === "montana" || n.type === "puerto" || n.type === "castillo" || n.type === "lago")) continue;
         prev.set(n, cur);
         if (goal) {
           found = n;
@@ -93,6 +93,8 @@ export type MarchKind = "vecina" | "camino" | "mar" | "carga";
  */
 export function marchKind(from: Tile, to: Tile, tiles: Tile[], house: HouseId, units?: Units): MarchKind | null {
   if (from.id === to.id) return null;
+  // En un lago no se puede entrar (bloque 1).
+  if (to.type === "lago" || from.type === "lago") return null;
   if (areAdjacent(from, to)) return "vecina";
   if (TERRAIN.sea && from.type === "puerto" && to.type === "puerto" && from.owner === house) return "mar";
   if (TERRAIN.roads && distance(from, to) === 2) {
@@ -129,6 +131,22 @@ export function marchPath(from: Tile, to: Tile, tiles: Tile[], house: HouseId, u
     if (mid) return [from, mid, to];
   }
   return [from, to];
+}
+
+/** Hay un puente entre dos casillas vecinas: un camino cruza el río que las separa. */
+export function bridgeBetween(a: Tile, b: Tile, tiles: Tile[]): boolean {
+  return riverBetween(a, b) && TERRAIN.roads && roadSet(tiles).has(pairKey(a, b));
+}
+
+/**
+ * El ataque entra en su destino cruzando un río sin puente (bloque 1): se
+ * mira el último tramo de la marcha (`marchPath`). El defensor suma RIVERS.defense.
+ */
+export function crossesRiver(path: Tile[], tiles: Tile[]): boolean {
+  if (!RIVERS.enabled || path.length < 2) return false;
+  const a = path[path.length - 2]!;
+  const b = path[path.length - 1]!;
+  return riverBetween(a, b) && !bridgeBetween(a, b, tiles);
 }
 
 /** Bonificación de defensa del terreno de una casilla. */
