@@ -18,7 +18,7 @@ Primero se definen todos los bloques; después se hacen uno a uno, en el orden d
 | 10.º | 3. Mejora del cronista | Decidido | Fray Abundio: dos boletines por semana, repetición narrada, frases nuevas, memoria, proclamas y dibujo nuevo |
 | 11.º | 11. Diseño de la sección Reino | Decidido | Clasificación con podio y flechas arriba, gráfica de la carrera, boletín en tarjeta, crónica por noches, ficha de casa, tira de diplomacia y pantalla de coronación |
 | 12.º | 13. Historia y cinemáticas | Decidido | Cinco cinemáticas en pixel art: prólogo de la muerte de Aldric, coronación con mapa por semanas y títulos cómicos, viñetas de eventos, última semana y fantasma de Aldric; sin sonido de momento |
-| 13.º | 7. Mejorar pagina de inicio del juego | Por definir | Mejorar visualmente la pantalla de inicio al acceder al juego. |
+| 13.º | 7. Mejorar pagina de inicio del juego | Decidido | Portada con Aldricia viva en pixel art según la hora real, tarjeta de la partida más urgente con cuenta atrás y avisos, entrar con código en una hoja, invitación como bando real, vitrina de coronas e instalar |
 
 **Por qué este orden:**
 
@@ -124,7 +124,24 @@ Decidido el 20 de octubre de 2026. Las medidas, las decisiones y los pasos está
 7. **Sin conexión:** abre al instante y enseña lo último visto; letras más ligeras y cada pestaña al abrirla.
 8. **Detalles:** muesca y bordes, sin zoom de página con la pinza ni el doble toque (solo el mapa), ayudas al tocar, altura correcta, vibración opcional y repetición más ligera.
 
-## Bloque 7: Mejorar pagina de inicio del juego **(por definir)**
+## Bloque 7: Mejorar pagina de inicio del juego **(decidido, pendiente de hacer)**
+
+Decidido el 21 de octubre de 2026. Las decisiones y los pasos están en `docs/bloque7.md`; la maqueta animada, en `docs/maquetas/bloque7-portada.html` y en el documento del bloque. No cambia reglas.
+
+**Decisiones:**
+
+1. **Escena:** el panorama de Aldricia vivo, con el castillo y el pueblo.
+2. **Hora:** el cielo sigue la hora real; variantes por estación o evento, más adelante.
+3. **Título:** letras doradas, sin corona.
+4. **Si ya has entrado:** tarjeta grande con la partida más urgente y el resto debajo.
+5. **Cada partida:** cuenta atrás, órdenes que faltan, ataques, boletín, ofertas, puesto y mini mapa, dentro de la niebla.
+6. **Fray Abundio:** frases nuevas del banco (11.12) según la hora y cómo vas.
+7. **Primera vez:** presentación corta con tres pasos y el prólogo.
+8. **Entrar con código:** hoja desde abajo con seis casillas.
+9. **Invitación:** bando real con quién invita, fecha, casas apuntadas y sitios libres.
+10. **Vitrina de coronas:** sí.
+11. **Instalar:** tarjeta en la portada.
+12. **Movimiento:** animada y ligera, quieta con «reducir movimiento».
 
 ## Bloque 8: Alianzas **(decidido, pendiente de hacer)**
 

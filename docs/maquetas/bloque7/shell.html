@@ -25,15 +25,11 @@ body{display:flex;flex-direction:column;align-items:center}
 .titulo .r1{display:block;font:800 17px/1 var(--f-display);letter-spacing:.32em;text-transform:uppercase;color:#fff1cf;text-shadow:0 2px 0 #3a2410,0 0 10px rgba(0,0,0,.45);margin-left:.32em}
 .titulo .r2{display:block;font:800 58px/.95 var(--f-display);letter-spacing:-.01em;color:#ffe08a;background:linear-gradient(180deg,#fff4c4 8%,#f3cd63 45%,#c98d28 78%,#8c5a14);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;filter:drop-shadow(0 3px 0 #3a2410) drop-shadow(0 0 1px #3a2410) drop-shadow(0 6px 10px rgba(0,0,0,.45));padding:0 4px}
 .titulo .sub{display:block;margin-top:6px;font:italic 400 15px var(--f-display);color:#fff7e6;text-shadow:0 1px 0 #2a1a0e,0 0 8px rgba(0,0,0,.6)}
-.titulo #corona{position:absolute;left:-6px;top:-14px;width:46px;transform:rotate(-16deg);transform-origin:50% 100%}
-.titulo #corona .pxi{width:46px;image-rendering:pixelated;filter:drop-shadow(0 2px 0 rgba(0,0,0,.4))}
-.titulo #corona .brillo{position:absolute;width:18px;left:28px;top:-4px;image-rendering:pixelated}
-.titulo.pequeno .r2{font-size:44px}.titulo.pequeno .r1{font-size:14px}.titulo.pequeno #corona{left:-26px;top:-12px;width:36px}.titulo.pequeno #corona .pxi{width:36px}.titulo.pequeno #corona .brillo{left:22px}
+.titulo.pequeno .r2{font-size:44px}.titulo.pequeno .r1{font-size:14px}
 @keyframes cae{0%{transform:translate(18px,-160px) rotate(25deg)}55%{transform:translate(0,4px) rotate(-22deg)}70%{transform:translate(0,-10px) rotate(-10deg)}85%{transform:translate(0,1px) rotate(-18deg)}100%{transform:rotate(-16deg)}}
 @keyframes sube{from{opacity:0;transform:translateY(14px)}}
 @keyframes aparece{from{opacity:0}}
 .titulo .r1{animation:sube .8s .1s both}.titulo .r2{animation:sube .9s .25s both}.titulo .sub{animation:aparece 1s .9s both}
-.titulo #corona{animation:cae 1.1s .9s cubic-bezier(.3,.7,.4,1) both}
 /* cuerpo */
 .cuerpo{position:relative;z-index:2;padding:0 16px 40px;margin-top:-44px}
 .cuerpo.entra>*{animation:sube .6s both}
@@ -167,7 +163,7 @@ body[data-hora=noche] .titulo .r2{filter:drop-shadow(0 3px 0 #120a20) drop-shado
 </header>
 <main class="phone" id="phone">
   <section class="hero" id="hero" aria-label="Aldricia vista desde el camino real">
-    <div class="titulo" id="titulo"><div class="rotulo"><span id="corona" aria-hidden="true"></span><span class="r1">Reyes de</span><span class="r2">Pacotilla</span></div><span class="sub">Aldricia, el Reino Más o Menos Unido</span></div>
+    <div class="titulo" id="titulo"><div class="rotulo"><span class="r1">Reyes de</span><span class="r2">Pacotilla</span></div><span class="sub">Aldricia, el Reino Más o Menos Unido</span></div>
   </section>
   <section class="cuerpo" id="cuerpo"></section>
 </main>
