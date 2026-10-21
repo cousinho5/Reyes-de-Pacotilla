@@ -505,7 +505,8 @@ export async function runResolution(env: NotifyEnv, game: GameRow, n: number, no
     if (!h) continue;
     if (h.captain_tile === c.tile && h.captain_captured_by === (c.capturedBy ?? null) && h.captain_free_at === (c.freeAt ?? null)) continue;
     statements.push(
-      db.prepare("UPDATE houses SET captain_tile = ?, captain_captured_by = ?, captain_free_at = ? WHERE id = ?").bind(
+      // Si cae preso o vuelve, el precio de un rescate anterior ya no vale.
+      db.prepare("UPDATE houses SET captain_tile = ?, captain_captured_by = ?, captain_free_at = ?, captain_ransom = NULL WHERE id = ?").bind(
         c.tile,
         c.capturedBy ?? null,
         c.freeAt ?? null,

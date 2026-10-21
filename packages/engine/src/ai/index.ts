@@ -11,3 +11,4 @@ export { planOrders, targets, militaryNeed, militaryWant, type Target } from "./
 export { offerGain, proposeOffer, type OfferPlan } from "./trade";
 export { cardValue, lotValue, planBids, planCards } from "./auction";
 export { planCrown, planMercenaries, type CrownPlan } from "./oro";
+export { botPaysRansom, botRansomPrice } from "./ransom";

@@ -88,6 +88,19 @@ export const CAPTAIN = {
   escapeAfter: 7,
 };
 /**
+ * Rescate del Capitán (bloque 4). Quien lo tiene preso pide un precio en Oro,
+ * sin límite, y la otra casa paga o no. Esto es solo cómo lo hacen los bots:
+ * piden `botAsk` (menos cuanto más cerca está la fuga, nunca menos de `botMin`)
+ * y pagan si el precio no pasa de `botPayShare` de su Oro y faltan al menos
+ * `botPayMinNights` noches para la fuga.
+ */
+export const RANSOM = {
+  botAsk: 30,
+  botMin: 5,
+  botPayShare: 0.4,
+  botPayMinNights: 2,
+};
+/**
  * Órdenes en cola (diseño v3, fase 5): se pueden dejar órdenes para `nights`
  * resoluciones seguidas (esta noche y las siguientes). Al llegar su noche, cada
  * orden se ajusta a las tropas que queden en su casilla.
@@ -105,7 +118,8 @@ export const QUEUE = {
  *   vale para los ataques de la casa que apoya a esa casilla, vengan de donde vengan.
  * - `crossingClash` (encendido): también chocan de frente dos grupos que se
  *   cruzan por el camino (una marcha de dos casillas que recorre al revés la de otra casa).
- * - `captainAlone` (apagado): el Capitán se mueve solo, sin tropas, a una casilla propia.
+ * - `captainAlone` (encendido): el Capitán se mueve solo, sin tropas, a una
+ *   casilla propia. Si atacan la casilla donde está solo, cae preso. Rescate: RANSOM.
  * - `fortifyUntilAttacked` (encendido): la fortificación dura hasta que atacan
  *   la casilla (`FORTIFY_FOREVER`); el primer ataque se la quita aunque fracase.
  *   Cada domingo se paga `FORTIFY_UPKEEP` por casilla fortificada.
@@ -115,7 +129,7 @@ export const BATTLE_TWEAKS = {
   crossingClash: true,
   fortifyUntilAttacked: true,
   /** El Capitán puede moverse solo (orden de mover con 0 tropas) entre casillas propias. */
-  captainAlone: false,
+  captainAlone: true,
 };
 /** Origen de un apoyo al ataque que vale para cualquier ataque propio (con `supportAnyOrigin`). */
 export const ANY_ORIGIN = -1;

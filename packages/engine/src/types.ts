@@ -227,9 +227,13 @@ export type CampaignEvent =
       house: HouseId;
       /**
        * "fuga": se escapó al cumplirse el plazo; "huida": perdió contra una guarnición
-       * neutral y volvió al castillo; "liberado": quien lo tenía lo soltó (rescate).
+       * neutral y volvió al castillo; "liberado": quien lo tenía lo soltó gratis;
+       * "rescate": su casa pagó el rescate (bloque 4). Los dos últimos los escribe
+       * el servidor, con `by` (quien lo tenía) y, en el rescate, `oro`.
        */
-      reason: "fuga" | "huida" | "liberado";
+      reason: "fuga" | "huida" | "liberado" | "rescate";
+      by?: HouseId;
+      oro?: number;
     }
   | {
       type: "repliegue";

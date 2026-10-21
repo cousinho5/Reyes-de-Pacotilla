@@ -340,8 +340,9 @@ Simulación (300 partidas de 6 semanas, `docs/simulaciones.md`): los bots reclut
 
 - **Un Capitán por casa**, con nombre propio (Sir Gonzalo el Despistado y compañía). Empieza en el castillo y se ve en el mapa con un casco.
 - **Suma 2 de fuerza** a la defensa de la casilla donde está y al grupo con el que sale. Al dar una orden desde su casilla se marca "Con el Capitán"; solo puede ir con un grupo.
-- **Cae preso** si su grupo pierde contra otra casa: un ataque que fracasa, un choque de frente perdido o la casilla donde estaba conquistada. Contra bandidos no cae preso: huye al castillo.
-- **Preso:** quien lo captura puede **soltarlo** cuando quiera desde el castillo (moneda de cambio para tratos). Si no, **se fuga a las 7 noches** y vuelve a su castillo. Mientras está preso, su casa lucha sin él.
+- **Va solo (bloque 4):** también se mueve sin tropas, como una tropa (a una vecina, por camino o por mar), pero solo entre casillas propias, también a una vacía. Solo no ataca. En el mapa, «Mover al Capitán solo» en su casilla.
+- **Cae preso** si su grupo pierde contra otra casa: un ataque que fracasa, un choque de frente perdido o la casilla donde estaba conquistada, también si estaba allí solo. Contra bandidos no cae preso: huye al castillo.
+- **Preso:** quien lo captura puede **pedir un rescate** en Oro, sin límite, y cambiar el precio cuando quiera; su casa lo paga o no (sin contraoferta) y, si paga, el Capitán vuelve a su castillo en el momento (bloque 4). También puede **soltarlo** gratis. Si nadie paga, **se fuga a las 7 noches** y vuelve a su castillo. Mientras está preso, su casa lucha sin él.
 - Si gana, avanza con sus tropas; si se retiran, vuelve con ellas (al castillo si su casilla se ha perdido).
 - **Gloria (Prestigio permanente):** +1 por cada batalla ganada contra otra casa (atacando, defendiendo o en un choque de frente) y +1 de **honor** a quien pierde una casilla contra al menos el doble de fuerza. Máximo 8 en la partida.
 

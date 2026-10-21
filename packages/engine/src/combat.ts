@@ -162,6 +162,8 @@ export function resolveCampaign(input: CampaignInput): CampaignResult {
       // El Capitán solo va si está en la casilla de salida (y con un único grupo).
       const withCaptain =
         CAPTAIN.enabled && !!order.captain && capOf.get(order.house)?.tile === order.from && !moves.some((m) => m.captain && m.house === order.house);
+      // El Capitán solo (bloque 4): si ya no está en la casilla de salida, no sale nadie.
+      if (order.troops === 0 && !withCaptain) continue;
       if (same) {
         same.troops += order.troops;
         same.units = addUnits(same.units, u);

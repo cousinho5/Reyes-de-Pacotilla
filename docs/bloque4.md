@@ -10,7 +10,7 @@ Cada punto se hace en una solicitud de cambios propia, con su prueba, su simulac
 | --- | --- | --- |
 | 1. Apoyo sin elegir origen | Apoyas el primer ataque que llegue a la casilla esa noche: el tuyo si atacas tú; si no, el que se ordenó antes | Parcial (`supportAnyOrigin`, solo ataques propios) |
 | 2. Mesnada frente a jinetes | El jinete cuesta 3 de Oro en vez de 1 | **Hecho** |
-| 3. Capitán como unidad propia | Se mueve solo; cae preso si lo atacan; libre a las 7 noches o con rescate negociado | Parcial (`captainAlone`, sin rescate) |
+| 3. Capitán como unidad propia | Se mueve solo; cae preso si lo atacan; libre a las 7 noches o con rescate negociado | **Hecho** (`captainAlone` encendido, rescate con `RANSOM`) |
 | 4. Jinetes que se cruzan | El cruce por el camino es un choque frontal | **Hecho** (`crossingClash` encendido) |
 | 5. Fortificación hasta que la atacan | Mantenimiento de 2 de Piedra por casilla cada domingo | **Hecho** (`fortifyUntilAttacked` encendido, `FORTIFY_UPKEEP = { piedra: 2 }`) |
 | 6. Dos guerras a la vez | Descartado | — |
@@ -69,6 +69,8 @@ El Oro sobra (unas 165 monedas por casa al final), así que en la práctica el j
 3. Revisar los textos del cliente que muestran el coste.
 
 ## Punto 3: el Capitán como unidad propia
+
+**Hecho** el 21 de octubre de 2026: `captainAlone` encendido y los bots lo llevan solo al frente (`BOT_TWEAKS.captain = "solo"`). Migración 0012: `orders.troops` admite 0 en una orden de mover con el Capitán, y `houses.captain_ransom` guarda el precio. Rescate: `PUT /api/partidas/:id/capitan/:casa/rescate` (quien lo tiene pide o cambia el precio) y `POST /api/partidas/:id/capitan/rescate` (su casa paga), en un lote (`apps/server/src/rescate.ts`). Los bots piden y pagan con `botRansomPrice`/`botPaysRansom` (`RANSOM` en `rules.ts`), igual en el simulador y en las partidas de prueba. En el cliente, «Mover al Capitán solo» en la ficha de su casilla y el rescate en la tarjeta del Capitán (pestaña Castillo). Simulación en `docs/simulaciones.md`.
 
 **Hoy.** El Capitán solo viaja con un ataque que sale de su casilla. Pasa el 15% de las noches parado en el castillo, donde no sirve de nada (los castillos no se pueden atacar).
 

@@ -21,7 +21,7 @@ import { areAdjacent } from "./map";
 import { clampUnits, isPlain, orderUnits } from "./units";
 import { crownPrices } from "./crown";
 import type { MapLayoutOverride } from "./mapgen";
-import { CROWN, ECONOMY_TWEAKS, MERCENARIES, TROOPS_PER_PAN, GRID, PRESTIGE, RHYTHM, SPECIALTY_PAIRS, STARTING_RESOURCES, SIEGE, TERRAIN, TERRAIN_OFF, UNITS, CAPTAIN, GLORY } from "./rules";
+import { BATTLE_TWEAKS, CROWN, ECONOMY_TWEAKS, MERCENARIES, TROOPS_PER_PAN, GRID, PRESTIGE, RHYTHM, SPECIALTY_PAIRS, STARTING_RESOURCES, SIEGE, TERRAIN, TERRAIN_OFF, UNITS, CAPTAIN, GLORY } from "./rules";
 import { totalOf } from "./trade";
 import { auctionLots, doubleLot, resolveAuction, type Bid } from "./auction";
 import {
@@ -40,6 +40,8 @@ import { BUILDINGS, RESOURCES, type Captain, type BuildingKind, type HouseId, ty
 import {
   PERSONALITIES,
   PERSONALITY_NAMES,
+  botPaysRansom,
+  botRansomPrice,
   chooseObjective,
   offerGain,
   planBids,
@@ -189,6 +191,9 @@ export interface SimGameResult {
   recruited: { mesnada: number; jinetes: number; catapultas: number };
   /** Capitanes capturados en la partida. */
   captainsCaptured: number;
+  /** Rescates pagados y Oro que movieron (bloque 4). */
+  ransomsPaid: number;
+  ransomGold: number;
   /** Órdenes de asedio, noches de asedio (todas) y noches de asedio a castillos. */
   siegeOrders: number;
   siegeNights: number;
@@ -385,6 +390,8 @@ function runGame(opts: SimOptions): SimGameResult {
   let roadMoves = 0;
   let siegeOrders = 0;
   let captainsCaptured = 0;
+  let ransomsPaid = 0;
+  let ransomGold = 0;
   let siegeNightsTotal = 0;
   let castleSiegeNights = 0;
   const recruited = { mesnada: 0, jinetes: 0, catapultas: 0 };
@@ -572,6 +579,25 @@ function runGame(opts: SimOptions): SimGameResult {
             economy.crownSold[r] -= n;
           }
         }
+      }
+    }
+
+    // 1c. Bloque 4: rescates. Quien tiene un Capitán preso pide un precio y su
+    // casa lo paga si le compensa (como los bots de las partidas de prueba).
+    if (CAPTAIN.enabled && BATTLE_TWEAKS.captainAlone) {
+      for (const h of houses) {
+        const c = h.captain;
+        if (c.tile != null || c.capturedBy == null || c.freeAt == null) continue;
+        const captor = byId.get(c.capturedBy);
+        if (!captor) continue;
+        const nightsLeft = c.freeAt - (resolution + 1);
+        const price = botRansomPrice(nightsLeft);
+        if (!botPaysRansom(price, h.res.oro, nightsLeft)) continue;
+        h.res.oro -= price;
+        captor.res.oro += price;
+        h.captain = { house: h.id, tile: tiles.find((t) => t.castleOf === h.id)?.id ?? null, capturedBy: null, freeAt: null };
+        ransomsPaid++;
+        ransomGold += price;
       }
     }
 
@@ -970,6 +996,8 @@ function runGame(opts: SimOptions): SimGameResult {
     supports,
     recruited,
     captainsCaptured,
+    ransomsPaid,
+    ransomGold,
     siegeOrders,
     siegeNights: siegeNightsTotal,
     castleSiegeNights,

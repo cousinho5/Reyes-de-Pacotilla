@@ -9,6 +9,10 @@
 
 import {
   recruitSite,
+  BATTLE_TWEAKS,
+  CAPTAIN,
+  botPaysRansom,
+  botRansomPrice,
   PERSONALITIES,
   PRESTIGE,
   BRIBE_COST,
@@ -40,6 +44,7 @@ import {
   type PersonalityName,
   type Tile,
 } from "@reyes/engine";
+import { ransomStatements } from "./rescate";
 import { hashCode, randomCode } from "./auth";
 import { COLORS, pickShield } from "./heraldry";
 import { clockOf, runGameJobs } from "./jobs";
@@ -87,6 +92,33 @@ function activeBots(houses: HouseRow[], game: GameRow): HouseRow[] {
 
 export interface BotEnv extends NotifyEnv {
   SESSION_SECRET: string;
+}
+
+/**
+ * Rescates (bloque 4), antes de las acciones del día como en el simulador: los
+ * bots que tienen un Capitán preso piden su precio (menos cuanto más cerca está
+ * la fuga) y los bots con el Capitán preso pagan si les compensa, también lo
+ * que pida una persona.
+ */
+async function botRansoms(db: D1Database, game: GameRow): Promise<void> {
+  if (!CAPTAIN.enabled || !BATTLE_TWEAKS.captainAlone) return;
+  const houses = await loadHouses(db, game.id);
+  const bots = new Set(activeBots(houses, game).map((h) => h.id));
+  const next = game.current_resolution + 1;
+  for (const h of houses) {
+    if (h.captain_captured_by == null || h.captain_free_at == null) continue;
+    const nightsLeft = h.captain_free_at - next;
+    let price = h.captain_ransom;
+    if (bots.has(h.captain_captured_by)) {
+      price = botRansomPrice(nightsLeft);
+      if (price !== h.captain_ransom) {
+        await db.prepare("UPDATE houses SET captain_ransom = ? WHERE id = ? AND captain_captured_by = ?").bind(price, h.id, h.captain_captured_by).run();
+      }
+    }
+    if (price == null || !bots.has(h.id) || !botPaysRansom(price, h.oro, nightsLeft)) continue;
+    const castle = await db.prepare("SELECT id FROM tiles WHERE game_id = ? AND castle_of = ?").bind(game.id, h.id).first<{ id: number }>();
+    await db.batch(ransomStatements(db, game.id, h.id, h.captain_captured_by, price, castle?.id ?? null)).catch((err) => console.error(`Rescate de ${h.name}:`, err));
+  }
 }
 
 /** Añade bots hasta tener `count` (y nunca más de 8 casas). Devuelve las casas resultantes. */
@@ -317,6 +349,7 @@ async function botPlaysCards(db: D1Database, game: GameRow, ctx: BotContext, h: 
  */
 export async function botsPlayDay(env: NotifyEnv, game: GameRow): Promise<void> {
   const db = env.DB;
+  await botRansoms(db, game);
   const ctx = await botContext(db, game);
   const { results: open } = await db
     .prepare("SELECT from_house_id FROM offers WHERE game_id = ? AND status = 'open'")

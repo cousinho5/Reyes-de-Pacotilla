@@ -70,7 +70,13 @@ export interface HouseInfo {
   logros?: { clave: string; veces: number }[];
   objetivo?: (ObjectiveView & { cumplido: boolean }) | null;
   /** Capitán de la casa: su nombre y, si está preso, de quién y hasta qué resolución. */
-  capitan?: { nombre: string; presoDe: number | null; libreEn: number | null };
+  capitan?: {
+    nombre: string;
+    presoDe: number | null;
+    libreEn: number | null;
+    /** Rescate en Oro que pide quien lo tiene (solo lo ven las dos casas; null si aún no ha pedido). */
+    rescate?: number | null;
+  };
 }
 
 export interface OfferInfo {
@@ -256,6 +262,8 @@ export const api = {
     call<{ ok: true }>("POST", `/partidas/${id}/reclutar`, casilla != null ? { cantidad, tipo, casilla } : { cantidad, tipo }),
   fortify: (id: number, casilla: number) => call<{ ok: true }>("POST", `/partidas/${id}/fortificar`, { casilla }),
   releaseCaptain: (id: number, casa: number) => call<{ ok: true }>("POST", `/partidas/${id}/capitan/${casa}/soltar`),
+  setRansom: (id: number, casa: number, oro: number | null) => call<{ ok: true }>("PUT", `/partidas/${id}/capitan/${casa}/rescate`, { oro }),
+  payRansom: (id: number, oro: number) => call<{ ok: true }>("POST", `/partidas/${id}/capitan/rescate`, { oro }),
   setHelp: (id: number, recurso: Resource) => call<{ ok: true }>("POST", `/partidas/${id}/ayuda`, { recurso }),
   saveOrders: (id: number, ordenes: OrderView[]) => call<{ ok: true }>("PUT", `/partidas/${id}/ordenes`, { ordenes }),
   newCode: () => call<{ codigoAcceso: string }>("POST", "/codigo-nuevo"),

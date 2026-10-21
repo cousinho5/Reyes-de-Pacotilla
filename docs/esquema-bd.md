@@ -239,6 +239,7 @@ CREATE TABLE houses (
   captain_tile    INTEGER REFERENCES tiles(id),   -- dónde está el Capitán; NULL si está preso (0009)
   captain_captured_by INTEGER REFERENCES houses(id), -- casa que lo tiene preso (0009)
   captain_free_at INTEGER,                        -- resolución en la que se fuga (0009)
+  captain_ransom  INTEGER CHECK (captain_ransom IS NULL OR captain_ransom > 0), -- rescate en Oro que pide quien lo tiene preso (0012)
   glory           INTEGER NOT NULL DEFAULT 0 CHECK (glory >= 0)   -- Gloria: Prestigio permanente por batallas (0009)
 );
 
@@ -289,7 +290,7 @@ CREATE TABLE orders (
   resolution_no   INTEGER NOT NULL,                  -- resolución a la que van dirigidas (la próxima, o una de las siguientes si van en cola)
   kind            TEXT    NOT NULL CHECK (kind IN ('move','support','siege')),  -- 'siege' desde 0008
   from_tile_id    INTEGER NOT NULL REFERENCES tiles(id),
-  troops          INTEGER NOT NULL CHECK (troops > 0),
+  troops          INTEGER NOT NULL CHECK (troops > 0 OR (troops = 0 AND kind = 'move' AND captain = 1)),  -- 0: el Capitán va solo (0012)
   jinetes         INTEGER NOT NULL DEFAULT 0 CHECK (jinetes >= 0),     -- de esas tropas (0007)
   catapultas      INTEGER NOT NULL DEFAULT 0 CHECK (catapultas >= 0),  -- de esas tropas (0007)
   target_tile_id  INTEGER NOT NULL REFERENCES tiles(id), -- destino (move) o casilla apoyada (support)

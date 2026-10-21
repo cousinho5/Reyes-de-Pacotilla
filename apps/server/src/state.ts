@@ -82,6 +82,8 @@ export interface HouseRow extends Resources {
   captain_tile: number | null;
   captain_captured_by: number | null;
   captain_free_at: number | null;
+  /** Rescate que pide quien tiene preso al Capitán (bloque 4); NULL si no ha pedido. */
+  captain_ransom: number | null;
   /** Puntos de Gloria (Prestigio). */
   glory: number;
 }

@@ -53,6 +53,26 @@ npm run simular -- --semanas 4                    # duración de la partida
 npm run simular -- --json datos.json              # además, todos los datos
 ```
 
+## Capitán solo y rescate (21 de octubre de 2026, punto 3 del bloque 4, aplicado)
+
+`npm run simular -- --partidas 1500 --semilla a --capitan-modo ataques` (el de antes: el Capitán solo va con los ataques y, preso, se escapa a las 7 noches) frente a la misma orden sin esa opción (además va solo al frente y se rescata con Oro), ya con los puntos 4, 2 y 5. Repetido con `--semilla b`; las cifras son la media de las dos tandas. Los bots piden 30 de Oro y bajan el precio según se acerca la fuga; pagan si el precio es como mucho el 40% de su Oro y faltan al menos 2 noches.
+
+| dato | antes | Capitán solo y rescate |
+| --- | --- | --- |
+| Capitanes capturados por partida | 6,3 | 12,2 |
+| Rescates pagados (Oro por rescate) | — | 11,5 (22) |
+| Órdenes de ataque por partida | 113,5 | 128,5 |
+| Ataques que toman la casilla | 71% | 77% |
+| Casillas robadas entre casas (8 casas) | 59 | 85 |
+| Personalidades (x lo esperado) | 0,8-1,15 | 0,8-1,2 (guerrero 1,0 → 0,85) |
+| El líder de la semana 2 gana | 29% | 27,5% |
+| Prestigio medio del ganador | 62,3 | 63,5 |
+
+- **El Capitán al frente anima la guerra**: con sus +2 en la casilla de frontera, las casas atacan más y toman más casillas. Por eso cae preso el doble de veces.
+- **Casi todos los presos se rescatan** (11,5 de 12,2), por unos 22 de Oro: el Oro tiene un uso más y el Capitán vuelve pronto.
+- **El guerrero baja algo** (de 1,0 a 0,85 veces lo esperado; el mercader sube de 1,05 a 1,2): es quien más se arriesga con el Capitán y quien más paga por recuperarlo. No es un desequilibrio grave, pero conviene vigilarlo cuando juegue gente.
+- No ayuda al que va primero (el líder de la semana 2 gana algo menos).
+
 ## Fortificación hasta que la atacan (21 de octubre de 2026, punto 5 del bloque 4, aplicado)
 
 `npm run simular -- --partidas 1500 --semilla a --fortificar-hasta-ataque no` (la de antes: 4 noches, sin mantenimiento) frente a la misma orden sin esa opción (hasta que la atacan, 2 de Piedra cada domingo), ya con los puntos 4 y 2. Los bots pagan las fortificaciones que lindan con otra casa y quitan las demás.

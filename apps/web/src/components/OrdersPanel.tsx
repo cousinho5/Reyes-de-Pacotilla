@@ -131,6 +131,12 @@ function OrderText({ o, name }: { o: OrderView; name: (id: number | null) => str
         {n} de {name(o.desde)} sitian <strong>{name(o.hacia)}</strong>
       </>
     );
+  if (o.tipo === "mover" && o.tropas === 0 && o.capitan)
+    return (
+      <>
+        Tu <strong>Capitán</strong> va solo de {name(o.desde)} a <strong>{name(o.hacia)}</strong>
+      </>
+    );
   if (o.tipo === "mover")
     return (
       <>
