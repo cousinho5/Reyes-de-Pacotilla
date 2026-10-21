@@ -33,6 +33,7 @@ Juego de estrategia asíncrono de navegador para 4-8 amigos. El diseño completo
 - `node apps/server/scripts/claves-vapid.mjs`: genera las claves VAPID de las notificaciones push.
 - Cron en local: `POST /cdn-cgi/local/explorer/api/local/scheduled?worker=reyes-de-pacotilla` con `{"cron":"0 * * * *"}`. La ruta `/__scheduled` no sirve porque la atienden los archivos estáticos.
 - Partidas de prueba (`apps/server/src/pruebas.ts`): bots y reloj simulado (`games.sim_now`). En el servidor, la hora de una partida se obtiene siempre con `gameNow(game)`, nunca con `new Date()`, para que las pruebas funcionen.
+- Pixel art con pxl (proceso completo en `docs/pixel-art.md`): skill en `.claude/skills/pxl-pixel-art` (`node .claude/skills/pxl-pixel-art/bin/pxl.js`). Sirve de taller para diseñar y revisar arte (PNG y GIF); el juego sigue dibujando desde `apps/web/src/art`. Para pasar un dibujo al juego: `node scripts/pxl-a-juego.mjs <dibujo.px.js> <nombre> --salida apps/web/src/art/<archivo>.ts` (genera un `Sprite`, o una lista si es una animación; necesita Node 22.18). Prueba: `docs/maquetas/bloque13/pxl/pregonero.px.js`.
 - Para comprobar la interfaz, si el entorno tiene Chromium (por ejemplo en `/opt/pw-browsers`), usar Playwright con un viewport de móvil de 390x844.
 
 ## Reglas del proyecto

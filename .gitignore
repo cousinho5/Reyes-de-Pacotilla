@@ -5,3 +5,7 @@ dist/
 *.log
 .DS_Store
 coverage/
+# pxl (skill de pixel art): salidas y notas locales
+.claude/skills/pxl-pixel-art/FEEDBACK.md
+**/out/_shot/
+docs/maquetas/bloque13/pxl/out/
