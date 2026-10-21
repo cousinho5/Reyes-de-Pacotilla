@@ -30,7 +30,7 @@ Primero se definen todos los bloques; después se hacen uno a uno, en el orden d
 
 ## Bloque 1: mapa y losetas
 
-Decidido el 18 de octubre a partir de Reyes de Pacotilla: evaluación del mapa y las losetas. Cada fase se simula antes y después, y solo afecta a partidas nuevas: las que están en curso conservan su mapa.
+Decidido el 18 de octubre a partir de Reyes de Pacotilla: evaluación del mapa y las losetas (copia completa, con las simulaciones y las fuentes, en `docs/bloque1.md`). Cada fase se simula antes y después, y solo afecta a partidas nuevas: las que están en curso conservan su mapa.
 
 **Decisiones:**
 

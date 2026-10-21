@@ -17,6 +17,7 @@ Juego de estrategia asíncrono de navegador para 4-8 amigos. El diseño completo
 - `npm run dev:server`: compila el cliente y arranca el Worker en http://localhost:8787 (necesita `apps/server/.dev.vars` con `SESSION_SECRET` y `ADMIN_SECRET`, y `npm run db:migrate:local -w @reyes/server`).
 - `npm run prueba-humo`: prueba de la API de punta a punta contra el servidor local (42 comprobaciones, incluidas dos aceptaciones simultáneas de una oferta).
 - `npm run simular`: simula cientos de partidas entre bots con personalidad (`packages/engine/src/ai`, partida en `packages/engine/src/simulation.ts`, informe en `scripts/simular.ts`; `--modo espejo|todos|clasico`). Los mismos bots juegan las partidas de prueba (`apps/server/src/pruebas.ts`) y solo usan lo que vería una persona. Antes de cambiar valores de `rules.ts`, simular antes y después y anotar el resultado en `docs/simulaciones.md`. El simulador reproduce el orden de tareas de `jobs.ts`: si cambia uno, cambiar el otro.
+- Mapa y losetas (bloque 1 de la hoja de ruta, el primero en hacerse): decisiones, fases y la evaluación con sus simulaciones en `docs/bloque1.md`.
 - Alianzas (bloque 8 de la hoja de ruta): reglas y pasos en `docs/alianzas.md`.
 - Vista del castillo (bloque 2 de la hoja de ruta): decisiones y pasos en `docs/bloque2.md`.
 - Mejora del cronista (bloque 3 de la hoja de ruta): decisiones y pasos en `docs/bloque3.md`.
