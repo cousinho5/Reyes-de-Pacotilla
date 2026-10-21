@@ -21,6 +21,7 @@ import { edgeDistance, makeGeo, type Geo, type GridKind } from "./grid";
 import type { Palette } from "./Pixels";
 import { WORLD, noise, shade } from "./tiles";
 import { catapulta, jinete, soldado } from "./tropas";
+import { aldea, ruinas } from "./losetas";
 
 export { CELL };
 
@@ -811,6 +812,17 @@ function boat(layer: Layer, x: number, y: number, size: number, flag: [string, s
 // ---------------------------------------------------------------------------
 // Terrenos
 
+/** Pone una pieza fija (rejilla con las letras de WORLD) en la casilla, con sombra y contorno. */
+function piece(ctx: CellCtx, art: readonly string[], dx: number, dy: number) {
+  const { cv, x0, y0 } = ctx;
+  const w = art[0]!.length;
+  const h = art.length;
+  cv.shadow(x0 + dx + Math.floor(w / 2) + 2, y0 + dy + h - 1, Math.ceil(w / 2), 2);
+  const layer = new Layer(ctx.W);
+  layer.stamp(art, x0 + dx, y0 + dy);
+  layer.paint(cv);
+}
+
 const DRAW: Record<TileType, (ctx: CellCtx) => void> = {
   // Lago (bloque 1): el agua se dibuja con el resto del agua; aquí, unos juncos.
   lago(ctx) {
@@ -893,56 +905,15 @@ const DRAW: Record<TileType, (ctx: CellCtx) => void> = {
 
   // Prado (bloque 1): césped con flores a ramilletes y algún árbol suelto.
   // Dibujo provisional: el definitivo sale de pxl en la fase 4.
-  // Aldea (bloque 1, provisional hasta el dibujo en pxl de la fase 4): casitas
-  // alrededor de un pozo.
+  // Aldea y Ruinas (bloque 1): piezas dibujadas en pxl (apps/web/src/art/pxl/losetas.px.js)
+  // sobre el suelo del Prado, con su sombra.
   aldea(ctx) {
-    const { cv, x0, y0, s } = ctx;
-    DRAW.prado({ ...ctx, s: s + 7 });
-    const layer = new Layer(ctx.W);
-    const spots: [number, number, number][] = [
-      [x0 + 8, y0 + 12, 14],
-      [x0 + 34, y0 + 10, 16],
-      [x0 + 20, y0 + 34, 14],
-    ];
-    spots.forEach(([hx, hy, w], i) => {
-      if (ctx.onRoad(hx + w / 2, hy + 10) || ctx.isWater(hx + w / 2, hy + 10)) return;
-      cv.shadow(hx + w / 2 + 1, hy + 14, Math.ceil(w / 2) + 1, 2);
-      cottage(layer, hx, hy, w, noise(s, i, 81) > 0.6 ? "pizarra" : "rojo");
-    });
-    // Pozo.
-    const wx = x0 + 40;
-    const wy = y0 + 38;
-    if (!ctx.onRoad(wx + 2, wy + 2)) layer.stamp(["hjjjh", "h...h", "TtttS", "tsssS", "TtttS"], wx, wy);
-    layer.paint(cv);
+    DRAW.prado({ ...ctx, s: ctx.s + 7 });
+    piece(ctx, aldea, 9, 8);
   },
-  // Ruinas (provisional): muros rotos de piedra entre la hierba.
   ruinas(ctx) {
-    const { cv, x0, y0, s } = ctx;
-    DRAW.prado({ ...ctx, s: s + 11 });
-    const layer = new Layer(ctx.W);
-    const rx = x0 + 14;
-    const ry = y0 + 16;
-    if (!ctx.onRoad(rx + 16, ry + 12)) {
-      cv.shadow(rx + 17, ry + 22, 16, 2);
-      // Un muro largo mordido y una torre partida.
-      masonry(layer, rx, ry + 10, 24, 9);
-      for (let x = rx; x < rx + 24; x++) {
-        const bite = Math.floor(noise(x, s, 82) * 6);
-        for (let y = ry + 10; y < ry + 10 + bite; y++) layer.pts.delete(y * ctx.W + x);
-      }
-      masonry(layer, rx + 26, ry, 8, 19);
-      for (let x = rx + 26; x < rx + 34; x++) {
-        const bite = Math.floor(noise(x, s, 83) * 8);
-        for (let y = ry; y < ry + bite; y++) layer.pts.delete(y * ctx.W + x);
-      }
-      // Cascotes por el suelo.
-      for (let i = 0; i < 6; i++) {
-        const cx = rx - 4 + Math.floor(noise(s, i, 84) * 40);
-        const cy = ry + 20 + Math.floor(noise(s, i, 85) * 8);
-        layer.stamp(["tS", "Ss"], cx, cy);
-      }
-    }
-    layer.paint(cv);
+    DRAW.prado({ ...ctx, s: ctx.s + 11 });
+    piece(ctx, ruinas, 12, 16);
   },
   prado(ctx) {
     const { cv, x0, y0, s } = ctx;

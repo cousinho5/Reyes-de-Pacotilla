@@ -6,7 +6,7 @@ Primero se definen todos los bloques; después se hacen uno a uno, en el orden d
 
 | Orden | Bloque | Estado | Qué entra |
 | --- | --- | --- | --- |
-| 1.º | 1. Mapa y losetas | En marcha: fases 0 a 3 hechas | Geografía, ríos, Prado, Aldea, Ruinas y marco de mar y montañas |
+| 1.º | 1. Mapa y losetas | Hecho (fases 0 a 4); el dibujo a ×1,5 queda para más adelante | Geografía, ríos, Prado, Aldea, Ruinas y marco de mar y montañas |
 | 2.º | 4. Retoques sistema de batalla | Decidido | Apoyo sin origen, jinete más caro, Capitán libre, choques en el camino y fortificación con mantenimiento |
 | 3.º | 5. Retoques recursos | Decidido | Oro en todas las mejoras, cambio con la Corona, mercenarios de alquiler y mejoras con algo más de Madera y Piedra |
 | 4.º | 8. Alianzas | Decidido | Alianzas formales: paso por las casillas del aliado, ruptura con aviso de tres días y ataques conjuntos |
