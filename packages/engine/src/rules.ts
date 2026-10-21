@@ -33,7 +33,8 @@ export const UPGRADE_COST: Record<2 | 3 | 4 | 5, Partial<Resources>> = {
 export const UNITS = {
   enabled: true,
   jinetes: {
-    cost: { hierro: 3, pan: 2, oro: 1 } as Partial<Resources>,
+    // Bloque 4: 3 de Oro (antes 1). El Oro sobraba y el jinete costaba en la práctica 1 Hierro más que la Mesnada.
+    cost: { hierro: 3, pan: 2, oro: 3 } as Partial<Resources>,
     /** Fuerza de cada jinete al atacar una casilla llana sin murallas. */
     charge: 2,
     /** Fuerza de cada jinete en el bosque (atacando, defendiendo o apoyando). */

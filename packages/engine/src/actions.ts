@@ -29,17 +29,25 @@ export function recruitCost(count: number, kind: UnitKind = "mesnada"): Partial<
   return out;
 }
 
-const SHORT: Record<UnitKind, string> = {
-  mesnada: "No hay Hierro o Pan suficientes.",
-  jinetes: "Para jinetes hacen falta 3 de Hierro, 2 de Pan y 1 de Oro cada uno.",
-  catapultas: "Para catapultas hacen falta 4 de Madera y 2 de Hierro cada una.",
+const RESOURCE_NAME: Record<keyof Resources, string> = { pan: "Pan", madera: "Madera", piedra: "Piedra", hierro: "Hierro", oro: "Oro" };
+
+/** «3 de Hierro, 2 de Pan y 3 de Oro», con las cifras de rules.ts. */
+function costPhrase(cost: Partial<Resources>): string {
+  const parts = (Object.entries(cost) as [keyof Resources, number][]).filter(([, v]) => v > 0).map(([r, v]) => `${v} de ${RESOURCE_NAME[r]}`);
+  return parts.length > 1 ? `${parts.slice(0, -1).join(", ")} y ${parts[parts.length - 1]}` : (parts[0] ?? "");
+}
+
+const SHORT: Record<UnitKind, () => string> = {
+  mesnada: () => "No hay Hierro o Pan suficientes.",
+  jinetes: () => `Para jinetes hacen falta ${costPhrase(UNITS.jinetes.cost)} cada uno.`,
+  catapultas: () => `Para catapultas hacen falta ${costPhrase(UNITS.catapultas.cost)} cada una.`,
 };
 
 export function checkRecruit(count: number, have: Resources, kind: UnitKind = "mesnada"): ActionResult<{ cost: Partial<Resources> }> {
   if (!Number.isInteger(count) || count < 1 || count > 100) return { ok: false, error: "Número de tropas no válido." };
   if (kind !== "mesnada" && !UNITS.enabled) return { ok: false, error: "En esta partida solo hay Mesnada." };
   const cost = recruitCost(count, kind);
-  if (!canAfford(have, cost)) return { ok: false, error: SHORT[kind] };
+  if (!canAfford(have, cost)) return { ok: false, error: SHORT[kind]() };
   return { ok: true, value: { cost } };
 }
 

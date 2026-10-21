@@ -74,7 +74,7 @@ describe("Tipos de tropa (diseño v3, fase 3)", () => {
   });
 
   it("reclutar: jinetes con Oro, catapultas con Madera; las catapultas comen doble", () => {
-    expect(checkRecruit(2, rich, "jinetes")).toEqual({ ok: true, value: { cost: { hierro: 6, pan: 4, oro: 2 } } });
+    expect(checkRecruit(2, rich, "jinetes")).toEqual({ ok: true, value: { cost: { hierro: 6, pan: 4, oro: 6 } } });
     expect(checkRecruit(1, rich, "catapultas")).toEqual({ ok: true, value: { cost: { madera: 4, hierro: 2 } } });
     // 10 tropas con 2 catapultas cuentan como 12: 4 de Pan (más 0 por estirarse).
     expect(applyUpkeep(make("campos"), 1, 100).cost).toBe(4);

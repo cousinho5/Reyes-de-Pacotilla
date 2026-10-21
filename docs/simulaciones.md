@@ -53,6 +53,25 @@ npm run simular -- --semanas 4                    # duración de la partida
 npm run simular -- --json datos.json              # además, todos los datos
 ```
 
+## Jinete a 3 de Oro (21 de octubre de 2026, punto 2 del bloque 4, aplicado)
+
+`npm run simular -- --partidas 1500 --semilla a --coste-jinete hierro:3,pan:2,oro:1` (antes) frente a la misma orden sin `--coste-jinete` (3 de Oro), ya con los cruces del punto 4. Para ver a quien juega con jinetes, 1000 partidas más con `--jinetes-pares 1 --jinetes-impares 0`: las casas pares reclutan solo jinetes y las impares solo Mesnada.
+
+| dato | 1 de Oro | 3 de Oro |
+| --- | --- | --- |
+| Jinetes reclutados por partida | 50,0 | 50,1 |
+| Ataques con jinetes / a la carga | 19,7 / 10,9 | 19,7 / 10,9 |
+| Oro sin gastar al final (por casa) | 155-183 | 145-166 |
+| Objetivo «tesoro» cumplido | 60% | 52% |
+| Solo jinetes / solo Mesnada (x lo esperado) | 0,8 / 1,2 | 0,6 / 1,3 |
+| Personalidades (x lo esperado) | 0,7-1,1 | 0,8-1,3 |
+| El líder de la semana 2 gana | 30% | 30% |
+| Prestigio medio del ganador | 63,4 | 62,9 |
+
+- **Los bots reclutan los mismos jinetes**: el Oro les sobra y no lo echan en falta. Lo que cambia es el Oro que guardan al final (unos 10-17 menos por casa), y con él la Riqueza y el objetivo «tesoro» (60% → 52%).
+- **Quien lo apuesta todo a los jinetes gana menos** (0,8 → 0,6 veces lo esperado), y quien va solo con Mesnada, algo más. Era lo buscado: el jinete deja de ser casi gratis. Una persona que elija bien las cargas les sacará más que los bots.
+- Las personalidades se mueven un poco (la estratega, que guarda el Oro para jinetes y subastas, sube de 1,1 a 1,3; la oportunista baja de 1,0 a 0,9). Ninguna sale del margen de los bloques anteriores; conviene mirarlo de nuevo con el bloque 5, que también da salida al Oro.
+
 ## Cruces por el camino (21 de octubre de 2026, punto 4 del bloque 4, aplicado)
 
 `npm run simular -- --partidas 1500 --cruces no` frente a `--cruces si`, en dos tandas (`--semilla a` y `--semilla b`). Con el retoque, dos grupos de casas distintas que se cruzan por el camino (una marcha de dos casillas que recorre al revés un tramo de la otra) chocan de frente.

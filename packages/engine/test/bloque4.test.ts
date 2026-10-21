@@ -1,7 +1,7 @@
 // Retoques del sistema de batalla (hoja de ruta, bloque 4). Se encienden uno a
 // uno en rules.ts; aquí se comprueba que hacen lo que dicen, encendidos y apagados.
 import { afterEach, describe, expect, it } from "vitest";
-import { ANY_ORIGIN, BATTLE_TWEAKS, crossingRisks, resolveCampaign, type Tile } from "../src";
+import { ANY_ORIGIN, BATTLE_TWEAKS, checkRecruit, crossingRisks, recruitCost, resolveCampaign, type Tile } from "../src";
 
 const defaults = { ...BATTLE_TWEAKS };
 
@@ -163,5 +163,16 @@ describe("Capitán que se mueve solo", () => {
     });
     expect(r.captains[0]).toMatchObject({ tile: 2 });
     expect(r.tiles.find((t) => t.id === 1)).toMatchObject({ troops: 2 });
+  });
+});
+
+describe("Mesnada frente a jinetes", () => {
+  it("el jinete cuesta 3 de Hierro, 2 de Pan y 3 de Oro", () => {
+    expect(recruitCost(2, "jinetes")).toEqual({ hierro: 6, pan: 4, oro: 6 });
+  });
+
+  it("si falta Oro, el aviso da las cifras de verdad", () => {
+    const r = checkRecruit(1, { pan: 10, madera: 0, piedra: 0, hierro: 10, oro: 2 }, "jinetes");
+    expect(r).toEqual({ ok: false, error: "Para jinetes hacen falta 3 de Hierro, 2 de Pan y 3 de Oro cada uno." });
   });
 });
