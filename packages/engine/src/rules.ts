@@ -298,7 +298,7 @@ export const LAST_PLACE_HELP = 3;
 
 /** Prestigio en vivo. */
 export const PRESTIGE = {
-  perTile: 3,
+  perTile: 2,
   perFortress: 5,
   /** Un páramo no produce y da menos Prestigio que una casilla normal. */
   perWasteland: 1,

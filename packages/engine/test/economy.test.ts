@@ -54,7 +54,7 @@ describe("Prestigio en vivo", () => {
       secretObjectiveMet: true,
     });
     expect(p).toMatchObject({
-      territorio: 3 + 5,
+      territorio: 2 + 5,
       edificios: 4 + 2 + 1,
       riqueza: 10,
       comercio: 6,
