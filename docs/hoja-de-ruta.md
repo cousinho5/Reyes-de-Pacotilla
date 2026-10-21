@@ -132,7 +132,7 @@ Decidido el 21 de octubre de 2026. Las decisiones y los pasos están en `docs/bl
 
 1. **Escena:** el panorama de Aldricia vivo, con el castillo y el pueblo.
 2. **Hora:** el cielo sigue la hora real; variantes por estación o evento, más adelante.
-3. **Título:** letras doradas, sin corona.
+3. **Título:** letras doradas con una corona de píxel que cae y se posa torcida.
 4. **Si ya has entrado:** tarjeta grande con la partida más urgente y el resto debajo.
 5. **Cada partida:** cuenta atrás, órdenes que faltan, ataques, boletín, ofertas, puesto y mini mapa, dentro de la niebla.
 6. **Fray Abundio:** frases nuevas del banco (11.12) según la hora y cómo vas.

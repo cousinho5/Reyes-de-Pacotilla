@@ -351,6 +351,11 @@ hoja.querySelector(".entrar").onclick = () => { cerrarHoja(); setTimeout(() => i
 hoja.querySelector(".casillas").onclick = () => hoja.querySelector("input").focus();
 hoja.querySelector(".fray-hoja").prepend(fray("solemne", 44));
 
+// ------------------------------------------------------------------ título y corona que cae
+const corona = document.getElementById("corona"); corona.append(px("corona", 46));
+const brillo = pxAnim("brillo", 18, 10); brillo.classList.add("brillo"); corona.append(brillo);
+const brilloAnim = animados.pop();
+
 // ------------------------------------------------------------------ controles de la maqueta
 document.querySelectorAll("#tabs button").forEach((b) => (b.onclick = () => ir(b.dataset.p)));
 document.querySelectorAll("#horas button").forEach((b) => (b.onclick = () => { horaElegida = b.dataset.h; document.querySelectorAll("#horas button").forEach((o) => o.setAttribute("aria-pressed", o === b)); document.body.dataset.hora = hora(); if (pantalla === "dentro") ir("dentro"); }));
@@ -370,9 +375,9 @@ let ultimo = 0;
 function bucle(now) {
   const t = quieto != null ? quieto : (now - t0) / 1000;
   if (now - ultimo > 1000 / 14 || quieto != null) {           // 14 fotogramas por segundo bastan para pixel art
-    ultimo = now; dibujar(t); for (const f of animados) f(t);
+    ultimo = now; dibujar(t); for (const f of animados) f(t); brilloAnim(t);
   }
   if (quieto == null) requestAnimationFrame(bucle);
 }
 requestAnimationFrame(bucle);
-if (quieto != null) setTimeout(() => { dibujar(quieto); for (const f of animados) f(quieto); document.body.classList.add("listo"); }, 50);
+if (quieto != null) setTimeout(() => { dibujar(quieto); for (const f of animados) f(quieto); brilloAnim(quieto); document.body.classList.add("listo"); }, 50);

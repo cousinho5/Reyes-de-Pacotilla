@@ -5,7 +5,7 @@ import { resolve } from "node:path";
 process.removeAllListeners("warning");
 const pxl = await import(resolve("../../../.claude/skills/pxl-pixel-art/src/index.ts"));
 const p = pxl.loadProject(resolve("pxl/portada.px.js"));
-const NOMBRES = ["lejos", "colinas", "capital", "pueblo", "aspas", "bandera", "humo", "pajaro", "carreta", "aldeano", "rata", "fantasma", "corona"];
+const NOMBRES = ["lejos", "colinas", "capital", "pueblo", "aspas", "bandera", "humo", "pajaro", "carreta", "aldeano", "rata", "fantasma", "corona", "brillo"];
 const out = {};
 for (const n of NOMBRES) {
   const asset = p.assets.get(n);

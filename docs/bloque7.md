@@ -30,7 +30,7 @@ La portada es correcta pero plana: un trocito de mapa quieto, el título y dos t
 | --- | --- |
 | 1. Escena de arriba | El panorama de Aldricia vivo, con el castillo y el pueblo, como en la maqueta |
 | 2. Hora y época | El cielo sigue la hora real del jugador (amanecer, día, atardecer, noche); las variantes por estación o evento (nieve, fuegos en la coronación) llegarán más adelante |
-| 3. Título | Solo las letras doradas «Reyes de Pacotilla», sin corona, con *Aldricia, el Reino Más o Menos Unido* debajo |
+| 3. Título | Letras doradas «Reyes de Pacotilla» con una corona de píxel que cae y se posa torcida, y *Aldricia, el Reino Más o Menos Unido* debajo |
 | 4. Si ya has entrado | Tarjeta grande con la partida más urgente (la que te pide órdenes o cierra antes) y el resto debajo, más pequeñas |
 | 5. Qué cuenta cada partida | Cuenta atrás hasta el cierre de órdenes, si te faltan órdenes, ataques de anoche y cómo acabaron, boletín nuevo, ofertas de comercio, puesto y Prestigio, y un mini mapa de tu reino. Todo dentro de la niebla de tu casa |
 | 6. Fray Abundio | Frases nuevas en el banco (sección 11.12, Portada) según si has entrado, la hora y cómo va tu partida, rotando cada pocos segundos |
@@ -63,7 +63,7 @@ Se mueven solos el humo de las chimeneas, una carreta con burro que sube, un ald
 
 Van después de los bloques 3 (banco de frases), 6 (rendimiento en móvil), 11 (pantalla «La coronación») y 13 (prólogo).
 
-1. **Arte.** Pasar los dibujos de `docs/maquetas/bloque7/pxl/portada.px.js` (montañas, colinas, capital, pueblo, aspas, bandera, humo, carreta, aldeano, rata, pájaros, fantasma y corona de la vitrina) a rejillas de `apps/web/src/art` con `scripts/pxl-a-juego.mjs`.
+1. **Arte.** Pasar los dibujos de `docs/maquetas/bloque7/pxl/portada.px.js` (montañas, colinas, capital, pueblo, aspas, bandera, humo, carreta, aldeano, rata, pájaros, fantasma, corona y brillo) a rejillas de `apps/web/src/art` con `scripts/pxl-a-juego.mjs`.
 2. **Escena.** Un componente con sus planos, el tinte de cada hora, el cielo, las estrellas y lo que se mueve. La hora sale del reloj del móvil del jugador.
 3. **Servidor.** Ampliar `/api/yo` con un resumen por partida: noche y semana, hora de cierre de órdenes, si faltan órdenes, ataques de la última noche, boletín sin leer, ofertas pendientes, puesto y Prestigio, y el mini mapa. Todo calculado con la niebla de la casa y con `gameNow(game)`, con pruebas de que no se cuela nada de fuera de la niebla.
 4. **Portada.** Reescribir `Home.tsx` con las tres pantallas y la hoja para entrar con el código.
