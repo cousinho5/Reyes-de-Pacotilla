@@ -13,6 +13,8 @@ import {
   sideTowards,
   wastelandSplit,
   mapLayout,
+  planBotOrders,
+  tilePrestige,
   type Tile,
   type TileType,
 } from "../src";
@@ -99,6 +101,17 @@ describe("Ríos, puentes y lagos (bloque 1, fase 2)", () => {
     const r = resolveCampaign({ resolution: 1, tiles, orders: [move(at(tiles, 0, 1), at(tiles, 1, 1), 3)] });
     expect(at(r.tiles, 1, 1).owner).toBeNull();
     expect(r.events.some((e) => e.type === "orden_invalida")).toBe(true);
+  });
+
+  it("un lago no da Prestigio y los bots no lo atacan", () => {
+    GRID.kind = "hex";
+    expect(tilePrestige("lago")).toBe(0);
+    // Las demás vecinas, muy guarnecidas: el lago sería el único blanco posible.
+    const tiles = make({ "0,1": 1 }, { "1,0": 50, "0,2": 50, "1,2": 50 }).map((t) =>
+      t.x === 0 && t.y === 1 ? { ...t, troops: 10 } : t.x === 1 && t.y === 1 ? { ...t, type: "lago" as const, troops: 0 } : t,
+    );
+    const orders = planBotOrders({ house: 1, tiles, resolution: 1 });
+    expect(orders.some((o) => o.to === at(tiles, 1, 1).id)).toBe(false);
   });
 
   for (let n = 4; n <= 8; n++) {

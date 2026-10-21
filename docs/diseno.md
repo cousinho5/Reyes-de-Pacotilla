@@ -294,7 +294,7 @@ El botón **Simular** aplica tus órdenes al estado que conoces y te enseña el 
 | Cantera | +25% | Fortificar aquí cuesta 4 de Piedra en vez de 8. |
 | Montaña | +50% | **Atalaya:** desde una montaña tuya ves las casillas a dos pasos. |
 | Fortaleza | +50% | Como hasta ahora. |
-| Lago | — | No se puede entrar (bloque 1). |
+| Lago | — | No se puede entrar ni da Prestigio (bloque 1). |
 
 El terreno se suma a las demás bonificaciones del defensor y el tope sigue en x2.
 

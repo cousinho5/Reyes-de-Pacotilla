@@ -37,7 +37,7 @@ export function targets(s: Situation): Target[] {
   const troopValue = valueOf(s.values, TROOP_COST);
   const weeksLeft = s.daysLeft / 7;
   for (const t of seen) {
-    if (t.owner === view.house || t.type === "castillo") continue;
+    if (t.owner === view.house || t.type === "castillo" || t.type === "lago") continue;
     // La Paz del Rey: no se puede atacar a otras casas en esta resolución.
     if (view.combat?.peace && t.owner != null) continue;
     const from = own.filter((o) => areAdjacent(o, t));
@@ -333,7 +333,7 @@ function frontierDistance(s: Situation): Map<TileId, number> {
   const dist = new Map<TileId, number>();
   const border = (t: Tile) =>
     (s.threat.get(t.id) ?? 0) > 0 ||
-    s.seen.some((o) => o.owner !== s.view.house && o.type !== "castillo" && areAdjacent(o, t));
+    s.seen.some((o) => o.owner !== s.view.house && o.type !== "castillo" && o.type !== "lago" && areAdjacent(o, t));
   let queue = s.own.filter(border);
   for (const t of queue) dist.set(t.id, 0);
   for (let d = 1; queue.length > 0; d++) {

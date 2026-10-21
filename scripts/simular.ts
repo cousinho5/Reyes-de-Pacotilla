@@ -123,13 +123,13 @@ const pool = (args.get("estrategias")?.split(",") ?? pools[mode] ?? pools.mezcla
 const unknown = pool.filter((p) => !STRATEGIES.includes(p));
 if (unknown.length) throw new Error(`Estrategias desconocidas: ${unknown.join(", ")}. Hay: ${STRATEGIES.join(", ")}`);
 
-const rand = seededRandom(`simulacion-${games}-${weeks}-${mode}`);
+const rand = seededRandom(`simulacion-${games}-${weeks}-${mode}${args.get("semilla") ?? ""}`);
 const results: SimGameResult[] = [];
 const started = Date.now();
 for (let i = 0; i < games; i++) {
   const players = minPlayers + Math.floor(rand() * (maxPlayers - minPlayers + 1));
   const strategies = Array.from({ length: players }, () => pool[Math.floor(rand() * pool.length)]!);
-  results.push(simulateGame({ seed: `sim-${i}`, strategies, weeks, events: args.get("eventos") !== "no", terrain: args.get("terreno") !== "no", units: args.get("tropas") !== "no", sieges: args.get("asedios") !== "no", captainGlory: args.get("capitan") !== "no", ...(untilAttacked ? { fortify: 100000 } : {}) }));
+  results.push(simulateGame({ seed: `sim-${args.get("semilla") ?? ""}${i}`, strategies, weeks, events: args.get("eventos") !== "no", terrain: args.get("terreno") !== "no", units: args.get("tropas") !== "no", sieges: args.get("asedios") !== "no", captainGlory: args.get("capitan") !== "no", ...(untilAttacked ? { fortify: 100000 } : {}) }));
 }
 const houses = results.flatMap((g) => g.houses.map((h) => ({ ...h, players: g.houses.length })));
 
