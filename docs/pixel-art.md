@@ -25,6 +25,14 @@ Lo que aporta frente a dibujar directamente en `apps/web/src/art`:
    ```
 
    Genera un módulo con un `Sprite` (`{ grid, palette }`, el tipo de `apps/web/src/art/sprites.ts`). Si es una animación, genera una lista de fotogramas; con `--fotograma N` saca uno solo. Si aparecen colores que no están en la paleta (mezclas por opacidad), les da una letra libre y avisa: es mejor quitarlos en el `.px.js`.
+
+   **Piezas del mapa** (`world.ts`): se dibujan con las letras y colores de la paleta común `WORLD` (`tiles.ts`), sin contorno (lo pone `world.ts`), y con `m` y `d` para el color de la casa (claro y oscuro). Se pasan con `--mapa`, que admite varios dibujos a la vez y falla si alguna letra no está en `WORLD` con el mismo color:
+
+   ```sh
+   node scripts/pxl-a-juego.mjs apps/web/src/art/pxl/tropas.px.js soldado jinete catapulta --mapa --salida apps/web/src/art/tropas.ts
+   ```
+
+   Lo que usa el color de la casa sale como función `(m, d) => string[]`, que recibe las letras de la bandera de cada casa; lo demás, como rejilla fija.
 5. **Uso en el juego.** El componente lo pinta con `Pixels`, igual que el resto del arte, y se comprueba en un móvil de 390x844.
 
 El archivo generado no se edita a mano: los cambios se hacen en el `.px.js` y se vuelve a generar. El `.px.js` se guarda en el repositorio junto al resultado.
@@ -32,7 +40,7 @@ El archivo generado no se edita a mano: los cambios se hacen en el `.px.js` y se
 ## Qué se queda como está
 
 - **Escudos:** salen de las reglas de `packages/engine/src/heraldry.ts` y de `shield.ts`, porque los compone cada jugador.
-- **Mapa:** `world.ts` lo pinta entero en un lienzo, con caminos y terreno calculados por el motor. Se pueden diseñar piezas sueltas en pxl, pero el mapa sigue saliendo de `world.ts`.
+- **Mapa:** `world.ts` lo pinta entero en un lienzo. Las **piezas fijas** (tropas, catapulta, banderas, barcas…) se diseñan en pxl y se pasan con `--mapa`; las tropas ya están así (`apps/web/src/art/pxl/tropas.px.js` → `tropas.ts`). Lo que se **calcula para cada casilla** (terreno, costa, caminos, bruma, y árboles, casitas o castillos que cambian de tamaño y color con la semilla y la casa) es una receta en código: se puede diseñar y comparar en pxl, pero la mejora se lleva a mano a `world.ts`.
 - **Lo que ya funciona** no se rehace salvo que se pida.
 
 ## Primera prueba
