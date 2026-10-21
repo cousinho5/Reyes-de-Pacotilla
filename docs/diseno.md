@@ -123,6 +123,8 @@ Con 6 vecinas los castillos quedan más cerca, así que los mapas hexagonales ti
 | Fortaleza | Nada | 8 | El defensor tiene +50% adicional y da más Prestigio |
 | Páramo | Nada | 2 | Tierra de nadie: da 1 de Prestigio (las demás, 2) y nunca está junto a un castillo |
 | Prado | Nada | 2 | Llano verde (bloque 1): da 1 de Prestigio, los jinetes cargan por él y puede estar junto a un castillo |
+| Aldea | Nada | 4 | Bloque 1: quien la tiene puede reclutar en ella como en su castillo. Da 1 de Prestigio |
+| Ruinas | Nada | 2 | Bloque 1: la primera casa que entra se lleva un premio y quedan como Prado |
 
 - Las guarniciones neutrales no atacan (salvo en el evento de los bandidos) y no crecen.
 
@@ -134,11 +136,14 @@ Con 6 vecinas los castillos quedan más cerca, así que los mapas hexagonales ti
   - **Costa** en dos lados opuestos (oeste y este, o norte y sur), con los **puertos en la orilla**, repartidos entre las dos costas.
   - **Montañas** en lo más alto y **canteras** en las laderas, junto a ellas. **Fortalezas** en los altos, lejos de los castillos.
   - **Bosques** en lo más húmedo; **Prado** entre los bosques y los campos, en lo bajo; **páramos** en lo más seco; **campos** en el resto.
-  - **Prado:** la mitad de los páramos del tamaño de mapa pasan a ser Prado, y los campos bajan del 20% al 15% de las neutrales para dejar sitio a más Prado. No se añade tierra.
+  - **Prado:** la mitad de los páramos del tamaño de mapa pasan a ser Prado. Los campos se quedan en el 20% de las neutrales (con el 15% subían las deserciones). No se añade tierra.
   - **Ajuste de salida:** si a un castillo le falta un recurso básico (Pan, Madera, Piedra o Hierro) a 2 pasos, se cambia una casilla suya repetida, o un Prado, por una del tipo que falta. Después, al castillo peor situado se le cambia un Prado cercano por una casilla productiva de más lejos mientras el mapa gane en justicia.
   - De los 600 mapas probados gana el que mejor junta justicia y terreno agrupado. Resultado (40 mapas por número de casas): un 50-110% más de vecinas del mismo terreno que antes y una diferencia de entorno entre castillos de 0,4-0,5 de mediana (antes 0,7-1,1). Datos en `docs/simulaciones.md`.
   - **Marco:** alrededor del tablero se dibuja mar en los lados con costa y montañas en los otros dos. No se juega: solo hace que el reino parezca parte de un mundo.
   - **Ríos y lagos (fase 2).** Los ríos nacen junto a una montaña y bajan siempre hacia lo más bajo, por los lados entre casillas, hasta el mar: uno con 4 o 5 casas y dos con 6 o más. Los **lagos** (uno con 4 o 5 casas, dos con 6 o más) ocupan el sitio de un páramo, en lo bajo y húmedo, nunca junto a un castillo, en la orilla ni partiendo el mapa en dos. En un lago no se puede entrar. Regla de los ríos en la sección 8.8.
+  - **Aldeas y Ruinas (fase 3).** Cada casa tiene una **Aldea** a 2 pasos de su castillo (todas a la misma distancia y nunca junto a un castillo; mejor si no está igual de cerca de otro). Las **Ruinas** van en la tierra de en medio, lo más a la par posible entre los dos castillos más cercanos y nunca junto a uno: una con 4 o 5 casas, dos con 6 o 7 y tres con 8. Las dos ocupan el sitio de casillas neutrales (las Ruinas, el de un Prado; las Aldeas, el de los campos que sobran), así que no se añade tierra.
+    - **Aldea:** no produce. Quien la tiene puede **reclutar** en ella como en su castillo: es una base avanzada que vale por su posición, y perderla te la quita.
+    - **Ruinas:** la primera casa que entra se lleva lo que guardan y desde ese momento son un Prado. El premio sale de la semilla de la partida: la mitad de las veces **10 de un recurso** y la otra mitad **una carta de la Corona** al azar. Se anuncia en la crónica.
 
 ### 6.2 Qué ve cada jugador (niebla de guerra)
 
@@ -202,7 +207,7 @@ Cada día puedes hacer, sin límite más allá de lo que puedas pagar:
 | Acción | Coste | Efecto |
 | --- | --- | --- |
 | Mejorar un edificio | Ver tabla de la sección 5 | Sube un nivel; la producción aumenta al día siguiente. |
-| Reclutar | 2 Hierro + 2 Pan por tropa | Las tropas aparecen en tu castillo y pueden recibir órdenes para la siguiente resolución. |
+| Reclutar | 2 Hierro + 2 Pan por tropa | Las tropas aparecen en tu castillo, o en una aldea tuya si lo eliges (bloque 1), y pueden recibir órdenes para la siguiente resolución. |
 | Fortificar una casilla tuya | 8 Piedra | +25% de defensa durante las cuatro resoluciones siguientes (dos en las partidas con miércoles y domingo). |
 | Dar órdenes | Gratis | Mover, atacar, apoyar o mantener (sección 8). |
 | Comerciar | Gratis | Ofertas, contraofertas y tratados (sección 9). |
@@ -289,7 +294,7 @@ El botón **Simular** aplica tus órdenes al estado que conoces y te enseña el 
 
 | Terreno | Defensa | Efecto especial |
 | --- | --- | --- |
-| Campos, páramo, Prado, puerto | +0% | El puerto permite la travesía |
+| Campos, páramo, Prado, puerto, Aldea, Ruinas | +0% | El puerto permite la travesía |
 | Bosque | +25% | **Emboscada:** desde fuera se ve quién lo controla, pero no cuántas tropas hay (salvo con la carta Espía). Las guarniciones neutrales sí se ven. |
 | Cantera | +25% | Fortificar aquí cuesta 4 de Piedra en vez de 8. |
 | Montaña | +50% | **Atalaya:** desde una montaña tuya ves las casillas a dos pasos. |

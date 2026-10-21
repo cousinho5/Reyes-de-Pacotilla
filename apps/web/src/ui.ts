@@ -69,6 +69,8 @@ export const TILE_LABEL: Record<TileType, string> = {
   paramo: "Páramo",
   prado: "Prado",
   lago: "Lago",
+  aldea: "Aldea",
+  ruinas: "Ruinas",
 };
 
 /** Tipos de tropa (diseño v3). */
@@ -121,6 +123,8 @@ export const TERRAIN_NOTE: Record<TileType, string> = {
   paramo: "Terreno llano y yermo: no produce nada.",
   prado: "Terreno llano: no produce nada, pero los jinetes cargan por él.",
   lago: "No se puede entrar: hay que rodearlo.",
+  aldea: "No produce, pero si es tuya puedes reclutar en ella como en tu castillo.",
+  ruinas: "La primera casa que entra se lleva lo que guardan: recursos o una carta de la Corona. Después quedan como Prado.",
 };
 
 export const TILE_MARK: Record<TileType, string> = {
@@ -134,6 +138,8 @@ export const TILE_MARK: Record<TileType, string> = {
   paramo: "∴",
   prado: "⁂",
   lago: "≈",
+  aldea: "⌂",
+  ruinas: "⌗",
 };
 
 export function houseColor(houses: HouseInfo[], id: number | null): string | null {
@@ -272,6 +278,13 @@ export function describeEvent(e: EventView, houses: HouseInfo[], tiles: TileView
       return `La Corona ayuda a ${houseName(houses, d.house)}, última en Prestigio, durante la próxima semana.`;
     case "orden_invalida":
       return `Una orden tuya no se ejecutó: ${d.reason}.`;
+    case "ruinas": {
+      const prize =
+        d.prize?.kind === "carta"
+          ? `la carta ${CARDS[d.prize.card as CardKey]?.nombre ?? d.prize.card}`
+          : `${d.prize?.amount} de ${RESOURCE_LABEL[d.prize?.resource as Resource] ?? d.prize?.resource}`;
+      return `${houseName(houses, d.house)} entra la primera en ${tile(d.tile)} y encuentra ${prize}. Desde hoy es un Prado.`;
+    }
     case "logro":
       return `${houseName(houses, d.house)} consigue el logro ${ACHIEVEMENT_LABEL[d.logro as string] ?? d.logro}.`;
     case "piloto_automatico": {

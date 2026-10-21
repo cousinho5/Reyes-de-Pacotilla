@@ -16,7 +16,7 @@
 //   npm run simular -- --json simulacion.json   # además, todos los datos en JSON
 
 import { writeFileSync } from "node:fs";
-import { BATTLE_TWEAKS, BOT_TWEAKS, CROWN, ECONOMY_TWEAKS, MAP_GEN, RIVERS, FORTIFY_COST, FORTIFY_UPKEEP, PRESTIGE, SIEGE, UNITS, UPGRADE_COST } from "../packages/engine/src";
+import { BATTLE_TWEAKS, BOT_TWEAKS, CROWN, ECONOMY_TWEAKS, FEATURES, MAP_GEN, RIVERS, FORTIFY_COST, FORTIFY_UPKEEP, PRESTIGE, SIEGE, UNITS, UPGRADE_COST } from "../packages/engine/src";
 import {
   CLASSIC_STRATEGIES,
   OBJECTIVES,
@@ -90,6 +90,9 @@ if (args.has("riqueza-tope")) PRESTIGE.goldMax = Number(args.get("riqueza-tope")
 if (args.get("geografia") === "no") MAP_GEN.geography = false;
 // --rios no: sin ríos ni lagos (fase 2 del bloque 1), para comparar.
 if (args.get("rios") === "no") RIVERS.enabled = false;
+// --aldeas no, --ruinas no: sin Aldeas o sin Ruinas (fase 3 del bloque 1), para comparar.
+if (args.get("aldeas") === "no") FEATURES.villages = false;
+if (args.get("ruinas") === "no") FEATURES.ruins = false;
 // --campos 0.2: parte de campos en el mapa con geografía (lo que falte hasta 0,2 es Prado).
 if (args.has("campos")) {
   MAP_GEN.mix.campos = Number(args.get("campos"));
@@ -278,6 +281,8 @@ table("Bloque 4: batalla (por partida)", ["dato", "valor"], [
   ["Mantenimiento de fortificaciones pagado / desmanteladas", `${per("fortifyUpkeep")} / ${per("fortifyDropped")}`],
   ["Ataques a casillas fortificadas (los toman)", `${per("attacksOnFortified")} (${pct(sumB("attacksOnFortifiedWon") / Math.max(1, sumB("attacksOnFortified")))})`],
   ["Bloque 1: ataques cruzando un río (los ganan)", `${per("riverAttacks")} (${pct(sumB("riverAttacksWon") / Math.max(1, sumB("riverAttacks")))})`],
+  ["Bloque 1: ruinas tomadas (en la primera semana; día medio)", `${per("ruinsClaimed")} (${per("ruinsWeekOne")}; ${f1(sumB("ruinsDays") / Math.max(1, sumB("ruinsClaimed")))})`],
+  ["Bloque 1: tropas reclutadas en aldeas / aldeas quitadas a otra casa", `${per("villageRecruits")} / ${per("villagesStolen")}`],
   ["Capitán: castillo / frente / retaguardia / preso", `${pct(capN.castillo / capT)} / ${pct(capN.frente / capT)} / ${pct(capN.retaguardia / capT)} / ${pct(capN.preso / capT)}`],
   ["Ataques con el Capitán (por casa)", f1(avg(houses.map((h) => h.captainAttacks)))],
 ]);

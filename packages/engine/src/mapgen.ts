@@ -13,7 +13,7 @@
 import { distance, mapSize } from "./map";
 import { TILE_NAMES } from "./names";
 import { seededRandom, shuffle } from "./random";
-import { GRID, MAP_GEN, mapLayout, NEUTRAL_GARRISON, RIVERS, STARTING_TROOPS, TILE_MIX } from "./rules";
+import { FEATURES, GRID, MAP_GEN, mapLayout, NEUTRAL_GARRISON, RIVERS, STARTING_TROOPS, TILE_MIX } from "./rules";
 import { traceRivers } from "./rivers";
 import type { HouseId, Tile, TileType } from "./types";
 
@@ -51,6 +51,9 @@ const TYPE_VALUE: Record<NeutralType, number> = {
   paramo: 0,
   prado: 0,
   lago: 0,
+  // Cada castillo tiene la suya a 2 pasos: no cuenta para la justicia.
+  aldea: 0,
+  ruinas: 0,
 };
 const BASIC: NeutralType[] = ["campos", "bosque", "cantera", "montana"];
 const PRODUCING: NeutralType[] = ["campos", "bosque", "cantera", "montana", "puerto"];
@@ -172,22 +175,30 @@ function buildTiles(
 }
 
 /**
- * Cuántos páramos, Prados y lagos lleva un mapa con geografía a partir de los
- * páramos del tamaño de mapa: la mitad pasan a Prado y los lagos (fase 2)
- * ocupan el sitio de otros (sin `houses`, ninguno).
+ * Cuántos páramos, Prados, lagos, Aldeas y Ruinas lleva un mapa con geografía a
+ * partir de los páramos del tamaño de mapa: la mitad pasan a Prado, los lagos
+ * (fase 2) ocupan el sitio de otros páramos, las Ruinas (fase 3) el de
+ * Prados (luego vuelven a serlo) y las Aldeas, el de casillas que producen.
+ * Sin `houses`, ni lagos ni Aldeas ni Ruinas.
  */
-export function wastelandSplit(paramos: number, houses?: number): { paramos: number; prados: number; lakes: number } {
-  const prados = Math.round(paramos * MAP_GEN.pradoShare);
+export function wastelandSplit(
+  paramos: number,
+  houses?: number,
+): { paramos: number; prados: number; lakes: number; villages: number; ruins: number } {
+  const allPrados = Math.round(paramos * MAP_GEN.pradoShare);
   const lakes =
-    houses != null && RIVERS.enabled && GRID.kind === "hex" ? Math.min(paramos - prados, RIVERS.lakes[houses] ?? 0) : 0;
-  return { paramos: paramos - prados - lakes, prados, lakes };
+    houses != null && RIVERS.enabled && GRID.kind === "hex" ? Math.min(paramos - allPrados, RIVERS.lakes[houses] ?? 0) : 0;
+  const villages = houses != null && FEATURES.villages ? houses : 0;
+  const ruins = houses != null && FEATURES.ruins ? (FEATURES.ruinsCount[houses] ?? 0) : 0;
+  // Las Ruinas acaban siendo Prado: salen de los Prados; las Aldeas, de las demás.
+  return { paramos: paramos - allPrados - lakes, prados: allPrados - Math.min(allPrados, ruins), lakes, villages, ruins };
 }
 
 /** Generador con geografía (bloque 1, fase 1). */
 export function generateGeographicMap(seed: string, houses: HouseId[], layout?: MapLayoutOverride): GeneratedMap {
   const { cols, rows } = layout ?? mapSize(houses.length);
   const sizeParamos = layout?.paramos ?? (houses.length >= 4 && houses.length <= 8 ? mapLayout(houses.length as 4 | 5 | 6 | 7 | 8).paramos : 0);
-  const { paramos, prados, lakes } = wastelandSplit(sizeParamos, houses.length);
+  const { paramos, prados, lakes, villages, ruins } = wastelandSplit(sizeParamos, houses.length);
   const rand = seededRandom(seed);
   const ring = perimeter(cols, rows);
   const castleOrder = shuffle(houses, rand);
@@ -204,7 +215,7 @@ export function generateGeographicMap(seed: string, houses: HouseId[], layout?: 
     const free = b.cells.filter((i) => !castles.includes(i));
     const coast: Coast = rand() < 0.5 ? "oeste-este" : "norte-sur";
     const geo = geography(rand, b, coast);
-    const types = placeByGeography(b, free, castles, geo, coast, paramos, prados, lakes);
+    const types = placeByGeography(b, free, castles, geo, coast, paramos, prados, lakes, villages, ruins);
     if (!types) continue;
     if (MAP_GEN.balance) balanceStarts(b, free, types, castles);
     const cornerPenalty = castles.filter((c) => corners.has(c)).length;
@@ -244,6 +255,9 @@ export function generateGeographicMap(seed: string, houses: HouseId[], layout?: 
     coast: best.coast,
   };
 }
+
+/** Lo que una Aldea o unas Ruinas pueden sustituir (nunca un puerto, una fortaleza ni un lago). */
+const REPLACEABLE: NeutralType[] = ["campos", "prado", "bosque", "cantera", "montana", "paramo"];
 
 /** Tipo de cada casilla del tablero por índice (y * cols + x); los castillos quedan vacíos. */
 type Cells = (NeutralType | undefined)[];
@@ -364,8 +378,10 @@ function placeByGeography(
   paramos: number,
   prados: number,
   lakes = 0,
+  villages = 0,
+  ruins = 0,
 ): Cells | null {
-  const mix = neutralMix(free.length - paramos - prados - lakes, MAP_GEN.mix);
+  const mix = neutralMix(free.length - paramos - prados - lakes - villages - ruins, MAP_GEN.mix);
   const count = (t: NeutralType) => mix.filter((m) => m === t).length + (t === "paramo" ? paramos : 0) + (t === "prado" ? prados : 0);
   const types: Cells = new Array(b.cells.length);
   const { height: h, moisture: m } = geo;
@@ -424,6 +440,46 @@ function placeByGeography(
   take("bosque", count("bosque"), open(), (i) => m[i]!);
   take("prado", count("prado"), open(), (i) => m[i]! - 0.5 * h[i]!);
   for (const i of open()) types[i] = "campos";
+  // Aldeas y Ruinas (fase 3): sustituyen los campos que sobran (la mezcla se
+  // repartió sin ellas) donde menos rompen el terreno agrupado.
+  const lonely = (i: number) => b.adj[i]!.filter((j) => types[j] === types[i]).length;
+  // ¿Se puede quitar la casilla sin que un castillo se quede sin ese recurso básico cerca?
+  const spare = (i: number) =>
+    !BASIC.includes(types[i]!) ||
+    castles.every((c) => between(b, c, i) > 2 || free.some((j) => j !== i && types[j] === types[i] && between(b, c, j) <= 2));
+  const swap = (t: NeutralType, candidates: number[], score: (i: number) => number): boolean => {
+    const pool = candidates.filter((i) => REPLACEABLE.includes(types[i]!));
+    if (!pool.length) return false;
+    // Mejor un campo de los que sobran y algo que no deje a un castillo sin un recurso
+    // básico cerca (si pasa, el ajuste de salida lo arregla después).
+    const total = (i: number) => score(i) + (types[i] === "campos" ? 3 : types[i] === "paramo" ? -2 : 0) + (spare(i) ? 10 : 0);
+    const best = pool.reduce((x, y) => (total(y) > total(x) || (total(y) === total(x) && y < x) ? y : x));
+    types[best] = t;
+    return true;
+  };
+  // Aldeas: una por casa, a los mismos pasos de su castillo y nunca junto a
+  // otro; mejor si no está igual de cerca de otro castillo.
+  if (villages > 0) {
+    const steps = FEATURES.villageSteps;
+    for (const c of castles) {
+      const ring = free.filter((i) => between(b, c, i) === steps && castleDist.get(i)! >= 2);
+      const apart = ring.filter((i) => !free.some((j) => types[j] === "aldea" && between(b, j, i) < 2));
+      const shared = (i: number) => (castles.some((o) => o !== c && between(b, o, i) <= steps) ? 1 : 0);
+      if (!swap("aldea", apart.length ? apart : ring, (i) => -shared(i) * 2 - lonely(i))) return null;
+    }
+  }
+  // Ruinas: en la tierra de en medio, lo más a la par posible entre los dos
+  // castillos más cercanos, nunca junto a uno y separadas entre sí.
+  for (let k = 0; k < ruins; k++) {
+    const away = free.filter((i) => castleDist.get(i)! >= FEATURES.ruinsMinSteps);
+    const apart = away.filter((i) => !free.some((j) => types[j] === "ruinas" && between(b, j, i) < 3));
+    const evenness = (i: number) => {
+      const d = castles.map((c) => between(b, c, i)).sort((x, y) => x - y);
+      // Mejor fuera de los 2 pasos de cualquier castillo, para no quitarle terreno a nadie.
+      return -(d[1]! - d[0]!) * 4 - d[0]!;
+    };
+    if (!swap("ruinas", apart.length ? apart : away, (i) => evenness(i) - lonely(i))) return null;
+  }
   return types;
 }
 
@@ -458,7 +514,10 @@ function balanceStarts(b: Board, free: number[], types: Cells, castles: number[]
         // La que se da: un Prado o una repetida, que toque el tipo que falta y poco el suyo.
         const donorScore = (i: number) =>
           (types[i] === "prado" ? 1 : 0) + (counts.get(types[i]!)! - 2) * 0.5 + touching(i, missing) - touching(i, types[i]!);
-        const donors = ring.filter((i) => types[i] === "prado" || (BASIC.includes(types[i]!) && counts.get(types[i]!)! >= 2));
+        // Un páramo también sirve si a donde va no queda junto a un castillo.
+        const donors = ring.filter(
+          (i) => types[i] === "prado" || types[i] === "paramo" || (BASIC.includes(types[i]!) && counts.get(types[i]!)! >= 2),
+        );
         if (!donors.length) continue;
         const donor = donors.reduce((x, y) => (donorScore(y) > donorScore(x) ? y : x));
         // La que se trae: cerca, suelta y rodeada del tipo que se lleva a cambio.
@@ -467,6 +526,7 @@ function balanceStarts(b: Board, free: number[], types: Cells, castles: number[]
           (i) =>
             types[i] === missing &&
             between(b, c, i) > 2 &&
+            (types[donor] !== "paramo" || castles.every((o) => between(b, o, i) >= 2)) &&
             castles.every((o) => o === c || between(b, o, i) > 2 || rings.get(o)!.some((j) => j !== i && types[j] === missing)),
         );
         if (!sources.length) continue;
@@ -533,6 +593,7 @@ function clustering(b: Board, free: number[], types: Cells): number {
 function fairness(b: Board, free: number[], types: Cells, castles: number[]): { score: number; spread: number } {
   const values: number[] = [];
   let missing = 0;
+  let lacking = 0;
   for (const c of castles) {
     let value = 0;
     const seen = new Set<NeutralType>();
@@ -545,9 +606,11 @@ function fairness(b: Board, free: number[], types: Cells, castles: number[]): { 
     }
     values.push(value);
     missing += PRODUCING.filter((t) => !seen.has(t)).length;
+    // Sin un recurso básico cerca no se sale bien: casi nunca debe elegirse.
+    lacking += BASIC.filter((t) => !seen.has(t)).length;
   }
   const spread = Math.max(...values) - Math.min(...values);
-  return { score: spread * 2 + missing * 0.5, spread };
+  return { score: spread * 2 + missing * 0.5 + lacking * 5, spread };
 }
 
 /** Diferencia de valor entre castillos y recursos que le faltan a cada uno cerca. */

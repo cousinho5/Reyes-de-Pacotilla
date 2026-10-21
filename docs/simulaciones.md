@@ -53,6 +53,28 @@ npm run simular -- --semanas 4                    # duración de la partida
 npm run simular -- --json datos.json              # además, todos los datos
 ```
 
+## Aldeas y Ruinas (21 de octubre de 2026, fase 3 del bloque 1, aplicado)
+
+`npm run simular -- --partidas 1500 --aldeas no --ruinas no` frente a la misma orden con Aldeas y Ruinas, en dos tandas (`--semilla b` para la segunda). Una Aldea por casa a 2 pasos de su castillo; Ruinas: 1 con 4-5 casas, 2 con 6-7 y 3 con 8.
+
+| dato | sin (tanda 1 / 2) | con (tanda 1 / 2) |
+| --- | --- | --- |
+| El líder de la semana 2 gana | 31% / 29% | 30% / 32% |
+| Casas con deserciones | 10% / 10% | 5% / 5% |
+| Prestigio medio del ganador | 64,8 / 64,5 | 62,9 / 63,4 |
+| Combates entre casas con 6 casas | 62,4 / 62,4 | 71,2 / 70,7 |
+| Neutrales tomadas con 8 casas | 73% / 73% | 79% / 78% |
+| Casas encerradas en una guerra | 36% / 38% | 26% / 26% |
+| Objetivo «puerto y montaña» cumplido | 23% / 25% | 18% / 19% |
+| Ruinas tomadas por partida (en la primera semana; día medio) | — | 1,7 (1,0; 9,6) / 1,7 (1,0; 9,5) |
+| Tropas reclutadas en aldeas / aldeas quitadas a otra casa | — | 169 / 1,5 y 172 / 1,5 |
+
+- **La Aldea no dispara la bola de nieve:** «el líder de la semana 2 gana» queda igual (30% sin y 31% con, de media) y el Prestigio del ganador baja un poco. Los bots reclutan en la aldea cuando está en el frente y se quitan aldeas unas 1,5 veces por partida.
+- **Las Ruinas se toman casi todas, pero solo el 60% en la primera semana** (día medio 9,5). Las que tardan quedan detrás de un lago o de un río, o fuera de la vista de los bots al principio. Una persona que las vea en el mapa irá antes.
+- La guerra se reparte más: unos 9 combates más entre casas con 6 casas y menos casas encerradas en una sola guerra (36% → 26%). Las deserciones bajan a la mitad (el premio y reclutar cerca del frente ayudan).
+- El objetivo «puerto y montaña» baja al 18-19% porque hay menos casillas que producen; sigue por encima del 15%.
+- **Mapas:** con una Ruina por cada dos casas, el mapa de 4 casas perdía la mitad de lo agrupado (1,0 veces el generador de antes) y la diferencia de entorno subía a 1,1. Por eso son una por cada dos casas sin contar dos. Con eso, en 8 mapas por tamaño, las vecinas del mismo terreno son 1,6-2,2 veces las del generador de antes y la diferencia de entorno entre castillos queda en 0,6-1,0 (antes de la fase 3, 0,5-0,7). Para que ningún castillo se quede sin un recurso básico a 2 pasos, el generador castiga mucho más ese caso al elegir mapa.
+
 ## Ríos, puentes y lagos (21 de octubre de 2026, fase 2 del bloque 1, aplicado)
 
 `npm run simular -- --partidas 1500 --rios no` frente a la misma orden con ríos, con dos tandas de semillas (`--semilla b` para la segunda). Ríos y lagos: 1 de cada con 4-5 casas y 2 con 6 o más; atacar cruzando un río sin puente da +25% al defensor.

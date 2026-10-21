@@ -9,9 +9,9 @@ import { checkOrders, defenseMultiplier, walled } from "../combat";
 import { areAdjacent, riverBetween } from "../map";
 import { bridgeBetween, marchKind } from "../terrain";
 import { tilePrestige } from "../prestige";
-import { ANY_ORIGIN, BATTLE_TWEAKS, CAPTAIN, OBJECTIVE_TARGETS, PRESTIGE, SIEGE, STRETCH_FREE_TILES, STRETCH_PAN, TILE_PRODUCTION, TROOP_COST, RIVERS, UNITS } from "../rules";
+import { ANY_ORIGIN, BATTLE_TWEAKS, CAPTAIN, FEATURES, OBJECTIVE_TARGETS, PRESTIGE, SIEGE, STRETCH_FREE_TILES, STRETCH_PAN, TILE_PRODUCTION, TROOP_COST, RIVERS, UNITS } from "../rules";
 import { isPlain, totalUnits, unitFields, unitsOf, type UnitKind, type Units } from "../units";
-import type { Order, Tile, TileId } from "../types";
+import { RESOURCES, type Order, type Tile, type TileId } from "../types";
 import { PRESTIGE_UNIT, valueOf, type Situation } from "./view";
 import { BOT_TWEAKS } from "./personality";
 
@@ -63,6 +63,10 @@ export function targets(s: Situation): Target[] {
     let value = tilePrestige(t.type) * PRESTIGE_UNIT;
     value += valueOf(s.values, TILE_PRODUCTION[t.type]) * s.daysLeft * 0.5;
     value += objectiveBonus(s, t);
+    // Ruinas (bloque 1): un premio de unos pocos recursos o una carta; la Aldea, una base para reclutar en el frente.
+    // Las ruinas, mejor pronto: la primera casa se lleva el premio.
+    if (t.type === "ruinas") value += 2 * FEATURES.prize * (RESOURCES.reduce((a, r) => a + s.values[r], 0) / RESOURCES.length);
+    if (t.type === "aldea") value += PRESTIGE_UNIT;
     if (t.owner != null) {
       // Quitarle una casilla a otra casa también le resta Prestigio a ella.
       value = (value + PRESTIGE.perTile * PRESTIGE_UNIT * 0.5) * p.houseBias;

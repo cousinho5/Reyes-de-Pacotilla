@@ -32,6 +32,10 @@ export function CastlePanel({ state, gameId, act }: Props) {
   const [kind, setKind] = useState<UnitKind>("mesnada");
   const one = costOf(1, kind);
   const myCastle = state.casillas?.find((t) => t.type === "castillo" && t.owner === state.yo.casa);
+  // Bloque 1: también se recluta en las aldeas propias.
+  const villages = (state.casillas ?? []).filter((t) => t.type === "aldea" && t.owner === state.yo.casa);
+  const [siteId, setSiteId] = useState<number | null>(null);
+  const site = villages.find((t) => t.id === siteId) ?? null;
   const active = state.partida.estado === "active";
   const maxRecruit = Math.max(
     1,
@@ -39,7 +43,9 @@ export function CastlePanel({ state, gameId, act }: Props) {
   );
   const count = Math.min(recruit, maxRecruit);
   const recruitCost: Partial<Resources> = costOf(count, kind);
-  const garrison = myCastle && myCastle.troops != null ? unitsOf({ ...myCastle, troops: myCastle.troops }) : null;
+  const where = site ?? myCastle;
+  const garrison = where && where.troops != null ? unitsOf({ ...where, troops: where.troops }) : null;
+  const place = site ? `en ${site.nombre}` : "en el castillo";
 
   return (
     <div>
@@ -125,8 +131,23 @@ export function CastlePanel({ state, gameId, act }: Props) {
 
       <section className="card">
         <h2>Reclutar</h2>
+        {villages.length > 0 && (
+          <div className="unit-picker" role="radiogroup" aria-label="Dónde reclutar">
+            {[null, ...villages].map((v) => (
+              <button
+                key={v?.id ?? "castillo"}
+                role="radio"
+                aria-checked={(v?.id ?? null) === (site?.id ?? null)}
+                className={(v?.id ?? null) === (site?.id ?? null) ? "chosen" : ""}
+                onClick={() => setSiteId(v?.id ?? null)}
+              >
+                {v ? v.nombre : "Castillo"}
+              </button>
+            ))}
+          </div>
+        )}
         <p className="muted">
-          Las tropas aparecen en tu castillo
+          Las tropas aparecen {site ? `en tu aldea, ${site.nombre}` : "en tu castillo"}
           {garrison
             ? ` (ahora: ${garrison.mesnada} de Mesnada, ${garrison.jinetes} ${garrison.jinetes === 1 ? "jinete" : "jinetes"} y ${garrison.catapultas} ${garrison.catapultas === 1 ? "catapulta" : "catapultas"}).`
             : "."}
@@ -153,12 +174,12 @@ export function CastlePanel({ state, gameId, act }: Props) {
           disabled={!canAfford(res, recruitCost) || !active}
           onClick={() =>
             act(
-              () => api.recruit(gameId, count, kind),
+              () => api.recruit(gameId, count, kind, site?.id),
               kind === "mesnada"
-                ? `${count} ${count === 1 ? "soldado se presenta" : "soldados se presentan"} en el castillo.`
+                ? `${count} ${count === 1 ? "soldado se presenta" : "soldados se presentan"} ${place}.`
                 : kind === "jinetes"
-                  ? `${count} ${count === 1 ? "jinete llega" : "jinetes llegan"} al castillo.`
-                  : `${count} ${count === 1 ? "catapulta llega" : "catapultas llegan"} al castillo, crujiendo.`,
+                  ? `${count} ${count === 1 ? "jinete llega" : "jinetes llegan"} ${site ? `a ${site.nombre}` : "al castillo"}.`
+                  : `${count} ${count === 1 ? "catapulta llega" : "catapultas llegan"} ${site ? `a ${site.nombre}` : "al castillo"}, crujiendo.`,
             )
           }
         >

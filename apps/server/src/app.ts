@@ -18,6 +18,7 @@ import {
   planNights,
   QUEUE,
   checkRecruit,
+  canRecruitAt,
   checkUpgrade,
   checkOffer,
   cleanBundle,
@@ -802,19 +803,47 @@ app.post("/api/partidas/:id/mejorar", async (c) => {
 app.post("/api/partidas/:id/reclutar", async (c) => {
   const m = await activeMembership(c);
   if (m instanceof Response) return m;
-  const { cantidad, tipo } = await c.req
-    .json<{ cantidad?: number; tipo?: string }>()
-    .catch(() => ({ cantidad: undefined, tipo: undefined }));
+  const { cantidad, tipo, casilla } = await c.req
+    .json<{ cantidad?: number; tipo?: string; casilla?: number }>()
+    .catch(() => ({ cantidad: undefined, tipo: undefined, casilla: undefined }));
   const kind = (tipo ?? "mesnada") as UnitKind;
   if (!UNIT_KINDS.includes(kind)) return fail(c, 400, "Tipo de tropa no válido.");
+  // Bloque 1: también se puede reclutar en una aldea propia (sin casilla, en el castillo).
+  let site: number | null = null;
+  if (casilla != null) {
+    const tile = toEngineTiles(await loadTiles(c.env.DB, m.game.id)).find((t) => t.id === Number(casilla));
+    if (!tile) return fail(c, 404, "Esa casilla no existe.");
+    if (!canRecruitAt(tile, m.house.id)) return fail(c, 409, "Solo puedes reclutar en tu castillo o en una aldea tuya.");
+    if (tile.type === "aldea") site = tile.id;
+  }
   const check = checkRecruit(Number(cantidad), resourcesOf(m.house), kind);
   if (!check.ok) return fail(c, 409, check.error);
   const n = Number(cantidad);
+  const db = c.env.DB;
   const err = await runPaid(c, [
-    payStatement(c.env.DB, m.house.id, check.value.cost),
-    c.env.DB.prepare(
-      "UPDATE tiles SET troops = troops + ?, jinetes = jinetes + ?, catapultas = catapultas + ? WHERE game_id = ? AND castle_of = ?",
-    ).bind(n, kind === "jinetes" ? n : 0, kind === "catapultas" ? n : 0, m.game.id, m.house.id),
+    // Si la aldea cambió de manos entre tanto, no se paga ni se recluta nada.
+    site != null
+      ? db.prepare(
+          `UPDATE houses SET pan = pan - ?, madera = madera - ?, piedra = piedra - ?, hierro = hierro - ?, oro = oro - ?
+           WHERE id = ? AND EXISTS (SELECT 1 FROM tiles WHERE id = ? AND owner_house_id = ? AND type = 'aldea')`,
+        ).bind(
+          check.value.cost.pan ?? 0,
+          check.value.cost.madera ?? 0,
+          check.value.cost.piedra ?? 0,
+          check.value.cost.hierro ?? 0,
+          check.value.cost.oro ?? 0,
+          m.house.id,
+          site,
+          m.house.id,
+        )
+      : payStatement(db, m.house.id, check.value.cost),
+    site != null
+      ? db.prepare(
+          "UPDATE tiles SET troops = troops + ?, jinetes = jinetes + ?, catapultas = catapultas + ? WHERE id = ? AND owner_house_id = ? AND type = 'aldea'",
+        ).bind(n, kind === "jinetes" ? n : 0, kind === "catapultas" ? n : 0, site, m.house.id)
+      : db.prepare(
+          "UPDATE tiles SET troops = troops + ?, jinetes = jinetes + ?, catapultas = catapultas + ? WHERE game_id = ? AND castle_of = ?",
+        ).bind(n, kind === "jinetes" ? n : 0, kind === "catapultas" ? n : 0, m.game.id, m.house.id),
   ]);
   return err ?? c.json({ ok: true });
 });

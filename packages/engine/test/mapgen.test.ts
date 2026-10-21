@@ -38,8 +38,10 @@ describe("Generación del mapa", () => {
         const split = wastelandSplit(mapLayout(n as 4 | 5 | 6 | 7 | 8).paramos, n);
         const paramos = neutrals.filter((t) => t.type === "paramo");
         const prados = neutrals.filter((t) => t.type === "prado");
-        expect(paramos).toHaveLength(split.paramos);
-        expect(prados.length).toBeGreaterThanOrEqual(split.prados);
+        // Las Aldeas y Ruinas (fase 3) pueden ocupar alguno.
+        expect(paramos.length).toBeLessThanOrEqual(split.paramos);
+        expect(paramos.length).toBeGreaterThanOrEqual(split.paramos - split.villages - split.ruins);
+        expect(prados.length).toBeGreaterThanOrEqual(split.prados - split.villages - split.ruins);
         expect([...paramos, ...prados].every((t) => t.troops === 2)).toBe(true);
         // Ningún castillo a 2 pasos o menos de otro.
         for (const c of castles) for (const o of castles) if (o !== c) expect(Math.abs(o.x - c.x) + Math.abs(o.y - c.y)).toBeGreaterThan(2);

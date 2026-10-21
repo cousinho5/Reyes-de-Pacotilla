@@ -3,9 +3,9 @@ import { MAP_GEN, distance, areAdjacent, generateClassicMap, generateMap, type G
 
 const housesFor = (n: number) => Array.from({ length: n }, (_, i) => i + 1);
 
-/** Parte de las parejas de neutrales vecinas del mismo tipo. */
+/** Parte de las parejas de neutrales vecinas del mismo tipo (sin Aldeas ni Ruinas, que van sueltas a propósito). */
 function sameShare(map: GeneratedMap): number {
-  const neutral = map.tiles.filter((t) => t.type !== "castillo");
+  const neutral = map.tiles.filter((t) => t.type !== "castillo" && t.type !== "aldea" && t.type !== "ruinas");
   let same = 0;
   let pairs = 0;
   for (const a of neutral) for (const b of neutral) if (a !== b && areAdjacent(a, b)) (pairs++, a.type === b.type && same++);

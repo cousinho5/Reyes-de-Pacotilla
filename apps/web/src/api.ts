@@ -252,8 +252,8 @@ export const api = {
   editHouse: (id: number, body: HouseForm) => call<{ ok: true }>("PUT", `/partidas/${id}/casa`, body),
   start: (id: number, inicio?: string) => call<{ ok: true; inicio: string }>("POST", `/partidas/${id}/empezar`, inicio ? { inicio } : {}),
   upgrade: (id: number, edificio: BuildingKind) => call<{ ok: true }>("POST", `/partidas/${id}/mejorar`, { edificio }),
-  recruit: (id: number, cantidad: number, tipo: "mesnada" | "jinetes" | "catapultas" = "mesnada") =>
-    call<{ ok: true }>("POST", `/partidas/${id}/reclutar`, { cantidad, tipo }),
+  recruit: (id: number, cantidad: number, tipo: "mesnada" | "jinetes" | "catapultas" = "mesnada", casilla?: number) =>
+    call<{ ok: true }>("POST", `/partidas/${id}/reclutar`, casilla != null ? { cantidad, tipo, casilla } : { cantidad, tipo }),
   fortify: (id: number, casilla: number) => call<{ ok: true }>("POST", `/partidas/${id}/fortificar`, { casilla }),
   releaseCaptain: (id: number, casa: number) => call<{ ok: true }>("POST", `/partidas/${id}/capitan/${casa}/soltar`),
   setHelp: (id: number, recurso: Resource) => call<{ ok: true }>("POST", `/partidas/${id}/ayuda`, { recurso }),

@@ -22,7 +22,9 @@ export type TileType =
   | "fortaleza"
   | "paramo"
   | "prado"
-  | "lago";
+  | "lago"
+  | "aldea"
+  | "ruinas";
 
 export interface Tile {
   id: TileId;

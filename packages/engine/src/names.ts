@@ -102,6 +102,23 @@ export const TILE_NAMES: Record<Exclude<TileType, "castillo">, TileName[]> = {
     { name: "Aguas del Barquero Ausente", note: "La barca sigue esperando." },
     { name: "El Estanque de las Ranas Opinadoras", note: "Tienen algo que decir de cada casa." },
   ],
+  aldea: [
+    { name: "Villabostezo", note: "Tres casas, un pozo y una opinión firme sobre cada forastero." },
+    { name: "Aldea del Gallo Tardío", note: "El gallo canta a mediodía. Nadie se queja." },
+    { name: "Pueblo de las Siete Gallinas", note: "Eran ocho. No se habla de la octava." },
+    { name: "Fuentecilla de Abajo", note: "La de Arriba se secó por envidia." },
+    { name: "Aldea del Herrero Distraído", note: "Hierra las vacas si te descuidas." },
+    { name: "Corral de los Valientes", note: "Valientes de nombre, sobre todo." },
+    { name: "Villaescasa", note: "Hay de todo, pero poco." },
+    { name: "Aldea de la Campana Rajada", note: "Toca a misa y a fuego con el mismo sonido." },
+  ],
+  ruinas: [
+    { name: "Ruinas de la Torre Mocha", note: "Le falta el piso de arriba y, según dicen, un tesoro." },
+    { name: "Las Piedras del Rey Olvidado", note: "Tan olvidado que nadie recuerda qué rey era." },
+    { name: "Ruinas del Monasterio Ruidoso", note: "Los monjes hicieron voto de silencio y lo rompieron." },
+    { name: "El Castillo que Fue", note: "Ya no es, pero algo guarda." },
+    { name: "Ruinas de la Posada Embrujada", note: "El fantasma sigue cobrando la cama." },
+  ],
 };
 
 /** Nombre del castillo de una casa, con la preposición bien puesta. */

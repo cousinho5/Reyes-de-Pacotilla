@@ -13,6 +13,7 @@ export * from "./names";
 export * from "./random";
 export * from "./mapgen";
 export * from "./rivers";
+export * from "./aldeas";
 export * from "./fog";
 export * from "./actions";
 export * from "./trade";

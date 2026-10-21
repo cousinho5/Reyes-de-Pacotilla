@@ -47,7 +47,7 @@ export const UNITS = {
     upkeep: 2,
   },
   /** Terreno llano: donde cargan los jinetes y por donde avanzan dos casillas. */
-  plains: ["campos", "paramo", "prado"] as TileType[],
+  plains: ["campos", "paramo", "prado", "ruinas"] as TileType[],
 };
 
 /**
@@ -230,6 +230,8 @@ export const TILE_PRODUCTION: Record<TileType, Partial<Resources>> = {
   paramo: {},
   prado: {},
   lago: {},
+  aldea: {},
+  ruinas: {},
 };
 
 /** Guarnición neutral inicial según el tipo de casilla. */
@@ -244,6 +246,8 @@ export const NEUTRAL_GARRISON: Record<Exclude<TileType, "castillo">, number> = {
   prado: 2,
   /** En un lago no se puede entrar. */
   lago: 0,
+  aldea: 4,
+  ruinas: 2,
 };
 
 /**
@@ -307,6 +311,8 @@ export const PRESTIGE = {
   perFortress: 5,
   /** Un páramo no produce y da menos Prestigio que una casilla normal. */
   perWasteland: 1,
+  /** La Aldea (bloque 1) vale por su posición: no produce y da 1. */
+  perVillage: 1,
   perLevelAboveOne: 1,
   perLevelFiveBuilding: 1,
   goldPerPoint: 25,
@@ -351,6 +357,8 @@ export const TILE_MIX: Record<Exclude<TileType, "castillo">, number> = {
   paramo: 0,
   prado: 0,
   lago: 0,
+  aldea: 0,
+  ruinas: 0,
 };
 
 /**
@@ -477,6 +485,8 @@ export const MAP_GEN = {
     paramo: 0,
     prado: 0,
     lago: 0,
+    aldea: 0,
+    ruinas: 0,
   } as Record<Exclude<TileType, "castillo">, number>,
   pradoShare: 0.5,
   noiseScale: 3.5,
@@ -501,4 +511,28 @@ export const RIVERS = {
   defense: 0.25,
   rivers: { 4: 1, 5: 1, 6: 2, 7: 2, 8: 2 } as Record<number, number>,
   lakes: { 4: 1, 5: 1, 6: 2, 7: 2, 8: 2 } as Record<number, number>,
+};
+
+/**
+ * Aldeas y Ruinas (bloque 1, fase 3). Es un objeto para que el simulador pueda
+ * apagarlas y comparar.
+ * - `villages`: una Aldea por casa, a `villageSteps` pasos de su castillo (los
+ *   castillos están a 3 pasos unos de otros, así que más lejos no caben) y
+ *   nunca junto a un castillo. Se puede reclutar en ella; no produce.
+ * - `ruinsCount`: Ruinas según el número de casas (una por cada dos, sin contar
+ *   dos: con más, el mapa de 4 casas perdía la mitad de lo agrupado y la
+ *   justicia), en la tierra de en medio, a `ruinsMinSteps` pasos o más de
+ *   cualquier castillo (nunca a su lado). La primera casa que entra se lleva el
+ *   premio y quedan como Prado.
+ * - `prize`: recursos del premio (de un solo tipo); `cardChance`: probabilidad
+ *   de que el premio sea una carta de la Corona en vez de recursos.
+ */
+export const FEATURES = {
+  villages: true,
+  villageSteps: 2,
+  ruins: true,
+  ruinsCount: { 4: 1, 5: 1, 6: 2, 7: 2, 8: 3 } as Record<number, number>,
+  ruinsMinSteps: 2,
+  prize: 10,
+  cardChance: 0.5,
 };
