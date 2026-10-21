@@ -24,6 +24,8 @@ import {
   resolutionInfo,
   totalResolutions,
   withRhythm,
+  recruitSite,
+  claimRuins,
   resolveCampaign,
   fitOrders,
   bannersSeen,
@@ -199,8 +201,12 @@ export async function runProduction(env: NotifyEnv, game: GameRow, key: string, 
       );
     }
     if (plan.recruit > 0) {
+      // En una aldea del frente si la tiene (bloque 1); si no, en el castillo.
+      const site = recruitSite(tiles, house.id);
       st.push(
-        db.prepare("UPDATE tiles SET troops = troops + ? WHERE game_id = ? AND castle_of = ?").bind(plan.recruit, game.id, house.id),
+        site && site.type === "aldea"
+          ? db.prepare("UPDATE tiles SET troops = troops + ? WHERE id = ? AND owner_house_id = ?").bind(plan.recruit, site.id, house.id)
+          : db.prepare("UPDATE tiles SET troops = troops + ? WHERE game_id = ? AND castle_of = ?").bind(plan.recruit, game.id, house.id),
       );
     }
     st.push(
@@ -311,9 +317,28 @@ export async function runResolution(env: NotifyEnv, game: GameRow, n: number, no
     ...cardEffects,
     ...(kind === "miercoles" ? eventCombat(event) : {}),
   });
-  let finalTiles: Tile[] = result.tiles;
   const extraEvents: { type: string; visibleTo: number | null; payload: unknown }[] = [];
   const extraStatements: D1PreparedStatement[] = [];
+  // Ruinas (bloque 1): la primera casa que entra se lleva el premio y quedan como Prado.
+  const ruins = claimRuins(result.tiles, game.seed);
+  let finalTiles: Tile[] = ruins.tiles;
+  for (const c of ruins.claims) {
+    extraStatements.push(db.prepare("UPDATE tiles SET type = 'prado' WHERE id = ? AND type = 'ruinas'").bind(c.tile));
+    if (c.prize.kind === "carta") {
+      extraStatements.push(
+        db.prepare("INSERT INTO cards (game_id, house_id, card_key, acquired_at) VALUES (?, ?, ?, ?)").bind(
+          game.id,
+          c.house,
+          c.prize.card,
+          now.toISOString(),
+        ),
+      );
+    } else {
+      // El recurso sale de RESOURCES (nombres de columna fijos), nunca de fuera.
+      extraStatements.push(db.prepare(`UPDATE houses SET ${c.prize.resource} = ${c.prize.resource} + ? WHERE id = ?`).bind(c.prize.amount, c.house));
+    }
+    extraEvents.push({ type: "ruinas", visibleTo: null, payload: { house: c.house, tile: c.tile, prize: c.prize } });
+  }
 
   // Logro: primera casa en tomar una fortaleza.
   if (!achieved.results.some((a) => a.achievement_key === "primera_fortaleza")) {

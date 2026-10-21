@@ -8,6 +8,7 @@
 // - Quien las crea puede "jugar como" cualquier casa.
 
 import {
+  recruitSite,
   PERSONALITIES,
   PRESTIGE,
   BRIBE_COST,
@@ -364,10 +365,16 @@ export async function botsPlayDay(env: NotifyEnv, game: GameRow): Promise<void> 
       st.push(db.prepare("UPDATE tiles SET fortified_until = ? WHERE id = ? AND owner_house_id = ?").bind(f.until, f.tile, h.id));
     }
     if (plan.recruit + plan.riders + plan.engines > 0) {
+      // Como en el simulador: en una aldea del frente si la tiene (bloque 1).
+      const site = recruitSite(ctx.tiles, h.id);
       st.push(
-        db.prepare(
-          "UPDATE tiles SET troops = troops + ?, jinetes = jinetes + ?, catapultas = catapultas + ? WHERE game_id = ? AND castle_of = ?",
-        ).bind(plan.recruit + plan.riders + plan.engines, plan.riders, plan.engines, game.id, h.id),
+        site && site.type === "aldea"
+          ? db.prepare(
+              "UPDATE tiles SET troops = troops + ?, jinetes = jinetes + ?, catapultas = catapultas + ? WHERE id = ? AND owner_house_id = ?",
+            ).bind(plan.recruit + plan.riders + plan.engines, plan.riders, plan.engines, site.id, h.id)
+          : db.prepare(
+              "UPDATE tiles SET troops = troops + ?, jinetes = jinetes + ?, catapultas = catapultas + ? WHERE game_id = ? AND castle_of = ?",
+            ).bind(plan.recruit + plan.riders + plan.engines, plan.riders, plan.engines, game.id, h.id),
       );
     }
     try {

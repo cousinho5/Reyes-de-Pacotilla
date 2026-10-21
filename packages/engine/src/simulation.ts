@@ -16,6 +16,7 @@ import { computePrestige, isValidTrade, type AchievementKey, type PrestigeBreakd
 import { gloryFromEvents, resolveCampaign } from "./combat";
 import { fitOrders } from "./plan";
 import { marchKind, marchPath } from "./terrain";
+import { claimRuins, recruitSite } from "./aldeas";
 import { areAdjacent } from "./map";
 import { clampUnits, isPlain, orderUnits } from "./units";
 import { crownPrices } from "./crown";
@@ -222,6 +223,13 @@ export interface SimGameResult {
     /** Bloque 1: ataques que cruzan un río sin puente y cuántos toman la casilla. */
     riverAttacks: number;
     riverAttacksWon: number;
+    /** Bloque 1, fase 3: ruinas tomadas (y en la primera semana), tropas reclutadas en aldeas y aldeas quitadas a otra casa. */
+    ruinsClaimed: number;
+    ruinsWeekOne: number;
+    /** Suma de los días (desde 1) en que se tomaron, para la media. */
+    ruinsDays: number;
+    villageRecruits: number;
+    villagesStolen: number;
     /** Piedra u Oro pagados por mantener fortificaciones y fortificaciones desmanteladas. */
     fortifyUpkeep: number;
     fortifyDropped: number;
@@ -402,7 +410,7 @@ function runGame(opts: SimOptions): SimGameResult {
     tiles = tiles.map((t) => (cut.has(t.id) ? clampUnits({ ...t, troops: t.troops - cut.get(t.id)! }) : t));
   };
   const mercCount = (h: HouseState) => h.mercs.reduce((a, m) => a + m.n, 0);
-  const battle = { clashes: 0, crossings: 0, chargeAttacks: 0, riderAttacks: 0, fortifies: 0, fortifiedNights: 0, attacksOnFortified: 0, attacksOnFortifiedWon: 0, riverAttacks: 0, riverAttacksWon: 0, fortifyUpkeep: 0, fortifyDropped: 0 };
+  const battle = { clashes: 0, crossings: 0, chargeAttacks: 0, riderAttacks: 0, fortifies: 0, fortifiedNights: 0, attacksOnFortified: 0, attacksOnFortifiedWon: 0, riverAttacks: 0, riverAttacksWon: 0, ruinsClaimed: 0, ruinsWeekOne: 0, ruinsDays: 0, villageRecruits: 0, villagesStolen: 0, fortifyUpkeep: 0, fortifyDropped: 0 };
   /** Combates entre casas: [casa, rival, resolución]. */
   const fights: [HouseId, HouseId, number][] = [];
 
@@ -582,9 +590,12 @@ function runGame(opts: SimOptions): SimGameResult {
         h.recruitedHouse.mesnada += plan.recruit;
         h.recruitedHouse.jinetes += plan.riders;
         h.recruitedHouse.catapultas += plan.engines;
-        if (plan.recruit > 0) tiles = tiles.map((t) => (t.castleOf === h.id ? { ...t, troops: t.troops + plan.recruit } : t));
-        if (plan.riders > 0) tiles = tiles.map((t) => (t.castleOf === h.id ? addRecruits(t, plan.riders, "jinetes") : t));
-        if (plan.engines > 0) tiles = tiles.map((t) => (t.castleOf === h.id ? addRecruits(t, plan.engines, "catapultas") : t));
+        // Fase 3 del bloque 1: se recluta en una aldea del frente si la hay.
+        const site = recruitSite(tiles, h.id)?.id;
+        if (site != null && tiles.find((t) => t.id === site)?.type === "aldea") battle.villageRecruits += plan.recruit + plan.riders + plan.engines;
+        if (plan.recruit > 0) tiles = tiles.map((t) => (t.id === site ? { ...t, troops: t.troops + plan.recruit } : t));
+        if (plan.riders > 0) tiles = tiles.map((t) => (t.id === site ? addRecruits(t, plan.riders, "jinetes") : t));
+        if (plan.engines > 0) tiles = tiles.map((t) => (t.id === site ? addRecruits(t, plan.engines, "catapultas") : t));
         recruited.jinetes += plan.riders;
         recruited.catapultas += plan.engines;
         recruited.mesnada += plan.recruit;
@@ -779,6 +790,20 @@ function runGame(opts: SimOptions): SimGameResult {
       ...(weekday === 2 && weekEvents[week0 - 1] ? eventCombat(weekEvents[week0 - 1]!) : {}),
     });
     tiles = result.tiles;
+    // Ruinas: la primera casa que entra se lleva el premio y quedan como Prado.
+    const ruins = claimRuins(tiles, opts.seed);
+    tiles = ruins.tiles;
+    for (const c of ruins.claims) {
+      const h = byId.get(c.house)!;
+      if (c.prize.kind === "carta") h.hand.push(c.prize.card);
+      else h.res[c.prize.resource] += c.prize.amount;
+      battle.ruinsClaimed++;
+      if (day < 7) battle.ruinsWeekOne++;
+      battle.ruinsDays += day + 1;
+    }
+    for (const e of result.events) {
+      if (e.type === "combate" && e.conquered && e.previousOwner != null && before.get(e.tile)?.type === "aldea") battle.villagesStolen++;
+    }
     for (const c of result.captains) byId.get(c.house)!.captain = c;
     for (const [hid, g] of gloryFromEvents(result.events)) byId.get(hid)!.glory += g;
     for (const e of result.events) if (e.type === "capitan_preso") captainsCaptured++;
