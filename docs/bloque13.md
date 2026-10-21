@@ -49,6 +49,7 @@ Todas salen una sola vez, se saltan con un toque y con «reducir movimiento» (`
 ## Cómo se hacen
 
 - **Sin vídeo ni imágenes:** cada escena es una pila de capas (fondo, sprites en rejilla de texto con paleta en `apps/web/src/art`, texto en HTML) con animaciones sencillas. El texto nunca va dentro del dibujo.
+- **Diseño en pxl:** los dibujos de cada escena se diseñan y se revisan primero en pxl (`docs/maquetas/bloque13/pxl/`). Una vez aprobados, pasan a `apps/web/src/art` con `scripts/pxl-a-juego.mjs` (proceso en `docs/pixel-art.md`). La primera prueba es el pregonero (`pxl/pregonero.px.js`).
 - **Con los datos de la partida:** escudos, nombres, lemas, colores y mapa reales. Antes del final nunca enseñan nada fuera de la niebla de tu casa.
 - **Un solo reproductor:** cada cinemática es una lista de escenas con su texto, su pie de Fray Abundio y su duración. Añadir una es añadir datos y dibujos.
 - **Fray Abundio narra** con frases del banco: las cifras exactas y el humor en los adjetivos.
@@ -59,7 +60,7 @@ Van después de los bloques 3 (Fray nuevo, banco de frases y Crónica Definitiva
 
 1. **Reproductor de cinemáticas** en el cliente: escenas con capas, texto y duración; tocar para avanzar, «Saltar», viñetas quietas con «reducir movimiento».
 2. **Qué has visto:** una migración nueva guarda qué cinemáticas ha visto cada casa, para que salgan una sola vez en cualquier dispositivo y en orden si hay varias pendientes.
-3. **Dibujos nuevos** en `apps/web/src/art`, al nivel del Fray de 48x48: rey Aldric con fotogramas (masticar, toser, caer), fantasma, corona, trono, llave, banquete y salón del trono.
+3. **Dibujos nuevos**, diseñados en pxl y pasados a `apps/web/src/art` con `scripts/pxl-a-juego.mjs`, al nivel del Fray de 48x48: rey Aldric con fotogramas (masticar, toser, caer), fantasma, corona, trono, llave, banquete y salón del trono.
 4. **Prólogo** (punto 2) con los escudos, lemas y mapa de la partida.
 5. **Títulos de fin de partida** (punto 4): función pura del motor que reparte un título por casa a partir del registro de la partida, con su prueba, y frases nuevas en `docs/banco-de-frases.md`.
 6. **Coronación** (punto 3). `prestige_snapshots` ya guarda el Prestigio de cada resolución; falta guardar de quién era cada casilla al cerrar cada semana (migración nueva y tarea idempotente en `jobs.ts`). El mapa entero solo se envía cuando la partida ha acabado. Enlace para compartirla (punto 10).

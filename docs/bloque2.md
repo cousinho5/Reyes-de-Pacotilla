@@ -44,7 +44,7 @@ Ideas de partida para los niveles (se afinan con los bocetos):
 ## Pasos
 
 1. **Piezas de dibujo.** Sacar de `world.ts` las piezas que se repiten a un módulo común, sin cambiar cómo se ve el mapa.
-2. **Bocetos.** Escena y edificios en pixel art para revisarlos antes de seguir.
+2. **Bocetos.** Escena y edificios en pixel art, diseñados en pxl (`docs/pixel-art.md`) para revisarlos como PNG o GIF antes de seguir; los aprobados pasan al juego con `scripts/pxl-a-juego.mjs`.
 3. **Escena del castillo.** Componente nuevo en `apps/web/src/art` a escala de móvil (unos 390 píxeles de ancho), con los colores y el escudo de la casa.
 4. **Edificios por nivel.** Los 25 dibujos.
 5. **Crecimiento del castillo** (5 etapas) en la escena y en la loseta del mapa (`world.ts`). La etapa se calcula en el cliente con los niveles que ya ve cada casa; para la loseta ajena hace falta que el servidor envíe la etapa a quien ve esa loseta, sin enseñar los niveles.
