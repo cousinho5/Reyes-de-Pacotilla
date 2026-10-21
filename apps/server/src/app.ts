@@ -4,6 +4,7 @@
 import { Hono, type Context } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import {
+  ANY_ORIGIN,
   BUILDINGS,
   captainName,
   UNIT_KINDS,
@@ -562,7 +563,7 @@ app.get("/api/partidas/:id", async (c) => {
     loadBuildings(db, game.id),
     computeAllPrestige(db, game.id, houses, tiles, now),
     db.prepare(
-      "SELECT id, resolution_no, kind, from_tile_id, troops, jinetes, catapultas, captain, target_tile_id, supported_from_tile_id FROM orders WHERE house_id = ? AND resolution_no >= ? ORDER BY resolution_no, id",
+      "SELECT id, resolution_no, kind, from_tile_id, troops, jinetes, catapultas, captain, target_tile_id, supported_from_tile_id, supports_any FROM orders WHERE house_id = ? AND resolution_no >= ? ORDER BY resolution_no, id",
     )
       .bind(house.id, game.current_resolution + 1)
       .all<{
@@ -576,6 +577,7 @@ app.get("/api/partidas/:id", async (c) => {
         captain: number;
         target_tile_id: number;
         supported_from_tile_id: number | null;
+        supports_any: number;
       }>(),
     db.prepare(
       `SELECT e.id, e.type, e.payload, e.at, r.number AS resolucion FROM event_log e LEFT JOIN resolutions r ON r.id = e.resolution_id
@@ -713,7 +715,8 @@ app.get("/api/partidas/:id", async (c) => {
       tipo: o.kind === "move" ? "mover" : o.kind === "siege" ? "sitiar" : "apoyar",
       desde: o.from_tile_id,
       hacia: o.target_tile_id,
-      apoyaDesde: o.supported_from_tile_id,
+      // -1 (ANY_ORIGIN): apoya el primer ataque que llegue a la casilla.
+      apoyaDesde: o.supports_any ? ANY_ORIGIN : o.supported_from_tile_id,
       tropas: o.troops,
       jinetes: o.jinetes,
       catapultas: o.catapultas,
@@ -992,15 +995,37 @@ app.put("/api/partidas/:id/ordenes", async (c) => {
     if (withCaptain.length === 1 && withCaptain[0]!.from !== captainTile) return fail(c, 400, "Tu Capitán no estará en esa casilla.");
   }
 
+  // Una orden que no cambia conserva su hora (updated_at): el apoyo sin origen
+  // suma al ataque que se dio antes, y volver a guardar no debe adelantarlo.
+  const previous = await c.env.DB.prepare(
+    "SELECT resolution_no, kind, from_tile_id, troops, jinetes, catapultas, captain, target_tile_id, supported_from_tile_id, supports_any, updated_at FROM orders WHERE house_id = ? AND resolution_no >= ?",
+  )
+    .bind(m.house.id, n)
+    .all<{
+      resolution_no: number;
+      kind: string;
+      from_tile_id: number;
+      troops: number;
+      jinetes: number;
+      catapultas: number;
+      captain: number;
+      target_tile_id: number;
+      supported_from_tile_id: number | null;
+      supports_any: number;
+      updated_at: string;
+    }>();
+  const keep = new Map<string, string[]>();
+  for (const p of previous.results) {
+    const key = [p.resolution_no, p.kind, p.from_tile_id, p.troops, p.jinetes, p.catapultas, p.captain, p.target_tile_id, p.supports_any ? ANY_ORIGIN : (p.supported_from_tile_id ?? "")].join("|");
+    keep.set(key, [...(keep.get(key) ?? []), p.updated_at]);
+  }
   const statements = [
     c.env.DB.prepare("DELETE FROM orders WHERE house_id = ? AND resolution_no >= ?").bind(m.house.id, n),
     ...nights.flatMap((orders, i) =>
-      orders.map((o) =>
-        c.env.DB.prepare(
-          "INSERT INTO orders (game_id, house_id, resolution_no, kind, from_tile_id, troops, jinetes, catapultas, captain, target_tile_id, supported_from_tile_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        ).bind(
-          m.game.id,
-          m.house.id,
+      orders.map((o) => {
+        const supported = o.kind === "support" ? o.supportedFrom : null;
+        const anyOrigin = supported === ANY_ORIGIN;
+        const row = [
           n + i,
           o.kind,
           o.from,
@@ -1009,9 +1034,12 @@ app.put("/api/partidas/:id/ordenes", async (c) => {
           o.catapultas ?? 0,
           o.kind === "move" && o.captain ? 1 : 0,
           o.kind === "move" ? o.to : o.target,
-          o.kind === "support" ? o.supportedFrom : null,
-        ),
-      ),
+        ] as const;
+        const at = keep.get([...row, supported ?? ""].join("|"))?.shift() ?? null;
+        return c.env.DB.prepare(
+          "INSERT INTO orders (game_id, house_id, resolution_no, kind, from_tile_id, troops, jinetes, catapultas, captain, target_tile_id, supported_from_tile_id, supports_any, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, strftime('%Y-%m-%dT%H:%M:%fZ','now')))",
+        ).bind(m.game.id, m.house.id, ...row, anyOrigin ? null : supported, anyOrigin ? 1 : 0, at);
+      }),
     ),
   ];
   await c.env.DB.batch(statements);

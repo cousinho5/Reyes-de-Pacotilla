@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { crossingRisks } from "@reyes/engine";
+import { ANY_ORIGIN, crossingRisks } from "@reyes/engine";
 import type { GameState, OrderView } from "../api";
 import { describeEvent, formatWhen, houseName, nightLabel, troopsText, withArticle } from "../ui";
 import { nextResolution, nightOf, project, queueNights, toOrder } from "../plan";
@@ -147,7 +147,11 @@ function OrderText({ o, name }: { o: OrderView; name: (id: number | null) => str
   return (
     <>
       {n} de {name(o.desde)} apoyan{" "}
-      {o.apoyaDesde ? (
+      {o.apoyaDesde === ANY_ORIGIN ? (
+        <>
+          el primer ataque sobre <strong>{name(o.hacia)}</strong>
+        </>
+      ) : o.apoyaDesde ? (
         <>
           el ataque de {name(o.apoyaDesde)} sobre <strong>{name(o.hacia)}</strong>
         </>

@@ -342,7 +342,7 @@ function Battle({
               <span className="grow">
                 {s.label}
                 {s.troops != null && ` · ${s.troops}`}
-                {(s.supporters?.length ?? 0) > 0 && ` + apoyo`}
+                {(s.supporters?.length ?? 0) > 0 && ` + apoyo de ${s.supporters!.map((x) => houseName(houses, x)).join(", ")}`}
               </span>
               <b>{num(s.strength)}</b>
               {lost != null && lost > 0 && <em className="fallen">−{lost}</em>}

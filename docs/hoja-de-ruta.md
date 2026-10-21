@@ -7,7 +7,7 @@ Primero se definen todos los bloques; después se hacen uno a uno, en el orden d
 | Orden | Bloque | Estado | Qué entra |
 | --- | --- | --- | --- |
 | 1.º | 1. Mapa y losetas | Hecho (fases 0 a 4); quedan para más adelante el dibujo a ×1,5 y más variedad de dibujos por tipo de loseta | Geografía, ríos, Prado, Aldea, Ruinas y marco de mar y montañas |
-| 2.º | 4. Retoques sistema de batalla | En curso (hecho: cruces en el camino, jinete a 3 de Oro, fortificación hasta que la atacan y Capitán libre con rescate) | Apoyo sin origen, jinete más caro, Capitán libre, choques en el camino y fortificación con mantenimiento |
+| 2.º | 4. Retoques sistema de batalla | Hecho | Apoyo sin origen, jinete más caro, Capitán libre, choques en el camino y fortificación con mantenimiento |
 | 3.º | 5. Retoques recursos | Decidido | Oro en todas las mejoras, cambio con la Corona, mercenarios de alquiler y mejoras con algo más de Madera y Piedra |
 | 4.º | 8. Alianzas | Decidido | Alianzas formales: paso por las casillas del aliado, ruptura con aviso de tres días y ataques conjuntos |
 | 5.º | 6. Optimización y controles en móvil | Decidido | Mapa guardado y dibujado en segundo plano, zoom con pinza, ficha que sube desde abajo, órdenes arrastrando, botones de 48 y juego sin conexión |
@@ -83,9 +83,9 @@ Decidido el 20 de octubre de 2026. Las decisiones y los pasos están en `docs/bl
 10. **Casas en su color** en los textos del cronista.
 11. **Fray Abundio nuevo**, de 48x48 y animado.
 
-## Bloque 4: retoques del sistema de batalla **(decidido, en curso)**
+## Bloque 4: retoques del sistema de batalla **(hecho)**
 
-Decidido el 19 de octubre de 2026 a partir de «Reyes de Pacotilla: investigación del bloque 4». Las reglas completas y los pasos para hacerlo están en `docs/bloque4.md`. Cada punto se hace con su prueba, su simulación en `docs/simulaciones.md` y la sección 8 de `docs/diseno.md`. El motor ya tiene casi todo detrás de `BATTLE_TWEAKS` (`rules.ts`), apagado.
+Decidido el 19 de octubre de 2026 a partir de «Reyes de Pacotilla: investigación del bloque 4». Las reglas completas y los pasos para hacerlo están en `docs/bloque4.md`. Cada punto se hace con su prueba, su simulación en `docs/simulaciones.md` y la sección 8 de `docs/diseno.md`. Hecho el 21 de octubre de 2026: todo está encendido en `BATTLE_TWEAKS` (`rules.ts`), y el simulador puede apagar cada punto para comparar.
 
 **Decisiones:**
 

@@ -226,7 +226,7 @@ Cada grupo de tropas recibe una orden por resolución. Puedes dividir las tropas
 | --- | --- |
 | **Mantener** (por defecto) | El grupo se queda y defiende su casilla. |
 | **Mover / atacar** | El grupo intenta entrar en una casilla adyacente (una de las seis que tocan su hexágono). Si es tuya o está vacía y nadie más entra, simplemente se mueve. |
-| **Apoyar** | El grupo se queda donde está y suma su fuerza a un ataque o a una defensa en una casilla adyacente. Se puede apoyar a otra casa. |
+| **Apoyar** | El grupo se queda donde está y suma su fuerza a la defensa de una casilla adyacente o al **primer ataque** que llegue a ella esa noche. No se elige de dónde viene el ataque ni de qué casa es. Se puede apoyar a otra casa. |
 
 Las tropas se mueven como máximo una casilla por resolución: siete por semana con la resolución diaria.
 
@@ -239,6 +239,7 @@ Las tropas se mueven como máximo una casilla por resolución: siete por semana 
 - **Bonificación del defensor** (se suman): +25% por defender, +25% si la casilla está fortificada, +50% si es una fortaleza. Máximo, ×2.
 
 - Los apoyos suman sus tropas sin bonificación.
+- **Qué ataque apoya un apoyo al ataque** (bloque 4): el primero que llegue a la casilla esa noche. Si la casa que apoya ataca esa casilla, es siempre el suyo; si no, el de la orden que se cambió antes (cuenta la hora del último cambio: volver a guardar una orden sin tocarla no la retrasa). Suma una sola vez aunque se ataque desde dos sitios, y puede acabar ayudando a un enemigo que se adelantó. Como no depende del origen, también sirve para una marcha por camino o una carga de jinetes. En la repetición y en la crónica, la casa apoyada ve quién la apoyó.
 
 ### 8.3 Resolución de una casilla disputada
 
@@ -308,7 +309,7 @@ El terreno se suma a las demás bonificaciones del defensor y el tope sigue en x
 
 - **Ríos (bloque 1, fase 2).** Corren por los lados entre casillas, de las montañas a la costa. **Atacar cruzando un río da +25% al defensor**: cuenta el último tramo de la marcha (en una de dos casillas, el de la casilla de en medio al destino). Donde un camino cruza el río hay un **puente** y no cuenta. Si varias casas atacan la misma casilla, cada una lucha con su río: es como si su fuerza se dividiera por lo que sube la defensa. El tope x2 sigue. Los choques frontales no miran el río.
 
-- **Caminos.** Los que se dibujan entre los castillos y las fortalezas cuentan: un grupo avanza **dos casillas en una noche** siguiendo el camino si la casilla de en medio es suya. Ese ataque no admite apoyos.
+- **Caminos.** Los que se dibujan entre los castillos y las fortalezas cuentan: un grupo avanza **dos casillas en una noche** siguiendo el camino si la casilla de en medio es suya. Antes no admitía apoyos; desde el bloque 4, un apoyo al primer ataque también le suma.
 - **Travesía.** Desde un puerto tuyo, un grupo llega a **cualquier otro puerto en una noche**, también para atacarlo. Tampoco admite apoyos. La propuesta decía dos noches, pero eso exigía guardar tropas "en el mar" entre resoluciones; con una noche y sin apoyos el puerto ya gana valor sin complicar las reglas.
 
 Simulación (300 partidas de 6 semanas, `docs/simulaciones.md`): con terreno hay un 15% menos de batallas entre casas (aún unas 2,5 veces más que con dos resoluciones por semana), y las casas con deserciones bajan del 20% al 11%. Los bots marchan por camino unas 21 veces por partida y casi no usan el mar (0,6 travesías): queda para las personas.

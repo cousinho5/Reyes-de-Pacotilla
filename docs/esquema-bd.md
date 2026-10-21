@@ -294,7 +294,8 @@ CREATE TABLE orders (
   jinetes         INTEGER NOT NULL DEFAULT 0 CHECK (jinetes >= 0),     -- de esas tropas (0007)
   catapultas      INTEGER NOT NULL DEFAULT 0 CHECK (catapultas >= 0),  -- de esas tropas (0007)
   target_tile_id  INTEGER NOT NULL REFERENCES tiles(id), -- destino (move) o casilla apoyada (support)
-  supported_from_tile_id INTEGER REFERENCES tiles(id),   -- support: origen del ataque apoyado; NULL = apoyar la defensa
+  supported_from_tile_id INTEGER REFERENCES tiles(id),   -- support: origen del ataque apoyado; NULL = apoyar la defensa (o el primer ataque, con supports_any)
+  supports_any    INTEGER NOT NULL DEFAULT 0 CHECK (supports_any IN (0, 1)), -- support: apoya el primer ataque a la casilla (0013)
   captain         INTEGER NOT NULL DEFAULT 0 CHECK (captain IN (0, 1)),  -- 1 si el Capitán va con este grupo (0009)
   updated_at      TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
   CHECK (kind = 'support' OR supported_from_tile_id IS NULL),

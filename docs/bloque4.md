@@ -8,7 +8,7 @@ Cada punto se hace en una solicitud de cambios propia, con su prueba, su simulac
 
 | Punto | Decisión | En el motor |
 | --- | --- | --- |
-| 1. Apoyo sin elegir origen | Apoyas el primer ataque que llegue a la casilla esa noche: el tuyo si atacas tú; si no, el que se ordenó antes | Parcial (`supportAnyOrigin`, solo ataques propios) |
+| 1. Apoyo sin elegir origen | Apoyas el primer ataque que llegue a la casilla esa noche: el tuyo si atacas tú; si no, el que se ordenó antes | **Hecho** (`supportAnyOrigin` encendido, `orders.supports_any`) |
 | 2. Mesnada frente a jinetes | El jinete cuesta 3 de Oro en vez de 1 | **Hecho** |
 | 3. Capitán como unidad propia | Se mueve solo; cae preso si lo atacan; libre a las 7 noches o con rescate negociado | **Hecho** (`captainAlone` encendido, rescate con `RANSOM`) |
 | 4. Jinetes que se cruzan | El cruce por el camino es un choque frontal | **Hecho** (`crossingClash` encendido) |
@@ -44,6 +44,8 @@ Tu apoyo puede acabar ayudando a un enemigo que se adelantó: es parte del riesg
 3. Servidor: guardar y leer la nueva forma de apoyo en `app.ts`, `jobs.ts` y `pruebas.ts`.
 4. Cliente: en «¿Qué apoyas?», la opción «El primer ataque a X»; en la pestaña Órdenes, el texto «apoyan el primer ataque sobre X». La repetición de la noche dice a quién acabó apoyando.
 5. Pruebas (ya hay tres en `bloque4.test.ts`; faltan las de varias casas) y sección 8 del diseño.
+
+**Hecho** el 21 de octubre de 2026: el motor reparte cada apoyo con `ANY_ORIGIN` al primer ataque de la casilla (`MoveOrder.at`, la hora del último cambio de la orden). Migración 0013: `orders.supports_any`. Al volver a guardar las órdenes, las que no cambian conservan su `updated_at`. En el cliente, «El primer ataque a X» en «¿Qué apoyas?» (sustituye a elegir el origen), «apoyan el primer ataque sobre X» en la pestaña Órdenes, y «+ apoyo de Casa X» en la tarjeta de la batalla y en la crónica. Simulación en `docs/simulaciones.md`.
 
 ## Punto 2: Mesnada frente a jinetes
 

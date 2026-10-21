@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { BATTLE_TWEAKS, FORTIFY_UPKEEP, RIVERS, TILE_NAMES, areAdjacent, bridgeBetween, fortifyCost, marchKind, riverBetween, subUnits, threats, unitsOf, type Tile, type Units } from "@reyes/engine";
+import { ANY_ORIGIN, BATTLE_TWEAKS, FORTIFY_UPKEEP, RIVERS, TILE_NAMES, areAdjacent, bridgeBetween, fortifyCost, marchKind, riverBetween, subUnits, threats, unitsOf, type Tile, type Units } from "@reyes/engine";
 import { api, type GameState, type OrderView, type TileView } from "../api";
 import { Icon, ShieldIcon, TileArt } from "../art";
 import { cellBox, sharedEdge, type Geo } from "../art/grid";
@@ -695,10 +695,6 @@ function Composer({
 }) {
   const from = byId.get(compose.from)!;
   const target = compose.target != null ? byId.get(compose.target)! : null;
-  const attackOrigins =
-    target && compose.mode === "apoyar"
-      ? [...byId.values()].filter((t) => t.id !== from.id && t.id !== target.id && areAdjacent(t, target))
-      : [];
   const verb =
     compose.mode === "capitan" ? "Mover al Capitán" : compose.mode === "mover" ? "Mover o atacar" : compose.mode === "sitiar" ? "Sitiar" : "Apoyar";
   // Qué tipos pueden ir: a la carga solo jinetes; a la montaña solo Mesnada; los apoyos, sin catapultas.
@@ -785,12 +781,13 @@ function Composer({
                 onChange={(e) => setCompose({ ...compose, apoyaDesde: e.target.value ? Number(e.target.value) : null })}
               >
                 <option value="">La defensa de {target.nombre}</option>
-                {attackOrigins.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    Un ataque que sale de {t.nombre}
-                  </option>
-                ))}
+                <option value={ANY_ORIGIN}>El primer ataque a {target.nombre}</option>
               </select>
+              {compose.apoyaDesde === ANY_ORIGIN && (
+                <span className="hint">
+                  Suma a tu propio ataque si lo hay; si no, al de la casa que dio antes su orden.
+                </span>
+              )}
             </label>
           )}
           {shown.length === 0 && <p className="error">No te quedan tropas que puedan ir ahí.</p>}

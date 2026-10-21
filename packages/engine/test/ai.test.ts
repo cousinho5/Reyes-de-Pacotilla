@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  ANY_ORIGIN,
   PERSONALITIES,
   auctionLots,
   planBids,
@@ -56,7 +57,7 @@ describe("Bots con personalidad: órdenes", () => {
     ];
     const orders = planOrders(situation(view(tiles), estratega));
     expect(orders).toContainEqual({ kind: "move", house: 1, from: 3, to: 4, troops: 6 });
-    expect(orders.some((o) => o.kind === "support" && o.from === 2 && o.target === 4 && o.supportedFrom === 3)).toBe(true);
+    expect(orders.some((o) => o.kind === "support" && o.from === 2 && o.target === 4 && o.supportedFrom === ANY_ORIGIN)).toBe(true);
     expect(checkOrders(tiles, orders).invalid).toEqual([]);
     const result = resolveCampaign({ resolution: 1, tiles, orders });
     expect(result.tiles.find((t) => t.id === 4)!.owner).toBe(1);

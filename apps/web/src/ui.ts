@@ -230,12 +230,19 @@ export function describeEvent(e: EventView, houses: HouseInfo[], tiles: TileView
   const tile = (id: unknown) => tiles.find((t) => t.id === id)?.nombre ?? "una casilla";
   const d = e.datos as Record<string, any>;
   switch (e.tipo) {
-    case "combate":
+    case "combate": {
+      // Quién apoyó a quién (bloque 4: la casa apoyada lo ve en la crónica).
+      const helped = ((d.sides ?? []) as { house: number | null; supporters?: number[] }[])
+        .map((s) => ({ s, by: (s.supporters ?? []).filter((x) => x !== s.house) }))
+        .filter((x) => x.by.length > 0 && x.s.house != null)
+        .map((x) => ` ${x.by.map((h) => houseName(houses, h)).join(" y ")} apoyó a ${houseName(houses, x.s.house)}.`)
+        .join("");
       if (d.conquered) {
         const prev = d.previousOwner == null ? "la guarnición neutral" : houseName(houses, d.previousOwner);
-        return `${houseName(houses, d.winner)} toma ${tile(d.tile)} a ${prev} y conserva ${troops(d.survivors)}.`;
+        return `${houseName(houses, d.winner)} toma ${tile(d.tile)} a ${prev} y conserva ${troops(d.survivors)}.${helped}`;
       }
-      return `${tile(d.tile)} resiste: ${houseName(houses, d.winner)} conserva ${troops(d.survivors)}.`;
+      return `${tile(d.tile)} resiste: ${houseName(houses, d.winner)} conserva ${troops(d.survivors)}.${helped}`;
+    }
     case "rebote":
       return `Rebote en ${tile(d.tile)}: ${(d.houses as number[]).map((h) => houseName(houses, h)).join(" y ")} chocan con la misma fuerza y nadie entra.`;
     case "choque_frontal":
