@@ -11,9 +11,18 @@ Cada punto se hace en una solicitud de cambios propia, con su prueba, su simulac
 | 1. Apoyo sin elegir origen | Apoyas el primer ataque que llegue a la casilla esa noche: el tuyo si atacas tú; si no, el que se ordenó antes | Parcial (`supportAnyOrigin`, solo ataques propios) |
 | 2. Mesnada frente a jinetes | El jinete cuesta 3 de Oro en vez de 1 | No |
 | 3. Capitán como unidad propia | Se mueve solo; cae preso si lo atacan; libre a las 7 noches o con rescate negociado | Parcial (`captainAlone`, sin rescate) |
-| 4. Jinetes que se cruzan | El cruce por el camino es un choque frontal | Sí (`crossingClash`) |
+| 4. Jinetes que se cruzan | El cruce por el camino es un choque frontal | **Hecho** (`crossingClash` encendido) |
 | 5. Fortificación hasta que la atacan | Mantenimiento de 2 de Piedra por casilla cada domingo | Sí (`fortifyUntilAttacked`, `FORTIFY_UPKEEP` vacío) |
 | 6. Dos guerras a la vez | Descartado | — |
+
+## Dudas resueltas al empezar (21 de octubre de 2026)
+
+1. **Orden de las solicitudes de cambios:** una por punto, en este orden: 4 (cruces), 2 (jinete), 5 (fortificación), 3 (Capitán) y 1 (apoyo).
+2. **«La orden que se dio antes»:** cuenta la hora del último cambio de la orden (`orders.updated_at`), no la de la primera vez.
+3. **Apoyar a otra casa:** el apoyo sigue saliendo de una casilla vecina a la apoyada. En la repetición, la casa apoyada ve quién la apoyó.
+4. **Rescate del Capitán:** solo pide precio quien lo tiene preso, en Oro y sin límite, y puede cambiarlo cuando quiera. La otra casa acepta o rechaza, sin contraoferta. Si acepta, el Capitán vuelve a su castillo en el momento; si nadie paga, se fuga a las 7 noches.
+5. **Capitán solo:** va a la misma distancia que una tropa (vecina o por camino). Necesita una migración, porque `orders.troops` no admite 0.
+6. **Partidas en curso:** todas son de prueba, así que la fortificación nueva vale para todas.
 
 ## Punto 1: apoyo sin elegir origen
 
@@ -79,6 +88,8 @@ El Oro sobra (unas 165 monedas por casa al final), así que en la práctica el j
 5. Diseño, sección 8.11.
 
 ## Punto 4: jinetes que se cruzan
+
+**Hecho** el 21 de octubre de 2026: `crossingClash` encendido, el choque se dibuja en la casilla de en medio (`via` en el suceso `choque_frontal`), y la pestaña Órdenes avisa de las marchas que un enemigo a la vista podría cruzar (`crossingRisks` en `plan.ts`). Simulación en `docs/simulaciones.md`.
 
 **Hoy.** Con las casillas A, B y C en fila, si 3 Mesnadas van de A a B y 4 jinetes cargan de C a A pasando por B, no combaten: cada uno entra en la casilla del otro.
 

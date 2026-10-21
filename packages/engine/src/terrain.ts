@@ -5,7 +5,7 @@
 import { areAdjacent, distance, riverBetween } from "./map";
 import { RIVERS, TERRAIN, UNITS } from "./rules";
 import { isPlain, type Units } from "./units";
-import type { HouseId, Tile, TileType } from "./types";
+import type { HouseId, Tile, TileId, TileType } from "./types";
 
 type Cell = Pick<Tile, "x" | "y" | "type">;
 
@@ -131,6 +131,22 @@ export function marchPath(from: Tile, to: Tile, tiles: Tile[], house: HouseId, u
     if (mid) return [from, mid, to];
   }
   return [from, to];
+}
+
+/**
+ * Dos marchas se cruzan por el camino (bloque 4): una recorre al revés un tramo
+ * de la otra y al menos una es de dos casillas (si las dos son de una casilla,
+ * es un cambio de casilla, que se trata aparte). Devuelve la casilla de en
+ * medio de la marcha larga, donde se dibuja el choque, o null si no se cruzan.
+ */
+export function crossingPoint(pa: TileId[], pb: TileId[]): TileId | null {
+  if (pa.length < 3 && pb.length < 3) return null;
+  for (let i = 0; i + 1 < pa.length; i++) {
+    for (let j = 0; j + 1 < pb.length; j++) {
+      if (pa[i] === pb[j + 1] && pa[i + 1] === pb[j]) return pa.length === 3 ? pa[1]! : pb[1]!;
+    }
+  }
+  return null;
 }
 
 /** Hay un puente entre dos casillas vecinas: un camino cruza el río que las separa. */

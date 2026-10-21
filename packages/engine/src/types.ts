@@ -146,7 +146,10 @@ export type CampaignEvent =
     }
   | {
       type: "choque_frontal";
+      /** Casillas de salida de los dos grupos. */
       tiles: [TileId, TileId];
+      /** Si se cruzan por el camino (bloque 4): casilla de en medio, donde chocan. */
+      via?: TileId;
       winner: HouseId | null;
       sides: { house: HouseId; strength: number }[];
     }

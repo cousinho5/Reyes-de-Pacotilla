@@ -96,20 +96,21 @@ export const QUEUE = {
 };
 
 /**
- * Retoques del sistema de batalla en estudio (hoja de ruta, bloque 4). Todos
- * apagados: el juego funciona como siempre. El simulador los enciende para
- * comparar (`npm run simular -- --apoyo-libre si`, `--cruces si`, `--fortificar-hasta-ataque si`).
- * - `supportAnyOrigin`: un apoyo al ataque con origen `ANY_ORIGIN` vale para
- *   los ataques de la casa que apoya a esa casilla, vengan de donde vengan.
- * - `crossingClash`: también chocan de frente dos grupos que se cruzan por el
- *   camino (una marcha de dos casillas que recorre al revés la de otra casa).
- * - `captainAlone`: el Capitán se mueve solo, sin tropas, a una casilla propia.
- * - `fortifyUntilAttacked`: un ataque a una casilla fortificada le quita la
- *   fortificación aunque fracase (la duración se elige al fortificar).
+ * Retoques del sistema de batalla (hoja de ruta, bloque 4, `docs/bloque4.md`).
+ * Se encienden uno a uno, cada uno con su simulación. El simulador puede
+ * cambiarlos para comparar (`npm run simular -- --cruces no`, `--apoyo-libre si`,
+ * `--fortificar-hasta-ataque si`).
+ * - `supportAnyOrigin` (apagado): un apoyo al ataque con origen `ANY_ORIGIN`
+ *   vale para los ataques de la casa que apoya a esa casilla, vengan de donde vengan.
+ * - `crossingClash` (encendido): también chocan de frente dos grupos que se
+ *   cruzan por el camino (una marcha de dos casillas que recorre al revés la de otra casa).
+ * - `captainAlone` (apagado): el Capitán se mueve solo, sin tropas, a una casilla propia.
+ * - `fortifyUntilAttacked` (apagado): un ataque a una casilla fortificada le
+ *   quita la fortificación aunque fracase (la duración se elige al fortificar).
  */
 export const BATTLE_TWEAKS = {
   supportAnyOrigin: false,
-  crossingClash: false,
+  crossingClash: true,
   fortifyUntilAttacked: false,
   /** El Capitán puede moverse solo (orden de mover con 0 tropas) entre casillas propias. */
   captainAlone: false,

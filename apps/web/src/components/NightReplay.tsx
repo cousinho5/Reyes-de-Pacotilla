@@ -24,7 +24,7 @@ interface Token {
 type Step =
   | { kind: "marcha"; tokens: Token[]; start: number; dur: number }
   | { kind: "combate"; event: EventView; tile: number; start: number; dur: number }
-  | { kind: "choque"; event: EventView; tiles: [number, number]; start: number; dur: number }
+  | { kind: "choque"; event: EventView; tiles: [number, number]; via?: number; start: number; dur: number }
   | { kind: "rebote"; event: EventView; tile: number; start: number; dur: number }
   | { kind: "asedio"; events: EventView[]; start: number; dur: number }
   | { kind: "repliegue"; tokens: Token[]; start: number; dur: number }
@@ -73,11 +73,17 @@ export function replaySteps(events: EventView[], tiles: TileView[]): { steps: St
         (s.from ?? []).forEach((f, i) => marchas.push({ house: s.house!, from: f, to: d.tile, troops: i === 0 ? s.troops : null }));
       }
       fights.push({ kind: "combate", event: e, tile: d.tile, start: 0, dur: 0 });
-    } else if (e.tipo === "choque_frontal" && (seen(d.tiles[0]) || seen(d.tiles[1]))) {
+    } else if (e.tipo === "choque_frontal" && (seen(d.tiles[0]) || seen(d.tiles[1]) || (d.via != null && seen(d.via)))) {
       const sides = d.sides as { house: number }[];
-      marchas.push({ house: sides[0]!.house, from: d.tiles[0], to: d.tiles[1], troops: null, half: true });
-      marchas.push({ house: sides[1]!.house, from: d.tiles[1], to: d.tiles[0], troops: null, half: true });
-      fights.unshift({ kind: "choque", event: e, tiles: [d.tiles[0], d.tiles[1]], start: 0, dur: 0 });
+      if (d.via != null) {
+        // Se cruzan por el camino (bloque 4): los dos grupos llegan a la casilla de en medio y chocan allí.
+        marchas.push({ house: sides[0]!.house, from: d.tiles[0], to: d.via, troops: null });
+        marchas.push({ house: sides[1]!.house, from: d.tiles[1], to: d.via, troops: null });
+      } else {
+        marchas.push({ house: sides[0]!.house, from: d.tiles[0], to: d.tiles[1], troops: null, half: true });
+        marchas.push({ house: sides[1]!.house, from: d.tiles[1], to: d.tiles[0], troops: null, half: true });
+      }
+      fights.unshift({ kind: "choque", event: e, tiles: [d.tiles[0], d.tiles[1]], ...(d.via != null ? { via: d.via } : {}), start: 0, dur: 0 });
     } else if (e.tipo === "rebote" && seen(d.tile)) {
       fights.push({ kind: "rebote", event: e, tile: d.tile, start: 0, dur: 0 });
     } else if (e.tipo === "asedio" && seen(d.tile)) {
@@ -137,7 +143,7 @@ export function NightReplay({ geo, W, H, tiles, houses, events, seed, resolution
   useEffect(() => {
     if (!current || focused.current === current) return;
     focused.current = current;
-    const id = current.kind === "combate" || current.kind === "rebote" ? current.tile : current.kind === "choque" ? current.tiles[0] : null;
+    const id = current.kind === "combate" || current.kind === "rebote" ? current.tile : current.kind === "choque" ? (current.via ?? current.tiles[0]) : null;
     const tile = id != null ? byId.get(id) : undefined;
     if (tile) onFocus(tile.x, tile.y);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -219,7 +225,13 @@ export function NightReplay({ geo, W, H, tiles, houses, events, seed, resolution
           <Battle
             step={current}
             p={p}
-            at={pct(current.kind === "choque" ? midpoint(pos(current.tiles[0]), pos(current.tiles[1])) : pos(current.tile))}
+            at={pct(
+              current.kind === "choque"
+                ? current.via != null
+                  ? pos(current.via)
+                  : midpoint(pos(current.tiles[0]), pos(current.tiles[1]))
+                : pos(current.tile),
+            )}
             houses={houses}
             events={events}
           />
@@ -376,6 +388,8 @@ function captionOf(
       return line ?? describeEvent(step.event, ctx.houses, ctx.tiles) ?? "";
     }
     case "choque":
+      if (step.via != null && p < 0.55) return `Dos ejércitos se cruzan por el camino en ${tileName(step.via)}.`;
+      return p < 0.55 ? "Dos ejércitos se encuentran." : (describeEvent(step.event, ctx.houses, ctx.tiles) ?? "");
     case "rebote":
       return p < 0.55 ? "Dos ejércitos se encuentran." : (describeEvent(step.event, ctx.houses, ctx.tiles) ?? "");
     case "asedio": {

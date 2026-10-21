@@ -1451,6 +1451,12 @@ label.check {
   font-size: 0.92rem;
   color: var(--chalk);
 }
+.order-warning {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.85rem;
+  color: #ff8a6e;
+}
 .threat-swatch {
   flex: none;
   width: 16px;

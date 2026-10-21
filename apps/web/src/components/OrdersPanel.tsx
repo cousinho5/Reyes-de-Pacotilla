@@ -1,7 +1,8 @@
 import { useMemo } from "react";
+import { crossingRisks } from "@reyes/engine";
 import type { GameState, OrderView } from "../api";
-import { describeEvent, formatWhen, nightLabel, troopsText } from "../ui";
-import { nextResolution, nightOf, project, queueNights } from "../plan";
+import { describeEvent, formatWhen, houseName, nightLabel, troopsText, withArticle } from "../ui";
+import { nextResolution, nightOf, project, queueNights, toOrder } from "../plan";
 
 interface Props {
   state: GameState;
@@ -32,6 +33,15 @@ export function OrdersPanel({ state, draft, setDraft, onPlan }: Props) {
   }, [draft, tiles, state]);
 
   const remove = (o: OrderView) => setDraft(draft.filter((x) => x !== o));
+
+  // Cruces por el camino (bloque 4): marchas de esta noche que un enemigo a la vista podría cruzar.
+  const crossings = useMemo(() => {
+    const me = state.yo.casa;
+    if (me == null) return new Map<OrderView, number[]>();
+    const tonight = draft.filter((o) => nightOf(o, next) === next);
+    const risks = crossingRisks(tiles, me, tonight.map((o) => toOrder(o, me)));
+    return new Map(risks.map((r) => [tonight[r.order]!, r.by]));
+  }, [draft, tiles, state.yo.casa, next]);
 
   return (
     <div>
@@ -70,6 +80,11 @@ export function OrdersPanel({ state, draft, setDraft, onPlan }: Props) {
                     <li key={i}>
                       <span>
                         <OrderText o={o} name={name} />
+                        {crossings.has(o) && (
+                          <small className="order-warning">
+                            Por el camino puede salirle al paso {withArticle(houseName(state.casas, crossings.get(o)![0]!))}: chocaríais de frente.
+                          </small>
+                        )}
                       </span>
                       {open && (
                         <button className="link" aria-label="Quitar orden" onClick={() => remove(o)}>
