@@ -53,6 +53,38 @@ npm run simular -- --semanas 4                    # duración de la partida
 npm run simular -- --json datos.json              # además, todos los datos
 ```
 
+## Mapa con geografía y Prado (21 de octubre de 2026, fase 1 del bloque 1, aplicado)
+
+Generador nuevo (`generateGeographicMap`, valores en `MAP_GEN`): altura y humedad con ruido, costa en dos lados opuestos, ajuste de salida y pulido de justicia. El de antes se compara con `--geografia no`.
+
+**Mapas** (40 por número de casas, hexágonos). «Vecinas iguales»: parte de las parejas de neutrales vecinas del mismo tipo. «Diferencia de entorno»: valor de alrededor del castillo mejor situado menos el del peor (mediana y máximo).
+
+| Casas | Vecinas iguales (antes → ahora) | Diferencia de entorno (antes → ahora) | Recursos básicos que faltan a 2 pasos por castillo |
+| --- | --- | --- | --- |
+| 4 | 11% → 22% | 0,7 (1,2) → 0,4 (1,2) | 0,03 → 0,03 |
+| 5 | 11% → 21% | 1,1 (1,6) → 0,4 (0,7) | 0,12 → 0,01 |
+| 6 | 12% → 20% | 0,7 (1,1) → 0,4 (0,8) | 0,13 → 0 |
+| 7 | 14% → 22% | 0,9 (1,4) → 0,5 (1,0) | 0,20 → 0,01 |
+| 8 | 14% → 25% | 1,0 (1,8) → 0,6 (1,4) | 0,13 → 0,01 |
+
+Cumple las dos condiciones de la fase: entre un 60% y un 100% más de vecinas del mismo terreno, y castillos más igualados que antes. Elegir el mapa solo por justicia deshacía la geografía (13-18% de vecinas iguales), así que el generador premia también lo agrupado (`clusterWeight` 20) con manchas de ruido de 3,5 casillas.
+
+**Partidas** (1.500 mezcladas de 6 semanas, 4-8 casas, mismas semillas):
+
+| Dato | Mapa de antes | Con geografía |
+| --- | --- | --- |
+| El líder de la semana 2 gana | 29% | 30% |
+| Casas con deserciones | 15% | 12% |
+| Prestigio medio del ganador | 64,7 | 64,6 |
+| Diferencia media 1.º - 2.º | 8,0 | 8,5 |
+| Combates entre casas (6 casas) | 65,9 | 72,8 |
+| Gana la guerrera / la arquitecta | 22% / 10% | 20% / 10% |
+| Objetivo «puerto y montaña» cumplido | 36% | 28% |
+
+- **Campos y Prado.** Con los campos al 15% y ese 5% hecho Prado, las deserciones subían del 15% al 19% (500 partidas): falta Pan. Se quedan al 20% y el Prado sale solo de la mitad de los páramos.
+- **Objetivo «puerto y fortaleza».** Con la geografía, los puertos quedan en la costa y las fortalezas tierra adentro: bajó del 16% al 13% (500 partidas). Se cambia por «puerto y montaña», que se cumple un 28-29%, como «fortaleza» (31%).
+- Las travesías por mar bajan (0,5 → 0,1 por partida): con los puertos en dos costas, casi nunca se tienen dos a la vez.
+
 ## Prestigio por casilla de 3 a 2 (21 de octubre de 2026, fase 0 del bloque 1, aplicado)
 
 `PRESTIGE.perTile` pasa de 3 a 2 (fortaleza 5 y páramo 1, igual). 500 partidas mezcladas de 6 semanas, de 4 a 8 casas, antes y después con las mismas semillas:
