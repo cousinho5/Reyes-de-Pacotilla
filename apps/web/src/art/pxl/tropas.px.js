@@ -15,35 +15,35 @@ pal({
 })
 
 // ----------------------------------------------------------------- piezas (9x14, 13x14, 14x11)
-// Soldado: capacete con brillo y sombra, cofia de malla, ojos, tabardo con cruz de oro,
-// cinturón con hebilla, rodillas y botas; lanza con brillo en el asta.
+// Soldado: el de antes de pxl (yelmo con visera, tabardo liso de la casa, lanza).
 sprite("soldado", `
-  ...uT...n
-  ..uTTS..T
-  .tTTTTSsJ
-  ..tasA..j
-  ..tAAt..J
-  .tmmmdt.j
-  tmmymddaj
-  tmyyydd.J
-  .mmymdd.j
-  .hhhyhh.J
-  .mmmddd.j
-  ..St.tS.J
-  ..SS.SS.j
+  ...TT...u
+  ..TuTT..T
+  ..TTTT..j
+  ..ssSs..j
+  ..sssS..j
+  .TTmmTT.j
+  TmmdmmTsj
+  TmdmdmT.j
+  .mmdmm..j
+  .dmmdd..j
+  ..dddd..j
+  ..hh.hh..
+  ..h...h..
   .hh...hh.`)
 
-// Jinete: caballo pardo de perfil hacia la izquierda, crin y cola oscuras, silla, lanza en alto.
+// Jinete: el de antes (yelmo con visera, tabardo liso) sobre el caballo nuevo: de perfil
+// hacia la izquierda, con cabeza, crin, cola y silla.
 sprite("jinete", `
-  .....uT..n...
-  ....uTTS.T...
-  ...tTTTTSJ...
-  .....tasAj...
-  .h...tAAaJ...
-  hjh.tmmmdj...
-  jJjhmmymdJ...
-  JJ.jmyyydjjh.
-  J..jjhhyhjjHh
+  .....TT..u...
+  ....TuTT.T...
+  ....TTTT.j...
+  ....ssSs.j...
+  .h..sssS.j...
+  hjh.TmmTTj...
+  jJjhTmdmTj...
+  JJ.jmmdmmjjh.
+  J..jjdmddjjHh
   ...VjjjjjjJH.
   ....jHjjjjH.h
   ....H.H.J.H..
