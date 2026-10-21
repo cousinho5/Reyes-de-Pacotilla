@@ -20,7 +20,8 @@ export type TileType =
   | "montana"
   | "puerto"
   | "fortaleza"
-  | "paramo";
+  | "paramo"
+  | "prado";
 
 export interface Tile {
   id: TileId;

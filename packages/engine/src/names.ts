@@ -82,6 +82,18 @@ export const TILE_NAMES: Record<Exclude<TileType, "castillo">, TileName[]> = {
     { name: "Secarral Mayor", note: "Hay un Secarral Menor. Es peor." },
     { name: "Los Cardos Altivos", note: "Lo único que florece aquí es el orgullo." },
   ],
+  prado: [
+    { name: "El Prado de las Vacas Filósofas", note: "Rumian despacio y opinan de todo." },
+    { name: "Pradera del Bostezo", note: "Nadie ha cruzado despierto." },
+    { name: "Las Margaritas Indecisas", note: "Me quiere, no me quiere, depende del Prestigio." },
+    { name: "Vega del Picnic Real", note: "Aquí comió un rey una vez. Aún buscan la servilleta." },
+    { name: "El Césped del Obispo", note: "Prohibido pisarlo, salvo con ejército." },
+    { name: "Prado Verde Sin Más", note: "El cartógrafo tenía prisa." },
+    { name: "La Hondonada Tranquila", note: "Tranquila hasta que llegan los jinetes." },
+    { name: "Pastos del Carnero Tozudo", note: "El carnero no piensa moverse." },
+    { name: "Campo de las Amapolas", note: "Muy bonito. No da de comer." },
+    { name: "La Pradería del Trovador", note: "Aquí compuso tres canciones y ninguna buena." },
+  ],
 };
 
 /** Nombre del castillo de una casa, con la preposición bien puesta. */

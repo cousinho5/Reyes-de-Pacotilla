@@ -29,6 +29,8 @@ export interface GameRow {
   start_date: string | null;
   map_cols: number | null;
   map_rows: number | null;
+  /** Lados con costa (bloque 1); NULL en los mapas de antes. */
+  map_coast: "oeste-este" | "norte-sur" | null;
   current_resolution: number;
   invite_code: string;
   created_by: number;

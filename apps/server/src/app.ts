@@ -434,9 +434,9 @@ app.post("/api/partidas/:id/empezar", async (c) => {
   const objectives = dealObjectives(game.seed, houses.map((h) => h.id));
   const statements: D1PreparedStatement[] = [
     db.prepare(
-      `UPDATE games SET status = 'active', start_date = ?, map_cols = ?, map_rows = ?, started_at = ?,
+      `UPDATE games SET status = 'active', start_date = ?, map_cols = ?, map_rows = ?, map_coast = ?, started_at = ?,
          sim_now = ?, played_house_id = ? WHERE id = ? AND status = 'lobby'`,
-    ).bind(startDate, map.cols, map.rows, new Date().toISOString(), simNow, test ? (mine?.id ?? null) : null, game.id),
+    ).bind(startDate, map.cols, map.rows, map.coast, new Date().toISOString(), simNow, test ? (mine?.id ?? null) : null, game.id),
   ];
   for (const t of map.tiles) {
     const name = t.type === "castillo" ? castleName(houses.find((h) => h.id === t.castleOf)!.name) : t.name;
@@ -532,6 +532,8 @@ app.get("/api/partidas/:id", async (c) => {
       inicio: game.start_date,
       columnas: game.map_cols,
       filas: game.map_rows,
+      /** Lados con costa (bloque 1); null en los mapas de antes. */
+      costa: game.map_coast ?? null,
       resolucionActual: game.current_resolution,
       totalResoluciones: totalResolutions(game.weeks, rhythmOf(game).days),
       /** Días con resolución (0 = lunes) y resoluciones que dura fortificar. */

@@ -67,6 +67,7 @@ export const TILE_LABEL: Record<TileType, string> = {
   puerto: "Puerto",
   fortaleza: "Fortaleza",
   paramo: "Páramo",
+  prado: "Prado",
 };
 
 /** Tipos de tropa (diseño v3). */
@@ -117,6 +118,7 @@ export const TERRAIN_NOTE: Record<TileType, string> = {
   puerto: "Travesía: desde un puerto tuyo llegas a cualquier otro puerto en una noche.",
   fortaleza: "+50% de defensa.",
   paramo: "Terreno llano y yermo: no produce nada.",
+  prado: "Terreno llano: no produce nada, pero los jinetes cargan por él.",
 };
 
 export const TILE_MARK: Record<TileType, string> = {
@@ -128,6 +130,7 @@ export const TILE_MARK: Record<TileType, string> = {
   puerto: "⚓",
   fortaleza: "▣",
   paramo: "∴",
+  prado: "⁂",
 };
 
 export function houseColor(houses: HouseInfo[], id: number | null): string | null {

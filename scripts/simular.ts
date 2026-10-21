@@ -11,10 +11,11 @@
 //   npm run simular -- --tropas no        # solo Mesnada (sin Jinetes ni Catapultas), para comparar
 //   npm run simular -- --asedios no       # sin asedios, para comparar
 //   npm run simular -- --capitan no       # sin Capitán ni Gloria, para comparar
+//   npm run simular -- --geografia no     # mapa de antes del bloque 1 (sin geografía ni Prado), para comparar
 //   npm run simular -- --json simulacion.json   # además, todos los datos en JSON
 
 import { writeFileSync } from "node:fs";
-import { BATTLE_TWEAKS, BOT_TWEAKS, CROWN, ECONOMY_TWEAKS, FORTIFY_COST, FORTIFY_UPKEEP, PRESTIGE, SIEGE, UNITS, UPGRADE_COST } from "../packages/engine/src";
+import { BATTLE_TWEAKS, BOT_TWEAKS, CROWN, ECONOMY_TWEAKS, MAP_GEN, FORTIFY_COST, FORTIFY_UPKEEP, PRESTIGE, SIEGE, UNITS, UPGRADE_COST } from "../packages/engine/src";
 import {
   CLASSIC_STRATEGIES,
   OBJECTIVES,
@@ -84,6 +85,15 @@ if (args.has("riqueza-tope")) PRESTIGE.goldMax = Number(args.get("riqueza-tope")
 //   --corona si                     cambio con la Corona a precio dinámico (CROWN en rules.ts)
 //   --mercenarios alquiler|soldada  mercenarios con Oro (MERCENARIES en rules.ts)
 //   --mejora-madera-piedra 1.3      multiplica la Madera y la Piedra de las mejoras
+// Bloque 1: --geografia no usa el generador de mapas de antes (sin geografía ni Prado).
+if (args.get("geografia") === "no") MAP_GEN.geography = false;
+// --campos 0.2: parte de campos en el mapa con geografía (lo que falte hasta 0,2 es Prado).
+if (args.has("campos")) {
+  MAP_GEN.mix.campos = Number(args.get("campos"));
+  MAP_GEN.mix.prado = Math.max(0, 0.2 - MAP_GEN.mix.campos);
+}
+// --prado-paramos 0.5: parte de los páramos que pasan a Prado.
+if (args.has("prado-paramos")) MAP_GEN.pradoShare = Number(args.get("prado-paramos"));
 if (args.get("corona") === "si") ECONOMY_TWEAKS.crown = true;
 if (args.has("corona-base")) CROWN.base = Number(args.get("corona-base"));
 //   --corona-referencia oro|media   --corona-compra 0.4 (lo que paga la Corona respecto al precio)
@@ -144,7 +154,7 @@ function winStats(group: (SimHouseResult & { players: number })[]) {
 }
 
 console.log(
-  `# Simulación: ${games} partidas de ${weeks} semanas, ${minPlayers}-${maxPlayers} casas, modo ${mode}${args.get("eventos") === "no" ? ", sin eventos" : ""}${args.get("terreno") === "no" ? ", sin terreno" : ""}${args.get("tropas") === "no" ? ", solo Mesnada" : ""}${args.get("asedios") === "no" ? ", sin asedios" : ""}${args.get("capitan") === "no" ? ", sin Capitán ni Gloria" : ""}`,
+  `# Simulación: ${games} partidas de ${weeks} semanas, ${minPlayers}-${maxPlayers} casas, modo ${mode}${args.get("eventos") === "no" ? ", sin eventos" : ""}${args.get("terreno") === "no" ? ", sin terreno" : ""}${args.get("tropas") === "no" ? ", solo Mesnada" : ""}${args.get("asedios") === "no" ? ", sin asedios" : ""}${args.get("capitan") === "no" ? ", sin Capitán ni Gloria" : ""}${args.get("geografia") === "no" ? ", mapa sin geografía" : ""}`,
 );
 console.log(`(${((Date.now() - started) / 1000).toFixed(1)} s)`);
 

@@ -10,7 +10,9 @@ import type { BuildingKind, HouseId, Tile } from "./types";
 const T = OBJECTIVE_TARGETS;
 
 export const OBJECTIVES = {
-  puerto_y_fortaleza: "Controlar un puerto y una fortaleza al final de la partida.",
+  // Antes «puerto y fortaleza»: con la geografía del bloque 1 los puertos quedan
+  // en la costa y las fortalezas tierra adentro, y solo se cumplía el 13% de las veces.
+  puerto_y_montana: "Controlar un puerto y una montaña al final de la partida.",
   niveles_17: `Sumar ${T.totalLevels} niveles entre tus cinco edificios (se empieza con 7).`,
   tesoro: `Terminar con ${T.gold} de Oro o más en el tesoro.`,
   comercio_con_tres: `Cerrar tratos válidos con ${T.tradePartners} casas distintas a lo largo de la partida.`,
@@ -47,8 +49,8 @@ export function objectiveMet(key: ObjectiveKey, ctx: ObjectiveContext): boolean 
   const own = ctx.tiles.filter((t) => t.owner === ctx.house);
   const levels = Object.values(ctx.buildings);
   switch (key) {
-    case "puerto_y_fortaleza":
-      return own.some((t) => t.type === "puerto") && own.some((t) => t.type === "fortaleza");
+    case "puerto_y_montana":
+      return own.some((t) => t.type === "puerto") && own.some((t) => t.type === "montana");
     case "niveles_17":
       return levels.reduce((a, l) => a + l, 0) >= T.totalLevels;
     case "tesoro":
