@@ -20,6 +20,7 @@ import { CELL } from "./cell";
 import { edgeDistance, makeGeo, type Geo, type GridKind } from "./grid";
 import type { Palette } from "./Pixels";
 import { WORLD, noise, shade } from "./tiles";
+import { catapulta, jinete, soldado } from "./tropas";
 
 export { CELL };
 
@@ -1145,22 +1146,7 @@ function soldiers(
   // Cuántas figuras van a caballo: en proporción, y al menos una si hay jinetes.
   const riders = jinetes > 0 ? Math.max(1, Math.round((n * jinetes) / troops)) : 0;
   const [m, d] = flag ?? ["t", "S"];
-  const body = [
-    "...TT...u",
-    "..TuTT..T",
-    "..TTTT..j",
-    "..ssSs..j",
-    "..sssS..j",
-    ".TT" + m + m + "TT.j",
-    "T" + m + m + d + m + m + "Tsj",
-    "T" + m + d + m + d + m + "T.j",
-    "." + m + m + d + m + m + "..j",
-    "." + d + m + m + d + d + "..j",
-    ".." + d + d + d + d + "..j",
-    "..hh.hh..",
-    "..h...h..",
-    ".hh...hh.",
-  ];
+  const body = soldado(m, d);
   // Formación: tres filas escalonadas, de atrás adelante.
   const slots: [number, number][] = [
     [27, 26],
@@ -1185,7 +1171,7 @@ function soldiers(
     const jx = Math.floor(noise(lx, ly, seed) * 3) - 1;
     if (riderSlots.has(slot)) {
       cv.shadow(x0 + lx + jx + 6, y0 + ly + 14, 6.5, 1.3);
-      l.stamp(horseman(m, d), x0 + lx + jx - 2, y0 + ly);
+      l.stamp(jinete(m, d), x0 + lx + jx - 2, y0 + ly);
       continue;
     }
     cv.shadow(x0 + lx + jx + 4, y0 + ly + 14, 4.5, 1.2);
@@ -1197,7 +1183,7 @@ function soldiers(
     const cy = y0 + 44;
     if (!isWater(cx + 6, cy + 9)) {
       cv.shadow(cx + 7, cy + 11, 8, 1.4);
-      l.stamp(CATAPULT, cx, cy);
+      l.stamp(catapulta, cx, cy);
     }
   }
   if (troops >= 6 && flag && used[0]) {
@@ -1209,41 +1195,6 @@ function soldiers(
   }
   l.paint(cv);
 }
-
-/** Jinete: caballo pardo y tabardo de la casa (13x14). */
-function horseman(m: string, d: string): string[] {
-  return [
-    "....TT.......",
-    "...TuTT......",
-    "...TTTT......",
-    "...sSs.......",
-    "..T" + m + m + "T.....u",
-    "..T" + m + d + m + "T...j.",
-    "..." + m + m + "jj.jj..",
-    ".jJ" + d + d + "JJjJj..",
-    "JJjjjjJjjJ...",
-    ".jJjjjjjjj...",
-    "..j.h..j.h...",
-    "..h.h..h.h...",
-    "..h.h..h.h...",
-    ".hh.hh.hh.hh.",
-  ];
-}
-
-/** Catapulta de madera con la cuchara cargada (14x11). */
-const CATAPULT = [
-  "..........ss..",
-  ".........sSSs.",
-  "........jJss..",
-  ".......jJ.....",
-  "......jJ......",
-  ".h...jJ.......",
-  ".hjjjJjjjjjh..",
-  "JjjjJjjjjJjjJ.",
-  "hhhhhhhhhhhhh.",
-  ".hSh.....hSh..",
-  ".hhh.....hhh..",
-];
 
 // ---------------------------------------------------------------------------
 
