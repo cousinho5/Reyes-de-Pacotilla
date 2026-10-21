@@ -17,7 +17,7 @@
 // - Dos grupos que se cambian de casilla chocan a medio camino sin
 //   bonificación; el ganador sigue y el perdedor se repliega.
 
-import { ANY_ORIGIN, BATTLE_TWEAKS, CAPTAIN, DEFENSE_BONUS, GLORY, SIEGE, UNITS } from "./rules";
+import { ANY_ORIGIN, BATTLE_TWEAKS, CAPTAIN, DEFENSE_BONUS, GLORY, RIVERS, SIEGE, UNITS } from "./rules";
 import {
   addUnits,
   canEnter,
@@ -33,7 +33,7 @@ import {
   type Units,
 } from "./units";
 import { areAdjacent } from "./map";
-import { marchKind, marchPath, terrainDefense } from "./terrain";
+import { crossesRiver, marchKind, marchPath, terrainDefense } from "./terrain";
 import type {
   CampaignEvent,
   CampaignInput,
@@ -310,6 +310,16 @@ export function resolveCampaign(input: CampaignInput): CampaignResult {
         defenseMultiplier(tile, resolution, owner !== null && absent.has(owner), input.defenseBonus ?? 0, breach) +
       sum(defSupports.map((s) => rawStrength(orderUnits(s), tile)));
 
+    // Ríos (bloque 1): quien entra cruzando un río sin puente lucha contra una
+    // defensa con RIVERS.defense más (el tope x2 sigue). Cada grupo cuenta lo
+    // suyo: es como dividir su fuerza por lo que sube la defensa.
+    const absentOwner = owner !== null && absent.has(owner);
+    const plainMult = defenseMultiplier(tile, resolution, absentOwner, input.defenseBonus ?? 0, breach);
+    const riverMult = defenseMultiplier(tile, resolution, absentOwner, (input.defenseBonus ?? 0) + RIVERS.defense, breach);
+    const tileById = new Map(input.tiles.map((t) => [t.id, t]));
+    const crossing = (m: Move) => crossesRiver(paths.get(m)!.map((id) => tileById.get(id)!), input.tiles);
+    const riverFactor = (m: Move) => (crossing(m) ? plainMult / riverMult : 1);
+
     // Agrupar los ataques por casa.
     const byHouse = new Map<HouseId, Move[]>();
     for (const m of hostile) byHouse.set(m.house, [...(byHouse.get(m.house) ?? []), m]);
@@ -318,8 +328,9 @@ export function resolveCampaign(input: CampaignInput): CampaignResult {
       moves: ms,
       units: ms.reduce((u, m) => addUnits(u, m.units), { mesnada: 0, jinetes: 0, catapultas: 0 } as Units),
       troops: sum(ms.map((m) => m.troops)),
-      strength: sum(ms.map(attackStrength)),
+      strength: sum(ms.map((m) => attackStrength(m) * riverFactor(m))),
       supporters: unique(ms.flatMap((m) => attackSupport(m).map((s) => s.house))),
+      river: ms.some(crossing),
     }));
 
     const top = Math.max(defStrength, ...attackers.map((a) => a.strength));
@@ -341,6 +352,7 @@ export function resolveCampaign(input: CampaignInput): CampaignResult {
         troops: a.troops,
         supporters: a.supporters,
         from: unique(a.moves.map((m) => m.from)),
+        ...(a.river ? { river: true } : {}),
       })),
     ];
 

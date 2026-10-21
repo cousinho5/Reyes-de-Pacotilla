@@ -219,6 +219,9 @@ export interface SimGameResult {
     /** Ataques contra casillas fortificadas y cuántos la tomaron. */
     attacksOnFortified: number;
     attacksOnFortifiedWon: number;
+    /** Bloque 1: ataques que cruzan un río sin puente y cuántos toman la casilla. */
+    riverAttacks: number;
+    riverAttacksWon: number;
     /** Piedra u Oro pagados por mantener fortificaciones y fortificaciones desmanteladas. */
     fortifyUpkeep: number;
     fortifyDropped: number;
@@ -318,6 +321,7 @@ function runGame(opts: SimOptions): SimGameResult {
     troops: t.troops,
     fortifiedUntil: null,
     castleOf: t.castleOf ?? null,
+    ...(t.river ? { river: t.river } : {}),
   }));
   const objectives = dealObjectives(opts.seed, ids);
   const startCastle = (id: HouseId) => tiles.find((t) => t.castleOf === id)?.id ?? null;
@@ -360,7 +364,7 @@ function runGame(opts: SimOptions): SimGameResult {
   const byId = new Map(houses.map((h) => [h.id, h]));
   const trades: { a: HouseId; b: HouseId; day: number; valid: boolean }[] = [];
   const absent = houses.filter((h) => h.strategy === "ausente").map((h) => h.id);
-  const neutralTotal = tiles.filter((t) => t.owner == null).length;
+  const neutralTotal = tiles.filter((t) => t.owner == null && t.type !== "lago").length;
   const totalResolutions = opts.weeks * RHYTHM.days.length;
   let resolution = 0;
   let combatsVsNeutral = 0;
@@ -398,7 +402,7 @@ function runGame(opts: SimOptions): SimGameResult {
     tiles = tiles.map((t) => (cut.has(t.id) ? clampUnits({ ...t, troops: t.troops - cut.get(t.id)! }) : t));
   };
   const mercCount = (h: HouseState) => h.mercs.reduce((a, m) => a + m.n, 0);
-  const battle = { clashes: 0, crossings: 0, chargeAttacks: 0, riderAttacks: 0, fortifies: 0, fortifiedNights: 0, attacksOnFortified: 0, attacksOnFortifiedWon: 0, fortifyUpkeep: 0, fortifyDropped: 0 };
+  const battle = { clashes: 0, crossings: 0, chargeAttacks: 0, riderAttacks: 0, fortifies: 0, fortifiedNights: 0, attacksOnFortified: 0, attacksOnFortifiedWon: 0, riverAttacks: 0, riverAttacksWon: 0, fortifyUpkeep: 0, fortifyDropped: 0 };
   /** Combates entre casas: [casa, rival, resolución]. */
   const fights: [HouseId, HouseId, number][] = [];
 
@@ -818,6 +822,10 @@ function runGame(opts: SimOptions): SimGameResult {
           battle.attacksOnFortified++;
           if (e.conquered) battle.attacksOnFortifiedWon++;
         }
+        for (const side of e.sides.filter((x) => x.role === "ataque" && x.river)) {
+          battle.riverAttacks++;
+          if (e.conquered && e.winner === side.house) battle.riverAttacksWon++;
+        }
         const hs = [...new Set(e.sides.map((x) => x.house).filter((x): x is HouseId => x != null))];
         for (const a of hs) for (const b of hs) if (a !== b) fights.push([a, b, resolution]);
       }
@@ -927,7 +935,7 @@ function runGame(opts: SimOptions): SimGameResult {
     neutralTotal,
     firstHouseCombat,
     firstHouseCombatDay,
-    neutralLeft: tiles.filter((t) => t.owner == null).length,
+    neutralLeft: tiles.filter((t) => t.owner == null && t.type !== "lago").length,
     combatsVsNeutral,
     combatsVsHouse,
     conquestsFromHouses,

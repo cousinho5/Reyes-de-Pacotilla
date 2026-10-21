@@ -110,6 +110,8 @@ export interface TileView {
   /** Asedio: casa que la sitia y noches que lleva. */
   besiegedBy?: number | null;
   siegeNights?: number;
+  /** Ríos por los lados de la casilla (bloque 1): un bit por lado, como en el motor. */
+  river?: number;
   visible: boolean;
   /** Se ve la casilla, pero sus tropas se esconden en el bosque (emboscada). */
   hidden?: boolean;

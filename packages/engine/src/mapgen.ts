@@ -13,7 +13,8 @@
 import { distance, mapSize } from "./map";
 import { TILE_NAMES } from "./names";
 import { seededRandom, shuffle } from "./random";
-import { GRID, MAP_GEN, mapLayout, NEUTRAL_GARRISON, STARTING_TROOPS, TILE_MIX } from "./rules";
+import { GRID, MAP_GEN, mapLayout, NEUTRAL_GARRISON, RIVERS, STARTING_TROOPS, TILE_MIX } from "./rules";
+import { traceRivers } from "./rivers";
 import type { HouseId, Tile, TileType } from "./types";
 
 export type NeutralType = Exclude<TileType, "castillo">;
@@ -49,6 +50,7 @@ const TYPE_VALUE: Record<NeutralType, number> = {
   fortaleza: 0.6,
   paramo: 0,
   prado: 0,
+  lago: 0,
 };
 const BASIC: NeutralType[] = ["campos", "bosque", "cantera", "montana"];
 const PRODUCING: NeutralType[] = ["campos", "bosque", "cantera", "montana", "puerto"];
@@ -169,24 +171,30 @@ function buildTiles(
   return tiles;
 }
 
-/** Cuántos páramos y Prados lleva un mapa con geografía. */
-export function wastelandSplit(paramos: number): { paramos: number; prados: number } {
+/**
+ * Cuántos páramos, Prados y lagos lleva un mapa con geografía a partir de los
+ * páramos del tamaño de mapa: la mitad pasan a Prado y los lagos (fase 2)
+ * ocupan el sitio de otros (sin `houses`, ninguno).
+ */
+export function wastelandSplit(paramos: number, houses?: number): { paramos: number; prados: number; lakes: number } {
   const prados = Math.round(paramos * MAP_GEN.pradoShare);
-  return { paramos: paramos - prados, prados };
+  const lakes =
+    houses != null && RIVERS.enabled && GRID.kind === "hex" ? Math.min(paramos - prados, RIVERS.lakes[houses] ?? 0) : 0;
+  return { paramos: paramos - prados - lakes, prados, lakes };
 }
 
 /** Generador con geografía (bloque 1, fase 1). */
 export function generateGeographicMap(seed: string, houses: HouseId[], layout?: MapLayoutOverride): GeneratedMap {
   const { cols, rows } = layout ?? mapSize(houses.length);
   const sizeParamos = layout?.paramos ?? (houses.length >= 4 && houses.length <= 8 ? mapLayout(houses.length as 4 | 5 | 6 | 7 | 8).paramos : 0);
-  const { paramos, prados } = wastelandSplit(sizeParamos);
+  const { paramos, prados, lakes } = wastelandSplit(sizeParamos, houses.length);
   const rand = seededRandom(seed);
   const ring = perimeter(cols, rows);
   const castleOrder = shuffle(houses, rand);
   const corners = new Set([0, cols - 1, (rows - 1) * cols, rows * cols - 1]);
   const b = board(cols, rows);
 
-  let best: { castles: number[]; free: number[]; types: Cells; score: number; coast: Coast } | null = null;
+  let best: { castles: number[]; free: number[]; types: Cells; score: number; coast: Coast; geo: Geography } | null = null;
   for (let attempt = 0; attempt < MAP_GEN.attempts; attempt++) {
     const offset = Math.floor(rand() * ring.length);
     const castles = houses.map((_, i) => {
@@ -196,7 +204,7 @@ export function generateGeographicMap(seed: string, houses: HouseId[], layout?: 
     const free = b.cells.filter((i) => !castles.includes(i));
     const coast: Coast = rand() < 0.5 ? "oeste-este" : "norte-sur";
     const geo = geography(rand, b, coast);
-    const types = placeByGeography(b, free, castles, geo, coast, paramos, prados);
+    const types = placeByGeography(b, free, castles, geo, coast, paramos, prados, lakes);
     if (!types) continue;
     if (MAP_GEN.balance) balanceStarts(b, free, types, castles);
     const cornerPenalty = castles.filter((c) => corners.has(c)).length;
@@ -208,14 +216,29 @@ export function generateGeographicMap(seed: string, houses: HouseId[], layout?: 
       evenOut(b, free, types, castles);
       score = scoreOf();
     }
-    if (!best || score < best.score) best = { castles, free, types, score, coast };
+    if (!best || score < best.score) best = { castles, free, types, score, coast, geo };
   }
   if (!best) throw new Error("No se encontró una colocación válida del mapa");
   const xy = (i: number): [number, number] => [i % cols, Math.floor(i / cols)];
+  const tiles = buildTiles(rand, houses, castleOrder, best.castles.map(xy), best.free.map(xy), best.free.map((i) => best!.types[i]!));
+  // Ríos (fase 2): bajan de las montañas a la costa por los lados entre casillas.
+  if (RIVERS.enabled) {
+    const at = new Map(tiles.map((t) => [`${t.x},${t.y}`, t]));
+    const { height } = best.geo;
+    const river = traceRivers({
+      cols,
+      rows,
+      coast: best.coast,
+      typeAt: (x, y) => at.get(`${x},${y}`)!.type,
+      heightAt: (x, y) => height[y * cols + x]!,
+      count: RIVERS.rivers[houses.length] ?? 0,
+    });
+    for (const [k, bits] of river) at.get(k)!.river = bits;
+  }
   return {
     cols,
     rows,
-    tiles: buildTiles(rand, houses, castleOrder, best.castles.map(xy), best.free.map(xy), best.free.map((i) => best!.types[i]!)),
+    tiles,
     unfairness: best.score,
     spread: fairness(b, best.free, best.types, best.castles).spread,
     coast: best.coast,
@@ -340,8 +363,9 @@ function placeByGeography(
   coast: Coast,
   paramos: number,
   prados: number,
+  lakes = 0,
 ): Cells | null {
-  const mix = neutralMix(free.length - paramos - prados, MAP_GEN.mix);
+  const mix = neutralMix(free.length - paramos - prados - lakes, MAP_GEN.mix);
   const count = (t: NeutralType) => mix.filter((m) => m === t).length + (t === "paramo" ? paramos : 0) + (t === "prado" ? prados : 0);
   const types: Cells = new Array(b.cells.length);
   const { height: h, moisture: m } = geo;
@@ -376,6 +400,21 @@ function placeByGeography(
     if (!take("fortaleza", 1, spaced.length ? spaced : ok, (i) => h[i]! + 0.15 * Math.min(castleDist.get(i)!, 4))) return null;
     forts.push(free.find((i) => types[i] === "fortaleza" && !forts.includes(i))!);
   }
+  // Lagos (fase 2): en lo bajo y húmedo, tierra adentro, lejos de los castillos y
+  // sin cortar el mapa en dos.
+  for (let k = 0; k < lakes; k++) {
+    const candidates = open()
+      .filter((i) => castleDist.get(i)! >= 2 && coastSteps(b, i, coast) >= 1 && !b.adj[i]!.some((j) => types[j] === "lago"))
+      .sort((x, y) => m[y]! - h[y]! - (m[x]! - h[x]!) || x - y);
+    const lake = candidates.find((i) => {
+      types[i] = "lago";
+      const ok = connected(b, types);
+      types[i] = undefined;
+      return ok;
+    });
+    if (lake == null) return null;
+    types[lake] = "lago";
+  }
   // Páramos en lo más seco, nunca junto a un castillo.
   if (!take("paramo", count("paramo"), open().filter((i) => castleDist.get(i)! >= 2), (i) => -m[i]!)) return null;
   // Montañas en lo más alto; canteras en las laderas, junto a las montañas.
@@ -386,6 +425,18 @@ function placeByGeography(
   take("prado", count("prado"), open(), (i) => m[i]! - 0.5 * h[i]!);
   for (const i of open()) types[i] = "campos";
   return types;
+}
+
+/** Todas las casillas en las que se puede entrar están unidas entre sí (los lagos no cortan el mapa). */
+function connected(b: Board, types: Cells): boolean {
+  const land = b.cells.filter((i) => types[i] !== "lago");
+  const seen = new Set([land[0]!]);
+  const queue = [land[0]!];
+  while (queue.length) {
+    const i = queue.pop()!;
+    for (const j of b.adj[i]!) if (types[j] !== "lago" && !seen.has(j)) (seen.add(j), queue.push(j));
+  }
+  return seen.size === land.length;
 }
 
 /**

@@ -229,6 +229,7 @@ export const TILE_PRODUCTION: Record<TileType, Partial<Resources>> = {
   fortaleza: {},
   paramo: {},
   prado: {},
+  lago: {},
 };
 
 /** Guarnición neutral inicial según el tipo de casilla. */
@@ -241,6 +242,8 @@ export const NEUTRAL_GARRISON: Record<Exclude<TileType, "castillo">, number> = {
   fortaleza: 8,
   paramo: 2,
   prado: 2,
+  /** En un lago no se puede entrar. */
+  lago: 0,
 };
 
 /**
@@ -347,6 +350,7 @@ export const TILE_MIX: Record<Exclude<TileType, "castillo">, number> = {
   fortaleza: 0.1,
   paramo: 0,
   prado: 0,
+  lago: 0,
 };
 
 /**
@@ -472,6 +476,7 @@ export const MAP_GEN = {
     fortaleza: 0.1,
     paramo: 0,
     prado: 0,
+    lago: 0,
   } as Record<Exclude<TileType, "castillo">, number>,
   pradoShare: 0.5,
   noiseScale: 3.5,
@@ -481,4 +486,19 @@ export const MAP_GEN = {
   balance: true,
   /** Peso de lo agrupado del terreno al elegir entre los mapas probados (frente a la justicia). */
   clusterWeight: 20,
+};
+
+/**
+ * Ríos, puentes y lagos (bloque 1, fase 2). Es un objeto para que el
+ * simulador pueda apagarlos (`enabled: false`: ni ríos ni lagos) y comparar.
+ * - `defense`: atacar cruzando un río suma esto a la defensa (el tope x2 sigue).
+ *   Donde un camino cruza el río hay un puente y no cuenta.
+ * - `rivers`, `lakes`: cuántos hay según el número de casas. Los lagos ocupan
+ *   el sitio de un páramo y no se puede entrar en ellos.
+ */
+export const RIVERS = {
+  enabled: true,
+  defense: 0.25,
+  rivers: { 4: 1, 5: 1, 6: 2, 7: 2, 8: 2 } as Record<number, number>,
+  lakes: { 4: 1, 5: 1, 6: 2, 7: 2, 8: 2 } as Record<number, number>,
 };

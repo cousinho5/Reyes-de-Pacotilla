@@ -102,6 +102,8 @@ export interface TileRow {
   /** Asedio: casa que la tiene sitiada y noches que lleva. */
   besieged_by: number | null;
   siege_nights: number;
+  /** Ríos por los lados de la casilla (bloque 1, 0011). */
+  river: number;
 }
 
 export async function loadGame(db: D1Database, gameId: number): Promise<GameRow | null> {
@@ -116,7 +118,7 @@ export async function loadHouses(db: D1Database, gameId: number): Promise<HouseR
 export async function loadTiles(db: D1Database, gameId: number): Promise<TileRow[]> {
   const { results } = await db
     .prepare(
-      "SELECT id, x, y, type, name, owner_house_id, troops, jinetes, catapultas, fortified_until, castle_of, besieged_by, siege_nights FROM tiles WHERE game_id = ? ORDER BY y, x",
+      "SELECT id, x, y, type, name, owner_house_id, troops, jinetes, catapultas, fortified_until, castle_of, besieged_by, siege_nights, river FROM tiles WHERE game_id = ? ORDER BY y, x",
     )
     .bind(gameId)
     .all<TileRow>();
@@ -136,6 +138,7 @@ export function toEngineTiles(rows: TileRow[]): Tile[] {
     fortifiedUntil: t.fortified_until,
     castleOf: t.castle_of,
     ...(t.besieged_by != null ? { besiegedBy: t.besieged_by, siegeNights: t.siege_nights } : {}),
+    ...(t.river ? { river: t.river } : {}),
   }));
 }
 

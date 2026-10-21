@@ -19,6 +19,7 @@ const VALUE: Record<TileType, number> = {
   bosque: 0,
   paramo: -0.5,
   prado: -0.5,
+  lago: -10,
   castillo: -1,
 };
 

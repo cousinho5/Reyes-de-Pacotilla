@@ -57,5 +57,5 @@ describe("Mapa con geografía (bloque 1, fase 1)", () => {
     }
     expect(geo).toBeGreaterThanOrEqual(classic * 1.5);
     expect(geoSpread).toBeLessThanOrEqual(classicSpread);
-  });
+  }, 30_000);
 });

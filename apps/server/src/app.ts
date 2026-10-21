@@ -442,8 +442,8 @@ app.post("/api/partidas/:id/empezar", async (c) => {
     const name = t.type === "castillo" ? castleName(houses.find((h) => h.id === t.castleOf)!.name) : t.name;
     statements.push(
       db.prepare(
-        "INSERT INTO tiles (game_id, x, y, type, name, castle_of, owner_house_id, troops) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-      ).bind(game.id, t.x, t.y, t.type, name, t.castleOf ?? null, t.owner, t.troops),
+        "INSERT INTO tiles (game_id, x, y, type, name, castle_of, owner_house_id, troops, river) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      ).bind(game.id, t.x, t.y, t.type, name, t.castleOf ?? null, t.owner, t.troops, t.river ?? 0),
     );
   }
   houses.forEach((h, i) => {

@@ -28,14 +28,14 @@ describe("Generación del mapa", () => {
           for (const other of castles) if (other !== c) expect(areAdjacent(c, other)).toBe(false);
         }
 
-        const neutrals = map.tiles.filter((t) => t.type !== "castillo");
+        const neutrals = map.tiles.filter((t) => t.type !== "castillo" && t.type !== "lago");
         expect(neutrals.every((t) => t.owner === null && t.troops > 0 && t.name !== "")).toBe(true);
         expect(new Set(neutrals.map((t) => t.name)).size).toBe(neutrals.length);
         const fortresses = neutrals.filter((t) => t.type === "fortaleza" || t.type === "paramo");
         for (const f of fortresses) for (const c of castles) expect(areAdjacent(f, c)).toBe(false);
         // Los páramos del tamaño de mapa (según la forma de las casillas): la
         // mitad pasan a Prado, que además ocupa parte de los campos. Todos con 2 de guarnición.
-        const split = wastelandSplit(mapLayout(n as 4 | 5 | 6 | 7 | 8).paramos);
+        const split = wastelandSplit(mapLayout(n as 4 | 5 | 6 | 7 | 8).paramos, n);
         const paramos = neutrals.filter((t) => t.type === "paramo");
         const prados = neutrals.filter((t) => t.type === "prado");
         expect(paramos).toHaveLength(split.paramos);

@@ -271,6 +271,7 @@ CREATE TABLE tiles (
   catapultas      INTEGER NOT NULL DEFAULT 0 CHECK (catapultas >= 0),  -- de esas tropas (0007)
   besieged_by     INTEGER REFERENCES houses(id),  -- asedio: casa que la sitia (0008)
   siege_nights    INTEGER NOT NULL DEFAULT 0,     -- noches de asedio (0008)
+  river           INTEGER NOT NULL DEFAULT 0,     -- ríos: un bit por lado, orden de neighbourCoords (0011)
   fortified_until INTEGER,                           -- número de resolución hasta la que dura
   UNIQUE (game_id, x, y),
   CHECK (type <> 'castillo' OR (castle_of IS NOT NULL AND owner_house_id = castle_of))

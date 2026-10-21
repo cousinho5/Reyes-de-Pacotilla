@@ -94,6 +94,14 @@ export const TILE_NAMES: Record<Exclude<TileType, "castillo">, TileName[]> = {
     { name: "Campo de las Amapolas", note: "Muy bonito. No da de comer." },
     { name: "La Pradería del Trovador", note: "Aquí compuso tres canciones y ninguna buena." },
   ],
+  lago: [
+    { name: "El Lago de la Duda", note: "Nadie sabe si es hondo. Nadie quiere comprobarlo." },
+    { name: "La Charca Real", note: "Lo de real es por los mosquitos, que son muchos." },
+    { name: "Laguna del Sapo Melancólico", note: "Croa en tono menor." },
+    { name: "El Espejo del Conde Presumido", note: "Se pasaba aquí las tardes mirándose." },
+    { name: "Aguas del Barquero Ausente", note: "La barca sigue esperando." },
+    { name: "El Estanque de las Ranas Opinadoras", note: "Tienen algo que decir de cada casa." },
+  ],
 };
 
 /** Nombre del castillo de una casa, con la preposición bien puesta. */

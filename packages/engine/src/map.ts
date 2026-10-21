@@ -18,6 +18,43 @@ export function distance(a: Pos, b: Pos): number {
   return (Math.abs(dq) + Math.abs(dq + dr) + Math.abs(dr)) / 2;
 }
 
+/**
+ * Las vecinas de una casilla, en un orden fijo (pueden caer fuera del mapa).
+ * Hexágonos "odd-r": oeste, este, noroeste, noreste, suroeste y sureste.
+ * Cuadrícula: oeste, este, norte y sur.
+ */
+export function neighbourCoords(p: Pos): Pos[] {
+  if (GRID.kind === "square") {
+    return [
+      { x: p.x - 1, y: p.y },
+      { x: p.x + 1, y: p.y },
+      { x: p.x, y: p.y - 1 },
+      { x: p.x, y: p.y + 1 },
+    ];
+  }
+  const s = p.y & 1 ? 0 : -1;
+  return [
+    { x: p.x - 1, y: p.y },
+    { x: p.x + 1, y: p.y },
+    { x: p.x + s, y: p.y - 1 },
+    { x: p.x + s + 1, y: p.y - 1 },
+    { x: p.x + s, y: p.y + 1 },
+    { x: p.x + s + 1, y: p.y + 1 },
+  ];
+}
+
+/** Lado de `a` que da a `b` (índice en `neighbourCoords`), o -1 si no se tocan. */
+export function sideTowards(a: Pos, b: Pos): number {
+  return neighbourCoords(a).findIndex((n) => n.x === b.x && n.y === b.y);
+}
+
+/** Hay un río entre dos casillas vecinas. */
+export function riverBetween(a: Pick<Tile, "x" | "y" | "river">, b: Pos): boolean {
+  if (!a.river) return false;
+  const side = sideTowards(a, b);
+  return side >= 0 && (a.river & (1 << side)) !== 0;
+}
+
 /** Dos casillas son adyacentes si comparten lado. */
 export function areAdjacent(a: Pos, b: Pos): boolean {
   return distance(a, b) === 1;

@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { TILE_NAMES, areAdjacent, fortifyCost, marchKind, subUnits, threats, unitsOf, type Tile, type Units } from "@reyes/engine";
+import { RIVERS, TILE_NAMES, areAdjacent, bridgeBetween, fortifyCost, marchKind, riverBetween, subUnits, threats, unitsOf, type Tile, type Units } from "@reyes/engine";
 import { api, type GameState, type OrderView, type TileView } from "../api";
 import { Icon, ShieldIcon, TileArt } from "../art";
 import { cellBox, sharedEdge, type Geo } from "../art/grid";
@@ -130,6 +130,7 @@ export function MapView({ state, draft, setDraft, act, night, setNight }: Props)
           besieger:
             t.besiegedBy != null ? HOUSE_COLORS[state.casas.find((h) => h.id === t.besiegedBy)?.color ?? ""]?.hex ?? null : null,
           fogged: !t.visible,
+          river: t.river ?? 0,
         };
       }),
     }),
@@ -629,6 +630,7 @@ function TilePanel({
         </p>
       ))}
       <p className="muted terrain-note">{TERRAIN_NOTE[tile.type]}</p>
+      {riverNote(tile, state.casillas ?? []) && <p className="muted terrain-note">{riverNote(tile, state.casillas ?? [])}</p>}
       {tile.troops == null && (
         <p className="muted">
           {tile.hidden ? "Sus tropas se esconden en el bosque: no sabes cuántas hay." : "No sabes cuántas tropas hay: está fuera de tu vista."}
@@ -795,4 +797,20 @@ function Composer({
       {state.partida.ordenesAbiertas === false && <p className="error">Las órdenes están cerradas.</p>}
     </section>
   );
+}
+
+/** Ríos (bloque 1): cuántas vecinas quedan al otro lado de un río y si hay puente. */
+function riverNote(tile: TileView, all: TileView[]): string | null {
+  if (!tile.river || !RIVERS.enabled) return null;
+  const tiles = all as unknown as Tile[];
+  const across = all.filter((o) => areAdjacent(o, tile) && riverBetween(tile, o));
+  if (!across.length) return null;
+  const bridges = across.filter((o) => bridgeBetween(tile as unknown as Tile, o as unknown as Tile, tiles)).length;
+  const n = across.length - bridges;
+  const pct = Math.round(RIVERS.defense * 100);
+  const parts = [
+    n > 0 ? `Un río la separa de ${n === 1 ? "una vecina" : `${n} vecinas`}: atacar cruzándolo da +${pct}% al defensor.` : null,
+    bridges > 0 ? `${bridges === 1 ? "Un puente lo cruza" : `${bridges} puentes lo cruzan`} sin desventaja.` : null,
+  ];
+  return parts.filter(Boolean).join(" ");
 }
