@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mapLayout, areAdjacent, castleName, computePrestige, generateMap, mapSize, neutralMix, perimeter } from "../src";
+import { mapLayout, wastelandSplit, areAdjacent, castleName, computePrestige, generateMap, mapSize, neutralMix, perimeter } from "../src";
 
 const housesFor = (n: number) => Array.from({ length: n }, (_, i) => i + 1);
 
@@ -33,10 +33,14 @@ describe("Generación del mapa", () => {
         expect(new Set(neutrals.map((t) => t.name)).size).toBe(neutrals.length);
         const fortresses = neutrals.filter((t) => t.type === "fortaleza" || t.type === "paramo");
         for (const f of fortresses) for (const c of castles) expect(areAdjacent(f, c)).toBe(false);
-        // Los páramos del tamaño de mapa (según la forma de las casillas), con 2 de guarnición.
+        // Los páramos del tamaño de mapa (según la forma de las casillas): la
+        // mitad pasan a Prado, que además ocupa parte de los campos. Todos con 2 de guarnición.
+        const split = wastelandSplit(mapLayout(n as 4 | 5 | 6 | 7 | 8).paramos);
         const paramos = neutrals.filter((t) => t.type === "paramo");
-        expect(paramos).toHaveLength(mapLayout(n as 4 | 5 | 6 | 7 | 8).paramos);
-        expect(paramos.every((t) => t.troops === 2)).toBe(true);
+        const prados = neutrals.filter((t) => t.type === "prado");
+        expect(paramos).toHaveLength(split.paramos);
+        expect(prados.length).toBeGreaterThanOrEqual(split.prados);
+        expect([...paramos, ...prados].every((t) => t.troops === 2)).toBe(true);
         // Ningún castillo a 2 pasos o menos de otro.
         for (const c of castles) for (const o of castles) if (o !== c) expect(Math.abs(o.x - c.x) + Math.abs(o.y - c.y)).toBeGreaterThan(2);
 

@@ -48,7 +48,7 @@ describe("Objetivos secretos", () => {
       tilesTakenFromHouses: 2,
       auctionsWon: 1,
     };
-    expect(objectiveMet("puerto_y_fortaleza", ctx)).toBe(false);
+    expect(objectiveMet("puerto_y_montana", ctx)).toBe(false);
     expect(objectiveMet("tesoro", ctx)).toBe(false);
     expect(objectiveMet("tesoro", { ...ctx, gold: 150 })).toBe(true);
     expect(objectiveMet("tropas_40", ctx)).toBe(false);

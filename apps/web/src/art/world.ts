@@ -53,6 +53,11 @@ export interface WorldOptions {
   seed?: number;
   /** Forma de las casillas (por defecto, la del motor: GRID). */
   grid?: GridKind;
+  /**
+   * Lados con costa (bloque 1). Si viene, el tablero lleva un marco que no se
+   * juega: mar en los dos lados con costa y montañas en los otros dos.
+   */
+  coast?: "oeste-este" | "norte-sur" | null;
 }
 
 export interface WorldImage {
@@ -89,6 +94,7 @@ const GROUND_OF: Record<TileType, Ground> = {
   cantera: "dust",
   fortaleza: "dust",
   paramo: "barren",
+  prado: "meadow",
 };
 
 const RAMPS: Record<Ground, Ramp> = {
@@ -181,7 +187,7 @@ class Layer {
 
 export function renderWorld(opts: WorldOptions): WorldImage {
   const { cols, rows, cells } = opts;
-  const M = opts.margin ?? 20;
+  const M = opts.margin ?? (opts.coast ? FRAME : 20);
   const seed = opts.seed ?? 7;
   const kind = opts.grid ?? GRID.kind;
   const geo = makeGeo(kind, cols, rows, M);
@@ -302,6 +308,9 @@ export function renderWorld(opts: WorldOptions): WorldImage {
     for (const [nx, ny] of geo.neighbours(p.x, p.y)) {
       const n = at(nx, ny);
       if (n && n.type !== "puerto") continue;
+      // Con marco, el mar solo está en los lados con costa: no hay canal hacia las montañas.
+      if (!n && opts.coast === "norte-sur" && ny >= 0 && ny < rows) continue;
+      if (!n && opts.coast === "oeste-este" && nx >= 0 && nx < cols) continue;
       const [ex, ey] = geo.center(nx, ny);
       const far = n ? 1 : 1 + M / CELL;
       const bx = cx + (ex - cx) * far;
@@ -315,6 +324,17 @@ export function renderWorld(opts: WorldOptions): WorldImage {
           const d = Math.hypot(px - (cx + (bx - cx) * t), py - (cy + (by - cy) * t));
           if (d < r * (1 + wobble(px, py))) water[py * W + px] = 1;
         }
+      }
+    }
+  }
+  // 2b. Marco (bloque 1): fuera del tablero, mar en los lados con costa.
+  const frameSide = opts.coast ? frameSides(geo, opts.coast) : null;
+  if (frameSide) {
+    for (let py = 0; py < H; py++) {
+      for (let px = 0; px < W; px++) {
+        const i = py * W + px;
+        if (inside[i] && cellOf[i]! >= 0) continue;
+        if (frameSide(px, py, wobble(px, py) * 14) === "mar") water[i] = 1;
       }
     }
   }
@@ -343,6 +363,9 @@ export function renderWorld(opts: WorldOptions): WorldImage {
       }
     }
   }
+
+  // 2c. Marco: cordillera en los lados sin costa, solo fuera del tablero.
+  if (frameSide) frameMountains(cv, W, H, (px, py) => !inside[py * W + px] && frameSide(px, py, 0) === "montes" && !water[py * W + px], seed);
 
   // 3. Caminos entre castillos y fortalezas: siguen de una casilla a otra.
   const road = new Uint8Array(W * H);
@@ -463,6 +486,64 @@ interface CellCtx {
   onRoad: (x: number, y: number) => boolean;
   isWater: (x: number, y: number) => boolean;
   flag: [string, string];
+}
+
+/** Ancho del marco de mar y montañas (bloque 1), en píxeles de dibujo. */
+const FRAME = 40;
+
+/**
+ * Qué hay fuera del tablero en cada píxel: "mar" del lado de la costa y
+ * "montes" en los otros dos. `wob` mueve un poco la raya de las esquinas.
+ */
+function frameSides(geo: Geo, coast: "oeste-este" | "norte-sur"): (px: number, py: number, wob: number) => "mar" | "montes" | null {
+  const [left, top] = geo.center(0, 0);
+  const [right] = geo.center(geo.cols - 1, 1 % geo.rows);
+  const [, bottom] = geo.center(0, geo.rows - 1);
+  const l = left - HEX_HALF;
+  const r = Math.max(right, geo.center(geo.cols - 1, 0)[0]) + HEX_HALF;
+  const t = top - CELL / 2 + 8;
+  const b = bottom + CELL / 2 - 8;
+  return (px, py, wob) => {
+    const dx = Math.max(l - px, px - r, 0);
+    const dy = Math.max(t - py, py - b, 0);
+    if (dx <= 0 && dy <= 0) return null;
+    const horizontal = dx + wob > dy;
+    return (coast === "oeste-este") === horizontal ? "mar" : "montes";
+  };
+}
+
+const HEX_HALF = 28;
+
+/** Picos grises con nieve y luz por la izquierda, dentro de `where`. */
+function frameMountains(cv: Canvas, W: number, H: number, where: (px: number, py: number) => boolean, seed: number) {
+  // Suelo de roca y luego picos de atrás adelante.
+  for (let py = 0; py < H; py++) {
+    for (let px = 0; px < W; px++) {
+      if (!where(px, py)) continue;
+      const v = noise(Math.floor(px / 3), Math.floor(py / 3), seed + 81);
+      cv.set(px, py, v > 0.75 ? "t" : v > 0.35 ? "S" : "s");
+    }
+  }
+  const step = 18;
+  for (let row = 0; row * step < H + step; row++) {
+    for (let col = 0; col * step < W + step; col++) {
+      const cx = col * step + Math.floor(noise(col, row, seed + 82) * 10) - 5;
+      const base = row * step + Math.floor(noise(col, row, seed + 83) * 8);
+      if (!where(Math.max(0, Math.min(W - 1, cx)), Math.max(0, Math.min(H - 1, base)))) continue;
+      const h = 12 + Math.floor(noise(col, row, seed + 84) * 10);
+      for (let y = 0; y < h; y++) {
+        const half = Math.floor((y + 1) * 0.9);
+        for (let dx = -half; dx <= half; dx++) {
+          const px = cx + dx;
+          const py = base - h + y;
+          if (px < 0 || py < 0 || px >= W || py >= H || !where(px, py)) continue;
+          const snow = y < h * 0.3;
+          const lit = dx < 0;
+          cv.set(px, py, snow ? (lit ? "n" : "u") : dx === -half || dx === half ? "s" : lit ? "T" : "t");
+        }
+      }
+    }
+  }
 }
 
 /** ¿Está (lx, ly) fuera de la casilla o cerca de un lado cuyo vecino es de otro terreno? */
@@ -705,6 +786,35 @@ const DRAW: Record<TileType, (ctx: CellCtx) => void> = {
     l.paint(cv);
   },
 
+  // Prado (bloque 1): césped con flores a ramilletes y algún árbol suelto.
+  // Dibujo provisional: el definitivo sale de pxl en la fase 4.
+  prado(ctx) {
+    const { cv, x0, y0, s } = ctx;
+    for (let ly = 0; ly < CELL; ly++) {
+      for (let lx = 0; lx < CELL; lx++) {
+        const px = x0 + lx;
+        const py = y0 + ly;
+        if (inset(ctx, lx, ly, 4) || ctx.onRoad(px, py) || ctx.isWater(px, py)) continue;
+        // Hierba a matas en coordenadas del mundo y ramilletes de flores.
+        const tuft = noise(Math.floor(px / 3), Math.floor(py / 2), 71);
+        if (tuft > 0.82) cv.set(px, py, "5");
+        else if (tuft < 0.12) cv.set(px, py, "3");
+        const bunch = noise(Math.floor(px / 7), Math.floor(py / 6), 72) > 0.72;
+        if (bunch && noise(px, py, 73) > 0.8) cv.set(px, py, noise(px, py, 74) > 0.5 ? "Y" : "n");
+      }
+    }
+    const trees = noise(s, 1, 75) > 0.45 ? 1 : 0;
+    for (let i = 0; i < trees; i++) {
+      const tx = x0 + 16 + Math.floor(noise(s, i, 76) * 30);
+      const ty = y0 + 16 + Math.floor(noise(s, i + 5, 76) * 24);
+      if (!ctx.onRoad(tx, ty + 6) && !ctx.isWater(tx, ty)) tree(ctx, tx, ty, 5, s + i);
+    }
+    for (let i = 0; i < 2; i++) {
+      const bx = x0 + 10 + Math.floor(noise(s, i, 77) * 44);
+      const by = y0 + 12 + Math.floor(noise(s, i + 7, 77) * 40);
+      if (!ctx.onRoad(bx, by) && !ctx.isWater(bx, by)) bush(ctx, bx, by, 2);
+    }
+  },
   campos(ctx) {
     const { cv, x0, y0, s } = ctx;
     // Parcelas en coordenadas del mundo, separadas por setos: siguen en la casilla vecina.

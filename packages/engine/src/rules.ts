@@ -47,7 +47,7 @@ export const UNITS = {
     upkeep: 2,
   },
   /** Terreno llano: donde cargan los jinetes y por donde avanzan dos casillas. */
-  plains: ["campos", "paramo"] as TileType[],
+  plains: ["campos", "paramo", "prado"] as TileType[],
 };
 
 /**
@@ -228,6 +228,7 @@ export const TILE_PRODUCTION: Record<TileType, Partial<Resources>> = {
   puerto: { oro: 2 },
   fortaleza: {},
   paramo: {},
+  prado: {},
 };
 
 /** Guarnición neutral inicial según el tipo de casilla. */
@@ -239,6 +240,7 @@ export const NEUTRAL_GARRISON: Record<Exclude<TileType, "castillo">, number> = {
   puerto: 8,
   fortaleza: 8,
   paramo: 2,
+  prado: 2,
 };
 
 /**
@@ -344,6 +346,7 @@ export const TILE_MIX: Record<Exclude<TileType, "castillo">, number> = {
   puerto: 0.1,
   fortaleza: 0.1,
   paramo: 0,
+  prado: 0,
 };
 
 /**
@@ -448,3 +451,34 @@ export const EVENT_VALUES = {
   almsEach: 10,
   lateWages: 2,
 } as const;
+
+/**
+ * Generación con geografía (bloque 1, fase 1). Es un objeto para que el
+ * simulador pueda apagarla (`geography: false`, el generador de antes) y comparar.
+ * - `mix`: proporción de cada tipo entre las neutrales que no son páramo ni Prado.
+ *   Como antes: con los campos al 15% y un 5% de Prado subían las deserciones
+ *   del 15% al 19% (simulaciones.md).
+ * - `pradoShare`: parte de los páramos del tamaño de mapa que se convierten en Prado.
+ * - `noiseScale`: tamaño, en casillas, de las manchas de altura y humedad.
+ */
+export const MAP_GEN = {
+  geography: true,
+  mix: {
+    campos: 0.2,
+    bosque: 0.2,
+    cantera: 0.2,
+    montana: 0.2,
+    puerto: 0.1,
+    fortaleza: 0.1,
+    paramo: 0,
+    prado: 0,
+  } as Record<Exclude<TileType, "castillo">, number>,
+  pradoShare: 0.5,
+  noiseScale: 3.5,
+  /** Mapas que se prueban; gana el más justo. */
+  attempts: 600,
+  /** Ajuste de salida (cambiar casillas para que nadie se quede sin un recurso básico cerca). */
+  balance: true,
+  /** Peso de lo agrupado del terreno al elegir entre los mapas probados (frente a la justicia). */
+  clusterWeight: 20,
+};

@@ -79,8 +79,8 @@ function objectiveBonus(s: Situation, t: Tile): number {
   switch (s.view.objective) {
     case "fortaleza":
       return t.type === "fortaleza" && !own.some((o) => o.type === "fortaleza") ? big : 0;
-    case "puerto_y_fortaleza":
-      if (t.type === "fortaleza" && !own.some((o) => o.type === "fortaleza")) return big;
+    case "puerto_y_montana":
+      if (t.type === "montana" && !own.some((o) => o.type === "montana")) return big;
       return t.type === "puerto" && !own.some((o) => o.type === "puerto") ? big : 0;
     case "cinco_casillas":
       return own.filter((o) => o.type !== "castillo").length < OBJECTIVE_TARGETS.tiles ? big / 3 : 0;

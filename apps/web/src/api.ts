@@ -150,6 +150,8 @@ export interface GameState {
     inicio: string | null;
     columnas: number | null;
     filas: number | null;
+    /** Lados con costa (bloque 1); null en los mapas de antes. */
+    costa?: "oeste-este" | "norte-sur" | null;
     resolucionActual: number;
     totalResoluciones: number;
     /** Días con resolución (0 = lunes ... 6 = domingo). */

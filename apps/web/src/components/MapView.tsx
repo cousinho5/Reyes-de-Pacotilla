@@ -114,6 +114,7 @@ export function MapView({ state, draft, setDraft, act, night, setNight }: Props)
       cols,
       rows,
       seed: state.partida.id,
+      coast: state.partida.costa ?? null,
       cells: tiles.map((t) => {
         const house = t.owner != null ? state.casas.find((h) => h.id === t.owner) : undefined;
         return {

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { GRID, MAP_LAYOUT_HEX, RHYTHM, areAdjacent, distance, generateMap, mapSize, simulateGame } from "../src";
+import { GRID, MAP_LAYOUT_HEX, wastelandSplit, RHYTHM, areAdjacent, distance, generateMap, mapSize, simulateGame } from "../src";
 
 const housesFor = (n: number) => Array.from({ length: n }, (_, i) => i + 1);
 
@@ -50,7 +50,9 @@ describe("Casillas hexagonales (diseño v3)", () => {
         const map = generateMap(`${seed}-${n}`, housesFor(n));
         expect(map.tiles).toHaveLength(cols * rows);
         const castles = map.tiles.filter((t) => t.type === "castillo");
-        expect(map.tiles.filter((t) => t.type === "paramo")).toHaveLength(MAP_LAYOUT_HEX[n as 4].paramos);
+        const split = wastelandSplit(MAP_LAYOUT_HEX[n as 4].paramos);
+        expect(map.tiles.filter((t) => t.type === "paramo")).toHaveLength(split.paramos);
+        expect(map.tiles.filter((t) => t.type === "prado").length).toBeGreaterThanOrEqual(split.prados);
         for (const c of castles) {
           for (const o of castles) if (o !== c) expect(distance(c, o)).toBeGreaterThanOrEqual(2);
           for (const t of map.tiles)

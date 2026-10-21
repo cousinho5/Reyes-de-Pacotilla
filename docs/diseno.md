@@ -122,12 +122,22 @@ Con 6 vecinas los castillos quedan más cerca, así que los mapas hexagonales ti
 | Puerto | +2 Oro | 8 | La única casilla que produce Oro |
 | Fortaleza | Nada | 8 | El defensor tiene +50% adicional y da más Prestigio |
 | Páramo | Nada | 2 | Tierra de nadie: da 1 de Prestigio (las demás, 2) y nunca está junto a un castillo |
+| Prado | Nada | 2 | Llano verde (bloque 1): da 1 de Prestigio, los jinetes cargan por él y puede estar junto a un castillo |
 
 - Las guarniciones neutrales no atacan (salvo en el evento de los bandidos) y no crecen.
 
 - Se controla una casilla teniendo al menos 1 tropa en ella. Si una casilla se queda vacía, sigue siendo tuya hasta que otro entre.
 
 - El mapa se genera a partir de una semilla para que sea justo. El generador prueba 600 colocaciones y elige la más justa: los castillos van a distancias iguales por el borde, nunca en una esquina (solo tendrían dos vecinas) ni juntos, las fortalezas y los páramos nunca están al lado de un castillo (se colocan primero en los huecos lejanos; los páramos quedan entre castillos como tierra de nadie) y el valor de las casillas cercanas a cada castillo difiere como mucho 1,5 puntos (1 por casilla vecina, 0,5 a dos pasos). Se comprueba con pruebas automáticas para 4 a 8 casas.
+
+- **Geografía (bloque 1, partidas nuevas desde el 21 de octubre de 2026).** El mapa ya no se reparte al azar casilla a casilla. Dos campos de ruido sacados de la semilla, **altura** y **humedad**, deciden dónde cae cada tipo, con las mismas cantidades de antes:
+  - **Costa** en dos lados opuestos (oeste y este, o norte y sur), con los **puertos en la orilla**, repartidos entre las dos costas.
+  - **Montañas** en lo más alto y **canteras** en las laderas, junto a ellas. **Fortalezas** en los altos, lejos de los castillos.
+  - **Bosques** en lo más húmedo; **Prado** entre los bosques y los campos, en lo bajo; **páramos** en lo más seco; **campos** en el resto.
+  - **Prado:** la mitad de los páramos del tamaño de mapa pasan a ser Prado, y los campos bajan del 20% al 15% de las neutrales para dejar sitio a más Prado. No se añade tierra.
+  - **Ajuste de salida:** si a un castillo le falta un recurso básico (Pan, Madera, Piedra o Hierro) a 2 pasos, se cambia una casilla suya repetida, o un Prado, por una del tipo que falta. Después, al castillo peor situado se le cambia un Prado cercano por una casilla productiva de más lejos mientras el mapa gane en justicia.
+  - De los 600 mapas probados gana el que mejor junta justicia y terreno agrupado. Resultado (40 mapas por número de casas): un 50-110% más de vecinas del mismo terreno que antes y una diferencia de entorno entre castillos de 0,4-0,5 de mediana (antes 0,7-1,1). Datos en `docs/simulaciones.md`.
+  - **Marco:** alrededor del tablero se dibuja mar en los lados con costa y montañas en los otros dos. No se juega: solo hace que el reino parezca parte de un mundo.
 
 ### 6.2 Qué ve cada jugador (niebla de guerra)
 
@@ -278,7 +288,7 @@ El botón **Simular** aplica tus órdenes al estado que conoces y te enseña el 
 
 | Terreno | Defensa | Efecto especial |
 | --- | --- | --- |
-| Campos, páramo, puerto | +0% | El puerto permite la travesía |
+| Campos, páramo, Prado, puerto | +0% | El puerto permite la travesía |
 | Bosque | +25% | **Emboscada:** desde fuera se ve quién lo controla, pero no cuántas tropas hay (salvo con la carta Espía). Las guarniciones neutrales sí se ven. |
 | Cantera | +25% | Fortificar aquí cuesta 4 de Piedra en vez de 8. |
 | Montaña | +50% | **Atalaya:** desde una montaña tuya ves las casillas a dos pasos. |
@@ -430,7 +440,7 @@ Pocos y públicos, que dan Prestigio permanente:
 
 Al empezar, cada casa recibe dos objetivos al azar y elige uno. Nadie más lo conoce. Si al final de la partida se cumple, da **+6 de Prestigio**, y se revela en el último boletín.
 
-Catálogo actual (10, en `packages/engine/src/objectives.ts`, umbrales en `rules.ts`): controlar un puerto y una fortaleza al final; sumar 17 niveles entre los cinco edificios; terminar con 150 Oro o más (antes 200: con la subasta, el Oro se gasta); cerrar tratos válidos con 3 casas distintas; controlar una fortaleza al final; tomar 3 casillas a otras casas; terminar con 40 tropas o más; controlar 5 casillas o más al final; tener un edificio a nivel 5; cerrar 10 tratos válidos; ganar 3 lotes de la Gran Subasta (añadido en la versión 1). Los umbrales se ajustaron con la simulación del 16 de octubre de 2026: con los anteriores, terminar con 100 Oro se cumplía casi siempre y controlar 2 puertos o comerciar con todas casi nunca. Un segundo ajuste, con los bots con personalidad, cambió "los 5 edificios a nivel 3" (se cumplía el 97%) por "17 niveles" (35%), "6 casillas" (3%) por "5 casillas" (15%), abarató el nivel 5 de los edificios (de 200 a 155 recursos), bajó la guarnición de las fortalezas de 10 a 8 y fortificar a 8 de Piedra. Con la versión 1 se añadirán los de subastas (ganar 2 Gran Subastas) y pactos (firmar 2 pactos sin romper ninguno).
+Catálogo actual (10, en `packages/engine/src/objectives.ts`, umbrales en `rules.ts`): controlar un puerto y una montaña al final (antes «un puerto y una fortaleza»: con la geografía del bloque 1 los puertos quedan en la costa y las fortalezas tierra adentro, y bajó al 13%; con la montaña se cumple el 29%); sumar 17 niveles entre los cinco edificios; terminar con 150 Oro o más (antes 200: con la subasta, el Oro se gasta); cerrar tratos válidos con 3 casas distintas; controlar una fortaleza al final; tomar 3 casillas a otras casas; terminar con 40 tropas o más; controlar 5 casillas o más al final; tener un edificio a nivel 5; cerrar 10 tratos válidos; ganar 3 lotes de la Gran Subasta (añadido en la versión 1). Los umbrales se ajustaron con la simulación del 16 de octubre de 2026: con los anteriores, terminar con 100 Oro se cumplía casi siempre y controlar 2 puertos o comerciar con todas casi nunca. Un segundo ajuste, con los bots con personalidad, cambió "los 5 edificios a nivel 3" (se cumplía el 97%) por "17 niveles" (35%), "6 casillas" (3%) por "5 casillas" (15%), abarató el nivel 5 de los edificios (de 200 a 155 recursos), bajó la guarnición de las fortalezas de 10 a 8 y fortificar a 8 de Piedra. Con la versión 1 se añadirán los de subastas (ganar 2 Gran Subastas) y pactos (firmar 2 pactos sin romper ninguno).
 
 El objetivo se elige antes de la primera resolución; quien no elige se queda con la primera opción.
 

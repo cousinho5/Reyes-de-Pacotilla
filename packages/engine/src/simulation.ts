@@ -86,7 +86,7 @@ const ORDERS: Record<ClassicStrategy, Parameters<typeof planBotOrders>[0]["margi
 
 const PREFERRED_OBJECTIVES: Partial<Record<ClassicStrategy, ObjectiveKey[]>> = {
   constructora: ["niveles_17", "obra_maestra", "tesoro"],
-  conquistadora: ["casillas_ajenas", "cinco_casillas", "fortaleza", "tropas_40", "puerto_y_fortaleza"],
+  conquistadora: ["casillas_ajenas", "cinco_casillas", "fortaleza", "tropas_40", "puerto_y_montana"],
   comerciante: ["comercio_con_tres", "diez_tratos"],
 };
 

@@ -184,6 +184,7 @@ CREATE TABLE games (
   start_date      TEXT,                              -- lunes local de inicio (AAAA-MM-DD)
   map_cols        INTEGER,
   map_rows        INTEGER,
+  map_coast       TEXT CHECK (map_coast IN ('oeste-este','norte-sur')), -- lados con costa (0010); NULL en los mapas de antes
   current_resolution INTEGER NOT NULL DEFAULT 0,     -- última resolución completada
   resolution_days TEXT    NOT NULL DEFAULT '2,6',    -- días con resolución, 0 = lunes; las nuevas, '0,1,2,3,4,5,6' (0006)
   invite_code     TEXT    NOT NULL UNIQUE,           -- para unirse a la partida en el lobby
@@ -260,7 +261,8 @@ CREATE TABLE tiles (
   x               INTEGER NOT NULL,
   y               INTEGER NOT NULL,
   type            TEXT    NOT NULL CHECK (type IN
-                  ('castillo','campos','bosque','cantera','montana','puerto','fortaleza','paramo')),
+                  ('castillo','campos','bosque','cantera','montana','puerto','fortaleza','paramo',
+                   'prado','lago','aldea','ruinas')),            -- prado, lago, aldea y ruinas: bloque 1 (0010)
   name            TEXT    NOT NULL,                  -- "Villa Mediocre"; castillos: el de la casa
   castle_of       INTEGER REFERENCES houses(id),     -- solo en castillos; nunca cambia
   owner_house_id  INTEGER REFERENCES houses(id),     -- NULL = neutral
