@@ -84,7 +84,12 @@ if (!archivo || !nombres.length) {
 }
 if (a.export && nombres.length > 1) fallo("--export solo vale con un único dibujo");
 
-const p = pxl.loadProject(resolve(archivo));
+let p;
+try {
+  p = pxl.loadProject(resolve(archivo));
+} catch (e) {
+  fallo(`no se puede cargar ${archivo}: ${e.message}`);
+}
 const origen = relative(raiz, resolve(archivo));
 const ident = (n) => a.export ?? n.replace(/[^A-Za-z0-9_]+(.)?/g, (_, ch) => (ch ? ch.toUpperCase() : "")).replace(/^[0-9]/, "_$&");
 const rej = (r, sangria) => "[\n" + r.map((f) => `${sangria}  ${f},`).join("\n") + `\n${sangria}]`;
@@ -94,13 +99,22 @@ function imagenesDe(nombre) {
   const asset = p.assets.get(nombre);
   if (!asset) fallo(`no hay ningún dibujo llamado "${nombre}" en ${archivo}`);
   if (asset.kind === "anim" || p.drawn(nombre).length > 1) {
-    const fotogramas = p.drawn(nombre);
+    let fotogramas;
+    try {
+      fotogramas = p.drawn(nombre);
+    } catch (e) {
+      fallo(`no se puede dibujar "${nombre}": ${e.message}`);
+    }
     if (a.fotograma === undefined) return { asset, imgs: fotogramas.map((f) => f.img) };
     const f = fotogramas[a.fotograma];
     if (!f) fallo(`"${nombre}" no tiene el fotograma ${a.fotograma}`);
     return { asset, imgs: [f.img] };
   }
-  return { asset, imgs: [p.image(nombre)] };
+  try {
+    return { asset, imgs: [p.image(nombre)] };
+  } catch (e) {
+    fallo(`no se puede dibujar "${nombre}": ${e.message}`);
+  }
 }
 
 let ts = `// Generado con scripts/pxl-a-juego.mjs desde ${origen} (${nombres.map((n) => `"${n}"`).join(", ")}). No editar a mano: cambiar el .px.js y volver a generar.\n`;

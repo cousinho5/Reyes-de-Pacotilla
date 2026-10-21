@@ -1127,8 +1127,9 @@ function battlefield(cv: Canvas, W: number, x0: number, y0: number, seed: number
 }
 
 /**
- * Tropas como figuras: una por cada 2 tropas (hasta 9), con el tabardo de su
- * casa, y un abanderado si son 6 o más. Las neutrales visten de gris.
+ * Tropas como figuras: una por cada 3 tropas (hasta 6), con el tabardo de su
+ * casa, y un abanderado si son 6 o más. Las neutrales visten de gris. Las
+ * figuras (12x18, jinete 17x18, catapulta 18x14) se dibujan en pxl: tropas.ts.
  */
 function soldiers(
   cv: Canvas,
@@ -1142,26 +1143,23 @@ function soldiers(
   jinetes = 0,
   catapultas = 0,
 ) {
-  const n = Math.min(9, Math.ceil(troops / 2));
+  const n = Math.min(6, Math.ceil(troops / 3));
   // Cuántas figuras van a caballo: en proporción, y al menos una si hay jinetes.
   const riders = jinetes > 0 ? Math.max(1, Math.round((n * jinetes) / troops)) : 0;
   const [m, d] = flag ?? ["t", "S"];
   const body = soldado(m, d);
-  // Formación: tres filas escalonadas, de atrás adelante.
+  // Formación: dos filas escalonadas, de atrás adelante.
   const slots: [number, number][] = [
-    [27, 26],
-    [17, 28],
-    [37, 28],
-    [8, 33],
-    [27, 34],
-    [46, 33],
-    [13, 41],
-    [33, 42],
-    [52, 40],
+    [26, 18],
+    [10, 21],
+    [42, 21],
+    [18, 31],
+    [34, 32],
+    [2, 31],
   ];
   const l = new Layer(W);
   // En tierra firme: en un puerto, los huecos sobre el agua se descartan (si no queda ninguno, se usan igual).
-  const dry = slots.filter(([lx, ly]) => !isWater(x0 + lx + 4, y0 + ly + 13) && !isWater(x0 + lx + 4, y0 + ly + 6));
+  const dry = slots.filter(([lx, ly]) => !isWater(x0 + lx + 5, y0 + ly + 17) && !isWater(x0 + lx + 5, y0 + ly + 8));
   const pool = dry.length >= Math.min(n, 3) ? [...dry, ...slots.filter((sl) => !dry.includes(sl))] : slots;
   const used = pool.slice(0, n).sort((a, b) => a[1] - b[1]);
   // Los jinetes, en las primeras filas de la formación (las de delante, abajo).
@@ -1170,24 +1168,24 @@ function soldiers(
     const [lx, ly] = slot;
     const jx = Math.floor(noise(lx, ly, seed) * 3) - 1;
     if (riderSlots.has(slot)) {
-      cv.shadow(x0 + lx + jx + 6, y0 + ly + 14, 6.5, 1.3);
-      l.stamp(jinete(m, d), x0 + lx + jx - 2, y0 + ly);
+      cv.shadow(x0 + lx + jx + 8, y0 + ly + 18, 8, 1.4);
+      l.stamp(jinete(m, d), x0 + lx + jx - 3, y0 + ly);
       continue;
     }
-    cv.shadow(x0 + lx + jx + 4, y0 + ly + 14, 4.5, 1.2);
+    cv.shadow(x0 + lx + jx + 5, y0 + ly + 18, 5.5, 1.3);
     l.stamp(body, x0 + lx + jx, y0 + ly);
   }
   // Una catapulta junto a la formación, si las hay.
   if (catapultas > 0) {
-    const cx = x0 + 40;
-    const cy = y0 + 44;
-    if (!isWater(cx + 6, cy + 9)) {
-      cv.shadow(cx + 7, cy + 11, 8, 1.4);
+    const cx = x0 + 42;
+    const cy = y0 + 46;
+    if (!isWater(cx + 9, cy + 12)) {
+      cv.shadow(cx + 9, cy + 14, 10, 1.5);
       l.stamp(catapulta, cx, cy);
     }
   }
   if (troops >= 6 && flag && used[0]) {
-    const bx = x0 + used[0][0] + 9;
+    const bx = x0 + used[0][0] + 12;
     const top = y0 + used[0][1] - 14;
     for (let y = top; y < top + 16; y++) l.set(bx, y, "h");
     l.set(bx, top - 1, "y");
