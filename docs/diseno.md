@@ -121,7 +121,7 @@ Con 6 vecinas los castillos quedan más cerca, así que los mapas hexagonales ti
 | Montaña | +2 Hierro | 6 | |
 | Puerto | +2 Oro | 8 | La única casilla que produce Oro |
 | Fortaleza | Nada | 8 | El defensor tiene +50% adicional y da más Prestigio |
-| Páramo | Nada | 2 | Tierra de nadie: da 1 de Prestigio (las demás, 3) y nunca está junto a un castillo |
+| Páramo | Nada | 2 | Tierra de nadie: da 1 de Prestigio (las demás, 2) y nunca está junto a un castillo |
 
 - Las guarniciones neutrales no atacan (salvo en el evento de los bandidos) y no crecen.
 
@@ -408,7 +408,7 @@ El Prestigio es **un marcador del estado actual**, no una suma semana a semana. 
 
 | Fuente | Prestigio |
 | --- | --- |
-| **Territorio** | 3 por casilla controlada; 5 si es una fortaleza |
+| **Territorio** | 2 por casilla controlada (antes 3; bloque 1); 5 si es una fortaleza y 1 si es un páramo |
 | **Edificios** | 1 por cada nivel por encima de 1 (empiezas con 2, máximo 20), +1 extra por cada edificio a nivel 5 |
 | **Riqueza** | 1 por cada 25 Oro en el tesoro (máximo 10) |
 | **Comercio** | 2 por cada casa distinta con la que hayas cerrado un trato válido en los últimos 7 días (máximo 6) |

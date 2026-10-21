@@ -53,6 +53,23 @@ npm run simular -- --semanas 4                    # duración de la partida
 npm run simular -- --json datos.json              # además, todos los datos
 ```
 
+## Prestigio por casilla de 3 a 2 (21 de octubre de 2026, fase 0 del bloque 1, aplicado)
+
+`PRESTIGE.perTile` pasa de 3 a 2 (fortaleza 5 y páramo 1, igual). 500 partidas mezcladas de 6 semanas, de 4 a 8 casas, antes y después con las mismas semillas:
+
+| Dato | Con 3 | Con 2 |
+| --- | --- | --- |
+| Prestigio medio del ganador | 71,8 | 64,6 |
+| Territorio medio por casa | 15,7-19,4 | 11,3-13,8 |
+| Diferencia media 1.º - 2.º | 9,3 | 8,1 |
+| Partidas decididas por desempate | 4% | 7% |
+| El líder de la semana 2 gana | 31% | 31% |
+| Casas con deserciones | 14% | 15% |
+| Gana la guerrera / la arquitecta | 20% / 12% | 19% / 12% |
+| Combates entre casas (6 casas) | 73,1 | 72,7 |
+
+El ganador baja unos 7 puntos y el territorio deja de pesar tanto frente a edificios, riqueza y comercio, sin que cambie cuánto se combate ni quién gana. La arquitecta sigue floja (0,7 veces lo esperado): no era cosa del territorio. Deja margen para que la geografía (fase 1) y el Prado no inflen el Prestigio.
+
 ## Recursos y usos del Oro (20 de octubre de 2026, bloque 5, sin aplicar)
 
 300 partidas por variante, de 4 a 8 casas y 6 semanas. Todas las variantes con algo nuevo llevan el Oro en las mejoras (`--oro-mejora 5,10,20,0`, que suma Oro a los niveles 2, 3 y 4; el 5 ya pedía 30).

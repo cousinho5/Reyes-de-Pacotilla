@@ -61,7 +61,7 @@ describe("Generación del mapa", () => {
 });
 
 describe("Páramos", () => {
-  it("no producen y dan 1 de Prestigio de territorio (las demás casillas, 3)", () => {
+  it("no producen y dan 1 de Prestigio de territorio (las demás casillas, 2)", () => {
     const p = computePrestige({
       house: 1,
       tiles: [
@@ -73,7 +73,7 @@ describe("Páramos", () => {
       tradePartners: 0,
       achievements: {},
     });
-    expect(p.territorio).toBe(4);
+    expect(p.territorio).toBe(3);
   });
 });
 
