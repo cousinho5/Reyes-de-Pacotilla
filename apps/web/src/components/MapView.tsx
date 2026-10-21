@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { RIVERS, TILE_NAMES, areAdjacent, bridgeBetween, fortifyCost, marchKind, riverBetween, subUnits, threats, unitsOf, type Tile, type Units } from "@reyes/engine";
+import { BATTLE_TWEAKS, FORTIFY_UPKEEP, RIVERS, TILE_NAMES, areAdjacent, bridgeBetween, fortifyCost, marchKind, riverBetween, subUnits, threats, unitsOf, type Tile, type Units } from "@reyes/engine";
 import { api, type GameState, type OrderView, type TileView } from "../api";
 import { Icon, ShieldIcon, TileArt } from "../art";
 import { cellBox, sharedEdge, type Geo } from "../art/grid";
@@ -601,7 +601,7 @@ function TilePanel({
           <h2>{tile.nombre}</h2>
           <p className="muted">
             {TILE_LABEL[tile.type]} · {mine ? "tuya" : tile.owner ? houseName(state.casas, tile.owner) : "neutral"}
-            {fortified && " · fortificada"}
+            {fortified && (BATTLE_TWEAKS.fortifyUntilAttacked ? " · fortificada hasta que la ataquen" : " · fortificada")}
           </p>
         </div>
         <div className="troop-count">
@@ -648,7 +648,11 @@ function TilePanel({
       {mine && !planning && tile.type !== "castillo" && !fortified && (
         <button className="secondary wide" onClick={onFortify}>
           <Icon name="muralla" size={18} color="#827d8a" /> Fortificar: {fortifyCost(tile).piedra} de Piedra, +25% de defensa{" "}
-          {(state.partida.fortificarResoluciones ?? 2) === 1 ? "una resolución" : `${state.partida.fortificarResoluciones ?? 2} resoluciones`}
+          {BATTLE_TWEAKS.fortifyUntilAttacked
+            ? `hasta que la ataquen (${FORTIFY_UPKEEP.piedra ?? 0} de Piedra cada domingo)`
+            : (state.partida.fortificarResoluciones ?? 2) === 1
+              ? "una resolución"
+              : `${state.partida.fortificarResoluciones ?? 2} resoluciones`}
         </button>
       )}
     </section>

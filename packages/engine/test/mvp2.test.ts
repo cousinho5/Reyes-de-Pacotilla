@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { OBJECTIVE_KEYS, checkOffer, cleanBundle, dealObjectives, objectiveMet, planAutopilot, type Tile } from "../src";
+import { FORTIFY_FOREVER, OBJECTIVE_KEYS, checkOffer, cleanBundle, dealObjectives, objectiveMet, planAutopilot, type Tile } from "../src";
 
 const levels = { granja: 2, aserradero: 2, cantera: 1, mina: 1, mercado: 1 } as const;
 const rich = { pan: 100, madera: 100, piedra: 100, hierro: 100, oro: 100 };
@@ -85,7 +85,7 @@ describe("Piloto automático", () => {
 
   it("defensiva: fortifica la casilla amenazada y recluta guardando Pan", () => {
     const plan = planAutopilot({ ...base, template: "defensiva", resources: { ...rich } });
-    expect(plan.fortify).toEqual({ tile: 2, until: 6 }); // cuatro resoluciones desde la 3
+    expect(plan.fortify).toEqual({ tile: 2, until: FORTIFY_FOREVER }); // hasta que la ataquen (bloque 4)
     expect(plan.recruit).toBe(10);
     expect(plan.upgrade).toBeNull();
   });

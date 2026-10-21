@@ -1,6 +1,6 @@
 import { Icon, ResourceIcon } from "../art";
 import { useState } from "react";
-import { BUILDINGS, RESOURCES, UNIT_KINDS, canAfford, recruitCost as costOf, upgradeCost, unitsOf, type Resource, type Resources, type UnitKind } from "@reyes/engine";
+import { BUILDINGS, FORTIFY_UPKEEP, RESOURCES, UNIT_KINDS, canAfford, recruitCost as costOf, upgradeCost, unitsOf, type Resource, type Resources, type UnitKind } from "@reyes/engine";
 import { api, type GameState } from "../api";
 import { BUILDING_LABEL, RESOURCE_LABEL, UNIT_LABEL, UNIT_NOTE, UNIT_ONE, houseName } from "../ui";
 import { CardsPanel } from "./CardsPanel";
@@ -37,6 +37,9 @@ export function CastlePanel({ state, gameId, act }: Props) {
   const [siteId, setSiteId] = useState<number | null>(null);
   const site = villages.find((t) => t.id === siteId) ?? null;
   const active = state.partida.estado === "active";
+  const forts = (state.casillas ?? []).filter(
+    (t) => t.owner === state.yo.casa && t.fortifiedUntil != null && t.fortifiedUntil > state.partida.resolucionActual,
+  ).length;
   const maxRecruit = Math.max(
     1,
     Math.min(50, ...(Object.entries(one) as [Resource, number][]).map(([r, v]) => Math.floor(res[r] / v))),
@@ -74,6 +77,12 @@ export function CastlePanel({ state, gameId, act }: Props) {
         </table>
         <p className="muted">
           El domingo pagarás {state.yo.mantenimientoSemanal} de Pan de mantenimiento. Si no llega, desertan tropas.
+          {forts > 0 && (FORTIFY_UPKEEP.piedra ?? 0) > 0 && (
+            <>
+              {" "}
+              Y {forts * (FORTIFY_UPKEEP.piedra ?? 0)} de Piedra por {forts === 1 ? "tu casilla fortificada" : `tus ${forts} casillas fortificadas`}: si no llega, se desmantelan las que no se puedan pagar.
+            </>
+          )}
         </p>
         {state.yo.ayudaAlUltimo && (
           <p className="note">La Corona te ayuda esta semana: +3 de {RESOURCE_LABEL[state.yo.ayudaAlUltimo]} al día.</p>

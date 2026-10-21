@@ -45,17 +45,20 @@ if (args.get("asedio-castillo") === "no") SIEGE.castleSides = 99;
 // Bloque 4 de la hoja de ruta (retoques del sistema de batalla):
 //   --apoyo-libre si               apoyar un ataque sin elegir de dónde viene
 //   --cruces no                    sin el choque de los grupos que se cruzan por el camino (encendido desde el bloque 4)
-//   --fortificar-hasta-ataque si   la fortificación dura hasta que atacan la casilla
+//   --fortificar-hasta-ataque no   la fortificación de antes: unas noches y sin mantenimiento (encendida desde el bloque 4)
 //   --coste-fortificar 12          Piedra por fortificar
 //   --capitan-modo avance|solo     el Capitán acompaña los avances, o además va solo al frente
 //   --jinetes-pares 1 --jinetes-impares 0   parte de jinetes al reclutar según la casa (par o impar)
 //   --coste-jinete hierro:3,pan:2,oro:1     --carga 2     --mantener-jinete 1
 if (args.get("apoyo-libre") === "si") BATTLE_TWEAKS.supportAnyOrigin = true;
 if (args.has("cruces")) BATTLE_TWEAKS.crossingClash = args.get("cruces") === "si";
-const untilAttacked = args.get("fortificar-hasta-ataque") === "si";
-if (untilAttacked) BATTLE_TWEAKS.fortifyUntilAttacked = true;
+// --fortificar-hasta-ataque no: la fortificación de antes (unas noches, sin mantenimiento).
+if (args.get("fortificar-hasta-ataque") === "no") {
+  BATTLE_TWEAKS.fortifyUntilAttacked = false;
+  for (const r of Object.keys(FORTIFY_UPKEEP)) delete FORTIFY_UPKEEP[r as "piedra"];
+}
 if (args.has("coste-fortificar")) FORTIFY_COST.piedra = Number(args.get("coste-fortificar"));
-// --mantener-fortificacion piedra:2   coste de cada casilla fortificada el domingo
+// --mantener-fortificacion piedra:2   coste de cada casilla fortificada el domingo (piedra:0 = gratis)
 if (args.has("mantener-fortificacion")) {
   for (const kv of args.get("mantener-fortificacion")!.split(",")) FORTIFY_UPKEEP[kv.split(":")[0] as "piedra"] = Number(kv.split(":")[1]);
 }
@@ -132,7 +135,7 @@ const started = Date.now();
 for (let i = 0; i < games; i++) {
   const players = minPlayers + Math.floor(rand() * (maxPlayers - minPlayers + 1));
   const strategies = Array.from({ length: players }, () => pool[Math.floor(rand() * pool.length)]!);
-  results.push(simulateGame({ seed: `sim-${args.get("semilla") ?? ""}${i}`, strategies, weeks, events: args.get("eventos") !== "no", terrain: args.get("terreno") !== "no", units: args.get("tropas") !== "no", sieges: args.get("asedios") !== "no", captainGlory: args.get("capitan") !== "no", ...(untilAttacked ? { fortify: 100000 } : {}) }));
+  results.push(simulateGame({ seed: `sim-${args.get("semilla") ?? ""}${i}`, strategies, weeks, events: args.get("eventos") !== "no", terrain: args.get("terreno") !== "no", units: args.get("tropas") !== "no", sieges: args.get("asedios") !== "no", captainGlory: args.get("capitan") !== "no" }));
 }
 const houses = results.flatMap((g) => g.houses.map((h) => ({ ...h, players: g.houses.length })));
 

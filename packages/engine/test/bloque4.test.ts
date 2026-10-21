@@ -1,7 +1,7 @@
 // Retoques del sistema de batalla (hoja de ruta, bloque 4). Se encienden uno a
 // uno en rules.ts; aquí se comprueba que hacen lo que dicen, encendidos y apagados.
 import { afterEach, describe, expect, it } from "vitest";
-import { ANY_ORIGIN, BATTLE_TWEAKS, checkRecruit, crossingRisks, recruitCost, resolveCampaign, type Tile } from "../src";
+import { ANY_ORIGIN, BATTLE_TWEAKS, FORTIFY_FOREVER, FORTIFY_UPKEEP, applyFortifyUpkeep, checkFortify, checkRecruit, crossingRisks, recruitCost, resolveCampaign, type Tile } from "../src";
 
 const defaults = { ...BATTLE_TWEAKS };
 
@@ -135,8 +135,47 @@ describe("Apoyo al ataque sin elegir origen", () => {
 });
 
 describe("Fortificación hasta que la atacan", () => {
+  const rich = { pan: 50, madera: 50, piedra: 50, hierro: 50, oro: 50 };
+
+  it("está encendida, con 2 de Piedra de mantenimiento", () => {
+    expect(BATTLE_TWEAKS.fortifyUntilAttacked).toBe(true);
+    expect(FORTIFY_UPKEEP).toEqual({ piedra: 2 });
+  });
+
+  it("fortificar dura hasta que la atacan, y sin ataques sigue defendiendo semanas después", () => {
+    const tile: Tile = { id: 2, x: 1, y: 0, type: "campos", owner: Y, troops: 5 };
+    const check = checkFortify(tile, Y, 3, rich);
+    expect(check).toMatchObject({ ok: true, value: { fortifiedUntil: FORTIFY_FOREVER } });
+    const r = resolveCampaign({
+      resolution: 40,
+      tiles: [
+        { id: 1, x: 0, y: 0, type: "campos", owner: X, troops: 6 },
+        { ...tile, fortifiedUntil: FORTIFY_FOREVER },
+      ],
+      orders: [{ kind: "move", house: X, from: 1, to: 2, troops: 6 }],
+    });
+    // 6 contra 5 x 1,25 = 6,25: la fortificación aguanta el ataque, y lo gasta.
+    expect(r.tiles.find((t) => t.id === 2)).toMatchObject({ owner: Y, fortifiedUntil: null });
+  });
+
+  it("el domingo se pagan 2 de Piedra por casilla; si no llega, se desmantelan las que no se pagan", () => {
+    const tiles: Tile[] = [
+      { id: 1, x: 0, y: 0, type: "campos", owner: X, troops: 1, fortifiedUntil: FORTIFY_FOREVER },
+      { id: 2, x: 1, y: 0, type: "campos", owner: X, troops: 1, fortifiedUntil: FORTIFY_FOREVER },
+      { id: 3, x: 2, y: 0, type: "campos", owner: Y, troops: 1, fortifiedUntil: FORTIFY_FOREVER },
+    ];
+    const paid = applyFortifyUpkeep(tiles, X, { ...rich, piedra: 4 }, 8);
+    expect(paid.cost.piedra).toBe(4);
+    expect(paid.dropped).toBe(0);
+    const short = applyFortifyUpkeep(tiles, X, { ...rich, piedra: 3 }, 8);
+    expect(short.cost.piedra).toBe(2);
+    expect(short.dropped).toBe(1);
+    expect(short.tiles.filter((t) => t.owner === X && t.fortifiedUntil != null)).toHaveLength(1);
+    // Las de otra casa no se tocan.
+    expect(short.tiles.find((t) => t.id === 3)!.fortifiedUntil).toBe(FORTIFY_FOREVER);
+  });
+
   it("un ataque que fracasa también gasta la fortificación", () => {
-    BATTLE_TWEAKS.fortifyUntilAttacked = true;
     const r = resolveCampaign({
       resolution: 1,
       tiles: [

@@ -15,7 +15,7 @@ export const CARDS = {
   },
   muralla: {
     nombre: "Muralla",
-    texto: "Fortifica gratis una casilla tuya durante las dos resoluciones siguientes.",
+    texto: "Fortifica gratis una casilla tuya hasta que la ataquen. El mantenimiento del domingo sí se paga.",
     target: "casilla_propia",
   },
   mercenarios: {

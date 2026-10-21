@@ -12,7 +12,7 @@ Cada punto se hace en una solicitud de cambios propia, con su prueba, su simulac
 | 2. Mesnada frente a jinetes | El jinete cuesta 3 de Oro en vez de 1 | **Hecho** |
 | 3. Capitán como unidad propia | Se mueve solo; cae preso si lo atacan; libre a las 7 noches o con rescate negociado | Parcial (`captainAlone`, sin rescate) |
 | 4. Jinetes que se cruzan | El cruce por el camino es un choque frontal | **Hecho** (`crossingClash` encendido) |
-| 5. Fortificación hasta que la atacan | Mantenimiento de 2 de Piedra por casilla cada domingo | Sí (`fortifyUntilAttacked`, `FORTIFY_UPKEEP` vacío) |
+| 5. Fortificación hasta que la atacan | Mantenimiento de 2 de Piedra por casilla cada domingo | **Hecho** (`fortifyUntilAttacked` encendido, `FORTIFY_UPKEEP = { piedra: 2 }`) |
 | 6. Dos guerras a la vez | Descartado | — |
 
 ## Dudas resueltas al empezar (21 de octubre de 2026)
@@ -107,6 +107,8 @@ El Oro sobra (unas 165 monedas por casa al final), así que en la práctica el j
 4. Diseño, sección 8.4 (casos especiales).
 
 ## Punto 5: fortificación hasta que la atacan
+
+**Hecho** el 21 de octubre de 2026: fortificar (y la carta Muralla) deja `fortifiedUntil = FORTIFY_FOREVER`; el domingo, `jobs.ts` cobra el mantenimiento detrás del de las tropas, en el mismo lote, y avisa a la casa con el suceso `mantenimiento_fortificaciones`. Los bots solo conservan las que lindan con otra casa, como en el simulador. Las fortificaciones que ya existían conservan su fecha. Simulación en `docs/simulaciones.md`.
 
 **Hoy.** Fortificar cuesta 8 de Piedra y da +25% de defensa durante 4 noches. Se pierde si la casilla cambia de manos.
 

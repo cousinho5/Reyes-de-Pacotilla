@@ -106,13 +106,14 @@ export const QUEUE = {
  * - `crossingClash` (encendido): también chocan de frente dos grupos que se
  *   cruzan por el camino (una marcha de dos casillas que recorre al revés la de otra casa).
  * - `captainAlone` (apagado): el Capitán se mueve solo, sin tropas, a una casilla propia.
- * - `fortifyUntilAttacked` (apagado): un ataque a una casilla fortificada le
- *   quita la fortificación aunque fracase (la duración se elige al fortificar).
+ * - `fortifyUntilAttacked` (encendido): la fortificación dura hasta que atacan
+ *   la casilla (`FORTIFY_FOREVER`); el primer ataque se la quita aunque fracase.
+ *   Cada domingo se paga `FORTIFY_UPKEEP` por casilla fortificada.
  */
 export const BATTLE_TWEAKS = {
   supportAnyOrigin: false,
   crossingClash: true,
-  fortifyUntilAttacked: false,
+  fortifyUntilAttacked: true,
   /** El Capitán puede moverse solo (orden de mover con 0 tropas) entre casillas propias. */
   captainAlone: false,
 };
@@ -131,14 +132,19 @@ export const GLORY = {
 // Con 1 Hierro + 2 Pan pasaba lo contrario; 2 + 2 deja los dos justos (simulación del 16-10-2026).
 export const TROOP_COST: Partial<Resources> = { hierro: 2, pan: 2 };
 
-/** Coste de fortificar una casilla. Lo que dura va en RHYTHM. */
+/**
+ * Coste de fortificar una casilla. Dura hasta que la atacan
+ * (`BATTLE_TWEAKS.fortifyUntilAttacked`); sin ese retoque, lo que dice RHYTHM.
+ */
 export const FORTIFY_COST: Partial<Resources> = { piedra: 8 };
 /**
- * Mantenimiento de cada casilla fortificada, el domingo (bloque 4, en estudio).
- * Vacío = sin mantenimiento. Pensado para la fortificación que dura hasta que
- * la atacan (`BATTLE_TWEAKS.fortifyUntilAttacked`).
+ * Mantenimiento de cada casilla fortificada, el domingo (bloque 4). Si no
+ * llega, se desmantelan las que no se pueden pagar. Vacío = sin mantenimiento.
+ * 2 de Piedra tras simular de 1 a 4 de Piedra y 2 o 4 de Oro (docs/simulaciones.md).
  */
-export const FORTIFY_UPKEEP: Partial<Resources> = {};
+export const FORTIFY_UPKEEP: Partial<Resources> = { piedra: 2 };
+/** `fortifiedUntil` de una fortificación que dura hasta que la atacan. */
+export const FORTIFY_FOREVER = 1_000_000;
 
 /**
  * Bloque 5 de la hoja de ruta (recursos), en estudio. Apagado: solo lo usa el simulador.

@@ -3,7 +3,7 @@
 
 import { canAfford, upgradeCost, weeklyUpkeep } from "./economy";
 import { distance } from "./map";
-import { FORTIFY_COST, FORTIFY_UPKEEP, RHYTHM, TERRAIN, TROOP_COST, TROOPS_PER_PAN, UNITS } from "./rules";
+import { BATTLE_TWEAKS, FORTIFY_COST, FORTIFY_FOREVER, FORTIFY_UPKEEP, RHYTHM, TERRAIN, TROOP_COST, TROOPS_PER_PAN, UNITS } from "./rules";
 import type { BuildingKind, HouseId, Resource, Resources, Tile } from "./types";
 import { clampUnits, setUnits, unitsOf, upkeepTroops, type UnitKind } from "./units";
 
@@ -70,7 +70,7 @@ export function checkFortify(
 ): ActionResult<{ cost: Partial<Resources>; fortifiedUntil: number }> {
   if (tile.owner !== house) return { ok: false, error: "Solo puedes fortificar tus casillas." };
   if (tile.type === "castillo") return { ok: false, error: "Los castillos no necesitan fortificarse." };
-  const until = nextResolution + RHYTHM.fortify - 1;
+  const until = BATTLE_TWEAKS.fortifyUntilAttacked ? FORTIFY_FOREVER : nextResolution + RHYTHM.fortify - 1;
   if ((tile.fortifiedUntil ?? 0) >= until) return { ok: false, error: "Esta casilla ya está fortificada." };
   const cost = fortifyCost(tile);
   if (!canAfford(have, cost)) return { ok: false, error: "Hace falta Piedra para fortificar." };
