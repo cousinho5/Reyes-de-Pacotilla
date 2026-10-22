@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent, type ReactNode } from "react";
-import { ANY_ORIGIN, BATTLE_TWEAKS, DEFENSE_BONUS, defenseMultiplier, FORTIFY_UPKEEP, RIVERS, TILE_NAMES, TILE_PRODUCTION, areAdjacent, bridgeBetween, fortifyCost, marchKind, riverBetween, subUnits, threats, unitsOf, type Tile, type Units } from "@reyes/engine";
+import { BATTLE_TWEAKS, DEFENSE_BONUS, SIEGE, defenseMultiplier, FORTIFY_UPKEEP, RIVERS, TILE_NAMES, TILE_PRODUCTION, areAdjacent, bridgeBetween, fortifyCost, marchKind, riverBetween, subUnits, threats, unitsOf, type Tile, type Units } from "@reyes/engine";
 import { api, type GameState, type OrderView, type TileView } from "../api";
 import { Icon, ResourceIcon, ShieldIcon, TileArt } from "../art";
 import { cellBox, sharedEdge, type Geo } from "../art/grid";
@@ -7,6 +7,7 @@ import { geoOf } from "../art/world";
 import { WorldCanvas, useWorldMeta } from "./WorldCanvas";
 import { HOUSE_COLORS, RESOURCE_LABEL, TERRAIN_NOTE, TERRITORY, TILE_LABEL, UNIT_LABEL, captainOf, houseName, nightLabel, troops as troopsWord, troopsText, wallsLeft, withArticle } from "../ui";
 import { asTile, myAllies, myBreaking, nextResolution, nightOf, project, queueNights } from "../plan";
+import { VERB_LABEL, orderOf, share, verbOf, verbTitle, verbsFor, type Verb } from "../verbs";
 import { NightReplay, replaySteps } from "./NightReplay";
 import { useMapZoom } from "./useMapZoom";
 import { Sheet, type SheetState } from "./Sheet";
@@ -14,21 +15,24 @@ import { Sheet, type SheetState } from "./Sheet";
 interface Props {
   state: GameState;
   draft: OrderView[];
-  setDraft: (o: OrderView[]) => void;
+  /** `note`: el aviso al guardar (si no, el de siempre). */
+  setDraft: (o: OrderView[], note?: string) => void;
   act: (fn: () => Promise<unknown>, ok?: string) => Promise<void>;
+  /** Bloque 12: una orden que abrir para cambiarla (desde la pestaña Órdenes). */
+  editOrder?: OrderView | null;
+  onEditOpened?: () => void;
   /** Noche de la cola que se está planeando (0 = la próxima resolución). */
   night: number;
   setNight: (n: number) => void;
 }
 
-/** "capitan": el Capitán va solo, sin tropas, a otra casilla tuya (bloque 4). */
-type Mode = "mover" | "apoyar" | "sitiar" | "capitan";
-/** `guest`: salen las tropas de paso de tu casa en esa casilla aliada (bloque 8). */
-type Compose = { from: number; mode: Mode; target: number | null; mix: Units; apoyaDesde: number | null; capitan?: boolean; guest?: boolean };
-
-/** Se puede sitiar: fortalezas y castillos que no son tuyos ni de una casa con la que tienes alianza. */
-const siegeable = (t: TileView, me: number | null | undefined, bound: number[] = []) =>
-  t.owner !== me && (t.owner == null || !bound.includes(t.owner)) && (t.type === "fortaleza" || (t.type === "castillo" && t.castleOf != null));
+/** "orden": el destino propone el verbo (bloque 12); "capitan": el Capitán va solo, sin tropas, a otra casilla tuya (bloque 4). */
+type Mode = "orden" | "capitan";
+/**
+ * `guest`: salen las tropas de paso de tu casa en esa casilla aliada (bloque 8).
+ * `verb`: el elegido (si no, el propuesto). `edit`: la orden ya dada que se está cambiando.
+ */
+type Compose = { from: number; mode: Mode; target: number | null; verb?: Verb; mix: Units; capitan?: boolean; guest?: boolean; edit?: OrderView };
 
 /** Tus tropas de paso en una casilla aliada (bloque 8). */
 const myGuests = (t: TileView | undefined, me: number) => t?.guests?.find((g) => g.house === me);
@@ -75,7 +79,7 @@ function markSeen(game: number, n: number) {
   }
 }
 
-export function MapView({ state, draft, setDraft, act, night, setNight }: Props) {
+export function MapView({ state, draft, setDraft, act, night, setNight, editOrder, onEditOpened }: Props) {
   const now = state.casillas ?? [];
   const next = nextResolution(state);
   const nightsOpen = state.partida.estado === "active" && state.partida.ordenesAbiertas ? queueNights(state) : 1;
@@ -361,28 +365,56 @@ export function MapView({ state, draft, setDraft, act, night, setNight }: Props)
   // Para el motor, las tropas que no se ven cuentan como 0: solo importa el terreno y quién manda.
   const engineTiles = useMemo(() => tiles.map(asTile), [tiles]);
 
+  /** Tropas libres para una orden: al cambiar una ya dada, cuentan también las suyas. */
+  const unitsFor = (c: Pick<Compose, "from" | "guest" | "edit">): Units => {
+    const free = freeUnits(c.from, c.guest);
+    const o = c.edit;
+    if (!o) return free;
+    const u = unitsOf({ troops: o.tropas, jinetes: o.jinetes, catapultas: o.catapultas });
+    return { mesnada: free.mesnada + u.mesnada, jinetes: free.jinetes + u.jinetes, catapultas: free.catapultas + u.catapultas };
+  };
+  /** Puede marchar un grupo de `c.from` hasta `t` esta noche. */
+  const canMarchTo = (c: Pick<Compose, "from" | "guest" | "edit">, t: TileView) => {
+    const from = byId.get(c.from)!;
+    // Vecinas, y además por camino (dos casillas), por mar (de puerto a puerto)
+    // o a la carga (solo jinetes, por lo llano). A la montaña solo sube la Mesnada.
+    // Bloque 8: en las casillas aliadas se entra (nunca en su castillo); en las de
+    // una alianza en aviso no se entra, salvo para mover por ellas las tropas de paso.
+    if (t.id === from.id) return false;
+    if (t.type === "castillo" && t.castleOf !== me) return false;
+    if (me == null) return false;
+    if (t.owner != null && breaking.includes(t.owner) && !c.guest) return false;
+    const free = unitsFor(c);
+    if (t.type === "montana" && free.mesnada === 0) return false;
+    if (marchKind(asTile(from), asTile(t), engineTiles, me, undefined, allies) != null) return true;
+    return free.jinetes > 0 && marchKind(asTile(from), asTile(t), engineTiles, me, RIDERS_ONLY(free.jinetes), allies) === "carga";
+  };
+  /** Ya va esta noche un ataque tuyo a `t` (desde otra casilla, sin contar la orden que se cambia). */
+  const attackGoing = (t: TileView, edit?: OrderView) =>
+    nightDraft.some((o) => o !== edit && o.tipo === "mover" && o.hacia === t.id && t.owner !== me && !(t.owner != null && bound.includes(t.owner)));
+  /** Los verbos posibles de una orden de `c.from` a `t`, el propuesto primero (bloque 12). */
+  const verbsTo = (c: Pick<Compose, "from" | "guest" | "edit">, t: TileView): Verb[] => {
+    const from = byId.get(c.from);
+    if (!from || me == null || t.id === from.id) return [];
+    const alliance = c.guest ? state.alianzas?.lista.find((a) => a.casas.includes(me) && a.casas.includes(from.owner ?? -1)) : undefined;
+    return verbsFor({
+      from,
+      target: t,
+      me,
+      allies,
+      bound,
+      canMarch: canMarchTo(c, t),
+      attackGoing: attackGoing(t, c.edit),
+      marchOnly: alliance?.estado === "aviso",
+    });
+  };
   /** Casillas a las que puede ir una orden desde `c.from`. */
-  const isTargetFor = (c: Pick<Compose, "from" | "mode" | "guest">, t: TileView) => {
+  const isTargetFor = (c: Pick<Compose, "from" | "mode" | "guest" | "edit">, t: TileView) => {
     const from = byId.get(c.from)!;
     if (c.mode === "capitan") {
       return me != null && t.owner === me && t.id !== from.id && marchKind(asTile(from), asTile(t), engineTiles, me, undefined, allies) != null;
     }
-    if (c.mode === "mover") {
-      // Vecinas, y además por camino (dos casillas), por mar (de puerto a puerto)
-      // o a la carga (solo jinetes, por lo llano). A la montaña solo sube la Mesnada.
-      // Bloque 8: en las casillas aliadas se entra (nunca en su castillo); en las de
-      // una alianza en aviso no se entra, salvo para mover por ellas las tropas de paso.
-      if (t.type === "castillo" && t.castleOf !== me) return false;
-      if (me == null) return false;
-      if (t.owner != null && breaking.includes(t.owner) && !c.guest) return false;
-      const free = freeUnits(from.id, c.guest);
-      if (t.type === "montana" && free.mesnada === 0) return false;
-      if (marchKind(asTile(from), asTile(t), engineTiles, me, undefined, allies) != null) return true;
-      return free.jinetes > 0 && marchKind(asTile(from), asTile(t), engineTiles, me, RIDERS_ONLY(free.jinetes), allies) === "carga";
-    }
-    if (!areAdjacent(from, t)) return false;
-    if (c.mode === "sitiar") return siegeable(t, me, bound);
-    return t.type !== "castillo";
+    return verbsTo(c, t).length > 0;
   };
 
   // Bloque 9: al elegir una casilla tuya con tropas libres se marcan solos sus destinos.
@@ -393,15 +425,15 @@ export function MapView({ state, draft, setDraft, act, night, setNight }: Props)
     compose
       ? isTargetFor(compose, t)
       : drag
-        ? isTargetFor({ from: drag.from, mode: "mover" }, t)
+        ? isTargetFor({ from: drag.from, mode: "orden" }, t)
         : reachFrom != null
-          ? isTargetFor({ from: reachFrom, mode: "mover" }, t)
+          ? isTargetFor({ from: reachFrom, mode: "orden" }, t)
           : false;
   // Capa Alcance: todas las casillas a las que llega esta noche alguna de tus casillas con tropas libres.
   const reach = useMemo(() => {
     if (layer !== "alcance" || me == null) return new Set<number>();
     const froms = tiles.filter((t) => t.owner === me && Object.values(freeUnits(t.id)).some((n) => n > 0));
-    return new Set(tiles.filter((t) => froms.some((f) => f.id !== t.id && isTargetFor({ from: f.id, mode: "mover" }, t))).map((t) => t.id));
+    return new Set(tiles.filter((t) => froms.some((f) => canMarchTo({ from: f.id }, t))).map((t) => t.id));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [layer, tiles, me, JSON.stringify(nightDraft), allies.join(), breaking.join()]);
   /** Ventaja del defensor en la próxima resolución por encima de la de cualquier casilla, en %, con lo que se ve (capa Defensa). */
@@ -477,8 +509,8 @@ export function MapView({ state, draft, setDraft, act, night, setNight }: Props)
         swallow();
         setDrag(null);
         const over = tileUnder(e.clientX, e.clientY);
-        if (over && over.id !== g.tile.id && isTargetFor({ from: g.tile.id, mode: "mover" }, over)) {
-          setCompose({ from: g.tile.id, mode: "mover", target: over.id, mix: freeUnits(g.tile.id), apoyaDesde: null });
+        if (over && over.id !== g.tile.id && isTargetFor({ from: g.tile.id, mode: "orden" }, over)) {
+          setCompose({ from: g.tile.id, mode: "orden", target: over.id, mix: freeUnits(g.tile.id) });
           openSheet();
         }
       }
@@ -490,6 +522,45 @@ export function MapView({ state, draft, setDraft, act, night, setNight }: Props)
       setDrag(null);
     },
   };
+
+  /** Bloque 12: abrir una orden ya dada para cambiar tropas, verbo o destino. */
+  const editExisting = (o: OrderView) => {
+    const t = byId.get(o.hacia);
+    if (me == null) return;
+    const u = unitsOf({ troops: o.tropas, jinetes: o.jinetes, catapultas: o.catapultas });
+    const captainAlone = o.tipo === "mover" && o.tropas === 0 && !!o.capitan;
+    setSelected(null);
+    setLegend(false);
+    setCompose({
+      from: o.desde,
+      mode: captainAlone ? "capitan" : "orden",
+      target: o.hacia,
+      verb: verbOf(o, t, me, allies, bound),
+      mix: u,
+      ...(o.capitan ? { capitan: true } : {}),
+      ...(o.dePaso ? { guest: true } : {}),
+      edit: o,
+    });
+    openSheet();
+  };
+  // Desde la pestaña Órdenes: abrir esa orden en su noche.
+  useEffect(() => {
+    if (!editOrder) return;
+    const o = draft.find((x) => x === editOrder) ?? draft.find((x) => JSON.stringify(x) === JSON.stringify(editOrder));
+    onEditOpened?.();
+    if (!o) return;
+    const from = byId.get(o.desde);
+    editExisting(o);
+    if (from) {
+      if (!close) {
+        focus.current = { x: from.x, y: from.y };
+        setLevel(1);
+      }
+      // Cuando la hoja ya ha subido, la casilla de salida queda a la vista por encima.
+      window.setTimeout(() => centerOn(from.x, from.y), 260);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editOrder]);
 
   const onTile = (t: TileView) => {
     setLayersOpen(false);
@@ -836,6 +907,8 @@ export function MapView({ state, draft, setDraft, act, night, setNight }: Props)
                     width={1.5 + Math.min(3, o.tropas / 4)}
                     dashed={o.tipo !== "mover"}
                     label={o.tropas === 0 && o.capitan ? "C" : o.tropas}
+                    onClick={open ? () => editExisting(o) : undefined}
+                    title={open ? `Cambiar la orden de ${a.nombre} a ${b.nombre}` : undefined}
                   />
                 );
               })}
@@ -924,16 +997,30 @@ export function MapView({ state, draft, setDraft, act, night, setNight }: Props)
               compose={compose}
               setCompose={setCompose}
               byId={byId}
-              available={freeUnits(compose.from, compose.guest)}
-              allies={allies}
+              available={unitsFor(compose)}
+              verbs={compose.target != null ? verbsTo(compose, byId.get(compose.target)!) : []}
               engineTiles={engineTiles}
+              allies={allies}
               captainHere={
-                !compose.guest && !!byId.get(compose.from)?.capitanes?.includes(me ?? -1) && !nightDraft.some((o) => o.capitan)
+                !compose.guest &&
+                !!byId.get(compose.from)?.capitanes?.includes(me ?? -1) &&
+                !nightDraft.some((o) => o.capitan && o !== compose.edit)
               }
-              onAdd={(o) => {
-                setDraft([...draft, { ...o, resolucion: next + k, ...(compose.guest ? { dePaso: true } : {}) }]);
+              onSave={(o) => {
+                const order = { ...o, resolucion: next + k, ...(compose.guest ? { dePaso: true } : {}) };
+                const i = compose.edit ? draft.indexOf(compose.edit) : -1;
+                if (i >= 0) setDraft(draft.map((x, j) => (j === i ? order : x)), "Orden cambiada.");
+                else setDraft([...draft, order]);
                 setCompose(null);
               }}
+              onRemove={
+                compose.edit
+                  ? () => {
+                      setDraft(draft.filter((x) => x !== compose.edit));
+                      setCompose(null);
+                    }
+                  : undefined
+              }
             />
           ) : tile ? (
             <TilePanel
@@ -946,8 +1033,10 @@ export function MapView({ state, draft, setDraft, act, night, setNight }: Props)
               open={open}
               planning={k > 0}
               captainHere={!!tile.capitanes?.includes(me ?? -1) && !nightDraft.some((o) => o.capitan)}
+              orders={open ? nightDraft.filter((o) => o.desde === tile.id) : []}
+              onEdit={editExisting}
               onOrder={(mode, guest) => {
-                setCompose({ from: tile.id, mode, target: null, mix: freeUnits(tile.id, guest), apoyaDesde: null, ...(guest ? { guest: true } : {}) });
+                setCompose({ from: tile.id, mode, target: null, mix: freeUnits(tile.id, guest), ...(guest ? { guest: true } : {}) });
                 // Mientras eliges el destino, la hoja se encoge para ver el mapa.
                 setSheet("peek");
               }}
@@ -1127,6 +1216,8 @@ function Arrow({
   past,
   queued,
   label,
+  onClick,
+  title,
 }: {
   geo: Geo;
   from: TileView;
@@ -1139,6 +1230,9 @@ function Arrow({
   queued?: boolean;
   /** Tropas de la orden ("C": el Capitán va solo). */
   label?: number | string;
+  /** Bloque 12: tocar la flecha abre la orden para cambiarla. */
+  onClick?: () => void;
+  title?: string;
 }) {
   const [ax, ay] = geo.center(from.x, from.y);
   const [bx, by] = geo.center(to.x, to.y);
@@ -1152,10 +1246,15 @@ function Arrow({
   const d = `M${sx},${sy} Q${mx},${my} ${ex},${ey}`;
   return (
     <g className={past ? "arrow past" : queued ? "arrow queued" : "arrow"}>
+      {onClick && (
+        <path d={d} className="arrow-hit" stroke="transparent" strokeWidth={Math.max(14, width * 2 + 8)} fill="none" onClick={onClick}>
+          {title && <title>{title}</title>}
+        </path>
+      )}
       <path d={d} stroke="#1c1410" strokeWidth={width * 2 + 3} fill="none" strokeLinecap="round" strokeDasharray={dashed ? "8 6" : undefined} />
       <path d={d} stroke={color} strokeWidth={width * 2} fill="none" strokeLinecap="round" strokeDasharray={dashed ? "8 6" : undefined} markerEnd="url(#punta)" />
       {label != null && (
-        <g transform={`translate(${mx},${my})`}>
+        <g transform={`translate(${mx},${my})`} className={onClick ? "arrow-hit" : undefined} onClick={onClick}>
           <rect x={-9} y={-8} width={18} height={16} rx={3} fill="#1c1410" />
           <text x={0} y={4.5} textAnchor="middle" className="arrow-label">
             {label}
@@ -1176,6 +1275,8 @@ function TilePanel({
   open,
   planning,
   captainHere,
+  orders,
+  onEdit,
   onOrder,
   onFortify,
 }: {
@@ -1192,6 +1293,9 @@ function TilePanel({
   planning?: boolean;
   /** Tu Capitán está aquí y aún no va con ninguna orden esa noche. */
   captainHere?: boolean;
+  /** Bloque 12: las órdenes que salen de aquí esa noche, para cambiarlas. */
+  orders: OrderView[];
+  onEdit: (o: OrderView) => void;
   onOrder: (mode: Mode, guest?: boolean) => void;
   onFortify: () => void;
 }) {
@@ -1203,8 +1307,7 @@ function TilePanel({
   const note =
     tile.type === "castillo" ? null : TILE_NAMES[tile.type]?.find((n) => tile.nombre.startsWith(n.name))?.note ?? null;
   const fortified = tile.fortifiedUntil != null && tile.fortifiedUntil > state.partida.resolucionActual;
-  // Sitiar: hay al lado una fortaleza o un castillo ajeno.
-  const canSiege = (state.casillas ?? []).some((t) => siegeable(t, state.yo.casa, bound) && areAdjacent(t, tile));
+  const name = (id: number) => (state.casillas ?? []).find((t) => t.id === id)?.nombre ?? "?";
   return (
     <section className="card tile-panel">
       <div className="tile-head">
@@ -1266,23 +1369,31 @@ function TilePanel({
           {tile.hidden ? "Sus tropas se esconden en el bosque: no sabes cuántas hay." : "No sabes cuántas tropas hay: está fuera de tu vista."}
         </p>
       )}
+      {orders.length > 0 && (
+        <ul className="tile-orders" aria-label="Órdenes que salen de aquí">
+          {orders.map((o, i) => (
+            <li key={i}>
+              <button className="row-button" onClick={() => onEdit(o)}>
+                <span className="grow">
+                  {o.tropas === 0 && o.capitan
+                    ? `El Capitán va solo a ${name(o.hacia)}`
+                    : `${VERB_LABEL[verbOf(o, (state.casillas ?? []).find((t) => t.id === o.hacia), me ?? -1, allies, bound)]}: ${name(o.hacia)} · ${troopsWord(o.tropas)}${o.dePaso ? " de paso" : ""}`}
+                </span>
+                <small>Cambiar ›</small>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
       {mine && open && available > 0 && (
-        <div className="actions">
-          <button className="primary grow" onClick={() => onOrder("mover")}>
-            Mover o atacar
-          </button>
-          <button onClick={() => onOrder("apoyar")}>Apoyar</button>
-          {canSiege && <button onClick={() => onOrder("sitiar")}>Sitiar</button>}
-        </div>
+        <button className="primary wide" onClick={() => onOrder("orden")}>
+          Dar una orden ({troopsWord(available)} libres)
+        </button>
       )}
       {!mine && open && guestsAvailable > 0 && (
-        <div className="actions">
-          <button className="primary grow" onClick={() => onOrder("mover", true)}>
-            Mover tus tropas de paso
-          </button>
-          {alliance?.estado !== "aviso" && <button onClick={() => onOrder("apoyar", true)}>Apoyar</button>}
-          {alliance?.estado !== "aviso" && canSiege && <button onClick={() => onOrder("sitiar", true)}>Sitiar</button>}
-        </div>
+        <button className="primary wide" onClick={() => onOrder("orden", true)}>
+          Dar una orden a tus tropas de paso ({guestsAvailable})
+        </button>
       )}
       {mine && open && captainHere && BATTLE_TWEAKS.captainAlone && (
         <button className="secondary wide" onClick={() => onOrder("capitan")}>
@@ -1309,65 +1420,57 @@ function Composer({
   setCompose,
   byId,
   available,
+  verbs,
   engineTiles,
   allies,
   captainHere,
-  onAdd,
+  onSave,
+  onRemove,
 }: {
   state: GameState;
-  allies: number[];
   compose: Compose;
   setCompose: (c: Compose | null) => void;
   byId: Map<number, TileView>;
+  /** Tropas que pueden ir (al cambiar una orden, también las suyas). */
   available: Units;
+  /** Verbos posibles hacia el destino, el propuesto primero (bloque 12). */
+  verbs: Verb[];
   engineTiles: Tile[];
+  allies: number[];
   /** El Capitán de la casa está en la casilla de salida y aún no va con otra orden. */
   captainHere: boolean;
-  onAdd: (o: OrderView) => void;
+  onSave: (o: OrderView) => void;
+  /** Solo al cambiar una orden ya dada. */
+  onRemove?: () => void;
 }) {
   const from = byId.get(compose.from)!;
   const target = compose.target != null ? byId.get(compose.target)! : null;
   const me = state.yo.casa;
-  // Bloque 8: a una casilla aliada se entra sin combatir (quedan como tropas de paso).
-  const entering = compose.mode === "mover" && target?.owner != null && allies.includes(target.owner);
-  const verb =
-    compose.mode === "capitan"
-      ? "Mover al Capitán"
-      : entering
-        ? "Entrar"
-        : compose.mode === "mover"
-          ? "Mover o atacar"
-          : compose.mode === "sitiar"
-            ? "Sitiar"
-            : "Apoyar";
-  // Qué tipos pueden ir: a la carga solo jinetes; a la montaña solo Mesnada; los apoyos, sin catapultas.
-  const charge =
-    target != null &&
-    compose.mode === "mover" &&
-    me != null &&
-    marchKind(asTile(from), asTile(target), engineTiles, me, undefined, allies) == null;
-  const kinds: (keyof Units)[] = !target
-    ? []
-    : charge
-      ? ["jinetes"]
-      : compose.mode === "mover" && target.type === "montana"
-        ? ["mesnada"]
-        : compose.mode === "apoyar"
-          ? ["mesnada", "jinetes"]
-          : ["mesnada", "jinetes", "catapultas"];
-  const mix: Units = {
-    mesnada: kinds.includes("mesnada") ? Math.min(compose.mix.mesnada, available.mesnada) : 0,
-    jinetes: kinds.includes("jinetes") ? Math.min(compose.mix.jinetes, available.jinetes) : 0,
-    catapultas: kinds.includes("catapultas") ? Math.min(compose.mix.catapultas, available.catapultas) : 0,
-  };
-  const total = mix.mesnada + mix.jinetes + mix.catapultas;
-  const shown = kinds.filter((k) => available[k] > 0);
+  const editing = !!compose.edit;
+  const closed = state.partida.ordenesAbiertas === false;
+  const changeTarget = target && (
+    <button className="link" onClick={() => setCompose({ ...compose, target: null, verb: undefined })}>
+      Cambiar destino
+    </button>
+  );
+  const footer = (
+    <div className="composer-foot">
+      {changeTarget}
+      {onRemove && (
+        <button className="link danger" onClick={onRemove}>
+          Quitar la orden
+        </button>
+      )}
+      <button className="link" onClick={() => setCompose(null)}>
+        {editing ? "Dejarla como estaba" : "Cancelar"}
+      </button>
+      {closed && <p className="error">Las órdenes están cerradas.</p>}
+    </div>
+  );
   if (compose.mode === "capitan") {
     return (
       <section className="card composer">
-        <h2>
-          {verb} desde {from.nombre}
-        </h2>
+        <h2>Mover al Capitán desde {from.nombre}</h2>
         {!target ? (
           <p>Toca una casilla tuya marcada: una vecina, o más lejos por un camino tuyo o por mar desde un puerto.</p>
         ) : (
@@ -1378,117 +1481,192 @@ function Composer({
             <p className="hint">
               Va solo, sin tropas, y no ataca. Allí suma 2 a la defensa, pero si atacan la casilla y no la defienden, cae preso.
             </p>
-            <div className="actions">
+            <div className="composer-go">
               <button
-                className="primary"
-                onClick={() => onAdd({ tipo: "mover", desde: from.id, hacia: target.id, apoyaDesde: null, tropas: 0, capitan: true })}
+                className="primary wide"
+                onClick={() => onSave({ tipo: "mover", desde: from.id, hacia: target.id, apoyaDesde: null, tropas: 0, capitan: true })}
               >
-                Añadir orden: el Capitán va solo
+                {editing ? "Guardar: el Capitán va solo" : "El Capitán va solo"}
               </button>
             </div>
           </>
         )}
-        <button className="link" onClick={() => setCompose(null)}>
-          Cancelar
-        </button>
-        {state.partida.ordenesAbiertas === false && <p className="error">Las órdenes están cerradas.</p>}
+        {footer}
       </section>
     );
   }
+  if (!target) {
+    return (
+      <section className="card composer">
+        <h2>
+          Orden desde {from.nombre}
+          {compose.guest && " (tropas de paso)"}
+        </h2>
+        <p>Toca una casilla marcada: tus vecinas y las de al lado para atacar, apoyar, defender o sitiar; más lejos, por un camino tuyo, por mar o a la carga con jinetes.</p>
+        {footer}
+      </section>
+    );
+  }
+  const verb = compose.verb && verbs.includes(compose.verb) ? compose.verb : verbs[0];
+  if (!verb) {
+    return (
+      <section className="card composer">
+        <h2>{target.nombre}</h2>
+        <p className="error">Desde {from.nombre} no se puede dar ninguna orden ahí.</p>
+        {footer}
+      </section>
+    );
+  }
+  const march = verb === "mover" || verb === "atacar" || verb === "entrar";
+  const supporting = verb === "apoyar" || verb === "defender";
+  // Qué tipos pueden ir: a la carga solo jinetes; a la montaña solo Mesnada; los apoyos, sin catapultas.
+  const charge = march && me != null && marchKind(asTile(from), asTile(target), engineTiles, me, undefined, allies) == null;
+  const kinds: (keyof Units)[] = charge
+    ? ["jinetes"]
+    : march && target.type === "montana"
+      ? ["mesnada"]
+      : supporting
+        ? ["mesnada", "jinetes"]
+        : ["mesnada", "jinetes", "catapultas"];
+  const mix: Units = {
+    mesnada: kinds.includes("mesnada") ? Math.min(compose.mix.mesnada, available.mesnada) : 0,
+    jinetes: kinds.includes("jinetes") ? Math.min(compose.mix.jinetes, available.jinetes) : 0,
+    catapultas: kinds.includes("catapultas") ? Math.min(compose.mix.catapultas, available.catapultas) : 0,
+  };
+  const total = mix.mesnada + mix.jinetes + mix.catapultas;
+  const shown = kinds.filter((u) => available[u] > 0);
+  const setMix = (m: Partial<Units>) => setCompose({ ...compose, verb, mix: { ...mix, ...m } });
+  const setAll = (part: "ninguna" | "mitad" | "todas") =>
+    setCompose({ ...compose, verb, mix: { mesnada: share(available.mesnada, part), jinetes: share(available.jinetes, part), catapultas: share(available.catapultas, part) } });
+  const min = verb === "sitiar" ? SIEGE.minTroops : 1;
+  const hint: Record<Verb, string> = {
+    mover: `Tus tropas pasan a ${target.nombre}.`,
+    atacar: target.owner == null ? "Si ganas a su guarnición, la casilla es tuya." : "Si ganas, la casilla es tuya.",
+    entrar: "Casilla aliada: entras sin combatir y tus tropas quedan de paso.",
+    apoyar: `Tus tropas se quedan en ${from.nombre} y suman al primer ataque que llegue a ${target.nombre}: el tuyo si atacas; si no, el de la casa que dio antes su orden.`,
+    defender: `Tus tropas se quedan en ${from.nombre} y suman a la defensa de ${target.nombre} si la atacan.`,
+    sitiar:
+      (target.type === "castillo"
+        ? "Un castillo hay que rodearlo desde dos casillas tuyas a la vez: entonces produce la mitad y tú ganas 1 de Prestigio cada noche."
+        : "Cada noche de asedio la fortaleza pierde un 25% de murallas. Se rompe si atacan tu casilla.") +
+      ` Tus tropas se quedan en ${from.nombre}. Hacen falta al menos ${SIEGE.minTroops}.`,
+  };
   return (
     <section className="card composer">
       <h2>
-        {verb} desde {from.nombre}
-        {compose.guest && " (tropas de paso)"}
+        {verbTitle(verb, target.nombre)}
       </h2>
-      {!target ? (
-        <p>
-          {compose.mode === "mover"
-            ? "Toca una casilla marcada: una vecina, o más lejos por un camino tuyo, por mar desde un puerto o a la carga con jinetes."
-            : compose.mode === "sitiar"
-              ? "Toca la fortaleza o el castillo vecino que quieres sitiar. Tus tropas se quedan en su casilla y la siguen defendiendo."
-              : "Toca una casilla vecina marcada en el mapa."}
-        </p>
+      <p className="muted">
+        Desde {from.nombre}
+        {compose.guest && " (tropas de paso)"}
+      </p>
+      {verbs.length > 1 && (
+        <div className="verb-choice" role="radiogroup" aria-label="Tipo de orden">
+          {verbs.map((v) => (
+            <button key={v} role="radio" aria-checked={v === verb} className={v === verb ? "active" : ""} onClick={() => setCompose({ ...compose, verb: v })}>
+              {VERB_LABEL[v]}
+            </button>
+          ))}
+        </div>
+      )}
+      <p className="hint">
+        {hint[verb]}
+        {charge && " A la carga: solo van jinetes."}
+        {!charge && march && target.type === "montana" && " A la montaña solo sube la Mesnada."}
+      </p>
+      {shown.length === 0 ? (
+        <p className="error">No te quedan tropas que puedan ir ahí.</p>
       ) : (
         <>
-          <p>
-            {entering ? "Destino" : "Objetivo"}: <strong>{target.nombre}</strong>
-            {entering && " · casilla aliada: entras sin combatir y tus tropas quedan de paso"}
-            {charge && " · a la carga: solo van jinetes"}
-            {!charge && compose.mode === "mover" && target.type === "montana" && " · a la montaña solo sube la Mesnada"}
-          </p>
-          {compose.mode === "apoyar" && (
-            <label>
-              ¿Qué apoyas?
-              <select
-                value={compose.apoyaDesde ?? ""}
-                onChange={(e) => setCompose({ ...compose, apoyaDesde: e.target.value ? Number(e.target.value) : null })}
-              >
-                <option value="">La defensa de {target.nombre}</option>
-                <option value={ANY_ORIGIN}>El primer ataque a {target.nombre}</option>
-              </select>
-              {compose.apoyaDesde === ANY_ORIGIN && (
-                <span className="hint">
-                  Suma a tu propio ataque si lo hay; si no, al de la casa que dio antes su orden.
-                </span>
-              )}
-            </label>
-          )}
-          {shown.length === 0 && <p className="error">No te quedan tropas que puedan ir ahí.</p>}
-          {compose.mode === "mover" && captainHere && (
-            <label className="check">
-              <input type="checkbox" checked={!!compose.capitan} onChange={(e) => setCompose({ ...compose, capitan: e.target.checked })} />
-              Con el Capitán: +2 de fuerza. Si el ataque fracasa contra otra casa, cae preso.
-            </label>
-          )}
-          {compose.mode === "sitiar" && (
-            <p className="hint">
-              {target.type === "castillo"
-                ? "Un castillo hay que rodearlo desde dos casillas tuyas a la vez: entonces produce la mitad y tú ganas 1 de Prestigio cada noche."
-                : "Cada noche de asedio la fortaleza pierde un 25% de murallas. Se rompe si atacan tu casilla."}{" "}
-              Hacen falta al menos 3 tropas.
-            </p>
-          )}
-          {shown.map((k) => (
-            <label key={k}>
-              {UNIT_LABEL[k]}: <strong>{mix[k]}</strong> de {available[k]}
-              <input
-                type="range"
-                min={0}
-                max={available[k]}
-                value={mix[k]}
-                onChange={(e) => setCompose({ ...compose, mix: { ...compose.mix, [k]: Number(e.target.value) } })}
-              />
-            </label>
+          {shown.map((u) => (
+            <Stepper key={u} label={UNIT_LABEL[u]} value={mix[u]} max={available[u]} onChange={(n) => setMix({ [u]: n })} />
           ))}
-          <div className="actions">
-            <button
-              className="primary"
-              disabled={total < (compose.mode === "sitiar" ? 3 : 1)}
-              onClick={() =>
-                onAdd({
-                  tipo: compose.mode as Exclude<Mode, "capitan">,
-                  desde: from.id,
-                  hacia: target.id,
-                  apoyaDesde: compose.mode === "apoyar" ? compose.apoyaDesde : null,
-                  tropas: total,
-                  ...(mix.jinetes > 0 ? { jinetes: mix.jinetes } : {}),
-                  ...(mix.catapultas > 0 ? { catapultas: mix.catapultas } : {}),
-                  ...(compose.mode === "mover" && captainHere && compose.capitan ? { capitan: true } : {}),
-                })
-              }
-            >
-              Añadir orden: {troopsText(total, mix.jinetes, mix.catapultas)}
-            </button>
+          <div className="troop-shortcuts">
+            <button onClick={() => setAll("ninguna")}>Ninguna</button>
+            <button onClick={() => setAll("mitad")}>La mitad</button>
+            <button onClick={() => setAll("todas")}>Todas</button>
           </div>
-          <p className="hint">La orden se guarda al añadirla. Puedes verla o quitarla en la pestaña Órdenes.</p>
         </>
       )}
-      <button className="link" onClick={() => setCompose(null)}>
-        Cancelar
-      </button>
-      {state.partida.ordenesAbiertas === false && <p className="error">Las órdenes están cerradas.</p>}
+      {march && captainHere && (
+        <label className="check">
+          <input type="checkbox" checked={!!compose.capitan} onChange={(e) => setCompose({ ...compose, verb, capitan: e.target.checked })} />
+          Con el Capitán: +2 de fuerza. Si el ataque fracasa contra otra casa, cae preso.
+        </label>
+      )}
+      <div className="composer-go">
+        <button
+          className="primary wide"
+          disabled={total < min || closed}
+          onClick={() =>
+            onSave({
+              ...orderOf(verb),
+              desde: from.id,
+              hacia: target.id,
+              tropas: total,
+              ...(mix.jinetes > 0 ? { jinetes: mix.jinetes } : {}),
+              ...(mix.catapultas > 0 ? { catapultas: mix.catapultas } : {}),
+              ...(march && captainHere && compose.capitan ? { capitan: true } : {}),
+            })
+          }
+        >
+          {editing ? "Guardar: " : ""}
+          {VERB_LABEL[verb]} con {troopsWord(total)}
+        </button>
+      </div>
+      {footer}
     </section>
+  );
+}
+
+/** Bloque 12: «−» y «+» de 48x48; mantener pulsado acelera. */
+function Stepper({ label, value, max, onChange }: { label: string; value: number; max: number; onChange: (n: number) => void }) {
+  const latest = useRef(value);
+  latest.current = value;
+  const timer = useRef<number | null>(null);
+  const stop = () => {
+    if (timer.current != null) window.clearTimeout(timer.current);
+    timer.current = null;
+  };
+  useEffect(() => stop, []);
+  const step = (d: number) => {
+    const n = Math.max(0, Math.min(max, latest.current + d));
+    if (n !== latest.current) {
+      latest.current = n;
+      onChange(n);
+    }
+    return n;
+  };
+  const hold = (d: number) => (e: PointerEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    stop();
+    step(d);
+    let wait = 420;
+    const again = () => {
+      const n = step(d);
+      if (n === 0 || n === max) return stop();
+      wait = Math.max(60, wait * 0.7);
+      timer.current = window.setTimeout(again, wait);
+    };
+    timer.current = window.setTimeout(again, wait);
+  };
+  const keys = (d: number) => (e: { detail: number }) => {
+    // El clic de teclado (sin puntero) avanza uno; el del dedo ya lo hizo al pulsar.
+    if (e.detail === 0) step(d);
+  };
+  return (
+    <div className="stepper">
+      <span className="grow">
+        {label} <small className="muted">de {max}</small>
+      </span>
+      <button aria-label={`Una menos de ${label}`} disabled={value <= 0} onPointerDown={hold(-1)} onPointerUp={stop} onPointerLeave={stop} onPointerCancel={stop} onClick={keys(-1)} onContextMenu={(e) => e.preventDefault()}>
+        −
+      </button>
+      <strong aria-live="polite">{value}</strong>
+      <button aria-label={`Una más de ${label}`} disabled={value >= max} onPointerDown={hold(1)} onPointerUp={stop} onPointerLeave={stop} onPointerCancel={stop} onClick={keys(1)} onContextMenu={(e) => e.preventDefault()}>
+        +
+      </button>
+    </div>
   );
 }
 

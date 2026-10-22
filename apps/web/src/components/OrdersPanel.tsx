@@ -10,9 +10,11 @@ interface Props {
   setDraft: (o: OrderView[]) => void;
   /** Ir al mapa a planear esa noche de la cola. */
   onPlan: (night: number) => void;
+  /** Bloque 12: abrir la orden en el mapa para cambiarla (con su noche de la cola). */
+  onEdit: (o: OrderView, night: number) => void;
 }
 
-export function OrdersPanel({ state, draft, setDraft, onPlan }: Props) {
+export function OrdersPanel({ state, draft, setDraft, onPlan, onEdit }: Props) {
   const tiles = state.casillas ?? [];
   const name = (id: number | null) => tiles.find((t) => t.id === id)?.nombre ?? "?";
   const open = !!state.partida.ordenesAbiertas;
@@ -79,7 +81,13 @@ export function OrdersPanel({ state, draft, setDraft, onPlan }: Props) {
                   {list.map((o, i) => (
                     <li key={i}>
                       <span>
-                        <OrderText o={o} name={name} />
+                        {open ? (
+                          <button className="link order-edit" onClick={() => onEdit(o, k)} aria-label="Cambiar orden">
+                            <OrderText o={o} name={name} />
+                          </button>
+                        ) : (
+                          <OrderText o={o} name={name} />
+                        )}
                         {crossings.has(o) && (
                           <small className="order-warning">
                             Por el camino puede salirle al paso {withArticle(houseName(state.casas, crossings.get(o)![0]!))}: chocaríais de frente.
@@ -131,10 +139,12 @@ function OrderText({ o, name }: { o: OrderView; name: (id: number | null) => str
       {o.dePaso && " de paso"}
     </>
   );
+  // «1 apoya», «3 apoyan».
+  const one = o.tropas === 1;
   if (o.tipo === "sitiar")
     return (
       <>
-        {n} de {name(o.desde)} sitian <strong>{name(o.hacia)}</strong>
+        {n} de {name(o.desde)} {one ? "sitia" : "sitian"} <strong>{name(o.hacia)}</strong>
       </>
     );
   if (o.tipo === "mover" && o.tropas === 0 && o.capitan)
@@ -152,18 +162,18 @@ function OrderText({ o, name }: { o: OrderView; name: (id: number | null) => str
     );
   return (
     <>
-      {n} de {name(o.desde)} apoyan{" "}
+      {n} de {name(o.desde)}{" "}
       {o.apoyaDesde === ANY_ORIGIN ? (
         <>
-          el primer ataque sobre <strong>{name(o.hacia)}</strong>
+          {one ? "apoya" : "apoyan"} el primer ataque sobre <strong>{name(o.hacia)}</strong>
         </>
       ) : o.apoyaDesde ? (
         <>
-          el ataque de {name(o.apoyaDesde)} sobre <strong>{name(o.hacia)}</strong>
+          {one ? "apoya" : "apoyan"} el ataque de {name(o.apoyaDesde)} sobre <strong>{name(o.hacia)}</strong>
         </>
       ) : (
         <>
-          la defensa de <strong>{name(o.hacia)}</strong>
+          {one ? "defiende" : "defienden"} <strong>{name(o.hacia)}</strong>
         </>
       )}
     </>
