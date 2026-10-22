@@ -50,6 +50,8 @@ function savedLayer(): Layer {
   }
 }
 
+const ordersText = (n: number) => (n === 0 ? "sin órdenes" : `${n} ${n === 1 ? "orden" : "órdenes"}`);
+
 const NO_UNITS: Units = { mesnada: 0, jinetes: 0, catapultas: 0 };
 /** Mantener pulsada una casilla este tiempo enseña su información rápida (bloque 6). */
 const LONG_PRESS_MS = 450;
@@ -102,6 +104,7 @@ export function MapView({ state, draft, setDraft, act, night, setNight }: Props)
     }
   };
   const [layersOpen, setLayersOpen] = useState(false);
+  const [nightsMenu, setNightsMenu] = useState(false);
   const [legend, setLegend] = useState(false);
   // Bloque 8: aliados en vigor (paso libre) y casas con la alianza en aviso (ni atacar ni entrar).
   const allies = useMemo(() => myAllies(state), [state]);
@@ -131,6 +134,10 @@ export function MapView({ state, draft, setDraft, act, night, setNight }: Props)
   const threatAt = new Map(threatened.map((x) => [x.tile, x.by]));
   const banners = k === 0 ? lastEvents.filter((e) => e.tipo === "estandartes").map((e) => e.datos as { house: number; tile: number; troops: number; near: number }) : [];
   const bannerNear = new Map(banners.map((b) => [b.near, b]));
+  // Bloque 9: casillas con aviso (amenazas y estandartes), sin repetir.
+  const threatIds = threatened.map((x) => x.tile);
+  const bannerIds = [...new Set(banners.map((b) => b.near))];
+  const alertIds = [...new Set([...threatIds, ...bannerIds])];
 
   // Repetición de la noche: sale sola la primera vez que abres el mapa tras una resolución.
   const replayable = useMemo(() => last > 0 && replaySteps(lastEvents, now).steps.length > 0, [JSON.stringify(lastEvents.map((e) => e.id)), now, last]);
@@ -276,6 +283,60 @@ export function MapView({ state, draft, setDraft, act, night, setNight }: Props)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scale, myCastle?.id]);
+
+  // Bloque 9: los avisos llevan a su casilla; si se vuelve a tocar, a la siguiente.
+  const [flash, setFlash] = useState<number | null>(null);
+  const cycle = useRef<Record<string, number>>({});
+  const goTo = (id: number) => {
+    const t = byId.get(id);
+    const el = viewport.current;
+    if (!t || !el) return;
+    if (!close) {
+      focus.current = { x: t.x, y: t.y };
+      setLevel(1);
+    } else {
+      const [cx, cy] = geo.center(t.x, t.y);
+      el.scrollTo({ left: cx * scale - el.clientWidth / 2, top: cy * scale - visibleH(el) / 2, behavior: "smooth" });
+    }
+    setFlash(id);
+  };
+  useEffect(() => {
+    if (flash == null) return;
+    const t = window.setTimeout(() => setFlash(null), 1600);
+    return () => window.clearTimeout(t);
+  }, [flash]);
+  const goNext = (key: string, ids: number[]) => {
+    if (!ids.length) return;
+    const i = (cycle.current[key] ?? -1) + 1;
+    cycle.current[key] = i % ids.length;
+    goTo(ids[i % ids.length]!);
+  };
+  // Lo que se ve del mapa, para las flechas del borde hacia los avisos que quedan fuera.
+  const [view, setView] = useState({ left: 0, top: 0, w: 0, h: 0, ox: 0, oy: 0 });
+  useEffect(() => {
+    const el = viewport.current;
+    if (!el) return;
+    let raf = 0;
+    const read = () => {
+      raf = 0;
+      const r = el.getBoundingClientRect();
+      const br = boardRef.current?.getBoundingClientRect();
+      setView({ left: el.scrollLeft, top: el.scrollTop, w: el.clientWidth, h: visibleH(el), ox: br ? r.left - br.left : 0, oy: br ? r.top - br.top : 0 });
+    };
+    const onScroll = () => {
+      if (!raf) raf = requestAnimationFrame(read);
+    };
+    read();
+    el.addEventListener("scroll", onScroll, { passive: true });
+    const ro = new ResizeObserver(onScroll);
+    ro.observe(el);
+    return () => {
+      el.removeEventListener("scroll", onScroll);
+      ro.disconnect();
+      if (raf) cancelAnimationFrame(raf);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scale, sheetH]);
 
   /** Posición de la casilla sobre el dibujo, en porcentajes (escala con el zoom). */
   const boxStyle = (t: TileView) => {
@@ -432,6 +493,7 @@ export function MapView({ state, draft, setDraft, act, night, setNight }: Props)
 
   const onTile = (t: TileView) => {
     setLayersOpen(false);
+    setNightsMenu(false);
     if (swallowClick.current) {
       swallowClick.current = false;
       return;
@@ -499,34 +561,6 @@ export function MapView({ state, draft, setDraft, act, night, setNight }: Props)
   const nightNames = Array.from({ length: nightsOpen }, (_, i) => nightLabel(state.partida, i));
   return (
     <div className="map-screen">
-      {nightsOpen > 1 && (
-        <div className="nights" role="tablist" aria-label="Noche para la que das órdenes">
-          {nightNames.map((label, i) => {
-            const count = draft.filter((o) => nightOf(o, next) === next + i).length;
-            return (
-              <button
-                key={i}
-                role="tab"
-                aria-selected={k === i}
-                className={k === i ? "active" : ""}
-                onClick={() => {
-                  setNight(i);
-                  setCompose(null);
-                }}
-              >
-                {label}
-                {count > 0 && <span className="badge">{count}</span>}
-              </button>
-            );
-          })}
-        </div>
-      )}
-      {k > 0 && (
-        <p className="plan-note">
-          Órdenes en cola para {nightLabel(state.partida, k, true)}. El mapa muestra cómo quedaría si todo sale como esperas; las
-          demás casas también mueven, y al llegar la noche cada orden sale con las tropas que queden.
-        </p>
-      )}
       <div className={`board${replay ? " replaying" : ""}${k > 0 ? " planning" : ""}`} ref={boardRef}>
         {quick != null && byId.get(quick) && (
           <QuickInfo
@@ -547,6 +581,47 @@ export function MapView({ state, draft, setDraft, act, night, setNight }: Props)
             })()}
           />
         )}
+        {open && !replay && (
+          <div className="night-pick">
+            <button
+              className={`night-chip${k > 0 ? " planning" : ""}`}
+              onClick={() => nightsOpen > 1 && setNightsMenu(!nightsMenu)}
+              aria-expanded={nightsOpen > 1 ? nightsMenu : undefined}
+              aria-label={`Órdenes para ${nightLabel(state.partida, k, true)}: ${ordersText(nightDraft.length)}${nightsOpen > 1 ? ". Cambiar de noche" : ""}`}
+            >
+              {k > 0 && "Planeando: "}
+              {nightNames[k]} · {ordersText(nightDraft.length)}
+              {otherNights.length > 0 && <span className="badge" title="Órdenes en otras noches">{otherNights.length}</span>}
+            </button>
+            {nightsMenu && (
+              <div className="nights-menu" role="menu" aria-label="Noche para la que das órdenes">
+                {nightNames.map((label, i) => {
+                  const count = draft.filter((o) => nightOf(o, next) === next + i).length;
+                  return (
+                    <button
+                      key={i}
+                      role="menuitemradio"
+                      aria-checked={k === i}
+                      className={k === i ? "active" : ""}
+                      onClick={() => {
+                        setNight(i);
+                        setCompose(null);
+                        setNightsMenu(false);
+                      }}
+                    >
+                      <strong>{label}</strong>
+                      <small>{i === 0 ? "La próxima resolución" : "En cola"} · {ordersText(count)}</small>
+                    </button>
+                  );
+                })}
+                <p className="hint">
+                  En las noches en cola el mapa muestra cómo quedaría si todo sale como esperas; las demás casas también mueven, y al
+                  llegar la noche cada orden sale con las tropas que queden.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
         <div className="layers">
           <button
             className="layers-button"
@@ -554,6 +629,7 @@ export function MapView({ state, draft, setDraft, act, night, setNight }: Props)
               // La ficha baja para que no tape el menú.
               if (!layersOpen) setSheet("peek");
               setLayersOpen(!layersOpen);
+              setNightsMenu(false);
             }} aria-expanded={layersOpen} aria-haspopup="menu">
             <Icon name="mapa" size={18} color="#d6a64b" /> {LAYERS.find((l) => l.id === layer)!.label}
           </button>
@@ -636,6 +712,7 @@ export function MapView({ state, draft, setDraft, act, night, setNight }: Props)
             ))}
             {compose && byId.get(compose.from) && <polygon points={points(byId.get(compose.from)!, 1.5)} className="cell-source" />}
             {tile && !compose && <polygon points={points(tile, 1.5)} className="cell-selected" />}
+            {flash != null && byId.get(flash) && <polygon key={`f${flash}`} points={points(byId.get(flash)!, 1.5)} className="cell-flash" />}
           </svg>
           <div className="world-overlay">
             {tiles.map((t) => {
@@ -797,6 +874,36 @@ export function MapView({ state, draft, setDraft, act, night, setNight }: Props)
         {/* Sitio para desplazar el mapa por encima de la hoja: ninguna casilla se queda debajo. */}
         {close && <div className="sheet-room" style={{ height: sheetH }} aria-hidden />}
         </div>
+        {/* Bloque 9: flechas en el borde hacia los avisos que quedan fuera de la pantalla. */}
+        {close &&
+          !replay &&
+          alertIds.map((id) => {
+            const t = byId.get(id);
+            if (!t || view.w === 0) return null;
+            const [cx, cy] = geo.center(t.x, t.y);
+            const x = cx * scale - view.left;
+            const y = cy * scale - view.top;
+            const m = 26;
+            if (x >= 0 && x <= view.w && y >= 0 && y <= view.h) return null;
+            const ex = Math.min(view.w - m, Math.max(m, x));
+            const ey = Math.min(view.h - m, Math.max(m + 40, y));
+            const angle = (Math.atan2(y - ey, x - ex) * 180) / Math.PI;
+            return (
+              <button
+                key={`edge${id}`}
+                className="edge-alert"
+                style={{ left: view.ox + ex, top: view.oy + ey }}
+                onClick={() => goTo(id)}
+                aria-label={`Ir a ${t.nombre}`}
+              >
+                <span style={{ transform: `rotate(${angle}deg)` }} aria-hidden>
+                  <svg viewBox="0 0 12 12" width={14} height={14}>
+                    <path d="M2,2 L11,6 L2,10 L4,6 z" fill="#ff4b33" />
+                  </svg>
+                </span>
+              </button>
+            );
+          })}
       </div>
       {/* Franja de la repetición: fija abajo, encima de las pestañas, para que se lea siempre. */}
       <div className="replay-chrome" ref={setChrome} style={{ bottom: dock }} hidden={!replay} />
@@ -806,6 +913,7 @@ export function MapView({ state, draft, setDraft, act, night, setNight }: Props)
           state={sheet}
           setState={setSheet}
           onClose={tile || compose || legend ? closeSheet : undefined}
+          compact={!tile && !compose && !legend && sheet === "peek"}
           label={legend ? "Leyenda del mapa" : tile ? `Ficha de ${tile.nombre}` : "Lo último en el mapa"}
         >
           {legend ? (
@@ -845,6 +953,42 @@ export function MapView({ state, draft, setDraft, act, night, setNight }: Props)
               }}
               onFortify={() => act(() => api.fortify(state.partida.id, tile.id), "Murallas reforzadas.")}
             />
+          ) : sheet === "peek" ? (
+            <div className="alert-line">
+              {threatIds.length > 0 && (
+                <button className="alert-chip" onClick={() => goNext("amenazas", threatIds)}>
+                  <span className="threat-swatch" aria-hidden />
+                  {threatIds.length === 1
+                    ? `${byId.get(threatIds[0]!)?.nombre ?? "Una casilla"} amenazada`
+                    : `${threatIds.length} casillas amenazadas`}{" "}
+                  ›
+                </button>
+              )}
+              {bannerIds.length > 0 && (
+                <button className="alert-chip" onClick={() => goNext("estandartes", bannerIds)}>
+                  <Icon name="estandarte" size={16} color={TERRITORY[state.casas.find((h) => h.id === banners[0]!.house)?.color ?? ""] ?? "#fff"} />
+                  {banners.length === 1 ? "Estandartes a la vista" : `${banners.length} estandartes a la vista`} ›
+                </button>
+              )}
+              {k === 0 && (battles.size > 0 || lastMoves.length > 0) && (
+                <button
+                  className="alert-chip"
+                  onClick={() => {
+                    if (replayable) {
+                      setReplay(true);
+                      showBoard();
+                    } else goNext("batallas", [...battles]);
+                  }}
+                >
+                  <Icon name="ordenes" size={16} color="#f1cf7d" />
+                  {battles.size > 0 ? `${battles.size} ${battles.size === 1 ? "batalla" : "batallas"}` : "Movimientos"}
+                  {replayable && " · Ver la noche"}
+                </button>
+              )}
+              {threatIds.length === 0 && bannerIds.length === 0 && !(k === 0 && (battles.size > 0 || lastMoves.length > 0)) && (
+                <span className="alert-quiet">Sin avisos. Toca una casilla tuya y arrastra para mover.</span>
+              )}
+            </div>
           ) : (
             <>
               {k === 0 && threatened.length > 0 && (

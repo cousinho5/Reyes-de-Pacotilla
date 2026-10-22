@@ -17,10 +17,12 @@ interface Props {
   /** Cerrar la ficha (si hay algo abierto): la hoja vuelve a asomarse. */
   onClose?: () => void;
   label: string;
+  /** Bloque 9: asomada, solo una línea (la de avisos). */
+  compact?: boolean;
   children: ReactNode;
 }
 
-export const Sheet = forwardRef<HTMLElement, Props>(function Sheet({ state, setState, onClose, label, children }, ref) {
+export const Sheet = forwardRef<HTMLElement, Props>(function Sheet({ state, setState, onClose, label, compact, children }, ref) {
   const drag = useRef<{ y: number; h: number; t: number; el: HTMLElement } | null>(null);
   const order: SheetState[] = ["peek", "half", "full"];
   const step = (d: 1 | -1) => order[Math.min(2, Math.max(0, order.indexOf(state) + d))]!;
@@ -30,7 +32,7 @@ export const Sheet = forwardRef<HTMLElement, Props>(function Sheet({ state, setS
   };
 
   return (
-    <section className={`sheet ${state}`} aria-label={label} ref={ref}>
+    <section className={`sheet ${state}${compact ? " compact" : ""}`} aria-label={label} ref={ref}>
       <div
         className="sheet-handle"
         role="button"
