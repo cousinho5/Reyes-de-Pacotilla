@@ -3,6 +3,7 @@
 // pueden comprobar con lo que hay construido; los de subastas y pactos llegan
 // con la versión 1.
 
+import { guestTroops } from "./alliances";
 import { seededRandom, shuffle } from "./random";
 import { OBJECTIVE_TARGETS } from "./rules";
 import type { BuildingKind, HouseId, Tile } from "./types";
@@ -30,7 +31,7 @@ export const OBJECTIVE_KEYS = Object.keys(OBJECTIVES) as ObjectiveKey[];
 
 export interface ObjectiveContext {
   house: HouseId;
-  tiles: Pick<Tile, "type" | "owner" | "troops">[];
+  tiles: Pick<Tile, "type" | "owner" | "troops" | "guests">[];
   buildings: Record<BuildingKind, number>;
   gold: number;
   /** Casas distintas con las que hubo trato válido en toda la partida. */
@@ -62,7 +63,8 @@ export function objectiveMet(key: ObjectiveKey, ctx: ObjectiveContext): boolean 
     case "casillas_ajenas":
       return ctx.tilesTakenFromHouses >= T.tilesTakenFromHouses;
     case "tropas_40":
-      return own.reduce((a, t) => a + t.troops, 0) >= T.troops;
+      // Cuentan también las tropas de paso en casillas aliadas (bloque 8).
+      return own.reduce((a, t) => a + t.troops, 0) + guestTroops(ctx.tiles, ctx.house) >= T.troops;
     case "cinco_casillas":
       return own.filter((t) => t.type !== "castillo").length >= T.tiles;
     case "obra_maestra":

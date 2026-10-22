@@ -136,6 +136,28 @@ export const BATTLE_TWEAKS = {
 /** Origen de un apoyo al ataque que vale para el primer ataque a la casilla (con `supportAnyOrigin`). */
 export const ANY_ORIGIN = -1;
 
+/**
+ * Alianzas (bloque 8, `docs/alianzas.md`, `alliances.ts`). Cada alianza es
+ * entre dos casas: paso libre por las casillas del aliado (nunca su castillo),
+ * tropas de paso que defienden, visión compartida, no agresión y ataque
+ * conjunto. Romperla es gratis, pero deja `noticeResolutions` resoluciones de
+ * aviso (la de esa noche cuenta como la primera) y quien rompe espera
+ * `cooldownDays` días para firmar otra.
+ */
+export const ALLIANCE = {
+  enabled: true,
+  /** Resoluciones de aviso entre romper y que la alianza deje de existir. */
+  noticeResolutions: 3,
+  /** Días sin poder firmar otra alianza tras romper una. */
+  cooldownDays: 7,
+  /** Resoluciones que dura una propuesta sin contestar. */
+  proposalResolutions: 3,
+  /** Tropas de un aliado dentro de tus casillas a partir de las que avisa Fray Abundio. */
+  warnTroops: 10,
+  /** Máximo de alianzas por casa (null = sin límite). */
+  maxPerHouse: null as number | null,
+};
+
 export const GLORY = {
   enabled: true,
   perVictory: 1,

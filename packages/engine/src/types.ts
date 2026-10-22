@@ -54,6 +54,35 @@ export interface Tile {
    * cuentan (para dibujar dónde desemboca).
    */
   river?: number;
+  /**
+   * Tropas de paso (bloque 8): grupos de casas aliadas del dueño que están en
+   * la casilla. Siguen siendo de su casa: no producen ni dan Prestigio, comen
+   * Pan de su casa y suman a la defensa si atacan la casilla.
+   */
+  guests?: Guest[];
+}
+
+/** Tropas de paso de una casa aliada en una casilla (bloque 8). */
+export interface Guest {
+  house: HouseId;
+  troops: number;
+  jinetes?: number;
+  catapultas?: number;
+}
+
+/**
+ * Alianza entre dos casas (bloque 8). `status`: "active" mientras dura;
+ * "breaking" durante el aviso tras romperla, hasta la resolución `endsAt`
+ * (incluida): al terminar esa resolución deja de existir y las tropas de paso
+ * vuelven a casa. `since`: resolución en la que empezó (la más antigua manda
+ * cuando una casa podría atacar a la vez con dos aliados que no lo son entre sí).
+ */
+export interface Alliance {
+  a: HouseId;
+  b: HouseId;
+  status: "active" | "breaking";
+  endsAt: number | null;
+  since: number;
 }
 
 export interface MoveOrder {
@@ -67,6 +96,8 @@ export interface MoveOrder {
   catapultas?: number;
   /** El Capitán de la casa va con este grupo (solo si está en la casilla de origen). */
   captain?: boolean;
+  /** Las tropas salen de las tropas de paso de la casa en `from`, una casilla aliada (bloque 8). */
+  guest?: boolean;
   /**
    * Cuándo se dio la orden o se cambió por última vez (milisegundos). Decide cuál
    * es «el primer ataque» que recibe un apoyo sin origen (bloque 4). Sin él,
@@ -89,6 +120,8 @@ export interface SupportOrder {
   troops: number;
   jinetes?: number;
   catapultas?: number;
+  /** Apoya desde las tropas de paso de la casa en `from` (bloque 8). */
+  guest?: boolean;
 }
 
 /**
@@ -105,6 +138,8 @@ export interface SiegeOrder {
   troops: number;
   jinetes?: number;
   catapultas?: number;
+  /** Sitia desde las tropas de paso de la casa en `from` (bloque 8). */
+  guest?: boolean;
 }
 
 export type Order = MoveOrder | SupportOrder | SiegeOrder;
@@ -139,6 +174,8 @@ export interface CampaignInput {
   peace?: boolean;
   /** Capitanes de las casas (diseño v3). */
   captains?: Captain[];
+  /** Alianzas en vigor o en aviso (bloque 8). */
+  alliances?: Alliance[];
 }
 
 export type CampaignEvent =
@@ -171,6 +208,14 @@ export type CampaignEvent =
       previousOwner: HouseId | null;
       conquered: boolean;
       survivors: number;
+      /**
+       * Bloque 8: casas que ganan junto a `winner` (aliados del ataque conjunto,
+       * o tropas de paso que defendían) y las tropas que les quedan a todas.
+       */
+      allies?: HouseId[];
+      kept?: { house: HouseId; troops: number }[];
+      /** Tropas de paso que estaban en la casilla y no lucharon (aliadas de un atacante). */
+      aside?: HouseId[];
       sides: {
         house: HouseId | null;
         role: "defensa" | "ataque";
@@ -181,6 +226,8 @@ export type CampaignEvent =
         from?: TileId[];
         /** Ataque: alguno de sus grupos entra cruzando un río sin puente (bloque 1). */
         river?: boolean;
+        /** Ataque conjunto (bloque 8): casas aliadas con las que ataca. Defensa: tropas de paso que defienden. */
+        joint?: HouseId[];
       }[];
     }
   | {
@@ -202,6 +249,19 @@ export type CampaignEvent =
     }
   | {
       type: "movimiento";
+      house: HouseId;
+      from: TileId;
+      to: TileId;
+      troops: number;
+      /** Entra en una casilla aliada como tropas de paso (bloque 8). */
+      guest?: boolean;
+    }
+  | {
+      /**
+       * Bloque 8: tropas de paso que vuelven a la casilla propia más cercana
+       * porque la alianza terminó o la casilla pasó a una casa que no es aliada.
+       */
+      type: "expulsion";
       house: HouseId;
       from: TileId;
       to: TileId;

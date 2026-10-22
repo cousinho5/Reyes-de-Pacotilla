@@ -91,21 +91,23 @@ export type MarchKind = "vecina" | "camino" | "mar" | "carga";
  * - "carga": un grupo solo de jinetes cruza dos casillas llanas, la de en medio propia.
  * null si no puede. `units`: composición del grupo (si falta, se mira solo el terreno).
  */
-export function marchKind(from: Tile, to: Tile, tiles: Tile[], house: HouseId, units?: Units): MarchKind | null {
+export function marchKind(from: Tile, to: Tile, tiles: Tile[], house: HouseId, units?: Units, friends: HouseId[] = []): MarchKind | null {
+  // Alianzas (bloque 8): las casillas de los aliados en vigor cuentan como propias.
+  const mine = (owner: HouseId | null) => owner === house || (owner != null && friends.includes(owner));
   if (from.id === to.id) return null;
   // En un lago no se puede entrar (bloque 1).
   if (to.type === "lago" || from.type === "lago") return null;
   if (areAdjacent(from, to)) return "vecina";
-  if (TERRAIN.sea && from.type === "puerto" && to.type === "puerto" && from.owner === house) return "mar";
+  if (TERRAIN.sea && from.type === "puerto" && to.type === "puerto" && mine(from.owner)) return "mar";
   if (TERRAIN.roads && distance(from, to) === 2) {
     const roads = roadSet(tiles);
     const mid = tiles.find(
-      (m) => m.owner === house && areAdjacent(from, m) && areAdjacent(m, to) && roads.has(pairKey(from, m)) && roads.has(pairKey(m, to)),
+      (m) => mine(m.owner) && areAdjacent(from, m) && areAdjacent(m, to) && roads.has(pairKey(from, m)) && roads.has(pairKey(m, to)),
     );
     if (mid) return "camino";
     const riders = units && UNITS.enabled && units.jinetes > 0 && units.mesnada === 0 && units.catapultas === 0;
     if (riders && isPlain(to.type)) {
-      const plain = tiles.find((m) => m.owner === house && isPlain(m.type) && areAdjacent(from, m) && areAdjacent(m, to));
+      const plain = tiles.find((m) => mine(m.owner) && isPlain(m.type) && areAdjacent(from, m) && areAdjacent(m, to));
       if (plain) return "carga";
     }
   }
@@ -117,17 +119,18 @@ export function marchKind(from: Tile, to: Tile, tiles: Tile[], house: HouseId, u
  * (o por mar), [from, en medio, to] por camino o a la carga. La casilla de en
  * medio se elige como en `marchKind`.
  */
-export function marchPath(from: Tile, to: Tile, tiles: Tile[], house: HouseId, units?: Units): Tile[] {
-  const kind = marchKind(from, to, tiles, house, units);
+export function marchPath(from: Tile, to: Tile, tiles: Tile[], house: HouseId, units?: Units, friends: HouseId[] = []): Tile[] {
+  const mine = (owner: HouseId | null) => owner === house || (owner != null && friends.includes(owner));
+  const kind = marchKind(from, to, tiles, house, units, friends);
   if (kind === "camino") {
     const roads = roadSet(tiles);
     const mid = tiles.find(
-      (m) => m.owner === house && areAdjacent(from, m) && areAdjacent(m, to) && roads.has(pairKey(from, m)) && roads.has(pairKey(m, to)),
+      (m) => mine(m.owner) && areAdjacent(from, m) && areAdjacent(m, to) && roads.has(pairKey(from, m)) && roads.has(pairKey(m, to)),
     );
     if (mid) return [from, mid, to];
   }
   if (kind === "carga") {
-    const mid = tiles.find((m) => m.owner === house && isPlain(m.type) && areAdjacent(from, m) && areAdjacent(m, to));
+    const mid = tiles.find((m) => mine(m.owner) && isPlain(m.type) && areAdjacent(from, m) && areAdjacent(m, to));
     if (mid) return [from, mid, to];
   }
   return [from, to];

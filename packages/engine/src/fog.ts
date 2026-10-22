@@ -16,9 +16,15 @@ export interface VisibleTile extends Omit<Tile, "troops" | "fortifiedUntil"> {
   hidden?: boolean;
 }
 
-/** `spied`: casas vigiladas con la carta Espía (se ven todas sus casillas). */
+/**
+ * `spied`: casas vigiladas con la carta Espía (se ven todas sus casillas). Los
+ * aliados en vigor también se pasan aquí: ven lo mismo que el otro (bloque 8).
+ * Las casillas donde la casa tiene tropas de paso cuentan como propias para ver.
+ */
 export function visibleTileIds(tiles: Tile[], house: HouseId, spied: HouseId[] = []): Set<TileId> {
-  const own = tiles.filter((t) => t.owner === house || (t.owner != null && spied.includes(t.owner)));
+  const own = tiles.filter(
+    (t) => t.owner === house || (t.owner != null && spied.includes(t.owner)) || !!t.guests?.some((g) => g.house === house),
+  );
   const ids = new Set<TileId>(own.map((t) => t.id));
   // Atalaya: desde una montaña propia (no de una casa espiada) se ve más lejos.
   const towers = own.filter((t) => t.owner === house && t.type === "montana");
@@ -43,9 +49,10 @@ export function projectForHouse(tiles: Tile[], house: HouseId, spied: HouseId[] 
   const visible = visibleTileIds(tiles, house, spied);
   return tiles.map((t) => {
     const v = visible.has(t.id);
-    const hidden = v && ambushed(t, house, spied);
-    // Si no se ven las tropas, tampoco de qué tipo son.
-    const { jinetes: _j, catapultas: _c, ...base } = t;
+    const inside = !!t.guests?.some((g) => g.house === house);
+    const hidden = v && !inside && ambushed(t, house, spied);
+    // Si no se ven las tropas, tampoco de qué tipo son, ni las tropas de paso.
+    const { jinetes: _j, catapultas: _c, guests: _g, ...base } = t;
     const shown = v && !hidden ? t : base;
     return {
       ...shown,

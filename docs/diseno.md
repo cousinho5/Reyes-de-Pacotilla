@@ -284,9 +284,13 @@ Las tropas se mueven como máximo una casilla por resolución: siete por semana 
 
 - **Apoyo cortado:** Dani apoya a Marta, pero Lucía ataca la casilla de Dani. El apoyo se anula y Marta ataca solo con 6 contra 9: se repliega con 3.
 
+- **Ataque conjunto (bloque 8):** Marta (6) y su aliado Dani (4) entran a la vez en una casilla de Lucía con 5 tropas. Una sola batalla: 10 contra 5 × 1,25 = 6,25. Ganan y quedan 10 × (1 − 6,25/10) = 3,75, que redondea a 4: 2 para cada uno por restos mayores. La casilla es de Marta, que entró con más, y las 2 de Dani se quedan de paso.
+
+- **Tropas de paso que defienden (bloque 8):** Lucía ataca con 6 una casilla de Dani con 4 tropas suyas y 4 de paso de Marta. Defensa: 8 × 1,25 = 10. Gana la defensa, quedan 8 × (1 − 6/10) = 3,2, que redondea a 4, y se reparten 2 y 2.
+
 ### 8.6 Mantenimiento
 
-- **Cada domingo:** 1 Pan por cada 3 tropas, sin contar los mercenarios (bloque 5). Si no puedes pagar, desertan las tropas que falten por cubrir, empezando por las más alejadas del castillo.
+- **Cada domingo:** 1 Pan por cada 3 tropas, sin contar los mercenarios (bloque 5) y contando las tropas de paso en casillas aliadas (bloque 8). Si no puedes pagar, desertan las tropas que falten por cubrir: primero las de paso y luego las de tus casillas, empezando por las más alejadas del castillo.
 - **Fortificaciones (bloque 4):** después, 2 de Piedra por cada casilla fortificada. Si no llega, se desmantelan las que no se pueden pagar. Las catapultas y los asedios siguen desgastando la fortificación en combate, y cambiar de manos la quita.
 
 - **Estirarse cuesta:** a partir de la quinta casilla controlada, cada casilla extra cuesta 2 Pan más por semana. Es un freno suave al que más se expande.
@@ -401,7 +405,20 @@ El comercio es la mitad del juego, así que tiene que ser excelente:
 
 - **Tratados comerciales** (versión 2): intercambios semanales automáticos (por ejemplo, 10 Madera por 6 Hierro durante 4 semanas) que ejecuta el servidor. Se pueden cancelar avisando con una resolución de antelación.
 
-- **Palabra dada.** Los pactos de no agresión no obligan por reglas, pero se declaran en un registro público con nombre solemne. Romperlos deja una marca de broma en el historial y Fray Abundio lo cuenta en el boletín.
+- **Palabra dada.** Las alianzas (9.1) se firman en un registro público con nombre solemne y Fray Abundio cuenta en el boletín las que se firman y las que se rompen.
+
+### 9.1 Alianzas (bloque 8)
+
+Reglas completas y pasos en `docs/alianzas.md`; motor en `packages/engine/src/alliances.ts` y `combat.ts`; valores en `ALLIANCE` de `rules.ts`.
+
+- **Firmar.** Una casa propone y la otra acepta o rechaza. Cada alianza es entre dos casas (si A está aliada con B y B con C, A y C no lo están) y no hay límite por casa. Si se acepta antes de la resolución de esa noche, ya vale esa noche.
+- **Paso libre.** Las tropas entran en las casillas del aliado sin combatir, nunca en su castillo, y se quedan como **tropas de paso**: siguen siendo de su casa, no producen ni dan Prestigio, comen Pan de su casa y, si atacan la casilla, defienden con el multiplicador de la casilla. Las bajas de la defensa se reparten en proporción; si la casilla cae, caen con ella. Las tropas de paso pueden moverse, atacar, apoyar, sitiar y llevar al Capitán desde la casilla aliada. Las casillas aliadas cuentan como propias para la casilla de en medio de un camino o una carga.
+- **Visión compartida.** Cada aliado ve lo que ve el otro (como con la carta Espía).
+- **No agresión.** No se puede atacar, sitiar ni apoyar un ataque contra el aliado: una marcha a su casilla es una entrada. Los aliados nunca chocan de frente ni se cruzan.
+- **Ataque conjunto.** Si dos aliados atacan la misma casilla (de otra casa o neutral) la misma noche, hay una sola batalla con la suma de sus fuerzas. Si ganan, la casilla es de quien entró con más tropas (en empate, de quien dio antes la orden) y el otro se queda de paso; las bajas se reparten en proporción a lo que llevó cada uno y los dos ganan Gloria. Si una casa es aliada de dos atacantes que no lo son entre sí, va con la alianza más antigua.
+- **A un lado.** Si atacan una casilla donde hay tropas de paso de una casa aliada del atacante, esas tropas no luchan y se quedan en la casilla. Si la casilla acaba en manos de una casa que no es su aliada, vuelven a casa.
+- **Romper.** Gratis y en cualquier momento. La alianza deja de existir tras tres resoluciones de aviso (la de esa noche cuenta como la primera). Durante el aviso no hay visión compartida ni ataque conjunto, nadie ataca al otro y no se entra en sus casillas: las tropas de paso solo pueden salir (a una casilla propia o de un tercero, o a otra del antiguo aliado más cerca de la salida). Al terminar, las que sigan dentro vuelven al momento a la casilla propia más cercana. Quien rompe no puede firmar otra alianza durante 7 días.
+- **Victoria.** Sigue habiendo un solo ganador: las alianzas no dan Prestigio.
 
 ## 10. Eventos
 
@@ -462,7 +479,7 @@ Pocos y públicos, que dan Prestigio permanente:
 
 Al empezar, cada casa recibe dos objetivos al azar y elige uno. Nadie más lo conoce. Si al final de la partida se cumple, da **+6 de Prestigio**, y se revela en el último boletín.
 
-Catálogo actual (10, en `packages/engine/src/objectives.ts`, umbrales en `rules.ts`): controlar un puerto y una montaña al final (antes «un puerto y una fortaleza»: con la geografía del bloque 1 los puertos quedan en la costa y las fortalezas tierra adentro, y bajó al 13%; con la montaña se cumple el 29%); sumar 16 niveles entre los cinco edificios (17 hasta el bloque 5, cuando las mejoras pasaron a costar más); terminar con 60 Oro o más (antes 200 y luego 150: con la subasta, las mejoras con Oro, la Corona y los mercenarios, el Oro se gasta); cerrar tratos válidos con 3 casas distintas; controlar una fortaleza al final; tomar 3 casillas a otras casas; terminar con 40 tropas o más; controlar 5 casillas o más al final; tener un edificio a nivel 5; cerrar 10 tratos válidos; ganar 3 lotes de la Gran Subasta (añadido en la versión 1). Los umbrales se ajustaron con la simulación del 16 de octubre de 2026: con los anteriores, terminar con 100 Oro se cumplía casi siempre y controlar 2 puertos o comerciar con todas casi nunca. Un segundo ajuste, con los bots con personalidad, cambió "los 5 edificios a nivel 3" (se cumplía el 97%) por "17 niveles" (35%), "6 casillas" (3%) por "5 casillas" (15%), abarató el nivel 5 de los edificios (de 200 a 155 recursos), bajó la guarnición de las fortalezas de 10 a 8 y fortificar a 8 de Piedra. Con la versión 1 se añadirán los de subastas (ganar 2 Gran Subastas) y pactos (firmar 2 pactos sin romper ninguno).
+Catálogo actual (10, en `packages/engine/src/objectives.ts`, umbrales en `rules.ts`): controlar un puerto y una montaña al final (antes «un puerto y una fortaleza»: con la geografía del bloque 1 los puertos quedan en la costa y las fortalezas tierra adentro, y bajó al 13%; con la montaña se cumple el 29%); sumar 16 niveles entre los cinco edificios (17 hasta el bloque 5, cuando las mejoras pasaron a costar más); terminar con 60 Oro o más (antes 200 y luego 150: con la subasta, las mejoras con Oro, la Corona y los mercenarios, el Oro se gasta); cerrar tratos válidos con 3 casas distintas; controlar una fortaleza al final; tomar 3 casillas a otras casas; terminar con 40 tropas o más (contando las de paso en casillas aliadas, bloque 8); controlar 5 casillas o más al final; tener un edificio a nivel 5; cerrar 10 tratos válidos; ganar 3 lotes de la Gran Subasta (añadido en la versión 1). Los umbrales se ajustaron con la simulación del 16 de octubre de 2026: con los anteriores, terminar con 100 Oro se cumplía casi siempre y controlar 2 puertos o comerciar con todas casi nunca. Un segundo ajuste, con los bots con personalidad, cambió "los 5 edificios a nivel 3" (se cumplía el 97%) por "17 niveles" (35%), "6 casillas" (3%) por "5 casillas" (15%), abarató el nivel 5 de los edificios (de 200 a 155 recursos), bajó la guarnición de las fortalezas de 10 a 8 y fortificar a 8 de Piedra. Con la versión 1 se añadirán los de subastas (ganar 2 Gran Subastas) y pactos (firmar 2 pactos sin romper ninguno).
 
 El objetivo se elige antes de la primera resolución; quien no elige se queda con la primera opción.
 

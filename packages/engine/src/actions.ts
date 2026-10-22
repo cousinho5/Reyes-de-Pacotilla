@@ -1,6 +1,7 @@
 // Comprobaciones y efectos de las acciones diarias y del domingo. Puras: el
 // servidor las usa para validar y calcular, y luego escribe en un lote atómico.
 
+import { guestStacks, takeGuests } from "./alliances";
 import { canAfford, upgradeCost, weeklyUpkeep } from "./economy";
 import { distance } from "./map";
 import { BATTLE_TWEAKS, FORTIFY_COST, FORTIFY_FOREVER, FORTIFY_UPKEEP, RHYTHM, TERRAIN, TROOP_COST, TROOPS_PER_PAN, UNITS } from "./rules";
@@ -90,28 +91,32 @@ export interface UpkeepResult {
 /**
  * Mantenimiento del domingo: 1 Pan cada 3 tropas y 2 Pan por casilla a partir
  * de la quinta. Si no llega, desertan las tropas que falten por cubrir,
- * empezando por las más alejadas del castillo. `freeTroops`: tropas que no
- * comen (los mercenarios del bloque 5, cuyo Pan pone la Corona).
+ * empezando por las más alejadas del castillo: primero las tropas de paso en
+ * casillas aliadas (bloque 8), que también comen, y luego las de las casillas
+ * propias. `freeTroops`: tropas que no comen (los mercenarios del bloque 5,
+ * cuyo Pan pone la Corona).
  */
 export function applyUpkeep(tiles: Tile[], house: HouseId, pan: number, factor = 1, freeTroops = 0): UpkeepResult {
   const own = tiles.filter((t) => t.owner === house);
   const castle = own.find((t) => t.type === "castillo");
-  const totalTroops = own.reduce((a, t) => a + t.troops, 0);
+  const away = guestStacks(tiles, house);
+  const totalTroops = own.reduce((a, t) => a + t.troops, 0) + away.reduce((a, s) => a + s.guest.troops, 0);
   const controlled = own.filter((t) => t.type !== "castillo").length;
   // `factor`: eventos que encarecen o perdonan el mantenimiento de la semana.
   // Las Catapultas comen como dos tropas.
-  const cost = Math.round(weeklyUpkeep(Math.max(0, upkeepTroops(own) - freeTroops), controlled) * factor);
+  const eaters = upkeepTroops(own) + upkeepTroops(away.map((s) => s.guest));
+  const cost = Math.round(weeklyUpkeep(Math.max(0, eaters - freeTroops), controlled) * factor);
   if (pan >= cost) return { cost, paid: cost, deserted: 0, tiles };
 
   const shortfall = cost - pan;
   let toDesert = Math.min(totalTroops, shortfall * TROOPS_PER_PAN);
   const deserted = toDesert;
-  const order = [...own].sort((a, b) => {
-    const da = castle ? distance(a, castle) : 0;
-    const db = castle ? distance(b, castle) : 0;
-    return db - da || a.id - b.id;
-  });
-  const updated = new Map(tiles.map((t) => [t.id, { ...t }]));
+  const far = (t: Tile) => (castle ? distance(t, castle) : 0);
+  const guestOrder = [...away].sort((a, b) => far(b.tile) - far(a.tile) || a.tile.id - b.tile.id).map((s) => s.tile.id);
+  const gone = takeGuests(tiles, house, toDesert, guestOrder);
+  toDesert -= gone.removed;
+  const order = [...own].sort((a, b) => far(b) - far(a) || a.id - b.id);
+  const updated = new Map(gone.tiles.map((t) => [t.id, { ...t }]));
   for (const t of order) {
     if (toDesert <= 0) break;
     const tile = updated.get(t.id)!;

@@ -33,8 +33,23 @@ import {
   type Units,
 } from "./units";
 import { areAdjacent } from "./map";
+import {
+  allianceOf,
+  allied,
+  alliesOf,
+  attackSides,
+  bound,
+  exitDistance,
+  expelGuests,
+  guestList,
+  guestUnits,
+  inForce,
+  shareKept,
+  survives,
+} from "./alliances";
 import { crossesRiver, crossingPoint, marchKind, marchPath, terrainDefense } from "./terrain";
 import type {
+  Alliance,
   CampaignEvent,
   CampaignInput,
   Captain,
@@ -49,6 +64,7 @@ import type {
 } from "./types";
 
 const EPS = 1e-9;
+const NO_UNITS: Units = { mesnada: 0, jinetes: 0, catapultas: 0 };
 
 interface Move {
   house: HouseId;
@@ -62,6 +78,10 @@ interface Move {
   /** Cuándo se dio la orden (la más temprana si se agrupan varias) y su puesto en la lista. */
   at: number;
   seq: number;
+  /** Sale de las tropas de paso de la casa en `from` (bloque 8). */
+  guest: boolean;
+  /** Es un ataque: el destino no es de la casa ni de un aliado suyo. */
+  attack: boolean;
 }
 
 /** La casilla tiene murallas: fortificada o fortaleza (ahí no cargan los jinetes). */
@@ -94,12 +114,23 @@ export function survivors(troops: number, own: number, rival: number): number {
 
 export function resolveCampaign(input: CampaignInput): CampaignResult {
   const { resolution } = input;
+  const alliances = inForce(input.alliances);
+  const friendsOf = (house: HouseId) => alliesOf(alliances, house);
   const tiles = new Map<TileId, Tile>(input.tiles.map((t) => [t.id, { ...t }]));
   // Composición de cada casilla (Mesnada, Jinetes, Catapultas); al final se escribe en la casilla.
   const comp = new Map<TileId, Units>(input.tiles.map((t) => [t.id, unitsOf(t)]));
   const setComp = (id: TileId, u: Units) => {
     comp.set(id, u);
     tiles.get(id)!.troops = totalUnits(u);
+  };
+  // Tropas de paso (bloque 8): por casilla, lo que tiene allí cada casa aliada del dueño.
+  const guests = new Map<TileId, Map<HouseId, Units>>(
+    input.tiles.map((t) => [t.id, new Map((t.guests ?? []).map((g) => [g.house, unitsOf(g)]))]),
+  );
+  const guestAt = (id: TileId, house: HouseId): Units => guests.get(id)!.get(house) ?? { ...NO_UNITS };
+  const setGuest = (id: TileId, house: HouseId, u: Units) => {
+    if (totalUnits(u) > 0) guests.get(id)!.set(house, u);
+    else guests.get(id)!.delete(house);
   };
   const absent = new Set(input.absentHouses ?? []);
   const events: CampaignEvent[] = [];
@@ -130,37 +161,40 @@ export function resolveCampaign(input: CampaignInput): CampaignResult {
     c.freeAt = resolution + CAPTAIN.escapeAfter;
     events.push({ type: "capitan_preso", house, by, tile, freeAt: c.freeAt });
   };
-  /** Capitán que defiende una casilla: el de su dueño, si está allí y no se ha ido. */
-  const defenderCaptain = (tileId: TileId, owner: HouseId | null) => {
-    if (!CAPTAIN.enabled || owner == null) return false;
-    const c = capOf.get(owner);
-    return !!c && c.tile === tileId && !moves.some((m) => m.captain && m.house === owner);
+  /** Capitán de una casa que defiende una casilla: está allí y no se ha ido. */
+  const defenderCaptain = (tileId: TileId, house: HouseId | null) => {
+    if (!CAPTAIN.enabled || house == null) return false;
+    const c = capOf.get(house);
+    return !!c && c.tile === tileId && !moves.some((m) => m.captain && m.house === house);
   };
 
   // 1. Validar órdenes y repartir las tropas de cada casilla.
   const moves: Move[] = [];
   const supports: SupportOrder[] = [];
   const sieges: SiegeOrder[] = [];
-  const checked = checkOrders(input.tiles, input.orders, resolution);
+  const checked = checkOrders(input.tiles, input.orders, resolution, alliances);
   for (const { order, reason } of checked.invalid) events.push({ type: "orden_invalida", order, reason });
   // Tregua: los ataques contra esas casillas no salen (las tropas se quedan donde estaban).
   // La Paz del Rey hace lo mismo con todos los ataques a casillas de otras casas.
+  // Entrar en la casilla de un aliado no es un ataque (bloque 8).
   const truce = new Set(input.truceTiles ?? []);
   const stopped = new Map<TileId, Set<HouseId>>();
   const peaceStopped = new Map<TileId, Set<HouseId>>();
   for (const order of checked.valid) {
     const target = order.kind === "move" ? tiles.get(order.to)! : null;
-    if (order.kind === "move" && truce.has(order.to) && target!.owner !== order.house) {
+    const attack = order.kind === "move" && target!.owner !== order.house && !bound(alliances, order.house, target!.owner);
+    if (order.kind === "move" && truce.has(order.to) && attack) {
       stopped.set(order.to, (stopped.get(order.to) ?? new Set()).add(order.house));
       continue;
     }
-    if (order.kind === "move" && input.peace && target!.owner != null && target!.owner !== order.house) {
+    if (order.kind === "move" && input.peace && target!.owner != null && attack) {
       peaceStopped.set(order.to, (peaceStopped.get(order.to) ?? new Set()).add(order.house));
       continue;
     }
     if (order.kind === "move") {
+      const guest = !!order.guest;
       // Varias órdenes iguales de la misma casa se agrupan.
-      const same = moves.find((m) => m.house === order.house && m.from === order.from && m.to === order.to);
+      const same = moves.find((m) => m.house === order.house && m.from === order.from && m.to === order.to && m.guest === guest);
       const u = orderUnits(order);
       // El Capitán solo va si está en la casilla de salida (y con un único grupo).
       const withCaptain =
@@ -174,7 +208,19 @@ export function resolveCampaign(input: CampaignInput): CampaignResult {
         if (withCaptain) same.captain = true;
         same.at = Math.min(same.at, at);
       } else
-        moves.push({ house: order.house, from: order.from, to: order.to, troops: order.troops, units: u, failed: false, captain: withCaptain, at, seq: moves.length });
+        moves.push({
+          house: order.house,
+          from: order.from,
+          to: order.to,
+          troops: order.troops,
+          units: u,
+          failed: false,
+          captain: withCaptain,
+          at,
+          seq: moves.length,
+          guest,
+          attack,
+        });
     } else if (order.kind === "siege") {
       sieges.push(order);
     } else {
@@ -190,11 +236,14 @@ export function resolveCampaign(input: CampaignInput): CampaignResult {
   }
 
   // 2. Las tropas que salen dejan su casilla (si fallan, vuelven al final).
-  for (const m of moves) setComp(m.from, subUnits(comp.get(m.from)!, m.units));
+  for (const m of moves) {
+    if (m.guest) setGuest(m.from, m.house, subUnits(guestAt(m.from, m.house), m.units));
+    else setComp(m.from, subUnits(comp.get(m.from)!, m.units));
+  }
 
-  // 3. Apoyos cortados.
+  // 3. Apoyos cortados: atacan la casilla desde la que se apoya.
   const activeSupports = supports.filter((s) => {
-    const cut = moves.some((m) => m.to === s.from && m.house !== s.house && m.from !== s.target);
+    const cut = moves.some((m) => m.to === s.from && m.attack && m.from !== s.target);
     if (cut) events.push({ type: "apoyo_cortado", house: s.house, from: s.from, target: s.target });
     return !cut;
   });
@@ -203,10 +252,7 @@ export function resolveCampaign(input: CampaignInput): CampaignResult {
   // sola vez, al primer ataque que llegue a la casilla y siga en pie: el de la
   // casa que apoya si ataca ella; si no, el de la orden que se dio antes (bloque 4).
   const firstAttack = (s: SupportOrder): Move | undefined => {
-    const owner = tiles.get(s.target)?.owner ?? null;
-    const attacks = moves
-      .filter((x) => x.to === s.target && !x.failed && x.house !== owner)
-      .sort((a, b) => a.at - b.at || a.seq - b.seq);
+    const attacks = moves.filter((x) => x.to === s.target && !x.failed && x.attack).sort((a, b) => a.at - b.at || a.seq - b.seq);
     return attacks.find((x) => x.house === s.house) ?? attacks[0];
   };
   const attackSupport = (m: Move) =>
@@ -232,14 +278,25 @@ export function resolveCampaign(input: CampaignInput): CampaignResult {
 
   // 4. Choques frontales: dos casas que se cambian de casilla. Con
   // BATTLE_TWEAKS.crossingClash, también las que se cruzan por el camino: una
-  // marcha de dos casillas que recorre al revés un tramo de la otra.
+  // marcha de dos casillas que recorre al revés un tramo de la otra. Nunca
+  // entre aliados, ni durante el aviso (bloque 8).
   const paths = new Map<Move, TileId[]>(
-    moves.map((m) => [m, marchPath(input.tiles.find((t) => t.id === m.from)!, input.tiles.find((t) => t.id === m.to)!, input.tiles, m.house, m.units).map((t) => t.id)]),
+    moves.map((m) => [
+      m,
+      marchPath(
+        input.tiles.find((t) => t.id === m.from)!,
+        input.tiles.find((t) => t.id === m.to)!,
+        input.tiles,
+        m.house,
+        m.units,
+        friendsOf(m.house),
+      ).map((t) => t.id),
+    ]),
   );
   const crossing = (a: Move, b: Move) => crossingPoint(paths.get(a)!, paths.get(b)!);
   for (const a of moves) {
     for (const b of moves) {
-      if (a === b || a.failed || b.failed || a.house === b.house) continue;
+      if (a === b || a.failed || b.failed || a.house === b.house || bound(alliances, a.house, b.house)) continue;
       const swap = a.from === b.to && a.to === b.from;
       const via = swap || !BATTLE_TWEAKS.crossingClash ? null : crossing(a, b);
       if (swap ? a.from > b.from : !(via != null && moves.indexOf(a) < moves.indexOf(b))) continue;
@@ -290,20 +347,40 @@ export function resolveCampaign(input: CampaignInput): CampaignResult {
 
     // Refuerzos propios: llegan siempre y se suman a la defensa.
     const reinforcements = incoming.filter((m) => owner !== null && m.house === owner);
-    const hostile = incoming.filter((m) => !(owner !== null && m.house === owner));
+    // Aliados que entran (bloque 8): se quedan como tropas de paso y también defienden.
+    const entries = incoming.filter((m) => !m.attack && m.house !== owner);
+    const hostile = incoming.filter((m) => m.attack);
     const defUnits = reinforcements.reduce((u, m) => addUnits(u, m.units), comp.get(tileId)!);
-    const defTroops = totalUnits(defUnits);
     for (const r of reinforcements) {
       events.push({ type: "movimiento", house: r.house, from: r.from, to: r.to, troops: r.troops });
     }
+    for (const e of entries) {
+      setGuest(tileId, e.house, addUnits(guestAt(tileId, e.house), e.units));
+      events.push({ type: "movimiento", house: e.house, from: e.from, to: e.to, troops: e.troops, guest: true });
+    }
 
-    // El Capitán que llega con refuerzos se queda en la casilla.
-    for (const r of reinforcements) if (r.captain) capOf.get(r.house)!.tile = tileId;
+    // El Capitán que llega con refuerzos (o entra con sus tropas de paso) se queda en la casilla.
+    for (const r of [...reinforcements, ...entries]) if (r.captain) capOf.get(r.house)!.tile = tileId;
 
     if (hostile.length === 0) {
       setComp(tileId, defUnits);
       continue;
     }
+
+    // Tropas de paso en la casilla: defienden, salvo las de una casa aliada de
+    // algún atacante, que se quedan a un lado sin luchar (bloque 8).
+    const hostileHouses = unique(hostile.map((m) => m.house));
+    const present = unique([
+      ...guests.get(tileId)!.keys(),
+      // Un Capitán aliado solo en la casilla también está de paso.
+      ...captains
+        .filter((c) => c.tile === tileId && c.house !== owner && bound(alliances, c.house, owner) && defenderCaptain(tileId, c.house))
+        .map((c) => c.house),
+    ]).sort((a, b) => a - b);
+    const aside = present.filter((h) => hostileHouses.some((k) => bound(alliances, h, k)));
+    const fighting = present.filter((h) => !aside.includes(h));
+    const defAll = fighting.reduce((u, h) => addUnits(u, guestAt(tileId, h)), defUnits);
+    const defTroops = totalUnits(defAll);
 
     const defSupports = activeSupports.filter(
       (s) => s.target === tileId && s.supportedFrom === null && !hostile.some((m) => m.house === s.house),
@@ -314,8 +391,9 @@ export function resolveCampaign(input: CampaignInput): CampaignResult {
       (UNITS.enabled ? sum(hostile.map((m) => m.units.catapultas)) * UNITS.catapultas.breach : 0) +
       (tile.besiegedBy != null ? (tile.siegeNights ?? 0) * SIEGE.wallsPerNight : 0);
     const defCaptain = defenderCaptain(tileId, owner);
+    const guestCaptains = fighting.filter((h) => defenderCaptain(tileId, h));
     const defStrength =
-      (rawStrength(defUnits, tile) + (defCaptain ? CAPTAIN.strength : 0)) *
+      (rawStrength(defAll, tile) + (defCaptain ? CAPTAIN.strength : 0) + guestCaptains.length * CAPTAIN.strength) *
         defenseMultiplier(tile, resolution, owner !== null && absent.has(owner), input.defenseBonus ?? 0, breach) +
       sum(defSupports.map((s) => rawStrength(orderUnits(s), tile)));
 
@@ -329,7 +407,7 @@ export function resolveCampaign(input: CampaignInput): CampaignResult {
     const crossing = (m: Move) => crossesRiver(paths.get(m)!.map((id) => tileById.get(id)!), input.tiles);
     const riverFactor = (m: Move) => (crossing(m) ? plainMult / riverMult : 1);
 
-    // Agrupar los ataques por casa.
+    // Agrupar los ataques por casa y las casas aliadas en un solo bando (ataque conjunto, bloque 8).
     const byHouse = new Map<HouseId, Move[]>();
     for (const m of hostile) byHouse.set(m.house, [...(byHouse.get(m.house) ?? []), m]);
     const attackers = [...byHouse.entries()].map(([house, ms]) => ({
@@ -340,11 +418,22 @@ export function resolveCampaign(input: CampaignInput): CampaignResult {
       strength: sum(ms.map((m) => attackStrength(m) * riverFactor(m))),
       supporters: unique(ms.flatMap((m) => attackSupport(m).map((s) => s.house))),
       river: ms.some(crossing),
+      at: Math.min(...ms.map((m) => m.at)),
+      seq: Math.min(...ms.map((m) => m.seq)),
     }));
+    const bands = attackSides(
+      attackers.map((a) => a.house),
+      alliances,
+    ).map((houses) => {
+      // Dentro del bando, primero quien dio antes la orden.
+      const parts = attackers.filter((a) => houses.includes(a.house)).sort((p, q) => p.at - q.at || p.seq - q.seq);
+      return { houses, parts, troops: sum(parts.map((p) => p.troops)), strength: sum(parts.map((p) => p.strength)) };
+    });
 
-    const top = Math.max(defStrength, ...attackers.map((a) => a.strength));
+    const top = Math.max(defStrength, ...bands.map((b) => b.strength));
     const defenderOnTop = Math.abs(defStrength - top) <= EPS;
-    const topAttackers = attackers.filter((a) => Math.abs(a.strength - top) <= EPS);
+    const topBands = bands.filter((b) => Math.abs(b.strength - top) <= EPS);
+    const bandOf = (house: HouseId) => bands.find((b) => b.houses.includes(house))!;
 
     const sides = [
       {
@@ -353,25 +442,36 @@ export function resolveCampaign(input: CampaignInput): CampaignResult {
         strength: defStrength,
         troops: defTroops,
         supporters: unique(defSupports.map((s) => s.house)),
+        ...(fighting.length > 0 ? { joint: fighting } : {}),
       },
-      ...attackers.map((a) => ({
-        house: a.house as HouseId | null,
-        role: "ataque" as const,
-        strength: a.strength,
-        troops: a.troops,
-        supporters: a.supporters,
-        from: unique(a.moves.map((m) => m.from)),
-        ...(a.river ? { river: true } : {}),
-      })),
+      ...attackers.map((a) => {
+        const joint = bandOf(a.house).houses.filter((h) => h !== a.house);
+        return {
+          house: a.house as HouseId | null,
+          role: "ataque" as const,
+          strength: a.strength,
+          troops: a.troops,
+          supporters: a.supporters,
+          from: unique(a.moves.map((m) => m.from)),
+          ...(a.river ? { river: true } : {}),
+          ...(joint.length > 0 ? { joint } : {}),
+        };
+      }),
     ];
+    const asideField = aside.length > 0 ? { aside } : {};
 
     // Con BATTLE_TWEAKS.fortifyUntilAttacked, el ataque gasta la fortificación.
     if (BATTLE_TWEAKS.fortifyUntilAttacked) tile.fortifiedUntil = null;
 
     if (defenderOnTop) {
-      // Gana el defensor (también en empate).
-      const rival = Math.max(...attackers.map((a) => a.strength));
-      setComp(tileId, keepUnits(defUnits, survivors(defTroops, defStrength, rival)));
+      // Gana el defensor (también en empate). Las bajas se reparten entre el
+      // dueño y las tropas de paso que defendían, en proporción.
+      const rival = Math.max(...bands.map((b) => b.strength));
+      const keptAll = survivors(defTroops, defStrength, rival);
+      const stacks = [defUnits, ...fighting.map((h) => guestAt(tileId, h))];
+      const kept = shareKept(stacks.map(totalUnits), keptAll);
+      setComp(tileId, keepUnits(defUnits, kept[0]!));
+      fighting.forEach((h, i) => setGuest(tileId, h, keepUnits(guestAt(tileId, h), kept[i + 1]!)));
       for (const a of attackers) a.moves.forEach((m) => (m.failed = true));
       // Los Capitanes que atacaban caen presos (o huyen, si defendía una guarnición neutral).
       for (const m of hostile.filter((x) => x.captain)) {
@@ -384,72 +484,117 @@ export function resolveCampaign(input: CampaignInput): CampaignResult {
         winner: owner,
         previousOwner: owner,
         conquered: false,
-        survivors: tile.troops,
+        survivors: keptAll,
+        ...(fighting.length > 0
+          ? { allies: fighting, kept: [owner, ...fighting].flatMap((h, i) => (h == null ? [] : [{ house: h, troops: kept[i]! }])) }
+          : {}),
+        ...asideField,
         sides,
       });
-    } else if (topAttackers.length > 1) {
+    } else if (topBands.length > 1) {
       // Rebote: nadie entra y el defensor no sufre bajas.
       setComp(tileId, defUnits);
       for (const a of attackers) a.moves.forEach((m) => (m.failed = true));
-      events.push({ type: "rebote", tile: tileId, houses: topAttackers.map((a) => a.house), strength: top });
+      events.push({ type: "rebote", tile: tileId, houses: topBands.flatMap((b) => b.houses), strength: top });
     } else {
-      const winner = topAttackers[0]!;
-      const rival = Math.max(defStrength, ...attackers.filter((a) => a !== winner).map((a) => a.strength));
-      const kept = survivors(winner.troops, winner.strength, rival);
-      for (const a of attackers) if (a !== winner) a.moves.forEach((m) => (m.failed = true));
+      const band = topBands[0]!;
+      const rival = Math.max(defStrength, ...bands.filter((b) => b !== band).map((b) => b.strength));
+      const keptAll = survivors(band.troops, band.strength, rival);
+      // Bajas en proporción a lo que llevó cada uno; la casilla, para quien entró
+      // con más tropas (en empate, quien dio antes la orden).
+      const kept = shareKept(
+        band.parts.map((p) => p.troops),
+        keptAll,
+      );
+      const most = Math.max(...band.parts.map((p) => p.troops));
+      const winner = band.parts.find((p) => p.troops === most)!;
+      for (const a of attackers) if (!band.houses.includes(a.house)) a.moves.forEach((m) => (m.failed = true));
+      const partners = band.parts.filter((p) => p !== winner).map((p) => p.house);
       events.push({
         type: "combate",
         tile: tileId,
         winner: winner.house,
         previousOwner: owner,
         conquered: true,
-        survivors: kept,
+        survivors: keptAll,
+        ...(partners.length > 0
+          ? { allies: partners, kept: band.parts.map((p, i) => ({ house: p.house, troops: kept[i]! })) }
+          : {}),
+        ...asideField,
         sides,
       });
-      // El Capitán del defensor y los de los demás atacantes caen presos del vencedor.
+      // El Capitán del defensor, los de las tropas de paso que defendían y los
+      // de los demás atacantes caen presos del vencedor.
       if (defCaptain) capture(owner!, winner.house, tileId);
-      for (const m of hostile.filter((x) => x.captain && x.house !== winner.house)) {
+      for (const h of guestCaptains) capture(h, winner.house, tileId);
+      for (const m of hostile.filter((x) => x.captain && !band.houses.includes(x.house))) {
         capture(m.house, winner.house, tileId);
         m.captain = false;
       }
-      for (const m of winner.moves) if (m.captain) capOf.get(m.house)!.tile = tileId;
+      for (const p of band.parts) for (const m of p.moves) if (m.captain) capOf.get(m.house)!.tile = tileId;
+      // Las tropas de paso que defendían caen con la casilla.
+      for (const h of fighting) setGuest(tileId, h, { ...NO_UNITS });
       tile.owner = winner.house;
-      setComp(tileId, keepUnits(winner.units, kept));
+      band.parts.forEach((p, i) => {
+        const u = keepUnits(p.units, kept[i]!);
+        if (p === winner) setComp(tileId, u);
+        else setGuest(tileId, p.house, addUnits(guestAt(tileId, p.house), u));
+      });
       tile.fortifiedUntil = null;
     }
   }
 
-  // 6. Repliegues: la mitad de las tropas vuelve a su origen, si sigue siendo suyo.
+  // 6. Repliegues: la mitad de las tropas vuelve a su origen, si sigue siendo suyo
+  // (o, si salieron de una casilla aliada, si sigue siendo de un aliado).
   for (const m of moves) {
     if (!m.failed) continue;
     // Vuelve la mitad de la Mesnada y de los Jinetes; las Catapultas se pierden.
     const backUnits = retreatUnits(m.units);
     const back = totalUnits(backUnits);
     const origin = tiles.get(m.from)!;
-    const arrived = origin.owner === m.house;
-    if (arrived) setComp(m.from, addUnits(comp.get(m.from)!, backUnits));
+    const arrived = m.guest ? origin.owner != null && origin.owner !== m.house && bound(alliances, m.house, origin.owner) : origin.owner === m.house;
+    if (arrived && m.guest) setGuest(m.from, m.house, addUnits(guestAt(m.from, m.house), backUnits));
+    else if (arrived) setComp(m.from, addUnits(comp.get(m.from)!, backUnits));
     // El Capitán vuelve con los suyos (o a su castillo, si su casilla se perdió).
     if (m.captain) capOf.get(m.house)!.tile = arrived ? m.from : castleOf(m.house);
     events.push({ type: "repliegue", house: m.house, from: m.to, to: m.from, troops: back, arrived });
   }
 
-  // 7. Asedios: siguen si quien sitia conserva su casilla y nadie la ha atacado.
-  resolveSieges(input.tiles, tiles, sieges, moves, events);
+  // 7. Asedios: siguen si quien sitia conserva su sitio y nadie lo ha atacado.
+  const holds = (s: SiegeOrder) => {
+    const from = tiles.get(s.from)!;
+    if (!s.guest) return from.owner === s.house;
+    return from.owner != null && allied(alliances, s.house, from.owner) && totalUnits(guestAt(s.from, s.house)) > 0;
+  };
+  resolveSieges(input.tiles, tiles, sieges, moves, events, holds);
 
-  // 8. Un Capitán que se queda en una casilla que ha cambiado de manos sin luchar
+  // 8. Tropas de paso que ya no pueden quedarse (alianza terminada o casilla
+  // de una casa que no es aliada): vuelven a la casilla propia más cercana.
+  const written = input.tiles.map((t) => {
+    const out = setUnits(tiles.get(t.id)!, comp.get(t.id)!);
+    const list = guestList(guests.get(t.id)!);
+    if (list) out.guests = list;
+    else delete out.guests;
+    return out;
+  });
+  const expel = expelGuests(written, alliances, resolution, captains);
+  for (const e of expel.expelled) events.push({ type: "expulsion", ...e });
+  for (const c of expel.captains) capOf.get(c.house)!.tile = c.tile;
+
+  // 9. Un Capitán que se queda en una casilla que ha cambiado de manos sin luchar
   // (por ejemplo, si salieron todas sus tropas y otro entró) cae preso igualmente:
   // ya se resolvió arriba cuando hubo combate; aquí solo se cubre el caso sin combate.
+  const finalById = new Map(expel.tiles.map((t) => [t.id, t]));
   for (const c of captains) {
     if (c.tile == null) continue;
-    const t = tiles.get(c.tile);
-    if (t && t.owner !== c.house && t.owner != null) capture(c.house, t.owner, t.id);
+    const t = finalById.get(c.tile);
+    if (!t || t.owner === c.house || t.owner == null) continue;
+    const al = allianceOf(alliances, c.house, t.owner);
+    if (al && survives(al, resolution)) continue;
+    capture(c.house, t.owner, t.id);
   }
 
-  return {
-    tiles: input.tiles.map((t) => setUnits(tiles.get(t.id)!, comp.get(t.id)!)),
-    events,
-    captains,
-  };
+  return { tiles: expel.tiles, events, captains };
 }
 
 /**
@@ -464,11 +609,15 @@ export function gloryFromEvents(events: CampaignEvent[]): Map<HouseId, number> {
   for (const e of events) {
     if (e.type === "choque_frontal" && e.winner != null) add(e.winner, GLORY.perVictory);
     if (e.type !== "combate" || e.winner == null) continue;
-    const rivals = e.sides.filter((s) => s.house != null && s.house !== e.winner);
+    // Bloque 8: ganan también los aliados del ataque conjunto o las tropas de paso que defendían.
+    const winners = [e.winner, ...(e.allies ?? [])];
+    const rivals = e.sides.filter((s) => s.house != null && !winners.includes(s.house));
     if (rivals.length === 0) continue;
-    add(e.winner, GLORY.perVictory);
+    for (const h of winners) add(h, GLORY.perVictory);
     const def = e.sides.find((s) => s.role === "defensa");
-    const top = Math.max(...e.sides.filter((s) => s.house === e.winner).map((s) => s.strength));
+    const top = e.conquered
+      ? sum(e.sides.filter((s) => s.role === "ataque" && s.house != null && winners.includes(s.house)).map((s) => s.strength))
+      : Math.max(...e.sides.filter((s) => s.house === e.winner).map((s) => s.strength));
     if (e.conquered && def && def.house != null && def.strength * 2 <= top) add(def.house, GLORY.honor);
   }
   return out;
@@ -483,25 +632,30 @@ export function checkOrders(
   orders: Order[],
   /** Resolución que se va a ejecutar (para saber qué casillas siguen fortificadas). */
   resolution?: number,
+  /** Alianzas en vigor o en aviso (bloque 8). */
+  allianceList?: Alliance[],
 ): { valid: Order[]; invalid: { order: Order; reason: string }[] } {
   const tiles = new Map<TileId, Tile>(tileList.map((t) => [t.id, t]));
-  const committed = new Map<TileId, Units>();
+  const alliances = inForce(allianceList);
+  // Lo comprometido de cada casilla: el dueño y, aparte, cada casa con tropas de paso.
+  const committed = new Map<string, Units>();
   const valid: Order[] = [];
   const invalid: { order: Order; reason: string }[] = [];
   for (const order of orders) {
-    const reason = validate(order, tiles, resolution);
+    const reason = validate(order, tiles, resolution, alliances);
     if (reason) {
       invalid.push({ order, reason });
       continue;
     }
     const from = tiles.get(order.from)!;
-    const used = addUnits(committed.get(order.from) ?? { mesnada: 0, jinetes: 0, catapultas: 0 }, orderUnits(order));
-    const have = unitsOf(from);
+    const key = order.guest ? `${order.from}:${order.house}` : `${order.from}`;
+    const used = addUnits(committed.get(key) ?? { ...NO_UNITS }, orderUnits(order));
+    const have = order.guest ? guestUnits(from, order.house) : unitsOf(from);
     if (used.mesnada > have.mesnada || used.jinetes > have.jinetes || used.catapultas > have.catapultas) {
       invalid.push({ order, reason: "no hay tropas suficientes en la casilla" });
       continue;
     }
-    committed.set(order.from, used);
+    committed.set(key, used);
     valid.push(order);
   }
   return { valid, invalid };
@@ -520,13 +674,14 @@ function resolveSieges(
   sieges: SiegeOrder[],
   moves: Move[],
   events: CampaignEvent[],
+  /** Quien sitia sigue en su casilla (propia, o aliada con sus tropas de paso). */
+  holds: (s: SiegeOrder) => boolean,
 ): void {
   if (!SIEGE.enabled) return;
   const active: SiegeOrder[] = [];
   for (const s of sieges) {
-    const from = tiles.get(s.from)!;
-    const attacked = moves.some((m) => m.to === s.from && m.house !== s.house);
-    if (from.owner !== s.house || attacked) {
+    const attacked = moves.some((m) => m.to === s.from && m.attack && m.house !== s.house);
+    if (!holds(s) || attacked) {
       events.push({ type: "asedio_roto", house: s.house, tile: s.target, reason: "cortado" });
       continue;
     }
@@ -575,13 +730,22 @@ function resolveSieges(
   }
 }
 
-function validate(order: Order, tiles: Map<TileId, Tile>, resolution?: number): string | null {
+function validate(order: Order, tiles: Map<TileId, Tile>, resolution: number | undefined, alliances: Alliance[]): string | null {
   const captainAlone = BATTLE_TWEAKS.captainAlone && order.kind === "move" && order.troops === 0 && !!order.captain;
   if (captainAlone) {
+    const from = tiles.get(order.from);
     const to = tiles.get(order.to);
-    if (!tiles.get(order.from) || tiles.get(order.from)!.owner !== order.house) return "la casilla de origen no es de esa casa";
-    if (!to || to.owner !== order.house) return "el Capitán solo puede ir solo a una casilla propia";
-    return marchKind(tiles.get(order.from)!, to, [...tiles.values()], order.house) ? null : "el destino no es adyacente ni se llega por camino";
+    const fromOk = !!from && (order.guest ? from.owner !== order.house && bound(alliances, order.house, from.owner) : from.owner === order.house);
+    if (!fromOk) return order.guest ? "no estás en una casilla aliada" : "la casilla de origen no es de esa casa";
+    if (!to) return "el Capitán solo puede ir solo a una casilla propia o aliada";
+    if (to.owner !== order.house) {
+      if (!bound(alliances, order.house, to.owner)) return "el Capitán solo puede ir solo a una casilla propia o aliada";
+      const entry = allianceEntry(order, from!, to, [...tiles.values()], alliances);
+      if (entry) return entry;
+    }
+    return marchKind(from!, to, [...tiles.values()], order.house, undefined, alliesOf(alliances, order.house))
+      ? null
+      : "el destino no es adyacente ni se llega por camino";
   }
   if (!Number.isInteger(order.troops) || order.troops <= 0) return "el número de tropas debe ser un entero positivo";
   const j = order.jinetes ?? 0;
@@ -590,28 +754,49 @@ function validate(order: Order, tiles: Map<TileId, Tile>, resolution?: number): 
   if (!UNITS.enabled && j + c > 0) return "no hay tipos de tropa en esta partida";
   const from = tiles.get(order.from);
   if (!from) return "la casilla de origen no existe";
-  if (from.owner !== order.house) return "la casilla de origen no es de esa casa";
-  if (order.kind === "move") return validateMove(order, from, tiles);
-  if (order.kind === "siege") return validateSiege(order, from, tiles, resolution);
-  return validateSupport(order, from, tiles);
+  if (order.guest) {
+    // Tropas de paso (bloque 8): salen de una casilla de un aliado (o de quien lo fue, durante el aviso).
+    if (from.owner === order.house || !bound(alliances, order.house, from.owner)) return "no tienes tropas de paso en esa casilla";
+    if (order.kind !== "move" && !allied(alliances, order.house, from.owner))
+      return "durante el aviso, las tropas de paso solo pueden salir de las casillas de esa casa";
+  } else if (from.owner !== order.house) return "la casilla de origen no es de esa casa";
+  if (order.kind === "move") return validateMove(order, from, tiles, alliances);
+  if (order.kind === "siege") return validateSiege(order, from, tiles, resolution, alliances);
+  return validateSupport(order, from, tiles, alliances);
 }
 
-function validateMove(order: MoveOrder, from: Tile, tiles: Map<TileId, Tile>): string | null {
+/**
+ * Entrar en una casilla de una casa con la que hay alianza (bloque 8): libre
+ * si está en vigor (salvo el castillo); durante el aviso, solo las tropas de
+ * paso que ya están dentro y se acercan a la salida.
+ */
+function allianceEntry(order: MoveOrder, from: Tile, to: Tile, tiles: Tile[], alliances: Alliance[]): string | null {
+  if (to.type === "castillo") return "no se puede entrar en el castillo de un aliado";
+  if (allied(alliances, order.house, to.owner)) return null;
+  const leaving = !!order.guest && from.owner === to.owner && exitDistance(tiles, order.house, to) < exitDistance(tiles, order.house, from);
+  return leaving ? null : "durante el aviso no se puede entrar en las casillas de esa casa";
+}
+
+function validateMove(order: MoveOrder, from: Tile, tiles: Map<TileId, Tile>, alliances: Alliance[]): string | null {
   const to = tiles.get(order.to);
   if (!to) return "la casilla de destino no existe";
   const units = orderUnits(order);
+  const list = [...tiles.values()];
   if (!canEnter(units, to.type)) return "los jinetes y las catapultas no suben a la montaña";
-  if (!marchKind(from, to, [...tiles.values()], order.house, units)) return "el destino no es adyacente ni se llega por camino, por mar o a la carga";
+  if (!marchKind(from, to, list, order.house, units, alliesOf(alliances, order.house)))
+    return "el destino no es adyacente ni se llega por camino, por mar o a la carga";
+  if (to.owner != null && to.owner !== order.house && bound(alliances, order.house, to.owner)) return allianceEntry(order, from, to, list, alliances);
   if (to.type === "castillo" && to.castleOf !== order.house) return "los castillos no se pueden atacar";
   return null;
 }
 
-function validateSiege(order: SiegeOrder, from: Tile, tiles: Map<TileId, Tile>, resolution?: number): string | null {
+function validateSiege(order: SiegeOrder, from: Tile, tiles: Map<TileId, Tile>, resolution: number | undefined, alliances: Alliance[]): string | null {
   if (!SIEGE.enabled) return "no hay asedios en esta partida";
   const target = tiles.get(order.target);
   if (!target) return "la casilla sitiada no existe";
   if (!areAdjacent(from, target)) return "solo se puede sitiar una casilla vecina";
   if (target.owner === order.house) return "no puedes sitiar tu propia casilla";
+  if (bound(alliances, order.house, target.owner)) return "no puedes sitiar a un aliado";
   if (order.troops < SIEGE.minTroops) return `para sitiar hacen falta al menos ${SIEGE.minTroops} tropas`;
   const fortified = target.fortifiedUntil != null && (resolution == null || target.fortifiedUntil >= resolution);
   const walls =
@@ -623,11 +808,12 @@ function validateSiege(order: SiegeOrder, from: Tile, tiles: Map<TileId, Tile>, 
   return null;
 }
 
-function validateSupport(order: SupportOrder, from: Tile, tiles: Map<TileId, Tile>): string | null {
+function validateSupport(order: SupportOrder, from: Tile, tiles: Map<TileId, Tile>, alliances: Alliance[]): string | null {
   const target = tiles.get(order.target);
   if (!target) return "la casilla apoyada no existe";
   if (!areAdjacent(from, target)) return "la casilla apoyada no es adyacente";
   if (target.type === "castillo") return "los castillos no se pueden atacar ni hace falta defenderlos";
+  if (order.supportedFrom !== null && bound(alliances, order.house, target.owner)) return "no puedes apoyar un ataque contra un aliado";
   if (order.supportedFrom === ANY_ORIGIN) {
     if (!BATTLE_TWEAKS.supportAnyOrigin) return "el ataque apoyado no es posible";
     if (target.owner === order.house) return "no puedes apoyar un ataque contra tu propia casilla";
