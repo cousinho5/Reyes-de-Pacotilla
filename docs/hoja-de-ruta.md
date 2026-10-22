@@ -12,7 +12,7 @@ Primero se definen todos los bloques; después se hacen uno a uno, en el orden d
 | 4.º | 8. Alianzas | ✅ Hecho | #57 a #60 | Alianzas formales: paso por las casillas del aliado, ruptura con aviso de tres días y ataques conjuntos |
 | 5.º | 6. Optimización y controles en móvil | ✅ Hecho (falta probarlo en un móvil de verdad) | #61 a #64 | Mapa guardado y dibujado en segundo plano, zoom con pinza, ficha que sube desde abajo, órdenes arrastrando, botones de 48 y juego sin conexión |
 | 6.º | 9. Diseño de la sección Mapa | ✅ Hecho (falta probarlo en un móvil de verdad) | #65 y #66 | Capas (con Alcance automático), escudos, tropas por color y tipo, niebla, línea de avisos y leyenda |
-| 7.º | 12. Diseño de la sección Órdenes | 🔨 En curso: revisando las decisiones con Pablo | — | Verbo según el destino, botones de tropas, cambiar órdenes, tarjetas agrupadas, simulación con «¿Y si atacan?», repetir asedios y aviso 1 hora antes del cierre |
+| 7.º | 12. Diseño de la sección Órdenes | 🔨 En curso: decisiones revisadas, PR 1 (compositor) | — | Verbo según el destino, botones de tropas, cambiar órdenes, tarjetas agrupadas, simulación con «¿Y si atacan?», repetir asedios y aviso 1 hora antes del cierre |
 | 8.º | 2. Vista del castillo y construcciones | ⏳ Pendiente (decidido) | — | Escena del castillo en pixel art, un dibujo por nivel de cada edificio y castillo que crece |
 | 9.º | 10. Diseño de la sección Comercio | ⏳ Pendiente (decidido) | — | Lo urgente arriba, oferta en dos líneas con «Precio justo», valor en Oro de la Corona, aceptar en gris, ofertas que caducan, Corona en Comercio e hilo del trato con frase |
 | 10.º | 3. Mejora del cronista | ⏳ Pendiente (decidido) | — | Fray Abundio: dos boletines por semana, repetición narrada, frases nuevas, memoria, proclamas y dibujo nuevo |
@@ -216,15 +216,15 @@ Decidido el 20 de octubre de 2026. Las decisiones y los pasos están en `docs/bl
 
 ## Bloque 12: diseño de la sección Órdenes **(en curso)**
 
-Decidido el 20 de octubre de 2026. Las decisiones y los pasos están en `docs/bloque12.md`. No cambia reglas de combate.
+Decidido el 20 de octubre de 2026 y revisado el 22 (sin «ejércitos sin orden», aviso 1 h antes solo a quien no ha dado órdenes, Defender también en casillas ajenas). Las decisiones y los pasos están en `docs/bloque12.md`. No cambia reglas de combate.
 
 **Decisiones:**
 
 1. **Cuántas tropas:** botones «−» y «+», con «Todas» y «La mitad».
 2. **Tipo de orden:** el destino propone el verbo (Mover, Atacar, Entrar, Apoyar, Sitiar) y se puede cambiar.
 3. **Cambiar una orden:** tocar su flecha o su línea la abre.
-4. **Dónde se repasan:** pestaña Órdenes rediseñada y etiqueta en el mapa con la lista rápida.
-5. **Avisos:** notificación diaria 1 hora antes del cierre, que pide dar órdenes a quien no las ha dado.
+4. **Dónde se repasan:** pestaña Órdenes rediseñada y etiqueta en el mapa («Sáb 31 · 3 órdenes») con la lista rápida.
+5. **Avisos:** notificación 1 hora antes del cierre, solo a quien no ha dado ninguna orden; se puede apagar.
 6. **Lista:** tarjetas agrupadas por objetivo, con la cuenta de fuerza.
 7. **Simulación:** resultado en cada orden y botón «¿Y si atacan?».
 8. **Repetir:** «Repetir cada noche» en asedios y apoyos a la defensa.
