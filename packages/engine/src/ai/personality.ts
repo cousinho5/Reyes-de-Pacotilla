@@ -55,7 +55,7 @@ export function chooseObjective(options: readonly ObjectiveKey[], p: Personality
 }
 
 /**
- * Variantes de los bots para el simulador (hoja de ruta, bloque 4). Por defecto, nada cambia.
+ * Variantes de los bots para el simulador (hoja de ruta, bloque 4).
  * - `riderShare`: parte de las tropas nuevas que recluta como jinetes cada casa (null = la suya).
  * - `captain`: cómo mueve al Capitán: "ataques" (solo con los ataques, como siempre),
  *   "avance" (también con las tropas que avanzan al frente) o "solo" (además, solo, hacia el frente).
@@ -68,5 +68,6 @@ export const BOT_TWEAKS: {
 } = {
   riderShare: null,
   fortifyFrontier: null,
-  captain: "ataques",
+  // Bloque 4: el Capitán va solo al frente (antes "ataques").
+  captain: "solo",
 };

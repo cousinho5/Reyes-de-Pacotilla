@@ -1729,3 +1729,19 @@ label.check {
     animation: none;
   }
 }
+
+/* Capitanes presos y su rescate (bloque 4). */
+.list > li.prisoner {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.prisoner .ransom {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+.prisoner .ransom input {
+  width: 4.5rem;
+}

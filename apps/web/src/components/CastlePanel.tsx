@@ -1,7 +1,7 @@
 import { Icon, ResourceIcon } from "../art";
 import { useState } from "react";
 import { BUILDINGS, FORTIFY_UPKEEP, RESOURCES, UNIT_KINDS, canAfford, recruitCost as costOf, upgradeCost, unitsOf, type Resource, type Resources, type UnitKind } from "@reyes/engine";
-import { api, type GameState } from "../api";
+import { api, type GameState, type HouseInfo } from "../api";
 import { BUILDING_LABEL, RESOURCE_LABEL, UNIT_LABEL, UNIT_NOTE, UNIT_ONE, houseName } from "../ui";
 import { CardsPanel } from "./CardsPanel";
 import { HouseSettings } from "./HouseSettings";
@@ -203,8 +203,38 @@ export function CastlePanel({ state, gameId, act }: Props) {
   );
 }
 
+/** Un Capitán que tienes preso: su rescate (pedir o cambiar el precio) y soltarlo. */
+function Prisoner({ house: h, gameId, act, active }: { house: HouseInfo; gameId: number; act: Props["act"]; active: boolean }) {
+  const asked = h.capitan!.rescate ?? null;
+  const [price, setPrice] = useState(asked ?? 20);
+  return (
+    <li className="prisoner">
+      <span>
+        {h.capitan!.nombre}, de {h.nombre} (se escapa en la resolución {h.capitan!.libreEn})
+        {asked != null && <small className="muted"> · pides {asked} de Oro</small>}
+      </span>
+      {active && (
+        <span className="ransom">
+          <label>
+            Rescate{" "}
+            <input type="number" min={1} inputMode="numeric" value={price} onChange={(e) => setPrice(Math.max(1, Math.floor(Number(e.target.value) || 1)))} />{" "}
+            de Oro
+          </label>
+          <button onClick={() => act(() => api.setRansom(gameId, h.id, price), `Pides ${price} de Oro por ${h.capitan!.nombre}.`)}>
+            {asked == null ? "Pedir" : "Cambiar"}
+          </button>
+          <button className="link" onClick={() => act(() => api.releaseCaptain(gameId, h.id), `${h.capitan!.nombre} vuelve a casa.`)}>
+            Soltar gratis
+          </button>
+        </span>
+      )}
+    </li>
+  );
+}
+
 /** Tu Capitán (dónde está o de quién es preso) y los Capitanes que tienes presos. */
 function CaptainCard({ state, gameId, act }: Props) {
+  const active = state.partida.estado === "active";
   const me = state.casas.find((h) => h.id === state.yo.casa);
   if (!me?.capitan) return null;
   const where = state.casillas?.find((t) => t.capitanes?.includes(me.id));
@@ -215,14 +245,32 @@ function CaptainCard({ state, gameId, act }: Props) {
         <Icon name="capitan" size={20} color="#d6a64b" /> {me.capitan.nombre}
       </h2>
       {me.capitan.presoDe != null ? (
-        <p>
-          Preso de {houseName(state.casas, me.capitan.presoDe)}. Se escapará en la resolución {me.capitan.libreEn}, salvo que te lo
-          devuelvan antes: puedes ofrecer un rescate en el Comercio.
-        </p>
+        <>
+          <p>
+            Preso de {houseName(state.casas, me.capitan.presoDe)}. Se escapará en la resolución {me.capitan.libreEn}, salvo que pagues
+            antes su rescate.
+          </p>
+          {me.capitan.rescate != null ? (
+            <div className="actions">
+              <button
+                className="primary grow"
+                disabled={!active || (state.yo.recursos?.oro ?? 0) < me.capitan.rescate}
+                onClick={() =>
+                  act(() => api.payRansom(gameId, me.capitan!.rescate!), `${me.capitan!.nombre} vuelve a tu castillo.`)
+                }
+              >
+                Pagar el rescate: {me.capitan.rescate} de Oro
+              </button>
+            </div>
+          ) : (
+            <p className="muted">{houseName(state.casas, me.capitan.presoDe)} aún no ha pedido rescate.</p>
+          )}
+        </>
       ) : (
         <p>
           Está en {where?.nombre ?? "tu castillo"}. Suma 2 de fuerza al grupo con el que va (lo eliges al dar una orden desde su
-          casilla) y a la defensa de la casilla donde está. Si su grupo pierde contra otra casa, cae preso.
+          casilla) y a la defensa de la casilla donde está. También puede ir solo a otra casilla tuya («Mover al Capitán solo», en el
+          mapa). Si su grupo pierde contra otra casa, o atacan la casilla donde está solo, cae preso.
         </p>
       )}
       {prisoners.length > 0 && (
@@ -230,17 +278,10 @@ function CaptainCard({ state, gameId, act }: Props) {
           <h3>Tus presos</h3>
           <ul className="list">
             {prisoners.map((h) => (
-              <li key={h.id}>
-                <span>
-                  {h.capitan!.nombre}, de {h.nombre} (se escapa en la resolución {h.capitan!.libreEn})
-                </span>
-                <button className="link" onClick={() => act(() => api.releaseCaptain(gameId, h.id), `${h.capitan!.nombre} vuelve a casa.`)}>
-                  Soltar
-                </button>
-              </li>
+              <Prisoner key={h.id} house={h} gameId={gameId} act={act} active={active} />
             ))}
           </ul>
-          <p className="hint">Cobra el rescate en el Comercio antes de soltarlo: Fray Abundio no se fía de nadie.</p>
+          <p className="hint">Pide un rescate en Oro: si su casa lo paga, el Capitán vuelve a su castillo en el momento.</p>
         </>
       )}
     </section>

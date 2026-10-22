@@ -255,10 +255,12 @@ export function describeEvent(e: EventView, houses: HouseInfo[], tiles: TileView
     case "capitan_preso":
       return `${captainOf(houses, d.house)} cae preso de ${houseName(houses, d.by)} en ${tile(d.tile)}. Se escapará en la resolución ${d.freeAt}, salvo rescate.`;
     case "capitan_libre":
+      if (d.reason === "rescate")
+        return `${houseName(houses, d.house)} paga ${d.oro} de Oro de rescate a ${houseName(houses, d.by)}, y ${captainOf(houses, d.house)} vuelve a su castillo.`;
       return d.reason === "fuga"
         ? `${captainOf(houses, d.house)} se escapa y vuelve a su castillo, con más hambre que gloria.`
         : d.reason === "liberado"
-          ? `${houseName(houses, d.by)} suelta a ${captainOf(houses, d.house)}. Fray Abundio sospecha que hubo rescate.`
+          ? `${houseName(houses, d.by)} suelta a ${captainOf(houses, d.house)} sin cobrar nada. Fray Abundio no sale de su asombro.`
           : `${captainOf(houses, d.house)} huye de la guarnición neutral y vuelve a su castillo.`;
     case "asedio":
       return d.castle
@@ -273,6 +275,8 @@ export function describeEvent(e: EventView, houses: HouseInfo[], tiles: TileView
     case "apoyo_cortado":
       return `El apoyo de ${houseName(houses, d.house)} desde ${tile(d.from)} queda cortado por un ataque.`;
     case "movimiento":
+      // Con 0 tropas es el Capitán, que va solo (bloque 4).
+      if (d.troops === 0) return `${captainOf(houses, d.house)} va solo a ${tile(d.to)}.`;
       return `${houseName(houses, d.house)} mueve ${troops(d.troops)} a ${tile(d.to)}.`;
     case "estandartes":
       return `Se ven estandartes de ${withArticle(houseName(houses, d.house))} en ${tile(d.tile)} (${troops(d.troops)}), junto a ${tile(d.near)}.`;

@@ -19,7 +19,8 @@ interface Props {
   setNight: (n: number) => void;
 }
 
-type Mode = "mover" | "apoyar" | "sitiar";
+/** "capitan": el Capitán va solo, sin tropas, a otra casilla tuya (bloque 4). */
+type Mode = "mover" | "apoyar" | "sitiar" | "capitan";
 type Compose = { from: number; mode: Mode; target: number | null; mix: Units; apoyaDesde: number | null; capitan?: boolean };
 
 /** Se puede sitiar: fortalezas y castillos que no son tuyos. */
@@ -208,6 +209,9 @@ export function MapView({ state, draft, setDraft, act, night, setNight }: Props)
   const isTarget = (t: TileView) => {
     if (!compose) return false;
     const from = byId.get(compose.from)!;
+    if (compose.mode === "capitan") {
+      return me != null && t.owner === me && t.id !== from.id && marchKind(asTile(from), asTile(t), engineTiles, me) != null;
+    }
     if (compose.mode === "mover") {
       // Vecinas, y además por camino (dos casillas), por mar (de puerto a puerto)
       // o a la carga (solo jinetes, por lo llano). A la montaña solo sube la Mesnada.
@@ -403,7 +407,7 @@ export function MapView({ state, draft, setDraft, act, night, setNight }: Props)
                     color={TERRITORY[mine?.color ?? ""] ?? "#f1cf7d"}
                     width={1.5 + Math.min(3, o.tropas / 4)}
                     dashed={o.tipo !== "mover"}
-                    label={o.tropas}
+                    label={o.tropas === 0 && o.capitan ? "C" : o.tropas}
                   />
                 );
               })}
@@ -505,6 +509,7 @@ export function MapView({ state, draft, setDraft, act, night, setNight }: Props)
             available={(tile.troops ?? 0) - committed(tile.id)}
             open={open}
             planning={k > 0}
+            captainHere={!!tile.capitanes?.includes(me ?? -1) && !nightDraft.some((o) => o.capitan)}
             onOrder={(mode) =>
               setCompose({ from: tile.id, mode, target: null, mix: freeUnits(tile.id), apoyaDesde: null })
             }
@@ -540,7 +545,8 @@ function Arrow({
   past?: boolean;
   /** Orden de otra noche de la cola. */
   queued?: boolean;
-  label?: number;
+  /** Tropas de la orden ("C": el Capitán va solo). */
+  label?: number | string;
 }) {
   const [ax, ay] = geo.center(from.x, from.y);
   const [bx, by] = geo.center(to.x, to.y);
@@ -574,6 +580,7 @@ function TilePanel({
   available,
   open,
   planning,
+  captainHere,
   onOrder,
   onFortify,
 }: {
@@ -583,6 +590,8 @@ function TilePanel({
   open: boolean;
   /** Se están dando órdenes en cola: fortificar es de hoy, no se planea. */
   planning?: boolean;
+  /** Tu Capitán está aquí y aún no va con ninguna orden esa noche. */
+  captainHere?: boolean;
   onOrder: (mode: Mode) => void;
   onFortify: () => void;
 }) {
@@ -645,6 +654,11 @@ function TilePanel({
           {canSiege && <button onClick={() => onOrder("sitiar")}>Sitiar</button>}
         </div>
       )}
+      {mine && open && captainHere && BATTLE_TWEAKS.captainAlone && (
+        <button className="secondary wide" onClick={() => onOrder("capitan")}>
+          <Icon name="capitan" size={18} color="#d6a64b" /> Mover al Capitán solo
+        </button>
+      )}
       {mine && !planning && tile.type !== "castillo" && !fortified && (
         <button className="secondary wide" onClick={onFortify}>
           <Icon name="muralla" size={18} color="#827d8a" /> Fortificar: {fortifyCost(tile).piedra} de Piedra, +25% de defensa{" "}
@@ -685,7 +699,8 @@ function Composer({
     target && compose.mode === "apoyar"
       ? [...byId.values()].filter((t) => t.id !== from.id && t.id !== target.id && areAdjacent(t, target))
       : [];
-  const verb = compose.mode === "mover" ? "Mover o atacar" : compose.mode === "sitiar" ? "Sitiar" : "Apoyar";
+  const verb =
+    compose.mode === "capitan" ? "Mover al Capitán" : compose.mode === "mover" ? "Mover o atacar" : compose.mode === "sitiar" ? "Sitiar" : "Apoyar";
   // Qué tipos pueden ir: a la carga solo jinetes; a la montaña solo Mesnada; los apoyos, sin catapultas.
   const me = state.yo.casa;
   const charge =
@@ -709,6 +724,39 @@ function Composer({
   };
   const total = mix.mesnada + mix.jinetes + mix.catapultas;
   const shown = kinds.filter((k) => available[k] > 0);
+  if (compose.mode === "capitan") {
+    return (
+      <section className="card composer">
+        <h2>
+          {verb} desde {from.nombre}
+        </h2>
+        {!target ? (
+          <p>Toca una casilla tuya marcada: una vecina, o más lejos por un camino tuyo o por mar desde un puerto.</p>
+        ) : (
+          <>
+            <p>
+              Destino: <strong>{target.nombre}</strong>
+            </p>
+            <p className="hint">
+              Va solo, sin tropas, y no ataca. Allí suma 2 a la defensa, pero si atacan la casilla y no la defienden, cae preso.
+            </p>
+            <div className="actions">
+              <button
+                className="primary"
+                onClick={() => onAdd({ tipo: "mover", desde: from.id, hacia: target.id, apoyaDesde: null, tropas: 0, capitan: true })}
+              >
+                Añadir orden: el Capitán va solo
+              </button>
+            </div>
+          </>
+        )}
+        <button className="link" onClick={() => setCompose(null)}>
+          Cancelar
+        </button>
+        {state.partida.ordenesAbiertas === false && <p className="error">Las órdenes están cerradas.</p>}
+      </section>
+    );
+  }
   return (
     <section className="card composer">
       <h2>
@@ -778,7 +826,7 @@ function Composer({
               disabled={total < (compose.mode === "sitiar" ? 3 : 1)}
               onClick={() =>
                 onAdd({
-                  tipo: compose.mode,
+                  tipo: compose.mode as Exclude<Mode, "capitan">,
                   desde: from.id,
                   hacia: target.id,
                   apoyaDesde: compose.mode === "apoyar" ? compose.apoyaDesde : null,

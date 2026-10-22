@@ -70,6 +70,7 @@ import { clockOf, runGameJobs } from "./jobs";
 import { bribeView, type StoredBulletin } from "./boletin";
 import { auctionView, handView, openAuctionWeek, spiedHouses, useCardStatements, type CardRow } from "./subasta";
 import { addBots, advance, botsPlayDay, deleteTestGame, testStart } from "./pruebas";
+import { ransomStatements } from "./rescate";
 import { acceptOffer, bundle, offerView, type OfferRow } from "./offers";
 import { ordersOpen } from "./scheduler";
 import {
@@ -663,7 +664,13 @@ app.get("/api/partidas/:id", async (c) => {
         // Los objetivos secretos solo se revelan al final.
         objetivo: finished ? { ...objectiveView(h.objective_key), cumplido: h.objective_met === 1 } : null,
         // Capitán: su nombre y, si está preso, de quién (es público: se sabe en todo el reino).
-        capitan: { nombre: captainName(game.seed, h.id), presoDe: h.captain_captured_by, libreEn: h.captain_free_at },
+        capitan: {
+          nombre: captainName(game.seed, h.id),
+          presoDe: h.captain_captured_by,
+          libreEn: h.captain_free_at,
+          // El rescate solo lo ven las dos casas del trato.
+          ...(h.captain_captured_by != null && (h.id === house.id || h.captain_captured_by === house.id) ? { rescate: h.captain_ransom } : {}),
+        },
       }))
       .sort((a, b) => (b.prestigio?.total ?? 0) - (a.prestigio?.total ?? 0)),
     prueba:
@@ -1024,13 +1031,60 @@ app.post("/api/partidas/:id/capitan/:casa/soltar", async (c) => {
   if (!castle) return fail(c, 404, "Esa casa no existe.");
   const res = await db.batch([
     db.prepare(
-      "UPDATE houses SET captain_tile = ?, captain_captured_by = NULL, captain_free_at = NULL WHERE id = ? AND game_id = ? AND captain_captured_by = ?",
+      "UPDATE houses SET captain_tile = ?, captain_captured_by = NULL, captain_free_at = NULL, captain_ransom = NULL WHERE id = ? AND game_id = ? AND captain_captured_by = ?",
     ).bind(castle.id, prisoner, m.game.id, m.house.id),
     db.prepare(
       "INSERT INTO event_log (game_id, type, visible_to, payload) SELECT ?, 'capitan_libre', NULL, ? WHERE changes() > 0",
     ).bind(m.game.id, JSON.stringify({ house: prisoner, by: m.house.id, reason: "liberado" })),
   ]);
   if ((res[0]?.meta.changes ?? 0) === 0) return fail(c, 409, "No tienes preso a ese Capitán.");
+  return c.json({ ok: true });
+});
+
+/**
+ * Rescate del Capitán (bloque 4): quien lo tiene preso pide un precio en Oro
+ * (o lo retira con null) y puede cambiarlo cuando quiera.
+ */
+app.put("/api/partidas/:id/capitan/:casa/rescate", async (c) => {
+  const m = await activeMembership(c);
+  if (m instanceof Response) return m;
+  const prisoner = Number(c.req.param("casa"));
+  const { oro } = await c.req.json<{ oro?: number | null }>().catch(() => ({ oro: undefined }));
+  const price = oro == null ? null : Number(oro);
+  if (price != null && !(Number.isInteger(price) && price >= 1 && price <= 100000)) return fail(c, 400, "El rescate es un número de Oro, de 1 en adelante.");
+  const res = await c.env.DB.prepare("UPDATE houses SET captain_ransom = ? WHERE id = ? AND game_id = ? AND captain_captured_by = ?")
+    .bind(price, prisoner, m.game.id, m.house.id)
+    .run();
+  if ((res.meta.changes ?? 0) === 0) return fail(c, 409, "No tienes preso a ese Capitán.");
+  return c.json({ ok: true, rescate: price });
+});
+
+/**
+ * Pagar el rescate del propio Capitán: el Oro pasa a quien lo tiene y el
+ * Capitán vuelve al castillo en el momento. Hay que confirmar el precio que se
+ * vio, por si quien lo tiene lo ha cambiado. Todo en un lote: si falta Oro,
+ * el CHECK de la base de datos lo deshace entero.
+ */
+app.post("/api/partidas/:id/capitan/rescate", async (c) => {
+  const m = await activeMembership(c);
+  if (m instanceof Response) return m;
+  const { oro } = await c.req.json<{ oro?: number }>().catch(() => ({ oro: undefined }));
+  const price = Number(oro);
+  const h = m.house;
+  if (h.captain_captured_by == null) return fail(c, 409, "Tu Capitán no está preso.");
+  if (h.captain_ransom == null) return fail(c, 409, "Aún no han pedido rescate por tu Capitán.");
+  if (!Number.isInteger(price) || price !== h.captain_ransom) return fail(c, 409, "El precio del rescate ha cambiado. Míralo otra vez.");
+  if (h.oro < price) return fail(c, 409, `Hacen falta ${price} de Oro.`);
+  const db = c.env.DB;
+  const captor = h.captain_captured_by;
+  const castle = await db.prepare("SELECT id FROM tiles WHERE game_id = ? AND castle_of = ?").bind(m.game.id, h.id).first<{ id: number }>();
+  try {
+    const res = await db.batch(ransomStatements(db, m.game.id, h.id, captor, price, castle?.id ?? null));
+    if ((res[2]?.meta.changes ?? 0) === 0) return fail(c, 409, "El rescate ya no está en pie. Míralo otra vez.");
+  } catch (err) {
+    if (err instanceof Error && /CHECK constraint failed/.test(err.message)) return fail(c, 409, `Hacen falta ${price} de Oro.`);
+    throw err;
+  }
   return c.json({ ok: true });
 });
 

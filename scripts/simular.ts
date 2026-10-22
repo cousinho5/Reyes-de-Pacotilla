@@ -47,7 +47,7 @@ if (args.get("asedio-castillo") === "no") SIEGE.castleSides = 99;
 //   --cruces no                    sin el choque de los grupos que se cruzan por el camino (encendido desde el bloque 4)
 //   --fortificar-hasta-ataque no   la fortificación de antes: unas noches y sin mantenimiento (encendida desde el bloque 4)
 //   --coste-fortificar 12          Piedra por fortificar
-//   --capitan-modo avance|solo     el Capitán acompaña los avances, o además va solo al frente
+//   --capitan-modo ataques|avance  el Capitán de antes: solo con los ataques, o también con los avances (por defecto, "solo": además va solo al frente, con rescates)
 //   --jinetes-pares 1 --jinetes-impares 0   parte de jinetes al reclutar según la casa (par o impar)
 //   --coste-jinete hierro:3,pan:2,oro:1     --carga 2     --mantener-jinete 1
 if (args.get("apoyo-libre") === "si") BATTLE_TWEAKS.supportAnyOrigin = true;
@@ -62,9 +62,11 @@ if (args.has("coste-fortificar")) FORTIFY_COST.piedra = Number(args.get("coste-f
 if (args.has("mantener-fortificacion")) {
   for (const kv of args.get("mantener-fortificacion")!.split(",")) FORTIFY_UPKEEP[kv.split(":")[0] as "piedra"] = Number(kv.split(":")[1]);
 }
-const captainMode = (args.get("capitan-modo") ?? "ataques") as typeof BOT_TWEAKS.captain;
-BOT_TWEAKS.captain = captainMode;
-if (captainMode === "solo") BATTLE_TWEAKS.captainAlone = true;
+// Desde el bloque 4 el Capitán va solo al frente; --capitan-modo ataques compara con el de antes (sin ir solo ni rescates).
+if (args.has("capitan-modo")) {
+  BOT_TWEAKS.captain = args.get("capitan-modo") as typeof BOT_TWEAKS.captain;
+  BATTLE_TWEAKS.captainAlone = BOT_TWEAKS.captain === "solo";
+}
 if (args.has("jinetes-pares") || args.has("jinetes-impares")) {
   const even = args.has("jinetes-pares") ? Number(args.get("jinetes-pares")) : null;
   const odd = args.has("jinetes-impares") ? Number(args.get("jinetes-impares")) : null;
@@ -243,6 +245,7 @@ table("Combate y comercio (por partida)", ["dato", "valor"], [
   ["Travesías por mar", f1(avg(results.map((r) => r.seaMoves)))],
   ["Órdenes de asedio", f1(avg(results.map((r) => r.siegeOrders)))],
   ["Capitanes capturados", f1(avg(results.map((r) => r.captainsCaptured)))],
+  ["Rescates pagados (Oro por rescate)", `${f1(avg(results.map((r) => r.ransomsPaid)))} (${f1(results.reduce((a, r) => a + r.ransomGold, 0) / Math.max(1, results.reduce((a, r) => a + r.ransomsPaid, 0)))})`],
   ["Noches de asedio (a castillos)", `${f1(avg(results.map((r) => r.siegeNights)))} (${f1(avg(results.map((r) => r.castleSiegeNights)))})`],
   ["Tratos cerrados", f1(avg(results.map((r) => r.trades)))],
   ["Socios comerciales por casa (toda la partida)", f1(avg(houses.map((h) => h.partners)))],

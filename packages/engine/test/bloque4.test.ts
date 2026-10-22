@@ -1,7 +1,7 @@
 // Retoques del sistema de batalla (hoja de ruta, bloque 4). Se encienden uno a
 // uno en rules.ts; aquí se comprueba que hacen lo que dicen, encendidos y apagados.
 import { afterEach, describe, expect, it } from "vitest";
-import { ANY_ORIGIN, BATTLE_TWEAKS, FORTIFY_FOREVER, FORTIFY_UPKEEP, applyFortifyUpkeep, checkFortify, checkRecruit, crossingRisks, recruitCost, resolveCampaign, type Tile } from "../src";
+import { ANY_ORIGIN, BATTLE_TWEAKS, BOT_TWEAKS, CAPTAIN, RANSOM, botPaysRansom, botRansomPrice, FORTIFY_FOREVER, FORTIFY_UPKEEP, applyFortifyUpkeep, checkFortify, checkRecruit, crossingRisks, recruitCost, resolveCampaign, type Tile } from "../src";
 
 const defaults = { ...BATTLE_TWEAKS };
 
@@ -189,8 +189,12 @@ describe("Fortificación hasta que la atacan", () => {
 });
 
 describe("Capitán que se mueve solo", () => {
-  it("con captainAlone va solo a una casilla propia", () => {
-    BATTLE_TWEAKS.captainAlone = true;
+  it("está encendido, y los bots lo llevan solo al frente", () => {
+    expect(BATTLE_TWEAKS.captainAlone).toBe(true);
+    expect(BOT_TWEAKS.captain).toBe("solo");
+  });
+
+  it("va solo a una casilla propia", () => {
     const r = resolveCampaign({
       resolution: 1,
       tiles: [
@@ -202,6 +206,63 @@ describe("Capitán que se mueve solo", () => {
     });
     expect(r.captains[0]).toMatchObject({ tile: 2 });
     expect(r.tiles.find((t) => t.id === 1)).toMatchObject({ troops: 2 });
+  });
+
+  it("también a una casilla vacía, pero no a una ajena", () => {
+    const tiles: Tile[] = [
+      { id: 1, x: 0, y: 0, type: "campos", owner: X, troops: 2 },
+      { id: 2, x: 1, y: 0, type: "campos", owner: X, troops: 0 },
+      { id: 3, x: 0, y: 1, type: "campos", owner: Y, troops: 0 },
+    ];
+    const captains = [{ house: X, tile: 1, capturedBy: null, freeAt: null }];
+    const ok = resolveCampaign({ resolution: 1, tiles, orders: [{ kind: "move", house: X, from: 1, to: 2, troops: 0, captain: true }], captains });
+    expect(ok.captains[0]).toMatchObject({ tile: 2 });
+    const no = resolveCampaign({ resolution: 1, tiles, orders: [{ kind: "move", house: X, from: 1, to: 3, troops: 0, captain: true }], captains });
+    expect(no.events.find((e) => e.type === "orden_invalida")).toBeTruthy();
+    expect(no.captains[0]).toMatchObject({ tile: 1 });
+  });
+
+  it("si atacan la casilla donde está solo, cae preso", () => {
+    const r = resolveCampaign({
+      resolution: 3,
+      tiles: [
+        { id: 1, x: 0, y: 0, type: "campos", owner: X, troops: 0 },
+        { id: 2, x: 1, y: 0, type: "campos", owner: Y, troops: 4 },
+      ],
+      orders: [{ kind: "move", house: Y, from: 2, to: 1, troops: 4 }],
+      captains: [{ house: X, tile: 1, capturedBy: null, freeAt: null }],
+    });
+    // Defiende solo él: 2 x 1,25 = 2,5 contra 4.
+    expect(r.tiles.find((t) => t.id === 1)).toMatchObject({ owner: Y });
+    expect(r.captains[0]).toMatchObject({ tile: null, capturedBy: Y, freeAt: 3 + CAPTAIN.escapeAfter });
+  });
+
+  it("una orden del Capitán solo no hace nada si él ya no está en la casilla", () => {
+    const r = resolveCampaign({
+      resolution: 1,
+      tiles: [
+        { id: 1, x: 0, y: 0, type: "campos", owner: X, troops: 2 },
+        { id: 2, x: 1, y: 0, type: "campos", owner: X, troops: 4 },
+      ],
+      orders: [{ kind: "move", house: X, from: 1, to: 2, troops: 0, captain: true }],
+      captains: [{ house: X, tile: 2, capturedBy: null, freeAt: null }],
+    });
+    expect(r.captains[0]).toMatchObject({ tile: 2 });
+    expect(r.events.some((e) => e.type === "movimiento")).toBe(false);
+  });
+});
+
+describe("Rescate del Capitán (bots)", () => {
+  it("piden menos cuanto más cerca está la fuga, y nunca menos del mínimo", () => {
+    expect(botRansomPrice(CAPTAIN.escapeAfter)).toBe(RANSOM.botAsk);
+    expect(botRansomPrice(3)).toBeLessThan(RANSOM.botAsk);
+    expect(botRansomPrice(0)).toBe(RANSOM.botMin);
+  });
+
+  it("pagan si no es mucho de su Oro y aún falta para la fuga", () => {
+    expect(botPaysRansom(20, 100, 5)).toBe(true);
+    expect(botPaysRansom(20, 40, 5)).toBe(false);
+    expect(botPaysRansom(20, 100, 1)).toBe(false);
   });
 });
 
