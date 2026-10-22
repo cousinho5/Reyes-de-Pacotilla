@@ -43,6 +43,7 @@ import {
 import { notifyHouses, type NotifyEnv } from "./notify";
 import { announceAuction, auctionStatements, cardsForResolution } from "./subasta";
 import { publishBulletin } from "./boletin";
+import { loadMercenaries, mercenaryCount, mercenaryDawnStatements } from "./mercenarios";
 import { dueJobs, type GameClock } from "./scheduler";
 import {
   computeAllPrestige,
@@ -131,10 +132,11 @@ export async function runGameJobs(env: NotifyEnv, game: GameRow, now: Date): Pro
 /** Producción diaria y, después, el piloto automático de las casas ausentes. */
 export async function runProduction(env: NotifyEnv, game: GameRow, key: string, date: string, now: Date): Promise<void> {
   const db = env.DB;
-  const [houses, buildings, tileRows] = await Promise.all([
+  const [houses, buildings, tileRows, mercs] = await Promise.all([
     loadHouses(db, game.id),
     loadBuildings(db, game.id),
     loadTiles(db, game.id),
+    loadMercenaries(db, game.id),
   ]);
   const statements = [db.prepare("INSERT INTO job_runs (game_id, job_key) VALUES (?, ?)").bind(game.id, key)];
   const day = Math.round((Date.parse(`${date}T12:00:00Z`) - Date.parse(`${game.start_date}T12:00:00Z`)) / 864e5);
@@ -155,6 +157,8 @@ export async function runProduction(env: NotifyEnv, game: GameRow, key: string, 
       ).bind(p.pan, p.madera, p.piedra, p.hierro, p.oro, house.id),
     );
   }
+  // Bloque 5: los mercenarios que cumplen se van al amanecer, tras la producción (como en el simulador).
+  statements.push(...mercenaryDawnStatements(db, game, date, mercs, toEngineTiles(tileRows)));
   await db.batch(statements);
 
   // Piloto automático: una vez al día, con los recursos ya producidos.
@@ -258,7 +262,7 @@ export async function closeWarning(env: NotifyEnv, game: GameRow, n: number): Pr
  */
 export async function runResolution(env: NotifyEnv, game: GameRow, n: number, now: Date): Promise<void> {
   const db = env.DB;
-  const [tileRows, orderRows, houses, achieved] = await Promise.all([
+  const [tileRows, orderRows, houses, achieved, mercs] = await Promise.all([
     loadTiles(db, game.id),
     db.prepare(
       "SELECT house_id, kind, from_tile_id, troops, jinetes, catapultas, captain, target_tile_id, supported_from_tile_id, supports_any, updated_at FROM orders WHERE game_id = ? AND resolution_no = ? ORDER BY id",
@@ -279,6 +283,7 @@ export async function runResolution(env: NotifyEnv, game: GameRow, n: number, no
       }>(),
     loadHouses(db, game.id),
     db.prepare("SELECT achievement_key FROM achievements WHERE game_id = ?").bind(game.id).all<{ achievement_key: string }>(),
+    loadMercenaries(db, game.id),
   ]);
 
   const tiles = toEngineTiles(tileRows);
@@ -433,7 +438,8 @@ export async function runResolution(env: NotifyEnv, game: GameRow, n: number, no
   if (kind === "domingo") {
     // Mantenimiento: Pan por tropas y por estirarse; si no llega, deserciones.
     for (const h of houses) {
-      const upkeep = applyUpkeep(finalTiles, h.id, h.pan, eventUpkeepFactor(event));
+      // Los mercenarios no comen: su Pan lo pone la Corona (bloque 5).
+      const upkeep = applyUpkeep(finalTiles, h.id, h.pan, eventUpkeepFactor(event), mercenaryCount(mercs, h.id));
       finalTiles = upkeep.tiles;
       if (upkeep.paid > 0) extraStatements.push(db.prepare("UPDATE houses SET pan = pan - ? WHERE id = ?").bind(upkeep.paid, h.id));
       extraEvents.push({ type: "mantenimiento", visibleTo: h.id, payload: { house: h.id, ...upkeep, tiles: undefined } });

@@ -41,7 +41,7 @@ describe("Objetivos secretos", () => {
       house: 1,
       tiles,
       buildings: { ...levels, mercado: 5 },
-      gold: 90,
+      gold: 50,
       partnersAllGame: 2,
       otherHouses: 3,
       validTradesAllGame: 4,
@@ -50,8 +50,8 @@ describe("Objetivos secretos", () => {
     };
     expect(objectiveMet("puerto_y_montana", ctx)).toBe(false);
     expect(objectiveMet("tesoro", ctx)).toBe(false);
-    expect(objectiveMet("tesoro", { ...ctx, gold: 99 })).toBe(false);
-    expect(objectiveMet("tesoro", { ...ctx, gold: 100 })).toBe(true);
+    expect(objectiveMet("tesoro", { ...ctx, gold: 59 })).toBe(false);
+    expect(objectiveMet("tesoro", { ...ctx, gold: 60 })).toBe(true);
     expect(objectiveMet("tropas_40", ctx)).toBe(false);
     expect(objectiveMet("tropas_40", { ...ctx, tiles: [...ctx.tiles, { type: "campos", owner: 1, troops: 40 }] })).toBe(true);
     expect(objectiveMet("obra_maestra", ctx)).toBe(true);

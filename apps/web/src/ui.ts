@@ -298,6 +298,16 @@ export function describeEvent(e: EventView, houses: HouseInfo[], tiles: TileView
       if (d.dropped > 0) return paid ? `Fortificaciones: pagas ${paid} por ${kept} y ${dropped}.` : `Fortificaciones: no llega para pagarlas y ${dropped}.`;
       return `Fortificaciones: pagas ${paid} por ${kept}.`;
     }
+    case "mercenarios": {
+      // Bloque 5 (banco de frases, 11.14): los que cumplen sus 7 días se van.
+      const n = d.units as number;
+      const lines = [
+        `${troops(n)} de alquiler cumplen sus 7 días y se van sin despedirse.`,
+        `Se acaba la paga: ${troops(n)} mercenarias recogen sus cosas y se marchan.`,
+        `${troops(n)} de alquiler se van al amanecer. Dicen que volverían, por el precio adecuado.`,
+      ];
+      return n > 0 ? lines[e.id % lines.length]! : "Los mercenarios que te quedaban ya habían caído. Nadie se va.";
+    }
     case "ayuda_ultimo":
       return `La Corona ayuda a ${houseName(houses, d.house)}, última en Prestigio, durante la próxima semana.`;
     case "orden_invalida":

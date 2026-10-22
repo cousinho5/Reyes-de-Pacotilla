@@ -18,10 +18,11 @@ import { fitOrders } from "./plan";
 import { marchKind, marchPath } from "./terrain";
 import { claimRuins, recruitSite } from "./aldeas";
 import { areAdjacent } from "./map";
-import { clampUnits, isPlain, orderUnits } from "./units";
+import { isPlain, orderUnits } from "./units";
 import { crownPrices } from "./crown";
+import { dismissTroops, mercenariesAlive, mercenaryCost } from "./mercenaries";
 import type { MapLayoutOverride } from "./mapgen";
-import { BATTLE_TWEAKS, CROWN, ECONOMY_TWEAKS, MERCENARIES, TROOPS_PER_PAN, GRID, PRESTIGE, RHYTHM, SPECIALTY_PAIRS, STARTING_RESOURCES, SIEGE, TERRAIN, TERRAIN_OFF, UNITS, CAPTAIN, GLORY } from "./rules";
+import { BATTLE_TWEAKS, CROWN, ECONOMY_TWEAKS, MERCENARIES, GRID, PRESTIGE, RHYTHM, SPECIALTY_PAIRS, STARTING_RESOURCES, SIEGE, TERRAIN, TERRAIN_OFF, UNITS, CAPTAIN, GLORY } from "./rules";
 import { totalOf } from "./trade";
 import { auctionLots, doubleLot, resolveAuction, type Bid } from "./auction";
 import {
@@ -402,15 +403,7 @@ function runGame(opts: SimOptions): SimGameResult {
   const crownLog: [number, Resource, number][] = [];
   /** Quita `n` tropas de una casa (mercenarios que se van): primero del castillo, luego de las casillas con más. */
   const dismiss = (h: HouseState, n: number) => {
-    const own = tiles.filter((t) => t.owner === h.id).sort((a, b) => Number(b.castleOf === h.id) - Number(a.castleOf === h.id) || b.troops - a.troops);
-    const cut = new Map<number, number>();
-    for (const t of own) {
-      if (n <= 0) break;
-      const k = Math.min(t.troops, n);
-      cut.set(t.id, k);
-      n -= k;
-    }
-    tiles = tiles.map((t) => (cut.has(t.id) ? clampUnits({ ...t, troops: t.troops - cut.get(t.id)! }) : t));
+    tiles = dismissTroops(tiles, h.id, n).tiles;
   };
   const mercCount = (h: HouseState) => h.mercs.reduce((a, m) => a + m.n, 0);
   const battle = { clashes: 0, crossings: 0, chargeAttacks: 0, riderAttacks: 0, fortifies: 0, fortifiedNights: 0, attacksOnFortified: 0, attacksOnFortifiedWon: 0, riverAttacks: 0, riverAttacksWon: 0, ruinsClaimed: 0, ruinsWeekOne: 0, ruinsDays: 0, villageRecruits: 0, villagesStolen: 0, fortifyUpkeep: 0, fortifyDropped: 0 };
@@ -513,24 +506,18 @@ function runGame(opts: SimOptions): SimGameResult {
       for (const r of RESOURCES) h.res[r] += p[r];
     }
 
-    // 1b. Bloque 5: los mercenarios de alquiler que cumplen se van; los muertos en
-    // combate dejan de contar; cada lunes se renuevan los topes de la semana.
+    // 1b. Bloque 5: los mercenarios de alquiler que cumplen se van, al amanecer;
+    // si la casa tiene menos tropas que mercenarios, murieron mercenarios.
     for (const h of houses) {
-      if (day % 7 === 0) {
-        h.mercsWeek = 0;
-      }
+      if (day % 7 === 0) h.mercsWeek = 0;
       const gone = h.mercs.filter((m) => m.until <= day).reduce((a, m) => a + m.n, 0);
       h.mercs = h.mercs.filter((m) => m.until > day);
       if (gone > 0) dismiss(h, gone);
-      const alive = tiles.filter((t) => t.owner === h.id).reduce((a, t) => a + t.troops, 0);
-      let extra = mercCount(h) - alive;
-      for (const m of h.mercs) {
-        if (extra <= 0) break;
-        const k = Math.min(m.n, extra);
-        m.n -= k;
-        extra -= k;
-      }
-      h.mercs = h.mercs.filter((m) => m.n > 0);
+      const alive = mercenariesAlive(
+        h.mercs.map((m) => m.n),
+        tiles.filter((t) => t.owner === h.id).reduce((a, t) => a + t.troops, 0),
+      );
+      h.mercs = h.mercs.map((m, i) => ({ ...m, n: alive[i]! })).filter((m) => m.n > 0);
     }
 
     // 1c. Bloque 5: cambio con la Corona, antes de gastar. Cada casa ve el precio
@@ -616,7 +603,7 @@ function runGame(opts: SimOptions): SimGameResult {
         if (mode) {
           const hire = planMercenaries(situation(viewOf(h, day, morning), PERSONALITIES[h.strategy]), mode, plan.recruit + plan.riders, MERCENARIES.weeklyCap - h.mercsWeek);
           if (hire > 0) {
-            const gold = hire * (mode === "alquiler" ? MERCENARIES.hire : MERCENARIES.signOn);
+            const gold = mode === "alquiler" ? mercenaryCost(hire) : hire * MERCENARIES.signOn;
             h.res.oro -= gold;
             economy.mercsGold += gold;
             economy.mercsHired += hire;
@@ -890,10 +877,9 @@ function runGame(opts: SimOptions): SimGameResult {
       for (const h of houses) {
         const ev = weekEvents[week0 - 1];
         // Los mercenarios no comen: la Corona pone su Pan (bloque 5).
-        const mercPan = Math.floor(mercCount(h) / TROOPS_PER_PAN);
-        const upkeep = applyUpkeep(tiles, h.id, h.res.pan + mercPan, ev ? eventUpkeepFactor(ev) : 1);
+        const upkeep = applyUpkeep(tiles, h.id, h.res.pan, ev ? eventUpkeepFactor(ev) : 1, mercCount(h));
         tiles = upkeep.tiles;
-        h.res.pan -= Math.max(0, upkeep.paid - mercPan);
+        h.res.pan -= upkeep.paid;
         // Soldada: se paga en Oro; los que no cobran se van.
         if (ECONOMY_TWEAKS.mercenaries === "soldada") {
           const count = mercCount(h);

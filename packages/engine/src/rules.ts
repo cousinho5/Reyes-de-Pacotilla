@@ -165,12 +165,12 @@ export const FORTIFY_FOREVER = 1_000_000;
 /**
  * Bloque 5 de la hoja de ruta (recursos). El simulador puede apagarlos para comparar.
  * - `crown`: cambio con la Corona a precio dinámico (CROWN, `crown.ts`). Encendido.
- * - `mercenaries`: "alquiler" (se pagan al contratarlos y se van solos) o
- *   "soldada" (cobran cada domingo y desertan si no se les paga). Ver MERCENARIES.
+ * - `mercenaries`: "alquiler" (se pagan al contratarlos y se van solos; encendido) o
+ *   "soldada" (cobran cada domingo y desertan si no se les paga; solo en el simulador). Ver MERCENARIES.
  */
 export const ECONOMY_TWEAKS: { crown: boolean; mercenaries: null | "alquiler" | "soldada" } = {
   crown: true,
-  mercenaries: null,
+  mercenaries: "alquiler",
 };
 
 /**
@@ -196,16 +196,16 @@ export const CROWN = {
   demandDays: 7,
 };
 
-/** Mercenarios (bloque 5, en estudio). No comen Pan. */
+/** Mercenarios de alquiler (bloque 5, `mercenaries.ts`). No comen Pan: lo pone la Corona. */
 export const MERCENARIES = {
   /** Alquiler: Oro por tropa y días que se quedan. */
   hire: 6,
   days: 7,
-  /** Soldada: Oro por tropa al contratarla y cada domingo. */
+  /** Soldada (solo el simulador): Oro por tropa al contratarla y cada domingo. */
   signOn: 4,
   wage: 2,
-  /** Tropas que una casa puede contratar por semana. */
-  weeklyCap: 5,
+  /** Tropas que una casa puede contratar por semana: sin tope (22 de octubre); el simulador puede ponerlo. */
+  weeklyCap: Infinity,
 };
 
 /**
@@ -440,8 +440,8 @@ export const BOT = {
 
 /** Umbrales de los objetivos secretos (ver objectives.ts). */
 export const OBJECTIVE_TARGETS = {
-  /** Bloque 5: de 150 a 100, porque las mejoras gastan Oro. */
-  gold: 100,
+  /** Bloque 5: de 150 a 60, porque las mejoras, la Corona y los mercenarios gastan Oro. */
+  gold: 60,
   troops: 40,
   tiles: 5,
   tilesTakenFromHouses: 3,

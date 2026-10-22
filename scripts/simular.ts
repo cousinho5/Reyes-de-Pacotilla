@@ -16,7 +16,7 @@
 //   npm run simular -- --json simulacion.json   # además, todos los datos en JSON
 
 import { writeFileSync } from "node:fs";
-import { BATTLE_TWEAKS, BOT_TWEAKS, CROWN, ECONOMY_TWEAKS, FEATURES, MERCENARIES, MAP_GEN, RIVERS, FORTIFY_COST, FORTIFY_UPKEEP, PRESTIGE, SIEGE, UNITS, UPGRADE_COST } from "../packages/engine/src";
+import { BATTLE_TWEAKS, BOT_TWEAKS, CROWN, ECONOMY_TWEAKS, FEATURES, MERCENARIES, OBJECTIVE_TARGETS, MAP_GEN, RIVERS, FORTIFY_COST, FORTIFY_UPKEEP, PRESTIGE, SIEGE, UNITS, UPGRADE_COST } from "../packages/engine/src";
 import {
   CLASSIC_STRATEGIES,
   OBJECTIVES,
@@ -89,8 +89,10 @@ if (args.has("oro-mejora")) {
   });
 }
 if (args.has("riqueza-tope")) PRESTIGE.goldMax = Number(args.get("riqueza-tope"));
+//   --tesoro 100               Oro del objetivo «tesoro»
+if (args.has("tesoro")) (OBJECTIVE_TARGETS as { gold: number }).gold = Number(args.get("tesoro"));
 //   --corona no                     sin el cambio con la Corona (encendido desde el bloque 5; CROWN en rules.ts)
-//   --mercenarios alquiler|soldada  mercenarios con Oro (MERCENARIES en rules.ts)
+//   --mercenarios no|soldada        sin mercenarios, o a soldada (de alquiler desde el bloque 5; MERCENARIES en rules.ts)
 //   --mejora-madera-piedra 1.3      multiplica la Madera y la Piedra de las mejoras
 // Bloque 1: --geografia no usa el generador de mapas de antes (sin geografía ni Prado).
 if (args.get("geografia") === "no") MAP_GEN.geography = false;
@@ -113,7 +115,7 @@ if (args.has("corona-referencia")) CROWN.reference = args.get("corona-referencia
 if (args.has("corona-recargo")) CROWN.markup = Number(args.get("corona-recargo"));
 //   --mercenarios-tope 5 | no   mercenarios por casa y semana (no = sin tope)
 if (args.has("mercenarios-tope")) MERCENARIES.weeklyCap = args.get("mercenarios-tope") === "no" ? Infinity : Number(args.get("mercenarios-tope"));
-if (args.has("mercenarios")) ECONOMY_TWEAKS.mercenaries = args.get("mercenarios") as "alquiler" | "soldada";
+if (args.has("mercenarios")) ECONOMY_TWEAKS.mercenaries = args.get("mercenarios") === "no" ? null : (args.get("mercenarios") as "alquiler" | "soldada");
 if (args.has("mejora-madera-piedra")) {
   const k = Number(args.get("mejora-madera-piedra"));
   for (const cost of Object.values(UPGRADE_COST)) {

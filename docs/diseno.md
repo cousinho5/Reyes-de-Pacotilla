@@ -70,7 +70,7 @@ Cinco recursos. En las reglas, la interfaz y el código se usa siempre la misma 
 | **Madera** | Mejorar edificios | — |
 | **Piedra** | Mejorar edificios | Fortificar casillas |
 | **Hierro** | Reclutar tropas | Mejoras de nivel 4 y 5 |
-| **Oro** | Pujas, comercio y sobornos | Prestigio por riqueza, mejoras de edificios, jinetes, compras a la Corona |
+| **Oro** | Pujas, comercio y sobornos | Prestigio por riqueza, mejoras de edificios, jinetes, compras a la Corona, mercenarios |
 
 **Edificios.** Hay cinco, dentro de tu castillo, con niveles del 1 al 5: Granja (Pan), Aserradero (Madera), Cantera (Piedra), Mina (Hierro) y Mercado (Oro).
 
@@ -208,6 +208,7 @@ Cada día puedes hacer, sin límite más allá de lo que puedas pagar:
 | --- | --- | --- |
 | Mejorar un edificio | Ver tabla de la sección 5 | Sube un nivel; la producción aumenta al día siguiente. |
 | Reclutar | 2 Hierro + 2 Pan por tropa | Las tropas aparecen en tu castillo, o en una aldea tuya si lo eliges (bloque 1), y pueden recibir órdenes para la siguiente resolución. |
+| Contratar mercenarios | 6 Oro por tropa | Bloque 5, en `packages/engine/src/mercenaries.ts`. Aparecen en tu castillo como Mesnada y no comen Pan (lo pone la Corona). Sin tope. Se van solos al amanecer del séptimo día, estén donde estén: se quitan esas tropas, primero del castillo y luego de las casillas con más tropas. No se marcan en el mapa; la casa lleva la cuenta. Si una casa se queda con menos tropas que mercenarios, se da por hecho que murieron mercenarios y ya no se quitan al cumplir. |
 | Fortificar una casilla tuya | 8 Piedra | +25% de defensa **hasta que ataquen la casilla** (bloque 4): el primer ataque, gane o pierda, la quita. Cada domingo cuesta 2 de Piedra de mantenimiento. Antes duraba cuatro resoluciones (dos en las partidas con miércoles y domingo). |
 | Dar órdenes | Gratis | Mover, atacar, apoyar o mantener (sección 8). |
 | Comerciar | Gratis | Ofertas, contraofertas y tratados (sección 9). |
@@ -285,7 +286,7 @@ Las tropas se mueven como máximo una casilla por resolución: siete por semana 
 
 ### 8.6 Mantenimiento
 
-- **Cada domingo:** 1 Pan por cada 3 tropas. Si no puedes pagar, desertan las tropas que falten por cubrir, empezando por las más alejadas del castillo.
+- **Cada domingo:** 1 Pan por cada 3 tropas, sin contar los mercenarios (bloque 5). Si no puedes pagar, desertan las tropas que falten por cubrir, empezando por las más alejadas del castillo.
 - **Fortificaciones (bloque 4):** después, 2 de Piedra por cada casilla fortificada. Si no llega, se desmantelan las que no se pueden pagar. Las catapultas y los asedios siguen desgastando la fortificación en combate, y cambiar de manos la quita.
 
 - **Estirarse cuesta:** a partir de la quinta casilla controlada, cada casilla extra cuesta 2 Pan más por semana. Es un freno suave al que más se expande.
@@ -461,7 +462,7 @@ Pocos y públicos, que dan Prestigio permanente:
 
 Al empezar, cada casa recibe dos objetivos al azar y elige uno. Nadie más lo conoce. Si al final de la partida se cumple, da **+6 de Prestigio**, y se revela en el último boletín.
 
-Catálogo actual (10, en `packages/engine/src/objectives.ts`, umbrales en `rules.ts`): controlar un puerto y una montaña al final (antes «un puerto y una fortaleza»: con la geografía del bloque 1 los puertos quedan en la costa y las fortalezas tierra adentro, y bajó al 13%; con la montaña se cumple el 29%); sumar 16 niveles entre los cinco edificios (17 hasta el bloque 5, cuando las mejoras pasaron a costar más); terminar con 100 Oro o más (antes 200 y luego 150: con la subasta y las mejoras con Oro, el Oro se gasta); cerrar tratos válidos con 3 casas distintas; controlar una fortaleza al final; tomar 3 casillas a otras casas; terminar con 40 tropas o más; controlar 5 casillas o más al final; tener un edificio a nivel 5; cerrar 10 tratos válidos; ganar 3 lotes de la Gran Subasta (añadido en la versión 1). Los umbrales se ajustaron con la simulación del 16 de octubre de 2026: con los anteriores, terminar con 100 Oro se cumplía casi siempre y controlar 2 puertos o comerciar con todas casi nunca. Un segundo ajuste, con los bots con personalidad, cambió "los 5 edificios a nivel 3" (se cumplía el 97%) por "17 niveles" (35%), "6 casillas" (3%) por "5 casillas" (15%), abarató el nivel 5 de los edificios (de 200 a 155 recursos), bajó la guarnición de las fortalezas de 10 a 8 y fortificar a 8 de Piedra. Con la versión 1 se añadirán los de subastas (ganar 2 Gran Subastas) y pactos (firmar 2 pactos sin romper ninguno).
+Catálogo actual (10, en `packages/engine/src/objectives.ts`, umbrales en `rules.ts`): controlar un puerto y una montaña al final (antes «un puerto y una fortaleza»: con la geografía del bloque 1 los puertos quedan en la costa y las fortalezas tierra adentro, y bajó al 13%; con la montaña se cumple el 29%); sumar 16 niveles entre los cinco edificios (17 hasta el bloque 5, cuando las mejoras pasaron a costar más); terminar con 60 Oro o más (antes 200 y luego 150: con la subasta, las mejoras con Oro, la Corona y los mercenarios, el Oro se gasta); cerrar tratos válidos con 3 casas distintas; controlar una fortaleza al final; tomar 3 casillas a otras casas; terminar con 40 tropas o más; controlar 5 casillas o más al final; tener un edificio a nivel 5; cerrar 10 tratos válidos; ganar 3 lotes de la Gran Subasta (añadido en la versión 1). Los umbrales se ajustaron con la simulación del 16 de octubre de 2026: con los anteriores, terminar con 100 Oro se cumplía casi siempre y controlar 2 puertos o comerciar con todas casi nunca. Un segundo ajuste, con los bots con personalidad, cambió "los 5 edificios a nivel 3" (se cumplía el 97%) por "17 niveles" (35%), "6 casillas" (3%) por "5 casillas" (15%), abarató el nivel 5 de los edificios (de 200 a 155 recursos), bajó la guarnición de las fortalezas de 10 a 8 y fortificar a 8 de Piedra. Con la versión 1 se añadirán los de subastas (ganar 2 Gran Subastas) y pactos (firmar 2 pactos sin romper ninguno).
 
 El objetivo se elige antes de la primera resolución; quien no elige se queda con la primera opción.
 

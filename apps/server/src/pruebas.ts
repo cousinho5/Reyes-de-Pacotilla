@@ -27,6 +27,9 @@ import {
   planBids,
   planCards,
   planCrown,
+  planMercenaries,
+  MERCENARIES,
+  mercenaryCost,
   planDay,
   CROWN_GOODS,
   ECONOMY_TWEAKS,
@@ -50,6 +53,7 @@ import {
 } from "@reyes/engine";
 import { ransomStatements } from "./rescate";
 import { crownCost, crownMarket, crownPurchaseStatements } from "./corona";
+import { hireStatements } from "./mercenarios";
 import { hashCode, randomCode } from "./auth";
 import { COLORS, pickShield } from "./heraldry";
 import { clockOf, runGameJobs } from "./jobs";
@@ -447,6 +451,14 @@ export async function botsPlayDay(env: NotifyEnv, game: GameRow): Promise<void> 
       continue;
     }
     const fresh = (await loadHouses(db, game.id)).find((x) => x.id === h.id)!;
+    // Bloque 5: mercenarios con Oro para lo que no llega a reclutar, como en el simulador.
+    if (ECONOMY_TWEAKS.mercenaries === "alquiler") {
+      const hire = planMercenaries(situation(botView(ctx, fresh), p), "alquiler", plan.recruit + plan.riders, MERCENARIES.weeklyCap);
+      if (hire > 0) {
+        await db.batch(hireStatements(db, game, fresh, hire)).catch((err) => console.error(`Mercenarios de ${h.name}:`, err));
+        fresh.oro -= mercenaryCost(hire);
+      }
+    }
     await botPlaysCards(db, game, ctx, fresh, false);
     // De vez en cuando, un soborno al cronista (las casas más ricas y vanidosas).
     const bribeWeek = Math.floor(ctx.day / 7) + 1;
@@ -599,6 +611,7 @@ export async function deleteTestGame(env: NotifyEnv, game: GameRow): Promise<voi
     db.prepare("DELETE FROM orders WHERE game_id = ?").bind(game.id),
     db.prepare("DELETE FROM trades WHERE game_id = ?").bind(game.id),
     db.prepare("DELETE FROM crown_purchases WHERE game_id = ?").bind(game.id),
+    db.prepare("DELETE FROM mercenaries WHERE game_id = ?").bind(game.id),
     db.prepare("DELETE FROM offers WHERE game_id = ? AND parent_offer_id IS NOT NULL").bind(game.id),
     db.prepare("DELETE FROM offers WHERE game_id = ?").bind(game.id),
     db.prepare("DELETE FROM achievements WHERE game_id = ?").bind(game.id),

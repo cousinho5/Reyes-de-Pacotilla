@@ -474,3 +474,15 @@ Pocas palabras y siempre con la información primero. Cinco variantes por tipo c
 1. {n} de {recurso} por {oro} de Oro. El recaudador real lo cuenta dos veces.
 2. La Corona te vende {n} de {recurso} por {oro} de Oro. Sin regatear: la Corona no regatea.
 3. {n} de {recurso} de los almacenes reales. {oro} de Oro menos y un recibo con sello.
+
+### 11.13 Mercenarios contratados (bloque 5)
+
+1. {n} mercenarios se presentan en el castillo. Cobran por adelantado y no preguntan contra quién.
+2. {n} espadas de alquiler para siete días. El cronista no sabe sus nombres, y ellos prefieren que siga así.
+3. Llegan {n} mercenarios. Comen de la Corona, luchan por tu Oro y se irán sin despedirse.
+
+### 11.14 Los mercenarios se van (crónica de la casa, bloque 5)
+
+1. {tropas} de alquiler cumplen sus 7 días y se van sin despedirse.
+2. Se acaba la paga: {tropas} mercenarias recogen sus cosas y se marchan.
+3. {tropas} de alquiler se van al amanecer. Dicen que volverían, por el precio adecuado.

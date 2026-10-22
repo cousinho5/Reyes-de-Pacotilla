@@ -58,6 +58,7 @@ Esquema de Reyes de Pacotilla para Cloudflare D1, que usa SQL de SQLite. Corresp
 | `offers` | Ofertas públicas o dirigidas, con lo que se da y lo que se pide de cada recurso. Las contraofertas enlazan con la oferta original. |
 | `trades` | Intercambios ejecutados, vengan de una oferta o de un tratado. La columna `valid` se calcula sola: vale 1 si cada lado entrega al menos 10 recursos. |
 | `crown_purchases` | Compras a la Corona (bloque 5, migración 0014): casa, recurso, unidades, Oro pagado y hora de la partida. El precio sube con las unidades compradas en los últimos 7 días entre todas las casas. |
+| `mercenaries` | Mercenarios de alquiler (bloque 5, migración 0015): una fila por contratación, con cuántos quedan y el día en que se van. |
 | `treaties` | Tratados comerciales semanales (versión 2), con su cancelación avisada. |
 | `pacts` | Pactos de no agresión: propuesto, activo, roto (y por quién) o rechazado. |
 
@@ -132,6 +133,8 @@ Boletín (versión 1): `bulletins.content` guarda el boletín ya escrito en JSON
 Aldeas y Ruinas (bloque 1, fase 3) no añaden columnas: son tipos de `tiles` que ya admite la migración 0010. Cuando una casa entra en unas ruinas, en el mismo lote de la resolución la casilla pasa a `type = 'prado'`, el premio va a `houses` (recursos) o a `cards` (una carta) y queda un `ruinas` en `event_log` con `{house, tile, prize}`. El premio sale de `ruinPrize(seed, casilla)`, así que no se guarda antes.
 
 Cambio con la Corona (bloque 5, migración 0014): `crown_purchases` guarda cada compra. El precio se calcula en el servidor con lo que guardan todas las casas y lo comprado en los últimos 7 días; al cliente solo le llega el precio. El cobro y la entrega van en un `db.batch()`, y la restricción `CHECK` del Oro deshace la compra si no llega.
+
+Mercenarios de alquiler (bloque 5, migración 0015): `mercenaries` guarda cada contratación (casa, unidades, Oro, hora y `leaves_on`, la fecha local en que se van). La tarea de producción de ese día, en su mismo lote, quita sus tropas (primero del castillo; cada casilla solo se escribe si nadie la tocó entretanto), borra la fila y deja un `mercenarios` en `event_log` para la casa. Si a una casa le quedan menos tropas que mercenarios, se rebajan `units` (murieron). El mantenimiento del domingo no cuenta sus tropas.
 
 Borrar una prueba elimina la partida, sus filas y los usuarios de sus bots en un solo lote.
 
