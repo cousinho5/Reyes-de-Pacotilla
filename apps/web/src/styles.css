@@ -1996,3 +1996,34 @@ label.check {
     transition: none;
   }
 }
+
+/* Bloque 6: órdenes con el dedo e información rápida al mantener pulsada una casilla. */
+.world-overlay .tile {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.quick-info {
+  position: absolute;
+  z-index: 12;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 11rem;
+  max-width: 15rem;
+  padding: 0.45rem 0.65rem;
+  transform: translate(-50%, calc(-100% - 44px));
+  font-size: 0.88rem;
+  line-height: 1.25;
+  color: var(--ink);
+  background: linear-gradient(180deg, var(--vellum), var(--vellum-2));
+  border-radius: 5px;
+  box-shadow: 0 0 0 1px rgba(80, 50, 20, 0.55), 0 8px 16px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+}
+.quick-info.below {
+  transform: translate(-50%, 44px);
+}
+.quick-info strong {
+  font-size: 0.98rem;
+}
