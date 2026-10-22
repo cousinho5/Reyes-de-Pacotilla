@@ -264,6 +264,8 @@ Las tropas se mueven como máximo una casilla por resolución: siete por semana 
 
 - **Intercambio de casillas:** dos grupos que intentan cambiarse de casilla se encuentran a medio camino. Combaten sin bonificación de defensa; el ganador sigue hasta su destino y el perdedor se repliega a su casilla con la mitad de sus tropas.
 
+- **Cruces por el camino (bloque 4):** si dos grupos de casas distintas se cruzan por el camino (una marcha de dos casillas, por camino o a la carga, que recorre al revés un tramo de la otra), también chocan de frente, como en un intercambio. Por ejemplo, con A, B y C en fila, 3 Mesnadas que van de A a B y 4 jinetes que cargan de C a A pasando por B. Combaten sin terreno ni cargas; el ganador sigue hasta su destino con los supervivientes y el perdedor se repliega. La repetición dibuja el choque en la casilla de en medio de la marcha larga, y la pestaña Órdenes avisa de las marchas propias que un enemigo a la vista podría cruzar.
+
 - **Casillas que se vacían:** si un grupo sale de una casilla con éxito, otro puede entrar en ella en la misma resolución.
 
 - **Tu propio fuego:** no puedes atacar tus propias casillas, y un ataque tuyo nunca corta un apoyo tuyo.

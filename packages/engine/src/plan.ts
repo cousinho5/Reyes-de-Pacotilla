@@ -1,5 +1,6 @@
 // Avisos y órdenes en cola (diseño v3, fase 5). Funciones puras:
 // - threats: casillas propias que un enemigo a la vista puede atacar mañana.
+// - crossingRisks: marchas propias que un enemigo a la vista puede cruzar por el camino.
 // - bannersSeen: grupos ajenos que esta noche han entrado junto a tus tierras.
 // - fitOrders: una orden se ajusta a las tropas que haya al salir.
 // - planNights: proyecta varias noches seguidas con las órdenes de una casa.
@@ -7,8 +8,8 @@
 import { resolveCampaign } from "./combat";
 import { areAdjacent } from "./map";
 import { projectForHouse } from "./fog";
-import { QUEUE } from "./rules";
-import { marchKind } from "./terrain";
+import { BATTLE_TWEAKS, QUEUE } from "./rules";
+import { crossingPoint, marchKind, marchPath } from "./terrain";
 import { canEnter, orderUnits, totalUnits, unitFields, unitsOf, type Units } from "./units";
 import type { CampaignEvent, Captain, HouseId, Order, Tile, TileId } from "./types";
 
@@ -44,6 +45,43 @@ export function threats(seen: SeenTile[], house: HouseId): { tile: TileId; by: H
     const by = [...new Set(enemies.filter((e) => reaches(e, t, tiles)).map((e) => e.owner!))].sort((a, b) => a - b);
     if (by.length > 0) out.push({ tile: t.id, by });
   }
+  return out;
+}
+
+/**
+ * Cruces por el camino (bloque 4): marchas de `orders` (las de `house`) que un
+ * grupo enemigo a la vista podría cruzar esta noche, con lo que chocarían de
+ * frente. Devuelve el índice de cada orden en riesgo y las casas que podrían
+ * salirle al paso. Con lo que se ve: las tropas ocultas no cuentan.
+ */
+export function crossingRisks(seen: SeenTile[], house: HouseId, orders: Order[]): { order: number; by: HouseId[] }[] {
+  if (!BATTLE_TWEAKS.crossingClash) return [];
+  const tiles = seen.map(asTile);
+  const byId = new Map(tiles.map((t) => [t.id, t]));
+  const enemies = seen.filter((t) => t.owner != null && t.owner !== house && (t.troops ?? 0) > 0).map(asTile);
+  // Todas las marchas que cada grupo enemigo podría hacer: con todo, o solo los jinetes a la carga.
+  const enemyPaths: { house: HouseId; path: TileId[] }[] = [];
+  for (const e of enemies) {
+    const all = unitsOf(e);
+    const riders: Units = { mesnada: 0, jinetes: all.jinetes, catapultas: 0 };
+    for (const to of tiles) {
+      if (to.type === "castillo" && to.castleOf !== e.owner) continue;
+      for (const u of all.jinetes > 0 ? [all, riders] : [all]) {
+        if (!canEnter(u, to.type) || !marchKind(e, to, tiles, e.owner!, u)) continue;
+        enemyPaths.push({ house: e.owner!, path: marchPath(e, to, tiles, e.owner!, u).map((t) => t.id) });
+      }
+    }
+  }
+  const out: { order: number; by: HouseId[] }[] = [];
+  orders.forEach((o, i) => {
+    if (o.kind !== "move" || o.house !== house) return;
+    const from = byId.get(o.from);
+    const to = byId.get(o.to);
+    if (!from || !to) return;
+    const mine = marchPath(from, to, tiles, house, orderUnits(o)).map((t) => t.id);
+    const by = [...new Set(enemyPaths.filter((p) => crossingPoint(mine, p.path) != null).map((p) => p.house))].sort((a, b) => a - b);
+    if (by.length > 0) out.push({ order: i, by });
+  });
   return out;
 }
 

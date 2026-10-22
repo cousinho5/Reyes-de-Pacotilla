@@ -1,16 +1,15 @@
-// Retoques del sistema de batalla en estudio (hoja de ruta, bloque 4). Están
-// apagados por defecto; aquí se comprueba que, encendidos, hacen lo que dicen.
+// Retoques del sistema de batalla (hoja de ruta, bloque 4). Se encienden uno a
+// uno en rules.ts; aquí se comprueba que hacen lo que dicen, encendidos y apagados.
 import { afterEach, describe, expect, it } from "vitest";
-import { ANY_ORIGIN, BATTLE_TWEAKS, resolveCampaign, type Tile } from "../src";
+import { ANY_ORIGIN, BATTLE_TWEAKS, crossingRisks, resolveCampaign, type Tile } from "../src";
+
+const defaults = { ...BATTLE_TWEAKS };
 
 const X = 1;
 const Y = 2;
 
 afterEach(() => {
-  BATTLE_TWEAKS.supportAnyOrigin = false;
-  BATTLE_TWEAKS.crossingClash = false;
-  BATTLE_TWEAKS.fortifyUntilAttacked = false;
-  BATTLE_TWEAKS.captainAlone = false;
+  Object.assign(BATTLE_TWEAKS, defaults);
 });
 
 describe("Jinetes que se cruzan por el camino", () => {
@@ -26,20 +25,64 @@ describe("Jinetes que se cruzan por el camino", () => {
     { kind: "move" as const, house: Y, from: 3, to: 1, troops: 4, jinetes: 4 },
   ];
 
-  it("hoy no chocan: cada uno entra en la casilla del otro", () => {
+  it("sin el retoque no chocan: cada uno entra en la casilla del otro", () => {
+    BATTLE_TWEAKS.crossingClash = false;
     const r = resolveCampaign({ resolution: 1, tiles: tiles(), orders });
     expect(r.events.some((e) => e.type === "choque_frontal")).toBe(false);
     expect(r.tiles.find((t) => t.id === 1)).toMatchObject({ owner: Y, troops: 4 });
     expect(r.tiles.find((t) => t.id === 2)).toMatchObject({ owner: X, troops: 3 });
   });
 
-  it("con crossingClash chocan de frente por el camino", () => {
-    BATTLE_TWEAKS.crossingClash = true;
+  it("está encendido en el juego", () => {
+    expect(BATTLE_TWEAKS.crossingClash).toBe(true);
+  });
+
+  it("chocan de frente por el camino, en la casilla de en medio", () => {
     const r = resolveCampaign({ resolution: 1, tiles: tiles(), orders });
-    expect(r.events.find((e) => e.type === "choque_frontal")).toMatchObject({ winner: Y });
+    expect(r.events.find((e) => e.type === "choque_frontal")).toMatchObject({ winner: Y, tiles: [1, 3], via: 2 });
     // Gana Y (4 contra 3, sin carga en un choque) y sigue hasta A; X no llega a B.
     expect(r.tiles.find((t) => t.id === 2)).toMatchObject({ owner: Y });
-    expect(r.tiles.find((t) => t.id === 1)).toMatchObject({ owner: Y });
+    expect(r.tiles.find((t) => t.id === 1)).toMatchObject({ owner: Y, troops: 1 });
+  });
+
+  it("el ganador del cruce sigue hasta su destino con lo que le queda", () => {
+    // Ahora X lleva 6: gana el choque (6 contra 4) y toma B; los jinetes no llegan a A.
+    const t = tiles().map((x) => (x.id === 1 ? { ...x, troops: 6 } : x));
+    const r = resolveCampaign({ resolution: 1, tiles: t, orders: [{ ...orders[0]!, troops: 6 }, orders[1]!] });
+    expect(r.events.find((e) => e.type === "choque_frontal")).toMatchObject({ winner: X, via: 2 });
+    expect(r.tiles.find((x) => x.id === 2)).toMatchObject({ owner: X });
+    expect(r.tiles.find((x) => x.id === 1)).toMatchObject({ owner: X });
+  });
+
+  it("un cambio de casilla de toda la vida no lleva casilla de en medio", () => {
+    const t: Tile[] = [
+      { id: 1, x: 0, y: 0, type: "campos", owner: X, troops: 3 },
+      { id: 2, x: 1, y: 0, type: "campos", owner: Y, troops: 2 },
+    ];
+    const r = resolveCampaign({
+      resolution: 1,
+      tiles: t,
+      orders: [
+        { kind: "move", house: X, from: 1, to: 2, troops: 3 },
+        { kind: "move", house: Y, from: 2, to: 1, troops: 2 },
+      ],
+    });
+    const clash = r.events.find((e) => e.type === "choque_frontal");
+    expect(clash).toMatchObject({ winner: X });
+    expect(clash && "via" in clash).toBe(false);
+  });
+
+  it("el aviso marca la marcha que unos jinetes a la vista pueden cruzar", () => {
+    const risks = crossingRisks(tiles(), X, [orders[0]!]);
+    expect(risks).toEqual([{ order: 0, by: [Y] }]);
+  });
+
+  it("sin jinetes que puedan cargar no hay aviso de cruce", () => {
+    // Con Mesnada en C no hay carga de dos casillas ni camino: no se cruzan.
+    const t = tiles().map((x) => (x.id === 3 ? { ...x, jinetes: 0 } : x));
+    expect(crossingRisks(t, X, [orders[0]!])).toEqual([]);
+    BATTLE_TWEAKS.crossingClash = false;
+    expect(crossingRisks(tiles(), X, [orders[0]!])).toEqual([]);
   });
 });
 

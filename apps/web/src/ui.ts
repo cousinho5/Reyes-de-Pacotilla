@@ -239,6 +239,12 @@ export function describeEvent(e: EventView, houses: HouseInfo[], tiles: TileView
     case "rebote":
       return `Rebote en ${tile(d.tile)}: ${(d.houses as number[]).map((h) => houseName(houses, h)).join(" y ")} chocan con la misma fuerza y nadie entra.`;
     case "choque_frontal":
+      if (d.via != null) {
+        const [a, b] = (d.sides as { house: number }[]).map((x) => houseName(houses, x.house));
+        return d.winner == null
+          ? `${a} y ${b} chocan por el camino en ${tile(d.via)} y ambos se repliegan.`
+          : `${a} y ${b} chocan por el camino en ${tile(d.via)}: gana ${houseName(houses, d.winner)} y sigue su marcha.`;
+      }
       return d.winner == null
         ? "Dos ejércitos chocan a medio camino y ambos se repliegan."
         : `${houseName(houses, d.winner)} gana un choque a medio camino.`;

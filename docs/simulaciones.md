@@ -53,6 +53,24 @@ npm run simular -- --semanas 4                    # duración de la partida
 npm run simular -- --json datos.json              # además, todos los datos
 ```
 
+## Cruces por el camino (21 de octubre de 2026, punto 4 del bloque 4, aplicado)
+
+`npm run simular -- --partidas 1500 --cruces no` frente a `--cruces si`, en dos tandas (`--semilla a` y `--semilla b`). Con el retoque, dos grupos de casas distintas que se cruzan por el camino (una marcha de dos casillas que recorre al revés un tramo de la otra) chocan de frente.
+
+| dato | sin cruces (tanda a / b) | con cruces (tanda a / b) |
+| --- | --- | --- |
+| Choques frontales por partida | 0,0 / 0,0 | 0,9 / 0,8 |
+| Combates entre casas con 6 casas | 73,4 / 70,7 | 72,8 / 69,1 |
+| Ataques que toman la casilla | 72% / 72% | 71% / 71% |
+| Ataques con jinetes / a la carga | 19,6 / 10,8 y 19,7 / 10,8 | 19,7 / 10,9 y 19,7 / 10,9 |
+| El líder de la semana 2 gana | 31% / 32% | 30% / 31% |
+| Partidas decididas por desempate | 6% / 5% | 5% / 5% |
+| Prestigio medio del ganador | 63,3 / 63,4 | 63,4 / 63,2 |
+| Arquitecta (x lo esperado; las demás, 1,0-1,1) | 0,7 / 0,7 | 0,7 / 0,7 |
+
+- **Pasa poco y no cambia el equilibrio**, como decía la investigación: menos de un choque por partida, y ninguna personalidad ni la bola de nieve se mueven. Con los bots, los cambios de casilla de siempre no ocurren nunca (0,0), así que todos los choques frontales son cruces.
+- Lo que arregla es un hueco que buscarían las personas: cargar con jinetes a través de una marcha enemiga sin luchar.
+
 ## Aldeas y Ruinas (21 de octubre de 2026, fase 3 del bloque 1, aplicado)
 
 `npm run simular -- --partidas 1500 --aldeas no --ruinas no` frente a la misma orden con Aldeas y Ruinas, en dos tandas (`--semilla b` para la segunda). Una Aldea por casa a 2 pasos de su castillo; Ruinas: 1 con 4-5 casas, 2 con 6-7 y 3 con 8.

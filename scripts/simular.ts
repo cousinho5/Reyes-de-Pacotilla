@@ -44,14 +44,14 @@ if (args.get("asedio-fortificadas") === "no") SIEGE.fortifiedTargets = false;
 if (args.get("asedio-castillo") === "no") SIEGE.castleSides = 99;
 // Bloque 4 de la hoja de ruta (retoques del sistema de batalla):
 //   --apoyo-libre si               apoyar un ataque sin elegir de dónde viene
-//   --cruces si                    también chocan los grupos que se cruzan por el camino
+//   --cruces no                    sin el choque de los grupos que se cruzan por el camino (encendido desde el bloque 4)
 //   --fortificar-hasta-ataque si   la fortificación dura hasta que atacan la casilla
 //   --coste-fortificar 12          Piedra por fortificar
 //   --capitan-modo avance|solo     el Capitán acompaña los avances, o además va solo al frente
 //   --jinetes-pares 1 --jinetes-impares 0   parte de jinetes al reclutar según la casa (par o impar)
 //   --coste-jinete hierro:3,pan:2,oro:1     --carga 2     --mantener-jinete 1
 if (args.get("apoyo-libre") === "si") BATTLE_TWEAKS.supportAnyOrigin = true;
-if (args.get("cruces") === "si") BATTLE_TWEAKS.crossingClash = true;
+if (args.has("cruces")) BATTLE_TWEAKS.crossingClash = args.get("cruces") === "si";
 const untilAttacked = args.get("fortificar-hasta-ataque") === "si";
 if (untilAttacked) BATTLE_TWEAKS.fortifyUntilAttacked = true;
 if (args.has("coste-fortificar")) FORTIFY_COST.piedra = Number(args.get("coste-fortificar"));

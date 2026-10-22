@@ -33,7 +33,7 @@ import {
   type Units,
 } from "./units";
 import { areAdjacent } from "./map";
-import { crossesRiver, marchKind, marchPath, terrainDefense } from "./terrain";
+import { crossesRiver, crossingPoint, marchKind, marchPath, terrainDefense } from "./terrain";
 import type {
   CampaignEvent,
   CampaignInput,
@@ -221,20 +221,13 @@ export function resolveCampaign(input: CampaignInput): CampaignResult {
   const paths = new Map<Move, TileId[]>(
     moves.map((m) => [m, marchPath(input.tiles.find((t) => t.id === m.from)!, input.tiles.find((t) => t.id === m.to)!, input.tiles, m.house, m.units).map((t) => t.id)]),
   );
-  const crosses = (a: Move, b: Move) => {
-    const pa = paths.get(a)!;
-    const pb = paths.get(b)!;
-    if (pa.length < 3 && pb.length < 3) return false;
-    for (let i = 0; i + 1 < pa.length; i++) {
-      for (let j = 0; j + 1 < pb.length; j++) if (pa[i] === pb[j + 1] && pa[i + 1] === pb[j]) return true;
-    }
-    return false;
-  };
+  const crossing = (a: Move, b: Move) => crossingPoint(paths.get(a)!, paths.get(b)!);
   for (const a of moves) {
     for (const b of moves) {
       if (a === b || a.failed || b.failed || a.house === b.house) continue;
       const swap = a.from === b.to && a.to === b.from;
-      if (swap ? a.from > b.from : !(BATTLE_TWEAKS.crossingClash && crosses(a, b) && moves.indexOf(a) < moves.indexOf(b))) continue;
+      const via = swap || !BATTLE_TWEAKS.crossingClash ? null : crossing(a, b);
+      if (swap ? a.from > b.from : !(via != null && moves.indexOf(a) < moves.indexOf(b))) continue;
       const sa = clashStrength(a);
       const sb = clashStrength(b);
       let winner: HouseId | null = null;
@@ -263,6 +256,7 @@ export function resolveCampaign(input: CampaignInput): CampaignResult {
       events.push({
         type: "choque_frontal",
         tiles: [a.from, b.from],
+        ...(via != null ? { via } : {}),
         winner,
         sides: [
           { house: a.house, strength: sa },
