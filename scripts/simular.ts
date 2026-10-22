@@ -16,7 +16,7 @@
 //   npm run simular -- --json simulacion.json   # además, todos los datos en JSON
 
 import { writeFileSync } from "node:fs";
-import { BATTLE_TWEAKS, BOT_TWEAKS, CROWN, ECONOMY_TWEAKS, FEATURES, MAP_GEN, RIVERS, FORTIFY_COST, FORTIFY_UPKEEP, PRESTIGE, SIEGE, UNITS, UPGRADE_COST } from "../packages/engine/src";
+import { BATTLE_TWEAKS, BOT_TWEAKS, CROWN, ECONOMY_TWEAKS, FEATURES, MERCENARIES, MAP_GEN, RIVERS, FORTIFY_COST, FORTIFY_UPKEEP, PRESTIGE, SIEGE, UNITS, UPGRADE_COST } from "../packages/engine/src";
 import {
   CLASSIC_STRATEGIES,
   OBJECTIVES,
@@ -111,6 +111,9 @@ if (args.has("corona-base")) CROWN.base = Number(args.get("corona-base"));
 //   --corona-referencia oro|media   --corona-compra 0.4 (lo que paga la Corona respecto al precio)
 if (args.has("corona-referencia")) CROWN.reference = args.get("corona-referencia") as "oro" | "media";
 if (args.has("corona-compra")) CROWN.buyMarkdown = Number(args.get("corona-compra"));
+//   --corona-tope 20 | no   --mercenarios-tope 5 | no   unidades por casa y semana (no = sin tope)
+if (args.has("corona-tope")) CROWN.weeklyCap = args.get("corona-tope") === "no" ? Infinity : Number(args.get("corona-tope"));
+if (args.has("mercenarios-tope")) MERCENARIES.weeklyCap = args.get("mercenarios-tope") === "no" ? Infinity : Number(args.get("mercenarios-tope"));
 if (args.has("mercenarios")) ECONOMY_TWEAKS.mercenaries = args.get("mercenarios") as "alquiler" | "soldada";
 if (args.has("mejora-madera-piedra")) {
   const k = Number(args.get("mejora-madera-piedra"));
