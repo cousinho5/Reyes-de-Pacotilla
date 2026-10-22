@@ -841,13 +841,14 @@ svg.ico {
   outline: 3px solid #fff;
   outline-offset: -4px;
 }
-.tile-banner {
+/* Bloque 9: con todo el reino a la vista, el escudo de cada casa sobre su territorio. */
+.territory-shield {
   position: absolute;
-  z-index: 2;
-  top: 4px;
-  right: 4px;
+  z-index: 1;
+  transform: translate(-50%, -50%);
   line-height: 0;
-  filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.7));
+  pointer-events: none;
+  filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.8)) drop-shadow(0 0 2px rgba(0, 0, 0, 0.6));
 }
 .tile-troops {
   position: absolute;
@@ -863,6 +864,40 @@ svg.ico {
   background: rgba(28, 20, 16, 0.9);
   border-radius: 3px;
   box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.8);
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+/* Bloque 9: las tropas propias, con borde de latón; la franja dice de qué casa son. */
+.tile-troops.mine {
+  box-shadow: 0 0 0 2.5px var(--brass);
+}
+.troop-stripe {
+  align-self: stretch;
+  width: 4px;
+  margin: -0.1rem 0.1rem -0.16rem -0.28rem;
+  box-shadow: 1px 0 0 rgba(255, 255, 255, 0.6);
+}
+/* Con todo el reino a la vista las casillas son pequeñas: etiquetas más pequeñas. */
+.map-viewport.whole .tile-troops {
+  font-size: 0.6rem;
+  padding: 0.05rem 0.18rem 0.08rem;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.7);
+}
+.map-viewport.whole .tile-troops.mine {
+  box-shadow: 0 0 0 1.5px var(--brass);
+}
+.map-viewport.whole .troop-stripe {
+  width: 3px;
+  margin: -0.05rem 0.08rem -0.08rem -0.18rem;
+}
+.troop-left {
+  color: #f1cf7d;
+}
+.tile-troops .ico {
+  margin-left: 2px;
 }
 .tile-battle {
   position: absolute;
@@ -876,10 +911,6 @@ svg.ico {
   box-shadow: 0 0 0 1.5px var(--wood-0);
 }
 /* En hexágonos las esquinas de la caja quedan fuera: las marcas se meten hacia dentro. */
-.cell-box.hex .tile-banner {
-  top: 18%;
-  right: 6%;
-}
 .cell-box.hex .tile-troops {
   left: 8%;
   bottom: 20%;
@@ -1527,6 +1558,7 @@ label.check {
 
 /* Repetición de la noche. Mientras dura, se apagan las marcas del mapa de ahora. */
 .board.replaying .tile-troops,
+.board.replaying .territory-shield,
 .board.replaying .tile-battle,
 .board.replaying .tile-captain,
 .board.replaying .tile-alert,

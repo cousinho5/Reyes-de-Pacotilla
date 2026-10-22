@@ -174,6 +174,36 @@ export const ICONS = {
     "kkkkkkkkkkkk",
     "............",
   ],
+  // Bloque 9: tipos de tropa en la etiqueta de la casilla. Jinete: el caballo del ajedrez.
+  jinete: [
+    "............",
+    "....kk.k....",
+    "...kmmkmk...",
+    "..kmmmmmmk..",
+    ".kmlkmmmmdk.",
+    ".kmmmmmmmdk.",
+    "kmmmmkmmmdk.",
+    "kddk.kmmmdk.",
+    ".kk.kmmmmdk.",
+    "...kmmmmdk..",
+    "..kmmmmmmdk.",
+    "..kkkkkkkkk.",
+  ],
+  // Catapulta: brazo con su cazo, bastidor y ruedas.
+  catapulta: [
+    "..........kk",
+    ".........kmk",
+    "........klk.",
+    ".......kmk..",
+    "......kmk...",
+    "..k..kmk....",
+    ".kmk.kk.....",
+    "kkkkkkkkkkk.",
+    "klmmmmmmmdk.",
+    "kkkkkkkkkkk.",
+    ".kdk....kdk.",
+    "..k......k..",
+  ],
 } as const;
 
 export type IconName = keyof typeof ICONS;

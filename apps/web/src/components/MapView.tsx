@@ -167,9 +167,38 @@ export function MapView({ state, draft, setDraft, act, night, setNight }: Props)
   const geo = useMemo(() => geoOf(img), [img]);
   const tileAt = useMemo(() => new Map(tiles.map((t) => [`${t.x},${t.y}`, t])), [tiles]);
   const ownerAt = (x: number, y: number) => tileAt.get(`${x},${y}`)?.owner;
-  // Un banderín por trozo de territorio (en su casilla de más arriba a la izquierda), no en cada casilla.
-  const bannerHere = (t: TileView) =>
-    geo.neighbours(t.x, t.y).every(([nx, ny]) => !(ny < t.y || (ny === t.y && nx < t.x)) || ownerAt(nx, ny) !== t.owner);
+  // Bloque 9: con todo el reino a la vista, un escudo por trozo de territorio (en su
+  // castillo si lo tiene; si no, en la casilla más cercana al centro del trozo).
+  const shields = useMemo(() => {
+    const seen = new Set<number>();
+    const out: { tile: TileView; house: number }[] = [];
+    for (const start of tiles) {
+      if (start.owner == null || seen.has(start.id)) continue;
+      const chunk: TileView[] = [];
+      const queue = [start];
+      seen.add(start.id);
+      while (queue.length) {
+        const t = queue.pop()!;
+        chunk.push(t);
+        for (const [nx, ny] of geo.neighbours(t.x, t.y)) {
+          const n = tileAt.get(`${nx},${ny}`);
+          if (n && n.owner === start.owner && !seen.has(n.id)) {
+            seen.add(n.id);
+            queue.push(n);
+          }
+        }
+      }
+      const centers = chunk.map((t) => geo.center(t.x, t.y));
+      const mx = centers.reduce((a, c) => a + c[0], 0) / chunk.length;
+      const my = centers.reduce((a, c) => a + c[1], 0) / chunk.length;
+      const castle = chunk.find((t) => t.type === "castillo" && t.castleOf === start.owner);
+      const middle = chunk.reduce((best, t, i) =>
+        Math.hypot(centers[i]![0] - mx, centers[i]![1] - my) < Math.hypot(geo.center(best.x, best.y)[0] - mx, geo.center(best.x, best.y)[1] - my) ? t : best,
+      );
+      out.push({ tile: castle ?? middle, house: start.owner });
+    }
+    return out;
+  }, [tiles, geo, tileAt]);
 
   // Zoom (bloque 6): todo el reino, normal (2 px de pantalla por píxel del dibujo, unas
   // 3 casillas de ancho en un móvil) y cerca; con el botón, la pinza o dos toques.
@@ -508,14 +537,13 @@ export function MapView({ state, draft, setDraft, act, night, setNight }: Props)
                       t.troops == null ? "tropas desconocidas" : `${t.troops} tropas`
                     }${isTarget(t) ? ", objetivo posible" : ""}`}
                   />
-                  {house && t.type !== "castillo" && bannerHere(t) && (
-                    <span className="tile-banner" aria-hidden>
-                      <ShieldIcon color={house.color} escudo={house.escudo} size={14} title="" />
-                    </span>
-                  )}
                   {t.troops != null && (
-                    <span className="tile-troops" aria-hidden>
+                    <span className={`tile-troops${t.owner === me && me != null ? " mine" : ""}`} aria-hidden>
+                      {house && <span className="troop-stripe" style={{ background: TERRITORY[house.color] ?? "#fff" }} />}
                       {t.troops}
+                      {t.owner === me && committed(t.id) > 0 && <span className="troop-left"> → {t.troops - committed(t.id)}</span>}
+                      {(t.jinetes ?? 0) > 0 && <Icon name="jinete" size={12} color="#f1cf7d" />}
+                      {(t.catapultas ?? 0) > 0 && <Icon name="catapulta" size={12} color="#f1cf7d" />}
                       {(t.guests ?? []).length > 0 && <small className="tile-guests">+{t.guests!.reduce((a, g) => a + g.troops, 0)}</small>}
                     </span>
                   )}
@@ -537,6 +565,18 @@ export function MapView({ state, draft, setDraft, act, night, setNight }: Props)
                 </div>
               );
             })}
+            {level === 0 &&
+              shields.map(({ tile: t, house }) => {
+                const h = state.casas.find((c) => c.id === house);
+                if (!h) return null;
+                const [cx, cy] = geo.center(t.x, t.y);
+                const size = Math.max(16, Math.round(cellBox(geo, t.x, t.y)[2] * scale * 0.75));
+                return (
+                  <span key={`e${t.id}`} className="territory-shield" style={{ left: `${(cx / W) * 100}%`, top: `${(cy / H) * 100}%` }} aria-hidden>
+                    <ShieldIcon color={h.color} escudo={h.escudo} size={size} title="" />
+                  </span>
+                );
+              })}
           </div>
           <svg className="world-arrows" viewBox={`0 0 ${W} ${H}`} aria-hidden>
               <defs>
