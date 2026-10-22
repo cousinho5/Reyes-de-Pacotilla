@@ -45,6 +45,15 @@ Revisadas con Pablo el 22 de octubre de 2026, antes de empezar a programar (las 
 Van después del bloque 6, porque usan el mapa a pantalla completa y la ficha que sube desde abajo. Solo cliente: no hay migración.
 
 1. **PR 1, tropas y escudos** (puntos 2 y 3): placa con franja de color y borde de latón, iconos de tipo, «6 → 2» en la noche planeada y escudos en la vista lejana (`MapView.tsx`, `apps/web/src/art`).
-2. **PR 2, capas** (puntos 1 y 8): botón de capas con las cuatro y la leyenda; destinos marcados al elegir una casilla tuya; Alcance de tus ejércitos y de los enemigos.
-3. **PR 3, avisos y noches** (puntos 5, 6 y 7): hoja asomada en una línea que lleva a cada aviso, marcas en las casillas y flechas en el borde, etiqueta de la noche planeada, fuera el botón de zoom (y doble clic en el ordenador).
+2. **PR 2, capas** (puntos 1, 5 y 8): botón de capas con las cuatro y la leyenda, en el sitio del botón de zoom, que se va (doble clic en el ordenador); destinos marcados al elegir una casilla tuya; Alcance de tus ejércitos y de los enemigos. La capa elegida se recuerda en el navegador.
+3. **PR 3, avisos y noches** (puntos 6 y 7): hoja asomada en una línea que lleva a cada aviso, marcas en las casillas y flechas en el borde, etiqueta de la noche planeada.
 4. **PR 4, niebla y comprobación** (punto 4 y final): niebla en sepia y comprobación en un móvil de 390x844 con Playwright, de cerca y con todo el reino, con 4 y con 8 casas.
+
+## Resultado
+
+Hecho el 22 de octubre de 2026 en cuatro PR.
+
+- La niebla en sepia ya la pintaba el dibujo del mundo (`toImageData` de `art/world.ts`); en esta PR solo se aviva el territorio de otra casa dentro de la niebla.
+- Comprobado con Playwright en 390x844, de cerca y con todo el reino, en partidas de prueba de 4 y de 8 casas: etiquetas, escudos, las cuatro capas, la leyenda, la línea de avisos, las flechas del borde y el menú de noches.
+- `npm run medir-movil` (móvil normal): 0 cosas que se tocan por debajo de 48 px; casilla de 112x128 de cerca y 33x38 con todo el reino; el mapa se ve en 0,98 s y se arrastra a 60 imágenes/s. La medida ya no usa el botón de zoom, sino el doble clic.
+- Falta probarlo en un móvil de verdad.

@@ -166,7 +166,7 @@ Propuesto y decidido el 19 de octubre de 2026, a partir de Reyes de Pacotilla: i
 
 **Por pensar más adelante:** una mecánica de traición propia (no entra en la primera versión).
 
-## Bloque 9: diseño de la sección Mapa **(decidido, pendiente de hacer)**
+## Bloque 9: diseño de la sección Mapa **(hecho; falta probarlo en un móvil de verdad)**
 
 Decidido el 20 de octubre de 2026 y revisado el 22. Las decisiones y los pasos están en `docs/bloque9.md`. No cambia reglas.
 
