@@ -721,6 +721,8 @@ svg.ico {
   scrollbar-width: thin;
   scrollbar-color: var(--brass-lo) var(--wood-2);
   -webkit-overflow-scrolling: touch;
+  /* La pinza y el doble toque son del mapa (useMapZoom.ts), no zoom de la página. */
+  touch-action: pan-x pan-y;
 }
 .map-viewport.whole {
   overflow: hidden;
