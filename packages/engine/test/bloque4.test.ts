@@ -109,6 +109,7 @@ describe("Apoyo al ataque sin elegir origen", () => {
   });
 
   it("sin el retoque, un apoyo sin origen no es válido", () => {
+    BATTLE_TWEAKS.supportAnyOrigin = false;
     const r = resolveCampaign({
       resolution: 1,
       tiles: tiles(),
@@ -131,6 +132,56 @@ describe("Apoyo al ataque sin elegir origen", () => {
     });
     const combate = r.events.find((e) => e.type === "combate");
     expect(combate && combate.type === "combate" && combate.sides.find((s) => s.role === "ataque")?.strength).toBe(5);
+  });
+
+  // Otra casa, Z, ataca también la casilla 3 desde la 5 con 2 tropas.
+  const Z = 3;
+  const withZ = (): Tile[] => [...tiles(), { id: 5, x: 1, y: 1, type: "campos", owner: Z, troops: 2 }];
+  const attackStrengths = (r: ReturnType<typeof resolveCampaign>) => {
+    const c = r.events.find((e) => e.type === "combate");
+    return c && c.type === "combate" ? Object.fromEntries(c.sides.filter((s) => s.role === "ataque").map((s) => [s.house, s.strength])) : {};
+  };
+
+  it("está encendido en el juego", () => {
+    expect(BATTLE_TWEAKS.supportAnyOrigin).toBe(true);
+  });
+
+  it("si atacas tú, el primer ataque es siempre el tuyo, aunque otra casa diera antes su orden", () => {
+    const r = resolveCampaign({
+      resolution: 1,
+      tiles: withZ(),
+      orders: [
+        { kind: "move", house: Z, from: 5, to: 3, troops: 2, at: 100 },
+        { kind: "move", house: X, from: 1, to: 3, troops: 4, at: 500 },
+        { kind: "support", house: X, from: 2, target: 3, supportedFrom: ANY_ORIGIN, troops: 3 },
+      ],
+    });
+    expect(attackStrengths(r)).toEqual({ [X]: 7, [Z]: 2 });
+  });
+
+  it("si no atacas, apoyas el ataque de la orden que se dio antes, aunque sea de un enemigo", () => {
+    const tilesNoAttack = withZ().map((t) => (t.id === 1 ? { ...t, owner: 4 } : t));
+    const orders = (atZ: number, atW: number) => [
+      { kind: "move" as const, house: Z, from: 5, to: 3, troops: 2, at: atZ },
+      { kind: "move" as const, house: 4, from: 1, to: 3, troops: 4, at: atW },
+      { kind: "support" as const, house: X, from: 2, target: 3, supportedFrom: ANY_ORIGIN, troops: 3 },
+    ];
+    expect(attackStrengths(resolveCampaign({ resolution: 1, tiles: tilesNoAttack, orders: orders(100, 200) }))).toEqual({ [Z]: 5, 4: 4 });
+    expect(attackStrengths(resolveCampaign({ resolution: 1, tiles: tilesNoAttack, orders: orders(300, 200) }))).toEqual({ [Z]: 2, 4: 7 });
+  });
+
+  it("sin hora, cuenta el orden de la lista", () => {
+    const tilesNoAttack = withZ().map((t) => (t.id === 1 ? { ...t, owner: 4 } : t));
+    const r = resolveCampaign({
+      resolution: 1,
+      tiles: tilesNoAttack,
+      orders: [
+        { kind: "move", house: 4, from: 1, to: 3, troops: 4 },
+        { kind: "move", house: Z, from: 5, to: 3, troops: 2 },
+        { kind: "support", house: X, from: 2, target: 3, supportedFrom: ANY_ORIGIN, troops: 3 },
+      ],
+    });
+    expect(attackStrengths(r)).toEqual({ 4: 7, [Z]: 2 });
   });
 });
 

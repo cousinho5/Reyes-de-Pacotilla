@@ -1,6 +1,6 @@
 // Repetición de la noche: el cruce por el camino (bloque 4) se dibuja en la casilla de en medio.
 import { describe, expect, it } from "vitest";
-import { resolveCampaign, type Tile } from "@reyes/engine";
+import { ANY_ORIGIN, resolveCampaign, type Tile } from "@reyes/engine";
 import type { EventView, HouseInfo, TileView } from "../src/api";
 import { replaySteps } from "../src/components/NightReplay";
 import { describeEvent } from "../src/ui";
@@ -41,5 +41,26 @@ describe("Repetición de un cruce por el camino", () => {
     expect(describeEvent(e, houses, view)).toBe(
       "Casa del Nabo y Casa del Puerro chocan por el camino en Prado Pisoteado: gana Casa del Puerro y sigue su marcha.",
     );
+  });
+});
+
+describe("Apoyo de otra casa al primer ataque", () => {
+  const r = resolveCampaign({
+    resolution: 1,
+    tiles: [
+      { id: 1, x: 0, y: 0, type: "campos", owner: 1, troops: 3 },
+      { id: 2, x: 1, y: 0, type: "campos", owner: null, troops: 4 },
+      { id: 3, x: 2, y: 0, type: "campos", owner: 2, troops: 4 },
+    ],
+    orders: [
+      { kind: "move", house: 1, from: 1, to: 2, troops: 3 },
+      { kind: "support", house: 2, from: 3, target: 2, supportedFrom: ANY_ORIGIN, troops: 4 },
+    ],
+  });
+  const events: EventView[] = r.events.map((e, i) => ({ id: i, tipo: e.type, resolucion: 1, datos: e as never }));
+
+  it("la crónica dice quién apoyó a quién", () => {
+    const e = events.find((x) => x.tipo === "combate")!;
+    expect(describeEvent(e, houses, view)).toMatch(/^Casa del Nabo toma Prado Pisoteado .* Casa del Puerro apoyó a Casa del Nabo\.$/);
   });
 });

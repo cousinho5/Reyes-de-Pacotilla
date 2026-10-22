@@ -59,6 +59,9 @@ interface Move {
   failed: boolean;
   /** El Capitán de la casa va con este grupo. */
   captain?: boolean;
+  /** Cuándo se dio la orden (la más temprana si se agrupan varias) y su puesto en la lista. */
+  at: number;
+  seq: number;
 }
 
 /** La casilla tiene murallas: fortificada o fortaleza (ahí no cargan los jinetes). */
@@ -164,12 +167,14 @@ export function resolveCampaign(input: CampaignInput): CampaignResult {
         CAPTAIN.enabled && !!order.captain && capOf.get(order.house)?.tile === order.from && !moves.some((m) => m.captain && m.house === order.house);
       // El Capitán solo (bloque 4): si ya no está en la casilla de salida, no sale nadie.
       if (order.troops === 0 && !withCaptain) continue;
+      const at = order.at ?? Infinity;
       if (same) {
         same.troops += order.troops;
         same.units = addUnits(same.units, u);
         if (withCaptain) same.captain = true;
+        same.at = Math.min(same.at, at);
       } else
-        moves.push({ house: order.house, from: order.from, to: order.to, troops: order.troops, units: u, failed: false, captain: withCaptain });
+        moves.push({ house: order.house, from: order.from, to: order.to, troops: order.troops, units: u, failed: false, captain: withCaptain, at, seq: moves.length });
     } else if (order.kind === "siege") {
       sieges.push(order);
     } else {
@@ -195,13 +200,21 @@ export function resolveCampaign(input: CampaignInput): CampaignResult {
   });
 
   // Con BATTLE_TWEAKS.supportAnyOrigin, un apoyo con origen ANY_ORIGIN suma una
-  // sola vez a la casa que apoya: al primero de sus ataques que siga en pie.
+  // sola vez, al primer ataque que llegue a la casilla y siga en pie: el de la
+  // casa que apoya si ataca ella; si no, el de la orden que se dio antes (bloque 4).
+  const firstAttack = (s: SupportOrder): Move | undefined => {
+    const owner = tiles.get(s.target)?.owner ?? null;
+    const attacks = moves
+      .filter((x) => x.to === s.target && !x.failed && x.house !== owner)
+      .sort((a, b) => a.at - b.at || a.seq - b.seq);
+    return attacks.find((x) => x.house === s.house) ?? attacks[0];
+  };
   const attackSupport = (m: Move) =>
     activeSupports.filter((s) => {
       if (s.target !== m.to || isOwnTileAgainst(s, m, tiles)) return false;
       if (s.supportedFrom === m.from) return true;
-      if (!BATTLE_TWEAKS.supportAnyOrigin || s.supportedFrom !== ANY_ORIGIN || s.house !== m.house) return false;
-      return moves.find((x) => x.house === m.house && x.to === m.to && !x.failed) === m;
+      if (!BATTLE_TWEAKS.supportAnyOrigin || s.supportedFrom !== ANY_ORIGIN) return false;
+      return firstAttack(s) === m;
     });
   // Tambores de guerra: la fuerza de los ataques de esa casa sube un porcentaje.
   // Los jinetes cargan (fuerza 2) contra una casilla llana sin murallas.

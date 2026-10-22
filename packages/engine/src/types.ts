@@ -67,6 +67,12 @@ export interface MoveOrder {
   catapultas?: number;
   /** El Capitán de la casa va con este grupo (solo si está en la casilla de origen). */
   captain?: boolean;
+  /**
+   * Cuándo se dio la orden o se cambió por última vez (milisegundos). Decide cuál
+   * es «el primer ataque» que recibe un apoyo sin origen (bloque 4). Sin él,
+   * cuenta el orden de la lista.
+   */
+  at?: number;
 }
 
 export interface SupportOrder {
@@ -75,7 +81,10 @@ export interface SupportOrder {
   from: TileId;
   /** Casilla que se apoya (la atacada o la defendida). */
   target: TileId;
-  /** Origen del ataque apoyado; null = se apoya la defensa de `target`. */
+  /**
+   * Origen del ataque apoyado; null = se apoya la defensa de `target`;
+   * ANY_ORIGIN = el primer ataque que llegue a `target` esa noche (bloque 4).
+   */
   supportedFrom: TileId | null;
   troops: number;
   jinetes?: number;

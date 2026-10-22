@@ -18,6 +18,7 @@ import {
   PRESTIGE,
   applyUpkeep,
   applyFortifyUpkeep,
+  ANY_ORIGIN,
   areAdjacent,
   RESOURCES,
   dailyProduction,
@@ -260,7 +261,7 @@ export async function runResolution(env: NotifyEnv, game: GameRow, n: number, no
   const [tileRows, orderRows, houses, achieved] = await Promise.all([
     loadTiles(db, game.id),
     db.prepare(
-      "SELECT house_id, kind, from_tile_id, troops, jinetes, catapultas, captain, target_tile_id, supported_from_tile_id FROM orders WHERE game_id = ? AND resolution_no = ? ORDER BY id",
+      "SELECT house_id, kind, from_tile_id, troops, jinetes, catapultas, captain, target_tile_id, supported_from_tile_id, supports_any, updated_at FROM orders WHERE game_id = ? AND resolution_no = ? ORDER BY id",
     )
       .bind(game.id, n)
       .all<{
@@ -273,6 +274,8 @@ export async function runResolution(env: NotifyEnv, game: GameRow, n: number, no
         captain: number;
         target_tile_id: number;
         supported_from_tile_id: number | null;
+        supports_any: number;
+        updated_at: string;
       }>(),
     loadHouses(db, game.id),
     db.prepare("SELECT achievement_key FROM achievements WHERE game_id = ?").bind(game.id).all<{ achievement_key: string }>(),
@@ -289,6 +292,8 @@ export async function runResolution(env: NotifyEnv, game: GameRow, n: number, no
           troops: o.troops,
           ...typesOf(o),
           ...(o.captain ? { captain: true } : {}),
+          // Para el apoyo sin origen (bloque 4): cuándo se cambió la orden por última vez.
+          at: Date.parse(o.updated_at),
         }
       : o.kind === "siege"
         ? { kind: "siege", house: o.house_id, from: o.from_tile_id, target: o.target_tile_id, troops: o.troops, ...typesOf(o) }
@@ -297,7 +302,7 @@ export async function runResolution(env: NotifyEnv, game: GameRow, n: number, no
           house: o.house_id,
           from: o.from_tile_id,
           target: o.target_tile_id,
-          supportedFrom: o.supported_from_tile_id,
+          supportedFrom: o.supports_any ? ANY_ORIGIN : o.supported_from_tile_id,
           troops: o.troops,
           ...typesOf(o),
         },

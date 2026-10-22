@@ -112,10 +112,11 @@ export const QUEUE = {
 /**
  * Retoques del sistema de batalla (hoja de ruta, bloque 4, `docs/bloque4.md`).
  * Se encienden uno a uno, cada uno con su simulación. El simulador puede
- * cambiarlos para comparar (`npm run simular -- --cruces no`, `--apoyo-libre si`,
- * `--fortificar-hasta-ataque si`).
- * - `supportAnyOrigin` (apagado): un apoyo al ataque con origen `ANY_ORIGIN`
- *   vale para los ataques de la casa que apoya a esa casilla, vengan de donde vengan.
+ * cambiarlos para comparar (`npm run simular -- --cruces no`, `--apoyo-libre no`,
+ * `--fortificar-hasta-ataque no`, `--capitan-modo ataques`).
+ * - `supportAnyOrigin` (encendido): un apoyo al ataque con origen `ANY_ORIGIN`
+ *   suma al primer ataque que llegue a esa casilla esa noche: el de la casa que
+ *   apoya si ataca ella; si no, el de la orden que se dio antes (`MoveOrder.at`).
  * - `crossingClash` (encendido): también chocan de frente dos grupos que se
  *   cruzan por el camino (una marcha de dos casillas que recorre al revés la de otra casa).
  * - `captainAlone` (encendido): el Capitán se mueve solo, sin tropas, a una
@@ -125,13 +126,13 @@ export const QUEUE = {
  *   Cada domingo se paga `FORTIFY_UPKEEP` por casilla fortificada.
  */
 export const BATTLE_TWEAKS = {
-  supportAnyOrigin: false,
+  supportAnyOrigin: true,
   crossingClash: true,
   fortifyUntilAttacked: true,
   /** El Capitán puede moverse solo (orden de mover con 0 tropas) entre casillas propias. */
   captainAlone: true,
 };
-/** Origen de un apoyo al ataque que vale para cualquier ataque propio (con `supportAnyOrigin`). */
+/** Origen de un apoyo al ataque que vale para el primer ataque a la casilla (con `supportAnyOrigin`). */
 export const ANY_ORIGIN = -1;
 
 export const GLORY = {

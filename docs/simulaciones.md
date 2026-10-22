@@ -53,6 +53,25 @@ npm run simular -- --semanas 4                    # duración de la partida
 npm run simular -- --json datos.json              # además, todos los datos
 ```
 
+## Apoyo sin elegir origen (21 de octubre de 2026, punto 1 del bloque 4, aplicado)
+
+`npm run simular -- --partidas 1500 --semilla a --apoyo-libre no` (el de antes: el apoyo elige de qué casilla sale el ataque) frente a la misma orden sin esa opción (apoya el primer ataque a la casilla), ya con los otros cuatro puntos. Repetido con `--semilla b`; las cifras son la media de las dos tandas. Los bots solo apoyan sus propios ataques: no se ponen de acuerdo con otras casas, así que el apoyo a otra casa no sale en estos números.
+
+| dato | antes | apoyo al primer ataque |
+| --- | --- | --- |
+| Órdenes de ataque por partida | 128,5 | 142 |
+| Órdenes de apoyo por partida | 121 | 132,5 |
+| Marchas por camino (2 casillas) | 22,5 | 34,5 |
+| Combates entre casas (8 casas) | 114 | 124,5 |
+| Ataques que toman la casilla | 77% | 76% |
+| Personalidades (x lo esperado) | 0,8-1,2 | 0,8-1,2 |
+| El líder de la semana 2 gana | 27,5% | 28,5% |
+| Partidas decididas por desempate | 5% | 4% |
+
+- **Las marchas por camino crecen la mitad** (de 22,5 a 34,5): ahora se pueden apoyar, y con ellas hay algo más de guerra entre casas (+9% de combates).
+- **No cambia el equilibrio**: las personalidades, el líder de la semana 2 y el Prestigio del ganador quedan igual.
+- El riesgo de ayudar a un enemigo que se adelanta solo aparece cuando varias casas atacan la misma casilla la misma noche; habrá que verlo cuando juegue gente.
+
 ## Capitán solo y rescate (21 de octubre de 2026, punto 3 del bloque 4, aplicado)
 
 `npm run simular -- --partidas 1500 --semilla a --capitan-modo ataques` (el de antes: el Capitán solo va con los ataques y, preso, se escapa a las 7 noches) frente a la misma orden sin esa opción (además va solo al frente y se rescata con Oro), ya con los puntos 4, 2 y 5. Repetido con `--semilla b`; las cifras son la media de las dos tandas. Los bots piden 30 de Oro y bajan el precio según se acerca la fuga; pagan si el precio es como mucho el 40% de su Oro y faltan al menos 2 noches.
