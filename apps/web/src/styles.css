@@ -2435,3 +2435,121 @@ label.check {
   text-decoration: none;
   font-weight: inherit;
 }
+/* Bloque 12: «Deshacer» al quitar una orden. */
+.toast.with-action {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.toast-action {
+  margin-left: auto;
+  flex: none;
+  min-height: var(--touch);
+  padding: 0 1rem;
+  font-weight: 700;
+}
+/* Bloque 12: tarjetas de órdenes agrupadas por destino. */
+.night-orders .night-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin: 1rem 0.25rem 0.4rem;
+  color: var(--chalk);
+}
+.night-orders > .hint {
+  color: var(--dust);
+  margin: 0 0.25rem 0.4rem;
+}
+.order-card {
+  margin-bottom: 0.6rem;
+}
+.order-card-head {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+}
+.order-card-head h4 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+.order-card-head p {
+  margin: 0;
+  font-size: 0.85rem;
+}
+.order-card .thumb {
+  flex: none;
+  border-radius: 3px;
+  box-shadow: 0 0 0 2px var(--ink);
+}
+.order-card .thumb.small {
+  width: 24px;
+  height: 24px;
+}
+.outlook {
+  margin: 0.5rem 0;
+  padding: 0.35rem 0.5rem;
+  border-left: 3px solid var(--vellum-line);
+  font-size: 0.92rem;
+}
+.outlook.good {
+  border-left-color: #4f8035;
+}
+.outlook.bad {
+  border-left-color: var(--seal);
+}
+.order-lines {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.order-lines li {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  border-top: 1px dashed var(--vellum-line);
+}
+.order-line {
+  flex: 1;
+  min-height: var(--touch);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0.2rem;
+  text-align: left;
+  background: none;
+  border: none;
+  box-shadow: none;
+  color: inherit;
+  font-weight: 500;
+}
+.order-line .order-warning {
+  display: block;
+}
+.order-remove {
+  flex: none;
+  min-width: 48px;
+  min-height: 48px;
+  padding: 0 0.5rem;
+}
+.what-if .row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.what-if h2 {
+  margin: 0;
+}
+.what-if button {
+  min-height: var(--touch);
+}
+/* «¿Y si atacan?»: casillas que perderías. */
+.cell-lost {
+  fill: rgba(255, 75, 51, 0.28);
+  stroke: #ff4b33;
+  stroke-width: 3;
+  filter: drop-shadow(0 0 1.5px rgba(28, 20, 16, 0.9));
+}
+.quick-orders .what-if {
+  margin-top: 0.5rem;
+}

@@ -105,6 +105,27 @@ export function defenseMultiplier(tile: Tile, resolution: number, absent: boolea
   return 1 + Math.min(bonus, DEFENSE_BONUS.max);
 }
 
+/** Una parte de la ventaja del defensor, para contarla (bloque 12). */
+export interface DefensePart {
+  kind: "defensor" | "fortificada" | "fortaleza" | "terreno" | "ausente" | "rio";
+  /** En tanto por uno: 0,25 es +25%. */
+  bonus: number;
+}
+
+/**
+ * La ventaja del defensor por partes, sin brecha de catapultas: la misma suma
+ * que `defenseMultiplier` (más el río si el ataque lo cruza) antes del tope.
+ */
+export function defenseBreakdown(tile: Tile, resolution: number, absent = false, river = false): { parts: DefensePart[]; multiplier: number } {
+  const parts: DefensePart[] = [{ kind: "defensor", bonus: DEFENSE_BONUS.base }];
+  if (tile.fortifiedUntil != null && tile.fortifiedUntil >= resolution) parts.push({ kind: "fortificada", bonus: DEFENSE_BONUS.fortified });
+  if (tile.type === "fortaleza") parts.push({ kind: "fortaleza", bonus: DEFENSE_BONUS.fortress });
+  if (terrainDefense(tile.type) > 0) parts.push({ kind: "terreno", bonus: terrainDefense(tile.type) });
+  if (absent) parts.push({ kind: "ausente", bonus: DEFENSE_BONUS.absent });
+  if (river) parts.push({ kind: "rio", bonus: RIVERS.defense });
+  return { parts, multiplier: defenseMultiplier(tile, resolution, absent, river ? RIVERS.defense : 0) };
+}
+
 /** Tropas que conserva el ganador tras vencer con fuerza `own` a una fuerza `rival`. */
 export function survivors(troops: number, own: number, rival: number): number {
   if (troops <= 0) return 0;

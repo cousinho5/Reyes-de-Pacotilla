@@ -4,6 +4,7 @@
 // - bannersSeen: grupos ajenos que esta noche han entrado junto a tus tierras.
 // - fitOrders: una orden se ajusta a las tropas que haya al salir.
 // - planNights: proyecta varias noches seguidas con las órdenes de una casa.
+// - worstAttacks: «¿Y si atacan?», el peor ataque de cada casa a la vista (bloque 12).
 
 import { resolveCampaign } from "./combat";
 import { areAdjacent } from "./map";
@@ -190,5 +191,63 @@ export function planNights(
     captain = r.captains;
     out.push({ resolution, tiles, events: r.events, captainTile: r.captains.find((c) => c.house === house)?.tile ?? null });
   });
+  return out;
+}
+
+/** Una casilla que perderías si una casa a la vista atacase con todo lo que le ves (bloque 12). */
+export interface WorstAttack {
+  tile: TileId;
+  /** Casas que podrían tomarla, cada una por su cuenta. */
+  by: HouseId[];
+  /** Tropas que le ves a la casa que ataca con más. */
+  troops: number;
+}
+
+/**
+ * «¿Y si atacan?»: para cada casilla de `house`, prueba que cada casa a la vista
+ * (que no sea aliada) ataca sola con todo lo que le ves que puede llegar, a la
+ * vez que se cumplen tus órdenes de esta noche. Devuelve las que perderías.
+ * Nunca usa lo que no se ve: las tropas ocultas cuentan como 0.
+ */
+export function worstAttacks(
+  seen: SeenTile[],
+  house: HouseId,
+  orders: Order[],
+  resolution: number,
+  alliances: Alliance[] = [],
+  captainTile: TileId | null = null,
+): WorstAttack[] {
+  const tiles = seen.map(asTile);
+  const friends = new Set(alliances.filter((a) => a.a === house || a.b === house).map((a) => (a.a === house ? a.b : a.a)));
+  const enemies = tiles.filter((t) => t.owner != null && t.owner !== house && !friends.has(t.owner) && t.troops > 0);
+  const houses = [...new Set(enemies.map((t) => t.owner!))].sort((a, b) => a - b);
+  const captains: Captain[] = captainTile != null ? [{ house, tile: captainTile }] : [];
+  const out: WorstAttack[] = [];
+  for (const target of tiles) {
+    if (target.owner !== house || target.type === "castillo") continue;
+    const by: HouseId[] = [];
+    let troops = 0;
+    for (const h of houses) {
+      const from = enemies.filter((t) => t.owner === h && reaches(t, target, tiles));
+      if (from.length === 0) continue;
+      const attack: Order[] = from.map((t) => {
+        // A la montaña solo sube la Mesnada, y a la carga solo van los jinetes.
+        const u = unitsOf(t);
+        const sent: Units =
+          target.type === "montana"
+            ? { mesnada: u.mesnada, jinetes: 0, catapultas: 0 }
+            : marchKind(t, target, tiles, h) == null
+              ? { mesnada: 0, jinetes: u.jinetes, catapultas: 0 }
+              : u;
+        return { kind: "move", house: h, from: t.id, to: target.id, ...unitFields(sent) };
+      });
+      const r = resolveCampaign({ resolution, tiles, orders: [...orders, ...attack], captains, alliances });
+      if (r.tiles.find((t) => t.id === target.id)?.owner === h) {
+        by.push(h);
+        troops = Math.max(troops, attack.reduce((a, o) => a + o.troops, 0));
+      }
+    }
+    if (by.length > 0) out.push({ tile: target.id, by, troops });
+  }
   return out;
 }
