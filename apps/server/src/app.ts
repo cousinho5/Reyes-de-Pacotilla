@@ -59,6 +59,8 @@ import {
   ECONOMY_TWEAKS,
   MERCENARIES,
   mercenaryCost,
+  alliesOf,
+  guestStacks,
 } from "@reyes/engine";
 import {
   SESSION_COOKIE,
@@ -82,6 +84,16 @@ import { hireStatements, leavingDay, loadMercenaries } from "./mercenarios";
 import { acceptOffer, bundle, offerView, type OfferRow } from "./offers";
 import { ordersOpen } from "./scheduler";
 import {
+  acceptAlliance,
+  alliancesView,
+  breakAlliance,
+  declineAlliance,
+  freshAllianceName,
+  proposeAlliance,
+  withdrawAlliance,
+  type AllianceResult,
+} from "./alianzas";
+import {
   computeAllPrestige,
   loadBuildings,
   loadGame,
@@ -93,6 +105,8 @@ import {
   type GameRow,
   type HouseRow,
   rhythmOf,
+  loadAlliances,
+  toEngineAlliances,
 } from "./state";
 
 export interface Env extends NotifyEnv {
@@ -566,11 +580,15 @@ app.get("/api/partidas/:id", async (c) => {
   const tiles = toEngineTiles(tileRows);
   // Carta Espía: casas que esta casa ve enteras hasta la próxima resolución.
   const spied = await spiedHouses(db, game, house.id);
+  // Bloque 8: con una alianza en vigor, cada aliado ve lo mismo que el otro.
+  const allianceRows = await loadAlliances(db, game.id);
+  const allies = alliesOf(toEngineAlliances(allianceRows), house.id);
+  const sharedVision = [...new Set([...spied, ...allies])];
   const [buildings, prestige, orders, events, offers, trades, achievements, ending] = await Promise.all([
     loadBuildings(db, game.id),
     computeAllPrestige(db, game.id, houses, tiles, now),
     db.prepare(
-      "SELECT id, resolution_no, kind, from_tile_id, troops, jinetes, catapultas, captain, target_tile_id, supported_from_tile_id, supports_any FROM orders WHERE house_id = ? AND resolution_no >= ? ORDER BY resolution_no, id",
+      "SELECT id, resolution_no, kind, from_tile_id, troops, jinetes, catapultas, captain, guest, target_tile_id, supported_from_tile_id, supports_any FROM orders WHERE house_id = ? AND resolution_no >= ? ORDER BY resolution_no, id",
     )
       .bind(house.id, game.current_resolution + 1)
       .all<{
@@ -582,6 +600,7 @@ app.get("/api/partidas/:id", async (c) => {
         jinetes: number;
         catapultas: number;
         captain: number;
+        guest: number;
         target_tile_id: number;
         supported_from_tile_id: number | null;
         supports_any: number;
@@ -647,7 +666,11 @@ app.get("/api/partidas/:id", async (c) => {
       recursos: resourcesOf(house),
       edificios: levels,
       produccionDiaria: dailyProduction(levels, own, helpActive ? (house.help_resource ?? "pan") : null),
-      mantenimientoSemanal: weeklyUpkeep(upkeepTroops(own), own.filter((t) => t.type !== "castillo").length),
+      // Las tropas de paso (bloque 8) también comen.
+      mantenimientoSemanal: weeklyUpkeep(
+        upkeepTroops([...own, ...guestStacks(tiles, house.id).map((g) => g.guest)]),
+        own.filter((t) => t.type !== "castillo").length,
+      ),
       ayudaAlUltimo: helpActive ? (house.help_resource ?? "pan") : null,
       recursoAyuda: house.help_resource ?? "pan",
       objetivo: {
@@ -723,7 +746,9 @@ app.get("/api/partidas/:id", async (c) => {
         : null,
     cartas: await handView(db, game.id, house.id),
     vigiladas: spied,
-    casillas: projectForHouse(tiles, house.id, spied).map((t) => {
+    // Bloque 8: registro público de alianzas, propuestas de esta casa y sus límites.
+    alianzas: alliancesView(allianceRows, house.id, now),
+    casillas: projectForHouse(tiles, house.id, sharedVision).map((t) => {
       // Capitanes en la casilla: el propio siempre; los ajenos, solo si se ven sus tropas.
       const caps = houses.filter((h) => h.captain_tile === t.id && (h.id === house.id || t.troops != null)).map((h) => h.id);
       return { ...t, nombre: names.get(t.id), ...(caps.length ? { capitanes: caps } : {}) };
@@ -741,6 +766,8 @@ app.get("/api/partidas/:id", async (c) => {
       jinetes: o.jinetes,
       catapultas: o.catapultas,
       ...(o.captain ? { capitan: true } : {}),
+      // Sale de las tropas de paso de la casa en una casilla aliada (bloque 8).
+      ...(o.guest ? { dePaso: true } : {}),
     })),
     eventos: events.results.map((e) => ({ id: e.id, tipo: e.type, resolucion: e.resolucion, datos: JSON.parse(e.payload) })),
     ofertas: offers.results.map(offerView),
@@ -961,6 +988,8 @@ interface OrderInput {
   catapultas?: number;
   /** El Capitán va con este grupo (solo órdenes de mover). */
   capitan?: boolean;
+  /** Bloque 8: las tropas son las de paso de la casa en esa casilla aliada. */
+  dePaso?: boolean;
 }
 
 /**
@@ -994,9 +1023,18 @@ app.put("/api/partidas/:id/ordenes", async (c) => {
             troops: Number(o.tropas),
             ...orderTypes(o),
             ...(o.capitan === true ? { captain: true } : {}),
+            ...(o.dePaso === true ? { guest: true } : {}),
           }
         : o.tipo === "sitiar"
-          ? { kind: "siege", house: m.house.id, from: Number(o.desde), target: Number(o.hacia), troops: Number(o.tropas), ...orderTypes(o) }
+          ? {
+              kind: "siege",
+              house: m.house.id,
+              from: Number(o.desde),
+              target: Number(o.hacia),
+              troops: Number(o.tropas),
+              ...orderTypes(o),
+              ...(o.dePaso === true ? { guest: true } : {}),
+            }
           : {
               kind: "support",
               house: m.house.id,
@@ -1005,24 +1043,29 @@ app.put("/api/partidas/:id/ordenes", async (c) => {
               supportedFrom: o.apoyaDesde == null ? null : Number(o.apoyaDesde),
               troops: Number(o.tropas),
               ...orderTypes(o),
+              ...(o.dePaso === true ? { guest: true } : {}),
             },
     );
   }
   if (nights.some((x) => x.length > 60)) return fail(c, 400, "Demasiadas órdenes para una noche.");
 
-  const tiles = toEngineTiles(await loadTiles(c.env.DB, m.game.id));
-  // Esta noche: con el mapa de verdad.
-  const { invalid } = checkOrders(tiles, nights[0] ?? [], n);
+  const [tiles, alliances] = await Promise.all([
+    loadTiles(c.env.DB, m.game.id).then(toEngineTiles),
+    loadAlliances(c.env.DB, m.game.id).then(toEngineAlliances),
+  ]);
+  // Esta noche: con el mapa de verdad (y las alianzas, que son públicas).
+  const { invalid } = checkOrders(tiles, nights[0] ?? [], n, alliances);
   if (invalid.length > 0) return fail(c, 400, `Orden no válida: ${invalid[0]!.reason}.`);
-  // Las siguientes: con lo que ve la casa, proyectado noche a noche.
+  // Las siguientes: con lo que ve la casa (también lo de sus aliados), proyectado noche a noche.
   const spied = await spiedHouses(c.env.DB, m.game, m.house.id);
+  const vision = [...new Set([...spied, ...alliesOf(alliances, m.house.id)])];
   const plan = withRhythm(rhythmOf(m.game), () =>
-    planNights(projectForHouse(tiles, m.house.id, spied), nights, m.house.id, m.house.captain_tile, n),
+    planNights(projectForHouse(tiles, m.house.id, vision), nights, m.house.id, m.house.captain_tile, n, alliances),
   );
   for (let i = 1; i < nights.length; i++) {
     if (nights[i]!.length === 0) continue;
     const before = plan[i - 1]!.tiles;
-    const queued = checkOrders(before, fitOrders(before, nights[i]!), n + i);
+    const queued = checkOrders(before, fitOrders(before, nights[i]!), n + i, alliances);
     if (queued.invalid.length > 0) return fail(c, 400, `Orden en cola no válida (noche ${i + 1}): ${queued.invalid[0]!.reason}.`);
   }
   for (let i = 0; i < nights.length; i++) {
@@ -1035,7 +1078,7 @@ app.put("/api/partidas/:id/ordenes", async (c) => {
   // Una orden que no cambia conserva su hora (updated_at): el apoyo sin origen
   // suma al ataque que se dio antes, y volver a guardar no debe adelantarlo.
   const previous = await c.env.DB.prepare(
-    "SELECT resolution_no, kind, from_tile_id, troops, jinetes, catapultas, captain, target_tile_id, supported_from_tile_id, supports_any, updated_at FROM orders WHERE house_id = ? AND resolution_no >= ?",
+    "SELECT resolution_no, kind, from_tile_id, troops, jinetes, catapultas, captain, guest, target_tile_id, supported_from_tile_id, supports_any, updated_at FROM orders WHERE house_id = ? AND resolution_no >= ?",
   )
     .bind(m.house.id, n)
     .all<{
@@ -1046,6 +1089,7 @@ app.put("/api/partidas/:id/ordenes", async (c) => {
       jinetes: number;
       catapultas: number;
       captain: number;
+      guest: number;
       target_tile_id: number;
       supported_from_tile_id: number | null;
       supports_any: number;
@@ -1053,7 +1097,7 @@ app.put("/api/partidas/:id/ordenes", async (c) => {
     }>();
   const keep = new Map<string, string[]>();
   for (const p of previous.results) {
-    const key = [p.resolution_no, p.kind, p.from_tile_id, p.troops, p.jinetes, p.catapultas, p.captain, p.target_tile_id, p.supports_any ? ANY_ORIGIN : (p.supported_from_tile_id ?? "")].join("|");
+    const key = [p.resolution_no, p.kind, p.from_tile_id, p.troops, p.jinetes, p.catapultas, p.captain, p.guest, p.target_tile_id, p.supports_any ? ANY_ORIGIN : (p.supported_from_tile_id ?? "")].join("|");
     keep.set(key, [...(keep.get(key) ?? []), p.updated_at]);
   }
   const statements = [
@@ -1070,17 +1114,68 @@ app.put("/api/partidas/:id/ordenes", async (c) => {
           o.jinetes ?? 0,
           o.catapultas ?? 0,
           o.kind === "move" && o.captain ? 1 : 0,
+          o.guest ? 1 : 0,
           o.kind === "move" ? o.to : o.target,
         ] as const;
         const at = keep.get([...row, supported ?? ""].join("|"))?.shift() ?? null;
         return c.env.DB.prepare(
-          "INSERT INTO orders (game_id, house_id, resolution_no, kind, from_tile_id, troops, jinetes, catapultas, captain, target_tile_id, supported_from_tile_id, supports_any, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, strftime('%Y-%m-%dT%H:%M:%fZ','now')))",
+          "INSERT INTO orders (game_id, house_id, resolution_no, kind, from_tile_id, troops, jinetes, catapultas, captain, guest, target_tile_id, supported_from_tile_id, supports_any, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, strftime('%Y-%m-%dT%H:%M:%fZ','now')))",
         ).bind(m.game.id, m.house.id, ...row, anyOrigin ? null : supported, anyOrigin ? 1 : 0, at);
       }),
     ),
   ];
   await c.env.DB.batch(statements);
   return c.json({ ok: true, ordenes: nights.reduce((a, x) => a + x.length, 0) });
+});
+
+// ---------------------------------------------------------------------------
+// Alianzas (bloque 8, docs/alianzas.md)
+// ---------------------------------------------------------------------------
+
+function allianceReply(c: Ctx, r: AllianceResult) {
+  return r.ok ? c.json({ ...r }) : fail(c, r.status, r.error);
+}
+
+/** Un nombre solemne nuevo para la propuesta (Fray Abundio lo cambia cuantas veces haga falta). */
+app.get("/api/partidas/:id/alianzas/nombre", async (c) => {
+  const m = await activeMembership(c);
+  if (m instanceof Response) return m;
+  return c.json({ nombre: freshAllianceName() });
+});
+
+/** Proponer una alianza a otra casa (con el nombre que puso Fray Abundio, o uno nuevo). */
+app.post("/api/partidas/:id/alianzas", async (c) => {
+  const m = await activeMembership(c);
+  if (m instanceof Response) return m;
+  const { casa, nombre } = await c.req.json<{ casa?: number; nombre?: string | null }>().catch(() => ({ casa: undefined, nombre: undefined }));
+  if (!Number.isInteger(Number(casa))) return fail(c, 400, "Elige a qué casa proponer la alianza.");
+  return allianceReply(c, await proposeAlliance(c.env, m.game, m.house, Number(casa), nombre ?? null));
+});
+
+app.post("/api/partidas/:id/alianzas/:aid/aceptar", async (c) => {
+  const m = await activeMembership(c);
+  if (m instanceof Response) return m;
+  return allianceReply(c, await acceptAlliance(c.env, m.game, m.house, Number(c.req.param("aid"))));
+});
+
+app.post("/api/partidas/:id/alianzas/:aid/rechazar", async (c) => {
+  const m = await activeMembership(c);
+  if (m instanceof Response) return m;
+  return allianceReply(c, await declineAlliance(c.env, m.game, m.house, Number(c.req.param("aid"))));
+});
+
+app.post("/api/partidas/:id/alianzas/:aid/retirar", async (c) => {
+  const m = await activeMembership(c);
+  if (m instanceof Response) return m;
+  return allianceReply(c, await withdrawAlliance(c.env, m.game, m.house, Number(c.req.param("aid"))));
+});
+
+/** Romper: deja de existir tras `ALLIANCE.noticeResolutions` noches (la de hoy es la primera). */
+app.post("/api/partidas/:id/alianzas/:aid/romper", async (c) => {
+  const m = await activeMembership(c);
+  if (m instanceof Response) return m;
+  const r = await breakAlliance(c.env, m.game, m.house, Number(c.req.param("aid")));
+  return r.ok ? c.json({ ok: true, id: r.id, terminaTras: r.endsAt }) : fail(c, r.status, r.error);
 });
 
 /**

@@ -145,7 +145,7 @@ Decidido el 21 de octubre de 2026. Las decisiones y los pasos están en `docs/bl
 
 ## Bloque 8: Alianzas **(en curso)**
 
-Propuesto y decidido el 19 de octubre de 2026, a partir de Reyes de Pacotilla: investigación de las alianzas. Las reglas completas y los pasos para hacerlo están en `docs/alianzas.md`, con las dudas resueltas al empezar (22 de octubre). Hecho: el motor (fase 1) y los bots en el simulador con su simulación (fases 5 y 6). Ya existe una base: la tabla `pacts` de la base de datos (sin uso todavía) y los apoyos entre casas distintas.
+Propuesto y decidido el 19 de octubre de 2026, a partir de Reyes de Pacotilla: investigación de las alianzas. Las reglas completas y los pasos para hacerlo están en `docs/alianzas.md`, con las dudas resueltas al empezar (22 de octubre). Hecho: el motor (fase 1), los bots en el simulador con su simulación (fases 5 y 6) y la base de datos, el servidor, los avisos, los bots de las partidas de prueba y Fray Abundio (fases 2 y 4). Falta la pantalla sencilla (fase 3).
 
 **Decisiones:**
 

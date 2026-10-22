@@ -69,6 +69,17 @@ export async function publishBulletin(env: NotifyEnv, game: GameRow, week: numbe
       .first<{ house_id: number; gold: number }>();
     if (row) patron = { house: row.house_id, gold: row.gold };
   }
+  // Bloque 8: Traidor de la Corona, la casa que más alianzas ha roto (en empate, la primera en romper).
+  let traitor: { house: number; broken: number } | null = null;
+  if (final) {
+    const row = await db
+      .prepare(
+        "SELECT broken_by AS house, COUNT(*) AS n, MIN(broken_at) AS first FROM alliances WHERE game_id = ? AND broken_by IS NOT NULL GROUP BY broken_by ORDER BY n DESC, first, broken_by LIMIT 1",
+      )
+      .bind(game.id)
+      .first<{ house: number; n: number }>();
+    if (row) traitor = { house: row.house, broken: row.n };
+  }
 
   const bulletin = writeBulletin({
     seed: game.seed,
@@ -98,6 +109,7 @@ export async function publishBulletin(env: NotifyEnv, game: GameRow, week: numbe
             .filter((h) => h.objective_key)
             .map((h) => ({ house: h.id, text: OBJECTIVES[h.objective_key as ObjectiveKey] ?? h.objective_key!, met: h.objective_met === 1 })),
           patron,
+          traitor,
         }
       : undefined,
   });

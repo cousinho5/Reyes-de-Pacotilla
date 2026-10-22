@@ -129,6 +129,9 @@ Cada fase se prueba y se simula antes y después (`npm run simular`, con `--alia
 
 ### Fase 2: base de datos y servidor (`apps/server`)
 
+**Hecho** el 22 de octubre de 2026. Migración `0016_alianzas.sql` (`alliances`, `tile_guests`, `orders.guest`; la tabla `pacts` sigue sin uso). `apps/server/src/alianzas.ts`: proponer (con el nombre de `allianceName`, que se puede volver a pedir en `GET /alianzas/nombre`), aceptar (borra las órdenes de cada casa contra la otra, también las de la cola, y avisa), rechazar, retirar y romper; lo usan la API y los bots. `jobs.ts` pasa las alianzas al motor, guarda las tropas de paso, termina las alianzas cuyo aviso acaba, caduca las propuestas y avisa cuando las tropas de un aliado dentro llegan a `warnTroops`. `GET /api/partidas/:id` añade `alianzas` (registro público y propuestas propias) y la visión compartida de los aliados en vigor; las órdenes llevan `dePaso`. Bots en las partidas de prueba (`botsDiplomacy` en `pruebas.ts`: cada mañana rompen, contestan y proponen; antes de la noche aceptan lo que les convenga). Prueba de humo: 11 comprobaciones nuevas, también el fin del aviso en una partida de prueba. Entrar en una casilla aliada y la expulsión dependen de que las casas linden, que en el mapa de la prueba de humo no pasa al empezar: los cubren las pruebas del motor.
+
+
 1. **Migración `0016_alianzas.sql`** (nunca editar las anteriores):
    - Ampliar `pacts` creando una tabla nueva `alliances`: `id`, `game_id`, `name`, `house_a`, `house_b`, `proposed_by`, `status` (`proposed`, `active`, `breaking`, `ended`, `declined`), `signed_resolution`, `broken_by`, `broken_at`, `ends_resolution`, con `CHECK (house_a < house_b)` y un índice único para que no haya dos activas entre las mismas casas.
    - `tile_guests`: `game_id`, `tile_id`, `house_id`, `troops`, `jinetes`, `catapultas`, con `CHECK (troops >= 0)` y clave única `(tile_id, house_id)`.
@@ -154,13 +157,16 @@ Cada fase se prueba y se simula antes y después (`npm run simular`, con `--alia
 
 ### Fase 4: Fray Abundio y boletín
 
+**Hecho** el 22 de octubre de 2026, con 2 o 3 frases por tipo (el resto, en el bloque 3): ataque conjunto ganado y resistido, pacto firmado y roto (las 8 del banco), fin del aviso, expulsión y los avisos push (propuesta, aceptada, rota, tropas dentro y órdenes anuladas). El boletín tiene la sección «Pactos y traiciones» y el último da el título de Traidor de la Corona a quien más alianzas ha roto.
+
+
 1. Frases nuevas en `docs/banco-de-frases.md` y en `packages/engine/src/texts`: alianza firmada (solemne), alianza rota (de tribunal), ataque conjunto ganado o perdido, expulsión y aviso de tropas dentro.
 2. El boletín semanal lista las alianzas firmadas, las rotas y las que están en aviso.
 3. El título "Traidor de la Corona" cuenta las alianzas rotas.
 
 ### Fase 5: bots (`packages/engine/src/ai`)
 
-**Hecho en el simulador** el 22 de octubre de 2026 (las partidas de prueba, en la solicitud 3). `ai/alliances.ts` (`planDiplomacy`, `breakReason`) con los pesos de `ALLIANCE_BOTS` en `rules.ts`. Proponen a una vecina que no sea el líder (antes a la que también linda con el líder) y no insisten durante 7 días si les rechazan; aceptan si quien propone no es el líder y no les ha atacado en 7 días; rompen si el aliado pasa a ser el líder, si les adelanta (las traicioneras), si dejan de compartir frontera o si tiene demasiadas tropas dentro. En las órdenes: no atacan a los aliados, se suman a un ataque que su aliado ya ha mandado (en el simulador ven las órdenes de sus aliados, como si lo hablaran), apoyan la defensa de las casillas aliadas amenazadas y sacan las tropas de paso hacia casa. Pruebas en `test/alianzas-bots.test.ts`.
+**Hecho** el 22 de octubre de 2026, en el simulador y en las partidas de prueba. `ai/alliances.ts` (`planDiplomacy`, `breakReason`) con los pesos de `ALLIANCE_BOTS` en `rules.ts`. Proponen a una vecina que no sea el líder (antes a la que también linda con el líder) y no insisten durante 7 días si les rechazan; aceptan si quien propone no es el líder y no les ha atacado en 7 días; rompen si el aliado pasa a ser el líder, si les adelanta (las traicioneras), si dejan de compartir frontera o si tiene demasiadas tropas dentro. En las órdenes: no atacan a los aliados, se suman a un ataque que su aliado ya ha mandado (en el simulador ven las órdenes de sus aliados, como si lo hablaran), apoyan la defensa de las casillas aliadas amenazadas y sacan las tropas de paso hacia casa. Pruebas en `test/alianzas-bots.test.ts`.
 
 1. **Proponer**: con una casa vecina con la que no está en guerra, si comparten un enemigo (o el líder es otra casa) y según la personalidad (`trade` y `leaderHatred` altos, `houseBias` bajo).
 2. **Aceptar**: si quien propone no es el líder y no le ha atacado en la última semana.

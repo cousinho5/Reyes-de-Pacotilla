@@ -2,8 +2,8 @@
 // pruebas.ts) y despedirlos al amanecer del día en que cumplen (jobs.ts, en el
 // mismo lote que la producción, como en el simulador).
 
-import { MERCENARIES, dismissTroops, localDate, mercenariesAlive, mercenaryCost, type Tile } from "@reyes/engine";
-import { gameNow, type GameRow, type HouseRow } from "./state";
+import { MERCENARIES, dismissTroops, guestTroops, localDate, mercenariesAlive, mercenaryCost, type Tile } from "@reyes/engine";
+import { gameNow, guestStatements, type GameRow, type HouseRow } from "./state";
 
 export interface MercenaryRow {
   id: number;
@@ -78,7 +78,8 @@ export function mercenaryDawnStatements(
       removed = out.removed;
     }
     for (const r of due) statements.push(db.prepare("DELETE FROM mercenaries WHERE id = ?").bind(r.id));
-    const troops = current.filter((t) => t.owner === house).reduce((a, t) => a + t.troops, 0);
+    // Las tropas de paso (bloque 8) también son de la casa.
+    const troops = current.filter((t) => t.owner === house).reduce((a, t) => a + t.troops, 0) + guestTroops(current, house);
     const alive = mercenariesAlive(
       stay.map((r) => r.units),
       troops,
@@ -112,6 +113,8 @@ export function mercenaryDawnStatements(
       ).bind(t.troops, t.jinetes ?? 0, t.catapultas ?? 0, t.id, t.owner, old.troops, old.jinetes ?? 0, old.catapultas ?? 0),
     );
   }
+  // Bloque 8: si se fueron mercenarios de las tropas de paso.
+  statements.push(...guestStatements(db, game.id, tiles, current));
   return statements;
 }
 

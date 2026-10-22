@@ -55,6 +55,8 @@ export interface BulletinInput {
   final?: {
     objectives: { house: HouseId; text: string; met: boolean }[];
     patron: { house: HouseId; gold: number } | null;
+    /** Bloque 8: casa que más alianzas ha roto (título de Traidor de la Corona). */
+    traitor?: { house: HouseId; broken: number } | null;
   };
 }
 
@@ -208,6 +210,24 @@ export function writeBulletin(input: BulletinInput): Bulletin {
   }
   if (economy.length > 0) sections.push({ title: "Mercados y augurios", lines: economy });
 
+  // 4b. Bloque 8: alianzas firmadas, rotas y terminadas, y tropas que vuelven a casa.
+  const pacts: string[] = [];
+  const pactName = (d: Record<string, unknown>) => String(d.name ?? "alianza sin nombre");
+  for (const f of input.facts.filter((x) => x.type === "alianza")) {
+    pacts.push(say("diplomacia.pacto", { pacto: pactName(f.data), a: name(f.data.a), b: name(f.data.b) }));
+  }
+  const breaks = input.facts.filter((x) => x.type === "alianza_rota");
+  for (const f of breaks) {
+    pacts.push(say("diplomacia.ruptura", { pacto: pactName(f.data), traidor: name(f.data.by) }));
+  }
+  for (const f of input.facts.filter((x) => x.type === "alianza_fin")) {
+    pacts.push(say("diplomacia.fin", { pacto: pactName(f.data), a: name(f.data.a), b: name(f.data.b) }));
+  }
+  for (const f of input.facts.filter((x) => x.type === "expulsion").slice(0, 2)) {
+    pacts.push(say("diplomacia.expulsion", { jugador: name(f.data.house), n: Number(f.data.troops), casilla: tile(f.data.from) }));
+  }
+  if (pacts.length > 0) sections.push({ title: "Pactos y traiciones", lines: pacts });
+
   // 5. Obras y logros.
   const works: string[] = [];
   for (const f of input.facts.filter((x) => x.type === "logro")) {
@@ -247,6 +267,12 @@ export function writeBulletin(input: BulletinInput): Bulletin {
     const lines = input.final.objectives.map((o) =>
       say(o.met ? "casas.objetivo_cumplido" : "casas.objetivo_fallido", { jugador: name(o.house), objetivo: lowerFirst(o.text.replace(/\.$/, "")) }),
     );
+    if (input.final.traitor) {
+      const n = input.final.traitor.broken;
+      lines.push(
+        `Título de Traidor de la Corona para ${name(input.final.traitor.house)}, que ha roto ${n} ${n === 1 ? "alianza" : "alianzas"}. El cronista lo dice con admiración, o casi.`,
+      );
+    }
     if (input.final.patron) {
       lines.push(
         `Título de Mecenas de la Mentira para ${name(input.final.patron.house)}, que ha invertido ${input.final.patron.gold} de Oro en la verdad oficial.`,
@@ -273,7 +299,9 @@ export function writeBulletin(input: BulletinInput): Bulletin {
       ? `NUEVO FAVORITO: ${name(leader.id).toUpperCase()}`
       : houseConquests > 0
         ? `${houseConquests} ${houseConquests === 1 ? "CASILLA CAMBIA" : "CASILLAS CAMBIAN"} DE BANDERA`
-        : houseCombats.length > 0
+        : breaks.length > 0
+          ? breaks.length === 1 ? "PACTO ROTO EN EL REINO" : `${breaks.length} PACTOS ROTOS EN EL REINO`
+          : houseCombats.length > 0
           ? "LAS MURALLAS AGUANTAN"
           : combats.length > 0
             ? "EL REINO SE EXPANDE"
@@ -284,7 +312,7 @@ export function writeBulletin(input: BulletinInput): Bulletin {
   const newLeader = input.previousLeader != null && leader != null && input.previousLeader !== leader.id;
   const mood: BulletinMood = isFinal || newLeader
     ? "adulador"
-    : houseConquests > 0
+    : houseConquests > 0 || breaks.length > 0
       ? "escandalizado"
       : combats.length === 0 && input.trades.length === 0
         ? "dormido"
@@ -320,7 +348,7 @@ interface CombatData {
   winner: HouseId | null;
   previousOwner: HouseId | null;
   conquered: boolean;
-  sides: { house: HouseId | null; role: "defensa" | "ataque"; strength: number; troops: number; supporters?: HouseId[] }[];
+  sides: { house: HouseId | null; role: "defensa" | "ataque"; strength: number; troops: number; supporters?: HouseId[]; joint?: HouseId[] }[];
 }
 
 /** Qué tipo de frase toca a un combate y con qué cifras (las del principio del combate). */
@@ -341,10 +369,29 @@ function combatPhrase(
   }
   if (d.conquered) {
     const w = atk.find((s) => s.house === d.winner);
+    // Bloque 8: ataque conjunto de dos aliados.
+    const partner = w?.joint?.[0];
+    if (partner != null) {
+      const band = atk.filter((s) => s.house === d.winner || w!.joint!.includes(s.house as HouseId));
+      return {
+        key: "combate.conjunto",
+        vars: { ganador: name(d.winner), apoyo: name(partner), perdedor: name(d.previousOwner), casilla: tile(d.tile), n: band.reduce((a, s) => a + s.troops, 0), m: def?.troops ?? 0 },
+        neutral: false,
+      };
+    }
     const helpers = (w?.supporters ?? []).filter((h) => h !== d.winner);
     const vars = { ganador: name(d.winner), perdedor: name(d.previousOwner), casilla: tile(d.tile), n: w?.troops ?? 0, m: def?.troops ?? 0 };
     if (helpers.length > 0) return { key: "combate.apoyo_ataque", vars: { ...vars, apoyo: name(helpers[0]) }, neutral: false };
     return { key: atk.length > 1 ? "combate.tumulto" : "combate.gana_atacante", vars, neutral: false };
+  }
+  if (def && atk[0]?.joint?.length && d.winner != null) {
+    // Bloque 8: resiste un ataque conjunto.
+    const band = atk.filter((s) => s.house === atk[0]!.house || atk[0]!.joint!.includes(s.house as HouseId));
+    return {
+      key: "combate.conjunto_resiste",
+      vars: { defensor: name(d.winner), atacante: name(atk[0].house), apoyo: name(atk[0].joint[0]), casilla: tile(d.tile), n: def.troops, m: band.reduce((a, s) => a + s.troops, 0) },
+      neutral: false,
+    };
   }
   if (def && atk[0]) {
     // Resiste el defensor (una casa o la guarnición neutral).

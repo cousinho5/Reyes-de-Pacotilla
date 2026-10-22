@@ -33,6 +33,10 @@ import {
   resolveCampaign,
   fitOrders,
   bannersSeen,
+  ALLIANCE,
+  PHRASES,
+  fill,
+  houseInSentence,
   type AutopilotTemplate,
   type BuildingKind,
   type CampaignEvent,
@@ -45,6 +49,7 @@ import { announceAuction, auctionStatements, cardsForResolution } from "./subast
 import { publishBulletin } from "./boletin";
 import { loadMercenaries, mercenaryCount, mercenaryDawnStatements } from "./mercenarios";
 import { dueJobs, type GameClock } from "./scheduler";
+import { allianceNightStatements } from "./alianzas";
 import {
   computeAllPrestige,
   loadBuildings,
@@ -57,6 +62,9 @@ import {
   type HouseRow,
   rhythmOf,
   captainsOf,
+  guestStatements,
+  loadAlliances,
+  toEngineAlliances,
 } from "./state";
 
 const ABSENT_AFTER_MS = ABSENT_AFTER_DAYS * 24 * 60 * 60 * 1000;
@@ -262,56 +270,21 @@ export async function closeWarning(env: NotifyEnv, game: GameRow, n: number): Pr
  */
 export async function runResolution(env: NotifyEnv, game: GameRow, n: number, now: Date): Promise<void> {
   const db = env.DB;
-  const [tileRows, orderRows, houses, achieved, mercs] = await Promise.all([
+  const [tileRows, orderRows, houses, achieved, mercs, allianceRows] = await Promise.all([
     loadTiles(db, game.id),
-    db.prepare(
-      "SELECT house_id, kind, from_tile_id, troops, jinetes, catapultas, captain, target_tile_id, supported_from_tile_id, supports_any, updated_at FROM orders WHERE game_id = ? AND resolution_no = ? ORDER BY id",
-    )
+    db.prepare(`SELECT ${ORDER_COLUMNS} FROM orders WHERE game_id = ? AND resolution_no = ? ORDER BY id`)
       .bind(game.id, n)
-      .all<{
-        house_id: number;
-        kind: "move" | "support" | "siege";
-        from_tile_id: number;
-        troops: number;
-        jinetes: number;
-        catapultas: number;
-        captain: number;
-        target_tile_id: number;
-        supported_from_tile_id: number | null;
-        supports_any: number;
-        updated_at: string;
-      }>(),
+      .all<OrderRow>(),
     loadHouses(db, game.id),
     db.prepare("SELECT achievement_key FROM achievements WHERE game_id = ?").bind(game.id).all<{ achievement_key: string }>(),
     loadMercenaries(db, game.id),
+    loadAlliances(db, game.id),
   ]);
+  // Bloque 8: alianzas en vigor o en aviso (las aceptadas antes de la resolución valen esta noche).
+  const alliances = toEngineAlliances(allianceRows);
 
   const tiles = toEngineTiles(tileRows);
-  const orders: Order[] = orderRows.results.map((o) =>
-    o.kind === "move"
-      ? {
-          kind: "move",
-          house: o.house_id,
-          from: o.from_tile_id,
-          to: o.target_tile_id,
-          troops: o.troops,
-          ...typesOf(o),
-          ...(o.captain ? { captain: true } : {}),
-          // Para el apoyo sin origen (bloque 4): cuándo se cambió la orden por última vez.
-          at: Date.parse(o.updated_at),
-        }
-      : o.kind === "siege"
-        ? { kind: "siege", house: o.house_id, from: o.from_tile_id, target: o.target_tile_id, troops: o.troops, ...typesOf(o) }
-        : {
-          kind: "support",
-          house: o.house_id,
-          from: o.from_tile_id,
-          target: o.target_tile_id,
-          supportedFrom: o.supports_any ? ANY_ORIGIN : o.supported_from_tile_id,
-          troops: o.troops,
-          ...typesOf(o),
-        },
-  );
+  const orders: Order[] = orderRows.results.map(orderOf);
   const absentHouses = houses.filter((h) => isAbsent(h, now, game)).map((h) => h.id);
 
   const { days } = rhythmOf(game);
@@ -327,6 +300,7 @@ export async function runResolution(env: NotifyEnv, game: GameRow, n: number, no
     orders: fitOrders(tiles, orders),
     captains: captainsOf(houses),
     absentHouses,
+    alliances,
     ...cardEffects,
     ...(kind === "miercoles" ? eventCombat(event) : {}),
   });
@@ -510,6 +484,8 @@ export async function runResolution(env: NotifyEnv, game: GameRow, n: number, no
       ),
     );
   }
+  // Bloque 8: tropas de paso que han cambiado (entradas, bajas, expulsiones, deserciones).
+  statements.push(...guestStatements(db, game.id, tiles, finalTiles));
   // Capitanes: dónde acaba cada uno (o quién lo tiene preso), y la Gloria de la noche.
   for (const c of result.captains) {
     const h = houses.find((x) => x.id === c.house);
@@ -573,15 +549,45 @@ export async function runResolution(env: NotifyEnv, game: GameRow, n: number, no
       ).bind(game.id, game.id, n, e.type, e.visibleTo, JSON.stringify(e.payload)),
     );
   }
+  // Bloque 8: terminan las alianzas cuyo aviso acaba esta noche y caducan las propuestas.
+  statements.push(...allianceNightStatements(db, game, n, allianceRows, now.toISOString()));
+  // Aviso de Fray Abundio: tropas de un aliado dentro de tus casillas que pasan del umbral.
+  const crowded = crowding(tiles, finalTiles);
+  for (const w of crowded) {
+    statements.push(
+      db.prepare(
+        "INSERT INTO event_log (game_id, resolution_id, type, visible_to, payload) VALUES (?, (SELECT id FROM resolutions WHERE game_id = ? AND number = ?), 'tropas_dentro', ?, ?)",
+      ).bind(game.id, game.id, n, w.host, JSON.stringify(w)),
+    );
+  }
   statements.push(
     db.prepare("UPDATE games SET current_resolution = ? WHERE id = ? AND current_resolution = ?").bind(n, game.id, n - 1),
   );
   await db.batch(statements);
+  for (const w of crowded) {
+    const guest = houses.find((h) => h.id === w.guest);
+    const all = PHRASES["aviso.tropas_dentro"];
+    const text = fill(all[(n + w.guest) % all.length]!, { jugador: guest ? houseInSentence(guest.name) : "otra casa", n: w.troops });
+    await notifyHouses(env, [w.host], {
+      kind: "alianza",
+      title: "Tropas aliadas en tus tierras",
+      body: text.charAt(0).toUpperCase() + text.slice(1),
+      url: `/partida/${game.id}`,
+      dedupe: `tropas_dentro:${game.id}:${n}:${w.host}:${w.guest}`,
+    });
+  }
 
   // Avisos: a quien ha tenido combate en sus tierras, uno personal; al resto, el general.
   const fought = new Set<number>();
   for (const e of result.events) {
-    if (e.type === "combate") for (const s of e.sides) if (s.house != null) fought.add(s.house);
+    if (e.type === "combate") {
+      for (const s of e.sides) {
+        if (s.house != null) fought.add(s.house);
+        // Bloque 8: también las tropas de paso que defendían o miraban.
+        for (const h of s.joint ?? []) fought.add(h);
+      }
+      for (const h of e.aside ?? []) fought.add(h);
+    }
     if (e.type === "rebote") e.houses.forEach((h) => fought.add(h));
   }
   for (const h of houses) {
@@ -710,4 +716,79 @@ function isAlreadyDone(err: unknown): boolean {
 /** Jinetes y Catapultas de una orden guardada (sin ceros, como en el motor). */
 function typesOf(o: { jinetes: number; catapultas: number }): { jinetes?: number; catapultas?: number } {
   return { ...(o.jinetes > 0 ? { jinetes: o.jinetes } : {}), ...(o.catapultas > 0 ? { catapultas: o.catapultas } : {}) };
+}
+
+/**
+ * Bloque 8: tropas de paso de cada casa dentro de las casillas de cada otra.
+ * Devuelve las parejas que esta noche llegan a `ALLIANCE.warnTroops` (antes no
+ * llegaban), para el aviso de Fray Abundio a la casa anfitriona.
+ */
+export function crowding(before: Tile[], after: Tile[]): { host: number; guest: number; troops: number }[] {
+  const count = (tiles: Tile[]) => {
+    const out = new Map<string, number>();
+    for (const t of tiles) {
+      if (t.owner == null) continue;
+      for (const g of t.guests ?? []) out.set(`${t.owner}:${g.house}`, (out.get(`${t.owner}:${g.house}`) ?? 0) + g.troops);
+    }
+    return out;
+  };
+  const was = count(before);
+  const now = count(after);
+  const out: { host: number; guest: number; troops: number }[] = [];
+  for (const [key, troops] of now) {
+    if (troops < ALLIANCE.warnTroops || (was.get(key) ?? 0) >= ALLIANCE.warnTroops) continue;
+    const [host, guest] = key.split(":").map(Number) as [number, number];
+    out.push({ host, guest, troops });
+  }
+  return out.sort((a, b) => a.host - b.host || a.guest - b.guest);
+}
+
+/** Una orden guardada (fila de `orders`), en el formato del motor. */
+export interface OrderRow {
+  house_id: number;
+  kind: "move" | "support" | "siege";
+  from_tile_id: number;
+  troops: number;
+  jinetes: number;
+  catapultas: number;
+  captain: number;
+  guest: number;
+  target_tile_id: number;
+  supported_from_tile_id: number | null;
+  supports_any: number;
+  updated_at: string;
+}
+
+export const ORDER_COLUMNS =
+  "house_id, kind, from_tile_id, troops, jinetes, catapultas, captain, guest, target_tile_id, supported_from_tile_id, supports_any, updated_at";
+
+export function orderOf(o: OrderRow): Order {
+  const guest = o.guest ? { guest: true } : {};
+  if (o.kind === "move") {
+    return {
+      kind: "move",
+      house: o.house_id,
+      from: o.from_tile_id,
+      to: o.target_tile_id,
+      troops: o.troops,
+      ...typesOf(o),
+      ...(o.captain ? { captain: true } : {}),
+      ...guest,
+      // Para el apoyo sin origen (bloque 4): cuándo se cambió la orden por última vez.
+      at: Date.parse(o.updated_at),
+    };
+  }
+  if (o.kind === "siege") {
+    return { kind: "siege", house: o.house_id, from: o.from_tile_id, target: o.target_tile_id, troops: o.troops, ...typesOf(o), ...guest };
+  }
+  return {
+    kind: "support",
+    house: o.house_id,
+    from: o.from_tile_id,
+    target: o.target_tile_id,
+    supportedFrom: o.supports_any ? ANY_ORIGIN : o.supported_from_tile_id,
+    troops: o.troops,
+    ...typesOf(o),
+    ...guest,
+  };
 }

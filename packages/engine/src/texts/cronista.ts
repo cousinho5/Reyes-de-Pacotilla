@@ -66,6 +66,16 @@ export const PHRASES = {
     "Un ataque oportuno corta el apoyo de {apoyo} y desbarata los planes de {a}. Alguien lo había pensado muy bien.",
     "Sin el apoyo de {apoyo}, el ataque de {a} sobre {casilla} se queda en un repliegue genial."
   ],
+  "combate.conjunto": [
+    "{ganador} y {apoyo} atacan juntas {casilla} ({n} tropas contra {m}) y la casilla queda para {ganador}. {perdedor} descubre que la amistad ajena también hace daño.",
+    "Ataque conjunto en {casilla}: {ganador} y {apoyo} suman {n} tropas frente a las {m} de {perdedor}. El cronista anota quién se queda la casilla y quién la factura.",
+    "Dos banderas, una sola carga: {ganador} y {apoyo} ({n}) toman {casilla} a {perdedor} ({m}). Ya discuten el reparto."
+  ],
+  "combate.conjunto_resiste": [
+    "{atacante} y {apoyo} atacan juntas {casilla} con {m} tropas, y {defensor} ({n}) resiste a las dos. La alianza se lame las heridas a medias.",
+    "Ni juntas: {defensor} ({n}) rechaza en {casilla} el ataque conjunto de {atacante} y {apoyo} ({m}). Ahora se culparán la una a la otra.",
+    "{defensor} aguanta en {casilla} con {n} tropas frente a las {m} de {atacante} y {apoyo}. Dos contra una, y aun así."
+  ],
   "clasificacion.lider": [
     "Saludamos a {líder}, primero en Prestigio ({pv}), cuya sabiduría este humilde cronista lleva elogiando exactamente una semana.",
     "{líder} encabeza el reino con {pv} de Prestigio. El cronista ya ha encargado su retrato, por si acaso.",
@@ -122,6 +132,61 @@ export const PHRASES = {
     "La Corona vende {n} de {recurso} esta semana. El tesorero real cobra con una sonrisa que no le cabe en la cara.",
     "Salen de los graneros reales {n} de {recurso}. La Corona no pregunta para qué; solo cobra, y cobra bien.",
     "{n} de {recurso} comprados a la Corona. Más caros que en el mercado, pero sin tener que sonreír a un vecino."
+  ],
+  "diplomacia.pacto": [
+    "Se firma la {pacto} entre {a} y {b}. El cronista le calcula una vida de dos resoluciones.",
+    "{a} y {b} sellan la {pacto}. Prometen amistad eterna, que en este reino suele durar una semana.",
+    "Nace la {pacto}: {a} y {b} juran no agredirse. El cronista ha guardado una copia para cuando haga falta.",
+    "{a} y {b} firman la {pacto} con tinta, cera y una sonrisa algo forzada.",
+    "La {pacto} une a {a} y {b}. El cronista les desea lo mejor, de verdad, y apunta por si acaso.",
+    "Solemne firma de la {pacto}. {a} y {b} se dan la mano; los demás cuentan los dedos.",
+    "{a} y {b} sellan la {pacto} ante testigos. Los testigos ya están haciendo apuestas.",
+    "La {pacto} queda registrada en el libro de la Corona, en la página de los pactos, justo antes de la de los pactos rotos."
+  ],
+  "diplomacia.ruptura": [
+    "{traidor} rompe la {pacto}. El cronista lo anota con tinta indeleble y letra bien grande.",
+    "PACTO ROTO. {traidor} da por terminada la {pacto}. La historia lo recordará, y el cronista se encargará de ello.",
+    "{traidor} rompe la {pacto} sin previo aviso. El cronista, escandalizado, se ha tomado una tila.",
+    "Adiós a la {pacto}: {traidor} ha decidido que la amistad eterna era demasiado larga.",
+    "{traidor} pone fin a la {pacto}. Sus defensores hablan de \"realismo político\"; sus vecinos, de otra cosa.",
+    "La {pacto} muere a manos de {traidor}. El cronista guarda un minuto de silencio, que es lo que tarda en mojar la pluma.",
+    "{traidor} ha roto la {pacto}. El tribunal de la Corona no puede castigarle, pero el cronista sí puede escribir sobre ello.",
+    "Traición en el reino: {traidor} rompe la {pacto}. Se abre la candidatura de {traidor} al título de Traidor de la Corona."
+  ],
+  "diplomacia.fin": [
+    "Expira la {pacto} entre {a} y {b}. Las noches de aviso dan para mucho, sobre todo para afilar espadas.",
+    "La {pacto} pasa a mejor vida. {a} y {b} vuelven a ser vecinas, que es bastante peor.",
+    "Se cierra la página de la {pacto} en el libro de la Corona. La de al lado ya está escrita."
+  ],
+  "diplomacia.expulsion": [
+    "{n} tropas de {jugador} salen de {casilla} con el equipaje a medio hacer: ya no son bienvenidas.",
+    "Fin de la hospitalidad en {casilla}: {jugador} recoge sus {n} tropas y vuelve a casa. Nadie las despide.",
+    "{jugador} saca {n} tropas de {casilla} a toda prisa. El anfitrión cuenta las gallinas por si acaso."
+  ],
+  "aviso.propuesta": [
+    "{jugador} os propone la {pacto}. Tenéis {n} resoluciones para contestar.",
+    "Llega un mensajero de {jugador} con la {pacto} bajo el brazo. Caduca en {n} resoluciones.",
+    "{jugador} quiere firmar la {pacto}. El cronista ya ha preparado la cera, por si acaso."
+  ],
+  "aviso.aceptada": [
+    "{jugador} acepta la {pacto}. Vale desde la próxima resolución.",
+    "La {pacto} queda firmada con {jugador}. Paso libre desde esta noche.",
+    "{jugador} dice que sí: nace la {pacto}. Que dure."
+  ],
+  "aviso.rota": [
+    "{jugador} rompe la {pacto}. Deja de existir tras la resolución del {día}.",
+    "PACTO ROTO: {jugador} pone fin a la {pacto}. Quedan {n} noches de aviso, hasta el {día}.",
+    "{jugador} da por terminada la {pacto}. Sacad las tropas antes del {día}."
+  ],
+  "aviso.tropas_dentro": [
+    "{jugador} tiene {n} tropas dentro de tus tierras. Fray Abundio solo lo comenta.",
+    "Hay {n} tropas de {jugador} de paso por tus casillas. Muy amigas, muy amigas.",
+    "{n} tropas aliadas de {jugador} acampan en tus tierras. El cronista cuenta las tiendas."
+  ],
+  "aviso.ordenes_anuladas": [
+    "Con la {pacto}, {n} órdenes contra {jugador} se quedan en casa.",
+    "La {pacto} anula {n} órdenes contra {jugador}. Las tropas no salen.",
+    "Firmada la {pacto}: {n} órdenes contra {jugador} quedan en papel mojado."
   ],
   "reino.tranquila": [
     "Semana sin batallas. El reino descansa, los pretendientes conspiran y el cronista se ha dormido sobre el pergamino.",
