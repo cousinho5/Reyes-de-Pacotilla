@@ -13,10 +13,11 @@
 //   npm run simular -- --capitan no       # sin Capitán ni Gloria, para comparar
 //   npm run simular -- --geografia no     # mapa de antes del bloque 1 (sin geografía ni Prado), para comparar
 //   npm run simular -- --rios no          # sin ríos ni lagos, para comparar
+//   npm run simular -- --alianzas no      # sin alianzas (bloque 8), para comparar
 //   npm run simular -- --json simulacion.json   # además, todos los datos en JSON
 
 import { writeFileSync } from "node:fs";
-import { BATTLE_TWEAKS, BOT_TWEAKS, CROWN, ECONOMY_TWEAKS, FEATURES, MERCENARIES, OBJECTIVE_TARGETS, MAP_GEN, RIVERS, FORTIFY_COST, FORTIFY_UPKEEP, PRESTIGE, SIEGE, UNITS, UPGRADE_COST } from "../packages/engine/src";
+import { ALLIANCE, ALLIANCE_BOTS, BATTLE_TWEAKS, BOT_TWEAKS, CROWN, ECONOMY_TWEAKS, FEATURES, MERCENARIES, OBJECTIVE_TARGETS, MAP_GEN, RIVERS, FORTIFY_COST, FORTIFY_UPKEEP, PRESTIGE, SIEGE, UNITS, UPGRADE_COST } from "../packages/engine/src";
 import {
   CLASSIC_STRATEGIES,
   OBJECTIVES,
@@ -109,6 +110,10 @@ if (args.has("campos")) {
 // --prado-paramos 0.5: parte de los páramos que pasan a Prado.
 if (args.has("prado-paramos")) MAP_GEN.pradoShare = Number(args.get("prado-paramos"));
 if (args.get("corona") === "no") ECONOMY_TWEAKS.crown = false;
+// Bloque 8: --alianzas no (sin alianzas), --alianzas-tope 1 (máximo por casa), --alianzas-ganas 0.2 (umbral de los bots para proponer).
+if (args.get("alianzas") === "no") ALLIANCE.enabled = false;
+if (args.has("alianzas-tope")) ALLIANCE.maxPerHouse = Number(args.get("alianzas-tope"));
+if (args.has("alianzas-ganas")) ALLIANCE_BOTS.proposeAbove = Number(args.get("alianzas-ganas"));
 if (args.has("corona-base")) CROWN.base = Number(args.get("corona-base"));
 //   --corona-referencia oro|media   --corona-recargo 1.3 (lo que carga la Corona sobre el precio)
 if (args.has("corona-referencia")) CROWN.reference = args.get("corona-referencia") as "oro" | "media";
@@ -170,7 +175,7 @@ function winStats(group: (SimHouseResult & { players: number })[]) {
 }
 
 console.log(
-  `# Simulación: ${games} partidas de ${weeks} semanas, ${minPlayers}-${maxPlayers} casas, modo ${mode}${args.get("eventos") === "no" ? ", sin eventos" : ""}${args.get("terreno") === "no" ? ", sin terreno" : ""}${args.get("tropas") === "no" ? ", solo Mesnada" : ""}${args.get("asedios") === "no" ? ", sin asedios" : ""}${args.get("capitan") === "no" ? ", sin Capitán ni Gloria" : ""}${args.get("geografia") === "no" ? ", mapa sin geografía" : ""}${args.get("rios") === "no" ? ", sin ríos ni lagos" : ""}`,
+  `# Simulación: ${games} partidas de ${weeks} semanas, ${minPlayers}-${maxPlayers} casas, modo ${mode}${args.get("eventos") === "no" ? ", sin eventos" : ""}${args.get("terreno") === "no" ? ", sin terreno" : ""}${args.get("tropas") === "no" ? ", solo Mesnada" : ""}${args.get("asedios") === "no" ? ", sin asedios" : ""}${args.get("capitan") === "no" ? ", sin Capitán ni Gloria" : ""}${args.get("geografia") === "no" ? ", mapa sin geografía" : ""}${args.get("rios") === "no" ? ", sin ríos ni lagos" : ""}${ALLIANCE.enabled ? "" : ", sin alianzas"}`,
 );
 console.log(`(${((Date.now() - started) / 1000).toFixed(1)} s)`);
 
@@ -329,6 +334,51 @@ if (ECONOMY_TWEAKS.crown || ECONOMY_TWEAKS.mercenaries) {
     ["Mercenarios contratados / Oro gastado en ellos", `${sum((g) => g.economy.mercsHired)} / ${sum((g) => g.economy.mercsGold)}`],
     ["Mercenarios que desertan sin soldada", sum((g) => g.economy.mercsDeserted)],
   ]);
+}
+
+if (ALLIANCE.enabled) {
+  const per = (f: (g: SimGameResult) => number) => f1(avg(results.map(f)));
+  const durations = results.flatMap((g) => g.alliances.durations);
+  const reasons = new Map<string, number>();
+  for (const g of results) for (const [k, v] of Object.entries(g.alliances.reasons)) reasons.set(k, (reasons.get(k) ?? 0) + v);
+  table("Bloque 8: alianzas (por partida)", ["dato", "valor"], [
+    ["Propuestas / firmadas / rechazadas / caducadas", `${per((g) => g.alliances.proposed)} / ${per((g) => g.alliances.signed)} / ${per((g) => g.alliances.declined)} / ${per((g) => g.alliances.expired)}`],
+    ["Rotas", per((g) => g.alliances.broken)],
+    ["Motivos de ruptura (total)", [...reasons.entries()].map(([k, v]) => `${k} ${v}`).join(", ") || "—"],
+    ["Duración media (resoluciones)", f1(avg(durations))],
+    ["En vigor al final", per((g) => g.alliances.atEnd.length)],
+    ["Ataques conjuntos / ganados", `${per((g) => g.alliances.jointAttacks)} / ${per((g) => g.alliances.jointWins)}`],
+    ["Entradas en casillas aliadas / defensas con tropas de paso / expulsiones", `${per((g) => g.alliances.entries)} / ${per((g) => g.alliances.guestDefenses)} / ${per((g) => g.alliances.expulsions)}`],
+    ["Partidas sin ninguna alianza", pct(results.filter((g) => g.alliances.signed === 0).length / results.length)],
+    ["El ganador termina aliado con el segundo", pct(results.filter((g) => g.houses[0]!.alliances.atEnd.includes(g.houses[1]!.house)).length / results.length)],
+    ["El ganador firmó alguna alianza", pct(results.filter((g) => g.houses[0]!.alliances.signed > 0).length / results.length)],
+  ]);
+  const groups: [string, (h: SimHouseResult) => boolean][] = [
+    ["sin alianzas", (h) => h.alliances.signed === 0],
+    ["con alguna alianza", (h) => h.alliances.signed > 0],
+    ["aliada al final", (h) => h.alliances.atEnd.length > 0],
+    ["rompió alguna", (h) => h.alliances.broke > 0],
+  ];
+  table(
+    "Bloque 8: casas según sus alianzas",
+    ["casas", "n", "gana", "x esperado", "puesto medio", "Prestigio", "territorio"],
+    groups.map(([name, f]) => {
+      const g = houses.filter(f);
+      const w = winStats(g);
+      return [name, g.length, pct(w.rate), f1(w.ratio), avg(g.map(norm)).toFixed(2), f1(avg(g.map((h) => h.prestige.total))), f1(avg(g.map((h) => h.prestige.territorio)))];
+    }),
+  );
+  table(
+    "Bloque 8: alianzas por personalidad",
+    ["estrategia", "firmadas", "rotas", "aliada al final"],
+    pool
+      .filter((x, i) => pool.indexOf(x) === i)
+      .map((x) => {
+        const g = houses.filter((h) => h.strategy === x);
+        return [x, f1(avg(g.map((h) => h.alliances.signed))), f1(avg(g.map((h) => h.alliances.broke))), pct(g.filter((h) => h.alliances.atEnd.length > 0).length / Math.max(1, g.length))];
+      }),
+  );
+  console.log("\n«puesto medio»: 0 = primero, 1 = último.");
 }
 
 const json = args.get("json");

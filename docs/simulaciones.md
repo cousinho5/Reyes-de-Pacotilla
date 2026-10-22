@@ -19,6 +19,7 @@ Son los que se usan por defecto y los de las partidas de prueba. Solo ven lo que
   - Refuerzan o apoyan las casillas amenazadas.
   - Llevan el resto hacia la frontera.
 - **Persiguen su objetivo secreto** (lo eligen según su personalidad) y la que quiere la obra maestra ahorra para ella.
+- **Se alían** (bloque 8): proponen a una vecina que no sea el líder, aceptan si no les han atacado, rompen cuando el aliado lidera o les adelanta, y atacan a la vez la casilla que ya ataca su aliado.
 
 | Personalidad | Margen de ataque | Prudencia | Contra casas | Manía al líder | Comercio | Especialización | Ejército |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -52,6 +53,30 @@ npm run simular -- --estrategias guerrero,mercader
 npm run simular -- --semanas 4                    # duración de la partida
 npm run simular -- --json datos.json              # además, todos los datos
 ```
+
+## Alianzas (22 de octubre de 2026, bloque 8, solicitud 2)
+
+`npm run simular -- --partidas 300 --alianzas no` (sin alianzas), la misma orden sin `--alianzas no` (con alianzas, sin límite por casa) y con `--alianzas-tope 1` (una por casa). Los bots proponen, aceptan y rompen con `ALLIANCE_BOTS` (`rules.ts`, `ai/alliances.ts`); los bots sencillos rechazan todas.
+
+| dato | sin alianzas | con alianzas | una por casa |
+| --- | --- | --- | --- |
+| Alianzas firmadas / rotas (por partida) | — | 5,2 / 2,7 | 3,3 / 1,9 |
+| Duración media (resoluciones) | — | 14,2 | 14,2 |
+| Ataques conjuntos (ganados), por partida | — | 2,6 (2,6) | 2,2 (2,1) |
+| Casas con alguna alianza (x lo esperado) | — | 1,0 | 1,0 |
+| Casas aliadas al final (x lo esperado) | — | 0,9 | 0,8 |
+| El ganador termina aliado con el segundo | — | 12% | 5% |
+| Personalidades (x lo esperado) | 0,8-1,2 | 0,8-1,4 | 0,8-1,4 |
+| Órdenes de ataque (por partida) | 140 | 131 | 133 |
+| Órdenes de asedio (por partida) | 102 | 90 | 93 |
+| El líder de la semana 2 gana | 29% | 29% | 25% |
+| Partidas decididas por desempate | 4% | 7% | 6% |
+| Prestigio medio del ganador | 60,0 | 60,0 | 59,4 |
+
+- **Ninguna alianza decide la partida.** Las casas con alianza ganan lo que les toca (1,0) y el ganador termina aliado con el segundo en el 12% de las partidas. Con el límite de una por casa baja al 5%, pero no hace falta: se deja sin límite, como estaba decidido.
+- **Rompen sobre todo por el líder y por traición** (los dos motivos, unas 330 veces cada uno en 300 partidas), y menos por dejar de compartir frontera (158). Por las tropas del aliado dentro, casi nunca.
+- **Con alianzas hay algo menos de guerra**: un 6% menos de ataques y un 12% menos de asedios. La estratega y el mercader suben (1,2 → 1,4 y 0,9 → 1,1) y el guerrero baja (1,1 → 0,9): es el que menos se alía.
+- **Los bots apenas usan el paso libre**: entran en casillas aliadas solo tras un ataque conjunto y vuelven a casa a la noche siguiente, así que casi no hay defensas con tropas de paso ni expulsiones. Las personas lo usarán más; las pruebas del motor cubren esos casos.
 
 ## Mercenarios de alquiler (22 de octubre de 2026, punto 3 del bloque 5, aplicado)
 

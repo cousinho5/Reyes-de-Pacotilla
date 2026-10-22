@@ -21,8 +21,9 @@ import { areAdjacent } from "./map";
 import { isPlain, orderUnits } from "./units";
 import { crownPrices } from "./crown";
 import { dismissTroops, mercenariesAlive, mercenaryCost } from "./mercenaries";
+import { alliesOf, guestTroops, noticeEnd } from "./alliances";
 import type { MapLayoutOverride } from "./mapgen";
-import { BATTLE_TWEAKS, CROWN, ECONOMY_TWEAKS, MERCENARIES, GRID, PRESTIGE, RHYTHM, SPECIALTY_PAIRS, STARTING_RESOURCES, SIEGE, TERRAIN, TERRAIN_OFF, UNITS, CAPTAIN, GLORY } from "./rules";
+import { ALLIANCE, ALLIANCE_BOTS, BATTLE_TWEAKS, CROWN, ECONOMY_TWEAKS, MERCENARIES, GRID, PRESTIGE, RHYTHM, SPECIALTY_PAIRS, STARTING_RESOURCES, SIEGE, TERRAIN, TERRAIN_OFF, UNITS, CAPTAIN, GLORY } from "./rules";
 import { totalOf } from "./trade";
 import { auctionLots, doubleLot, resolveAuction, type Bid } from "./auction";
 import {
@@ -37,7 +38,7 @@ import {
   type WeekEvent,
 } from "./events";
 import { checkCard, type CardKey, type CardParams } from "./cards";
-import { BUILDINGS, RESOURCES, type Captain, type BuildingKind, type HouseId, type Order, type Resource, type Resources, type Tile } from "./types";
+import { BUILDINGS, RESOURCES, type Alliance, type Captain, type BuildingKind, type HouseId, type Order, type Resource, type Resources, type Tile } from "./types";
 import {
   PERSONALITIES,
   PERSONALITY_NAMES,
@@ -50,6 +51,8 @@ import {
   planCrown,
   planDay,
   planMercenaries,
+  breakReason,
+  planDiplomacy,
   planOrders,
   proposeOffer,
   situation,
@@ -162,6 +165,8 @@ export interface SimHouseResult {
   captainNights: { castillo: number; frente: number; retaguardia: number; preso: number };
   /** Ataques en los que fue el Capitán. */
   captainAttacks: number;
+  /** Bloque 8: alianzas firmadas, rotas por esta casa, y con quién terminó aliada. */
+  alliances: { signed: number; broke: number; atEnd: HouseId[] };
 }
 
 export interface SimGameResult {
@@ -250,6 +255,27 @@ export interface SimGameResult {
     /** Precio medio que cobra la Corona por cada recurso (media de los días). */
     crownPrice: Resources;
   };
+  /** Datos del bloque 8: alianzas. */
+  alliances: {
+    proposed: number;
+    signed: number;
+    declined: number;
+    expired: number;
+    broken: number;
+    /** Por qué se rompieron (motivo del bot que rompe). */
+    reasons: Record<string, number>;
+    /** Resoluciones que duró cada alianza (las que siguen al final, hasta el final). */
+    durations: number[];
+    /** Ataques conjuntos y cuántos tomaron la casilla. */
+    jointAttacks: number;
+    jointWins: number;
+    /** Combates en los que defendieron tropas de paso, expulsiones al terminar un aviso y entradas en casillas aliadas. */
+    guestDefenses: number;
+    expulsions: number;
+    entries: number;
+    /** Alianzas en vigor al final. */
+    atEnd: [HouseId, HouseId][];
+  };
 }
 
 interface HouseState {
@@ -283,6 +309,10 @@ interface HouseState {
   /** Bloque 5: lo comprado y vendido a la Corona esta semana, y sus mercenarios. */
   mercs: { n: number; until: number }[];
   mercsWeek: number;
+  /** Bloque 8: día en que rompió su última alianza, alianzas firmadas y rotas. */
+  brokeDay: number | null;
+  signed: number;
+  broke: number;
 }
 
 export function simulateGame(opts: SimOptions): SimGameResult {
@@ -369,6 +399,9 @@ function runGame(opts: SimOptions): SimGameResult {
       captainAttacks: 0,
       mercs: [],
       mercsWeek: 0,
+      brokeDay: null,
+      signed: 0,
+      broke: 0,
     };
   });
   const byId = new Map(houses.map((h) => [h.id, h]));
@@ -409,6 +442,30 @@ function runGame(opts: SimOptions): SimGameResult {
   const battle = { clashes: 0, crossings: 0, chargeAttacks: 0, riderAttacks: 0, fortifies: 0, fortifiedNights: 0, attacksOnFortified: 0, attacksOnFortifiedWon: 0, riverAttacks: 0, riverAttacksWon: 0, ruinsClaimed: 0, ruinsWeekOne: 0, ruinsDays: 0, villageRecruits: 0, villagesStolen: 0, fortifyUpkeep: 0, fortifyDropped: 0 };
   /** Combates entre casas: [casa, rival, resolución]. */
   const fights: [HouseId, HouseId, number][] = [];
+  // Bloque 8: alianzas (en vigor o en aviso), propuestas pendientes y ataques recibidos.
+  type SimAlliance = Alliance & { signedAt: number };
+  let alliances: SimAlliance[] = [];
+  let proposals: { from: HouseId; to: HouseId; until: number }[] = [];
+  /** Propuestas rechazadas: [quien propuso, quien rechazó, día]. */
+  const refusals: [HouseId, HouseId, number][] = [];
+  /** Ataques: [atacante, atacada, día]. */
+  const attackLog: [HouseId, HouseId, number][] = [];
+  const allianceStats: SimGameResult["alliances"] = {
+    proposed: 0,
+    signed: 0,
+    declined: 0,
+    expired: 0,
+    broken: 0,
+    reasons: {},
+    durations: [],
+    jointAttacks: 0,
+    jointWins: 0,
+    guestDefenses: 0,
+    expulsions: 0,
+    entries: 0,
+    atEnd: [],
+  };
+  const plainAlliances = (): Alliance[] => alliances.map(({ signedAt: _s, ...a }) => a);
 
   const prestigeOf = (h: HouseState, day: number, objectiveMet?: boolean) => {
     const partners = new Set<HouseId>();
@@ -466,6 +523,8 @@ function runGame(opts: SimOptions): SimGameResult {
     // Lo anunciado el martes: combate del miércoles y mantenimiento del domingo.
     combat: nextResolutionWeekday(day) === 2 && day % 7 >= 1 && day % 7 <= 2 && weekEvents[Math.floor(day / 7)] ? eventCombat(weekEvents[Math.floor(day / 7)]!) : undefined,
     upkeepFactor: day % 7 >= 1 && weekEvents[Math.floor(day / 7)] ? eventUpkeepFactor(weekEvents[Math.floor(day / 7)]!) : 1,
+    alliances: plainAlliances(),
+    attackedBy: [...new Set(attackLog.filter(([, v, d]) => v === h.id && day - d < ALLIANCE_BOTS.grudgeDays).map(([a]) => a))],
   });
 
   /** Usa una carta de la mano (si es válida) y aplica su efecto. */
@@ -515,7 +574,7 @@ function runGame(opts: SimOptions): SimGameResult {
       if (gone > 0) dismiss(h, gone);
       const alive = mercenariesAlive(
         h.mercs.map((m) => m.n),
-        tiles.filter((t) => t.owner === h.id).reduce((a, t) => a + t.troops, 0),
+        tiles.filter((t) => t.owner === h.id).reduce((a, t) => a + t.troops, 0) + guestTroops(tiles, h.id),
       );
       h.mercs = h.mercs.map((m, i) => ({ ...m, n: alive[i]! })).filter((m) => m.n > 0);
     }
@@ -628,6 +687,63 @@ function runGame(opts: SimOptions): SimGameResult {
       if (plan.recruit > 0) tiles = tiles.map((t) => (t.castleOf === h.id ? { ...t, troops: t.troops + plan.recruit } : t));
     }
 
+    // 2b. Bloque 8: diplomacia. Cada bot con personalidad rompe, contesta las
+    // propuestas que tiene y propone (lo hace al momento, como una persona en
+    // la web). Una alianza aceptada antes de la resolución vale esa noche.
+    if (ALLIANCE.enabled) {
+      const pre = ranking(day);
+      const cooling = (o: HouseState) => o.brokeDay != null && day - o.brokeDay < ALLIANCE.cooldownDays;
+      for (const h of houses) {
+        if (!isSmart(h.strategy)) {
+          // Los bots sencillos no se alían: rechazan lo que les llega.
+          allianceStats.declined += proposals.filter((x) => x.to === h.id).length;
+          proposals = proposals.filter((x) => x.to !== h.id);
+          continue;
+        }
+        const s = situation(viewOf(h, day, pre), PERSONALITIES[h.strategy]);
+        const plan = planDiplomacy(s, {
+          received: proposals.filter((x) => x.to === h.id).map((x) => x.from),
+          sent: proposals.filter((x) => x.from === h.id).map((x) => x.to),
+          cooldown: cooling(h),
+          blocked: houses.filter(cooling).map((o) => o.id),
+          refused: refusals.filter(([from, , d]) => from === h.id && day - d < ALLIANCE.cooldownDays).map(([, to]) => to),
+        });
+        for (const a of plan.break) {
+          const al = alliances.find((x) => x.status === "active" && ((x.a === h.id && x.b === a) || (x.a === a && x.b === h.id)));
+          if (!al) continue;
+          al.status = "breaking";
+          al.endsAt = noticeEnd(resolution + 1);
+          h.brokeDay = day;
+          h.broke++;
+          allianceStats.broken++;
+          const why = breakReason(s, a) ?? "otro";
+          allianceStats.reasons[why] = (allianceStats.reasons[why] ?? 0) + 1;
+        }
+        const limit = Math.min(ALLIANCE_BOTS.maxAlliances, ALLIANCE.maxPerHouse ?? Infinity);
+        const countOf = (id: HouseId) => alliances.filter((x) => x.a === id || x.b === id).length;
+        for (const from of [...plan.accept]) {
+          // Quien propuso puede haber llegado ya a su límite.
+          if (countOf(from) >= limit) {
+            plan.accept.splice(plan.accept.indexOf(from), 1);
+            plan.decline.push(from);
+            continue;
+          }
+          const [a, b] = from < h.id ? [from, h.id] : [h.id, from];
+          alliances.push({ a, b, status: "active", endsAt: null, since: resolution + 1, signedAt: resolution + 1 });
+          byId.get(from)!.signed++;
+          h.signed++;
+          allianceStats.signed++;
+        }
+        allianceStats.declined += plan.decline.length;
+        for (const from of plan.decline) refusals.push([from, h.id, day]);
+        proposals = proposals.filter((x) => x.to !== h.id && !(x.from === h.id && plan.accept.includes(x.to)));
+        if (plan.propose != null) {
+          proposals.push({ from: h.id, to: plan.propose, until: resolution + ALLIANCE.proposalResolutions });
+          allianceStats.proposed++;
+        }
+      }
+    }
+
     // 3. Comercio: las comerciantes cambian lo que les sobra por lo que les falta.
     for (const h of houses) {
       if (h.strategy !== "comerciante") continue;
@@ -709,7 +825,10 @@ function runGame(opts: SimOptions): SimGameResult {
         resolution--;
         const cards = planCards(situation(viewOf(h, day, evening), PERSONALITIES[h.strategy]), h.hand, true);
         for (const c of cards) playCard(h, c.card, c.params);
-        const plan = planOrders(situation(viewOf(h, day, evening), PERSONALITIES[h.strategy]));
+        // Bloque 8: ve las órdenes que ya han dado sus aliados (lo que hablarían entre ellos).
+        const friends = alliesOf(plainAlliances(), h.id);
+        const allyOrders = orders.filter((o) => friends.includes(o.house));
+        const plan = planOrders(situation({ ...viewOf(h, day, evening), allyOrders }, PERSONALITIES[h.strategy]));
         resolution++;
         orders.push(...plan);
         continue;
@@ -781,6 +900,7 @@ function runGame(opts: SimOptions): SimGameResult {
       orders: fitOrders(tiles, orders),
       captains: CAPTAIN.enabled ? houses.map((h) => h.captain) : [],
       absentHouses: absent,
+      alliances: plainAlliances(),
       truceTiles: houses.flatMap((h) => h.truces.filter((t) => t.resolution === resolution).map((t) => t.tile)),
       attackBonus: Object.fromEntries(
         houses.flatMap((h) => h.drums.filter((d) => d.resolution === resolution).map((d) => [h.id, d.bonus] as const)),
@@ -803,6 +923,24 @@ function runGame(opts: SimOptions): SimGameResult {
       if (e.type === "combate" && e.conquered && e.previousOwner != null && before.get(e.tile)?.type === "aldea") battle.villagesStolen++;
     }
     for (const c of result.captains) byId.get(c.house)!.captain = c;
+    // Bloque 8: lo que pasó con las alianzas esta noche; las que terminan su
+    // aviso dejan de existir y caducan las propuestas sin contestar.
+    for (const e of result.events) {
+      if (e.type === "expulsion") allianceStats.expulsions++;
+      if (e.type === "movimiento" && e.guest) allianceStats.entries++;
+      if (e.type !== "combate") continue;
+      if (e.sides.some((x) => x.role === "ataque" && x.joint)) {
+        allianceStats.jointAttacks++;
+        if (e.conquered && e.allies?.length) allianceStats.jointWins++;
+      }
+      if (e.sides.some((x) => x.role === "defensa" && x.joint)) allianceStats.guestDefenses++;
+      const def = e.sides.find((x) => x.role === "defensa")?.house;
+      if (def != null) for (const x of e.sides) if (x.role === "ataque" && x.house != null) attackLog.push([x.house, def, day]);
+    }
+    for (const al of alliances) if (al.status === "breaking" && al.endsAt != null && al.endsAt <= resolution) allianceStats.durations.push(resolution - al.signedAt + 1);
+    alliances = alliances.filter((al) => !(al.status === "breaking" && al.endsAt != null && al.endsAt <= resolution));
+    allianceStats.expired += proposals.filter((x) => x.until <= resolution).length;
+    proposals = proposals.filter((x) => x.until > resolution);
     for (const [hid, g] of gloryFromEvents(result.events)) byId.get(hid)!.glory += g;
     for (const e of result.events) if (e.type === "capitan_preso") captainsCaptured++;
     // Miércoles: efectos al momento del evento de la semana (repartos, bandidos).
@@ -941,7 +1079,7 @@ function runGame(opts: SimOptions): SimGameResult {
       met,
       prestige: prestigeOf(h, lastDay, met),
       tiles: own.filter((t) => t.type !== "castillo").length,
-      troops: own.reduce((a, t) => a + t.troops, 0),
+      troops: own.reduce((a, t) => a + t.troops, 0) + guestTroops(tiles, h.id),
       valid,
       partners: partners.size,
     };
@@ -981,6 +1119,11 @@ function runGame(opts: SimOptions): SimGameResult {
     finalTiles: tiles,
     battle,
     economy,
+    alliances: {
+      ...allianceStats,
+      durations: [...allianceStats.durations, ...alliances.map((al) => resolution - al.signedAt + 1)],
+      atEnd: alliances.filter((al) => al.status === "active").map((al) => [al.a, al.b] as [HouseId, HouseId]),
+    },
     houses: final.map((f, i) => ({
       house: f.h.id,
       strategy: f.h.strategy,
@@ -1005,6 +1148,11 @@ function runGame(opts: SimOptions): SimGameResult {
       captainNights: f.h.captainNights,
       captainAttacks: f.h.captainAttacks,
       war: warStats(f.h.id, fights),
+      alliances: {
+        signed: f.h.signed,
+        broke: f.h.broke,
+        atEnd: alliances.filter((al) => al.status === "active" && (al.a === f.h.id || al.b === f.h.id)).map((al) => (al.a === f.h.id ? al.b : al.a)),
+      },
     })),
   };
 }

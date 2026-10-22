@@ -129,11 +129,14 @@ export function bannersSeen(after: Tile[], events: CampaignEvent[], house: House
  * ninguna, la orden sigue igual y el motor la da por no válida.
  */
 export function fitOrders(tiles: Tile[], orders: Order[]): Order[] {
-  const left = new Map<TileId, Units>(tiles.map((t) => [t.id, unitsOf(t)]));
+  const left = new Map<string, Units>(tiles.map((t) => [`${t.id}`, unitsOf(t)]));
+  // Tropas de paso (bloque 8): cada casa ajusta lo suyo en la casilla aliada.
+  for (const t of tiles) for (const g of t.guests ?? []) left.set(`${t.id}:${g.house}`, unitsOf(g));
   return orders.map((o) => {
-    const have = left.get(o.from);
+    const key = o.guest ? `${o.from}:${o.house}` : `${o.from}`;
+    const have = left.get(key);
     const from = tiles.find((t) => t.id === o.from);
-    if (!have || !from || from.owner !== o.house) return o;
+    if (!have || !from || (!o.guest && from.owner !== o.house)) return o;
     const want = orderUnits(o);
     const take: Units = {
       mesnada: Math.min(want.mesnada, have.mesnada),
@@ -141,7 +144,7 @@ export function fitOrders(tiles: Tile[], orders: Order[]): Order[] {
       catapultas: Math.min(want.catapultas, have.catapultas),
     };
     if (totalUnits(take) === 0) return o;
-    left.set(o.from, {
+    left.set(key, {
       mesnada: have.mesnada - take.mesnada,
       jinetes: have.jinetes - take.jinetes,
       catapultas: have.catapultas - take.catapultas,

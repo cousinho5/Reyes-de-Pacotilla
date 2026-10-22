@@ -158,6 +158,25 @@ export const ALLIANCE = {
   maxPerHouse: null as number | null,
 };
 
+/**
+ * Cómo usan las alianzas los bots con personalidad (bloque 8, `ai/alliances.ts`).
+ * - Proponen a una casa vecina que no sea el líder si sus ganas
+ *   (`trade` + `leaderHatred` − `houseBias`, con estos pesos) pasan de `proposeAbove`.
+ * - Aceptan si quien propone no es el líder y no les ha atacado en `grudgeDays` días.
+ * - Rompen si el aliado pasa a ser el líder (con manía al líder desde `leaderBreak`),
+ *   si dejan de compartir frontera, si tiene dentro más de `warnTroops` x `guestsBreak`
+ *   tropas, o, las traicioneras (`houseBias` desde `betrayBias`), si el aliado les adelanta.
+ */
+export const ALLIANCE_BOTS = {
+  weights: { trade: 0.5, leaderHatred: 0.5, houseBias: 0.4 },
+  proposeAbove: 0.2,
+  maxAlliances: 2,
+  grudgeDays: 7,
+  leaderBreak: 0.5,
+  guestsBreak: 1.5,
+  betrayBias: 1.1,
+};
+
 export const GLORY = {
   enabled: true,
   perVictory: 1,

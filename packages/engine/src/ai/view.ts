@@ -8,7 +8,8 @@ import { upkeepTroops } from "../units";
 import { areAdjacent } from "../map";
 import type { ObjectiveKey } from "../objectives";
 import { FORTIFY_COST, PRESTIGE, SPECIALTY_PAIRS, TROOP_COST, TROOPS_PER_PAN } from "../rules";
-import { BUILDINGS, RESOURCES, type BuildingKind, type HouseId, type Resource, type Resources, type Tile } from "../types";
+import { BUILDINGS, RESOURCES, type Alliance, type BuildingKind, type HouseId, type Resource, type Resources, type Tile } from "../types";
+import { alliesOf, bound, guestStacks, inForce } from "../alliances";
 import type { Personality } from "./personality";
 
 /** Cuántos recursos "vale" un punto de Prestigio para un bot. */
@@ -44,6 +45,12 @@ export interface AiView {
   combat?: { defenseBonus?: number; attackBonusAll?: number; peace?: boolean };
   /** Factor del mantenimiento del próximo domingo (evento de la semana). */
   upkeepFactor?: number;
+  /** Alianzas en vigor o en aviso (el registro es público, bloque 8). */
+  alliances?: Alliance[];
+  /** Casas que le han atacado en los últimos días (para no aliarse con ellas). */
+  attackedBy?: HouseId[];
+  /** Órdenes que ya han dado sus aliados para esta noche (lo que hablarían entre ellos). */
+  allyOrders?: import("../types").Order[];
 }
 
 export interface Situation {
@@ -64,6 +71,11 @@ export interface Situation {
   panReserve: number;
   /** Tropas que puede mantener con su Pan semanal. */
   sustainableTroops: number;
+  /** Bloque 8: aliados en vigor y casas con las que no puede luchar (en vigor o en aviso). */
+  allies: HouseId[];
+  friendly: (house: HouseId | null) => boolean;
+  /** Tropas propias de paso en casillas aliadas. */
+  away: number;
   /** Edificio en el que se especializa y coste de su próxima mejora, si está ahorrando para ella. */
   focus: BuildingKind;
   savingFor: Partial<Resources> | null;
@@ -76,15 +88,20 @@ export function focusBuilding(levels: Record<BuildingKind, number>): BuildingKin
 }
 
 export function situation(view: AiView, p: Personality): Situation {
-  const visible = visibleTileIds(view.tiles, view.house, view.spied ?? []);
+  const alliances = inForce(view.alliances);
+  const allies = alliesOf(alliances, view.house);
+  const friendly = (h: HouseId | null) => h === view.house || bound(alliances, view.house, h);
+  // Los aliados en vigor comparten lo que ven (como la carta Espía).
+  const spied = [...(view.spied ?? []), ...allies];
+  const visible = visibleTileIds(view.tiles, view.house, spied);
   // En un bosque emboscado no se ven las tropas: el bot supone tantas como la
   // media de lo que esa casa tiene a la vista (y al menos 3), como haría una persona.
   const raw = view.tiles.filter((t) => visible.has(t.id));
   const guess = (house: number) => {
-    const shown = raw.filter((t) => t.owner === house && t.type !== "castillo" && !ambushed(t, view.house, view.spied ?? []));
+    const shown = raw.filter((t) => t.owner === house && t.type !== "castillo" && !ambushed(t, view.house, spied));
     return Math.max(3, Math.round(shown.reduce((a, t) => a + t.troops, 0) / Math.max(1, shown.length)));
   };
-  const seen = raw.map((t) => (ambushed(t, view.house, view.spied ?? []) ? { ...t, troops: guess(t.owner!) } : t));
+  const seen = raw.map((t) => (ambushed(t, view.house, spied) ? { ...t, troops: guess(t.owner!) } : t));
   const own = seen.filter((t) => t.owner === view.house);
   const sorted = [...view.prestige].sort((a, b) => b.total - a.total || a.house - b.house);
   // El líder al que tener manía (ninguno si el líder es uno mismo).
@@ -98,9 +115,13 @@ export function situation(view: AiView, p: Personality): Situation {
       continue;
     }
     // Teme al grupo vecino más grande entero y a la mitad del resto (pueden apoyarlo).
+    // Los aliados no pueden atacarle; las tropas de paso de otras casas, sí.
     const enemies = seen
-      .filter((o) => o.owner != null && o.owner !== view.house && areAdjacent(o, t))
-      .map((o) => o.troops)
+      .filter((o) => areAdjacent(o, t))
+      .flatMap((o) => [
+        ...(o.owner != null && !friendly(o.owner) ? [o.troops] : []),
+        ...(o.guests ?? []).filter((g) => !friendly(g.house)).map((g) => g.troops),
+      ])
       .sort((a, b) => b - a);
     const danger = ((enemies[0] ?? 0) + enemies.slice(1).reduce((a, n) => a + n, 0) * 0.5) * p.caution;
     threat.set(t.id, danger);
@@ -108,10 +129,13 @@ export function situation(view: AiView, p: Personality): Situation {
     keep.set(t.id, Math.min(t.troops, Math.ceil(danger / mult)));
   }
   const income = dailyProduction(view.buildings, own, view.help ?? null);
-  const troops = own.reduce((a, t) => a + t.troops, 0);
+  // Las tropas de paso también comen (bloque 8).
+  const awayStacks = guestStacks(view.tiles, view.house).map((x) => x.guest);
+  const away = awayStacks.reduce((a, g) => a + g.troops, 0);
+  const troops = own.reduce((a, t) => a + t.troops, 0) + away;
   const controlled = own.filter((t) => t.type !== "castillo").length;
   const daysToSunday = 6 - (view.day % 7);
-  const upkeep = weeklyUpkeep(upkeepTroops(own), controlled);
+  const upkeep = weeklyUpkeep(upkeepTroops(own) + upkeepTroops(awayStacks), controlled);
   const stretch = upkeep - weeklyUpkeep(troops, 0);
   const focus = focusBuilding(view.buildings);
   // Ahorra para la mejora de su especialidad si su objetivo secreto es la obra maestra.
@@ -125,6 +149,9 @@ export function situation(view: AiView, p: Personality): Situation {
     daysLeft: Math.max(0, view.totalDays - view.day),
     threat,
     keep,
+    allies,
+    friendly,
+    away,
     income,
     values: { pan: 1, madera: 1, piedra: 1, hierro: 1, oro: 1 },
     panReserve: Math.max(0, Math.ceil((upkeep * (view.upkeepFactor ?? 1) - income.pan * daysToSunday) * 1.2)),
@@ -144,7 +171,7 @@ export function situation(view: AiView, p: Personality): Situation {
 function resourceValues(s: Situation, have: Resources = s.view.resources): Resources {
   const { view, p, own } = s;
   const demand: Resources = { pan: 0, madera: 0, piedra: 0, hierro: 0, oro: 0 };
-  const troops = own.reduce((a, t) => a + t.troops, 0);
+  const troops = own.reduce((a, t) => a + t.troops, 0) + s.away;
   const controlled = own.filter((t) => t.type !== "castillo").length;
   demand.pan += weeklyUpkeep(troops, controlled);
   const wantTroops = Math.round(8 * p.military);

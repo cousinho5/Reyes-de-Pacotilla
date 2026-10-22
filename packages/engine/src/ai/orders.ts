@@ -12,6 +12,7 @@ import { tilePrestige } from "../prestige";
 import { ANY_ORIGIN, BATTLE_TWEAKS, CAPTAIN, FEATURES, OBJECTIVE_TARGETS, PRESTIGE, SIEGE, STRETCH_FREE_TILES, STRETCH_PAN, TILE_PRODUCTION, TROOP_COST, RIVERS, UNITS } from "../rules";
 import { isPlain, totalUnits, unitFields, unitsOf, type UnitKind, type Units } from "../units";
 import { RESOURCES, type Order, type Tile, type TileId } from "../types";
+import { exitDistance, guestStacks } from "../alliances";
 import { PRESTIGE_UNIT, valueOf, type Situation } from "./view";
 import { BOT_TWEAKS } from "./personality";
 
@@ -37,19 +38,22 @@ export function targets(s: Situation): Target[] {
   const troopValue = valueOf(s.values, TROOP_COST);
   const weeksLeft = s.daysLeft / 7;
   for (const t of seen) {
-    if (t.owner === view.house || t.type === "castillo" || t.type === "lago") continue;
+    // Ni lo propio ni lo de un aliado (bloque 8: no se puede atacar a un aliado, tampoco durante el aviso).
+    if (s.friendly(t.owner) || t.type === "castillo" || t.type === "lago") continue;
     // La Paz del Rey: no se puede atacar a otras casas en esta resolución.
     if (view.combat?.peace && t.owner != null) continue;
     const from = own.filter((o) => areAdjacent(o, t));
-    const reach = own.filter((o) => !areAdjacent(o, t) && marchKind(o, t, view.tiles, view.house) != null);
+    const reach = own.filter((o) => !areAdjacent(o, t) && marchKind(o, t, view.tiles, view.house, undefined, s.allies) != null);
     if (from.length === 0 && reach.length === 0) continue;
     // Las catapultas propias que pueden ir al ataque abren brecha en las murallas.
     const cats = UNITS.enabled ? [...from, ...reach].reduce((a, o) => a + unitsOf(o).catapultas, 0) : 0;
     // Río (bloque 1): si todos los ataques posibles lo cruzan sin puente, la defensa sube.
     const river =
       RIVERS.enabled && reach.length === 0 && from.every((o) => riverBetween(o, t) && !bridgeBetween(o, t, view.tiles)) ? RIVERS.defense : 0;
+    // Las tropas de paso de los aliados del dueño también defienden (salvo las de mis aliados, que se quedan a un lado).
+    const guests = (t.guests ?? []).filter((g) => !s.friendly(g.house)).reduce((a, g) => a + g.troops, 0);
     let defense =
-      t.troops *
+      (t.troops + guests) *
       defenseMultiplier(t, view.nextResolution, false, (view.combat?.defenseBonus ?? 0) + river, cats * UNITS.catapultas.breach);
     if (t.owner != null) {
       // Puede recibir apoyos de sus casillas vecinas.
@@ -57,7 +61,12 @@ export function targets(s: Situation): Target[] {
       defense += helpers.reduce((a, o) => a + o.troops, 0) * 0.5 * p.caution;
     }
     // Con Tambores de guerra hace falta menos tropa para la misma fuerza.
-    const need = Math.floor((defense * p.margin) / (1 + (view.attackBonus ?? 0) + (view.combat?.attackBonusAll ?? 0))) + 1;
+    const alone = Math.floor((defense * p.margin) / (1 + (view.attackBonus ?? 0) + (view.combat?.attackBonusAll ?? 0))) + 1;
+    // Ataque conjunto (bloque 8): lo que ya mandan sus aliados a esa casilla cuenta.
+    const allyHelp = (view.allyOrders ?? [])
+      .filter((o) => o.kind === "move" && o.to === t.id && s.allies.includes(o.house))
+      .reduce((a, o) => a + o.troops, 0);
+    const need = Math.max(1, alone - allyHelp);
 
     // Valor: Prestigio de la casilla + lo que produce el resto de la partida.
     let value = tilePrestige(t.type) * PRESTIGE_UNIT;
@@ -240,6 +249,28 @@ export function planOrders(s: Situation): Order[] {
     }
   }
 
+  // 2b. Bloque 8: apoyar la defensa de las casillas de un aliado que corren peligro
+  // (el apoyo no sale de su casilla, así que no deja la propia desguarnecida).
+  for (const t of s.seen.filter((o) => o.owner != null && s.allies.includes(o.owner) && o.type !== "castillo").sort((a, b) => a.id - b.id)) {
+    const danger =
+      s.seen
+        .filter((o) => areAdjacent(o, t) && o.owner != null && !s.friendly(o.owner) && !(t.owner != null && o.owner === t.owner))
+        .reduce((a, o) => a + o.troops, 0) * s.p.caution;
+    const held = (t.troops + (t.guests ?? []).reduce((a, g) => a + g.troops, 0)) * defenseMultiplier(t, view.nextResolution, false);
+    let missing = danger - held;
+    if (missing <= 0) continue;
+    for (const n of own.filter((o) => areAdjacent(o, t)).sort((a, b) => a.id - b.id)) {
+      if (missing <= 0) break;
+      const avail = Math.min(free.get(n.id) ?? 0, room(n));
+      if (avail <= 0) continue;
+      const amount = Math.min(avail, Math.ceil(missing));
+      orders.push({ kind: "support", house, from: n.id, target: t.id, supportedFrom: null, troops: amount });
+      supportUsed.set(n.id, (supportUsed.get(n.id) ?? 0) + amount);
+      free.set(n.id, avail - amount);
+      missing -= amount;
+    }
+  }
+
   // 3. Avance: las tropas libres del interior van hacia la frontera o la casilla más amenazada.
   const distance = frontierDistance(s);
   for (const t of own) {
@@ -248,7 +279,7 @@ export function planOrders(s: Situation): Order[] {
     if (n <= 0 || d == null || d === 0) continue;
     // Por los caminos propios se avanza dos casillas en una noche.
     const step = own
-      .filter((o) => (areAdjacent(o, t) || marchKind(t, o, view.tiles, house) === "camino") && (distance.get(o.id) ?? Infinity) < d)
+      .filter((o) => (areAdjacent(o, t) || marchKind(t, o, view.tiles, house, undefined, s.allies) === "camino") && (distance.get(o.id) ?? Infinity) < d)
       .sort((a, b) => (s.threat.get(b.id) ?? 0) - (s.threat.get(a.id) ?? 0) || distance.get(a.id)! - distance.get(b.id)! || a.id - b.id)[0];
     if (step) {
       // Variante: el Capitán acompaña a las tropas que avanzan al frente.
@@ -275,8 +306,25 @@ export function planOrders(s: Situation): Order[] {
     }
   }
 
+  // Bloque 8: las tropas de paso vuelven a casa (por una casilla propia vecina o
+  // acercándose por las del aliado). Mientras tanto, defienden donde están.
+  const home: Order[] = [];
+  for (const { tile, guest } of guestStacks(view.tiles, house)) {
+    const near = view.tiles
+      .filter((o) => areAdjacent(o, tile) && o.type !== "lago")
+      .filter((o) => o.owner === house || (o.owner === tile.owner && o.type !== "castillo"))
+      .filter((o) => o.owner === house || exitDistance(view.tiles, house, o) < exitDistance(view.tiles, house, tile))
+      .sort((a, b) => Number(b.owner === house) - Number(a.owner === house) || exitDistance(view.tiles, house, a) - exitDistance(view.tiles, house, b) || a.id - b.id)[0];
+    if (!near) continue;
+    const go: Order = { kind: "move", house, from: tile.id, to: near.id, troops: guest.troops, guest: true };
+    if (guest.jinetes) go.jinetes = guest.jinetes;
+    if (guest.catapultas) go.catapultas = guest.catapultas;
+    if (CAPTAIN.enabled && view.captainTile === tile.id && !orders.some((o) => o.kind === "move" && o.captain)) go.captain = true;
+    home.push(go);
+  }
+
   // Por si acaso: nunca dar órdenes inválidas.
-  return checkOrders(view.tiles, assignUnits(orders, s), view.nextResolution).valid;
+  return checkOrders(view.tiles, [...assignUnits(orders, s), ...home], view.nextResolution, view.alliances).valid;
 }
 
 /**
