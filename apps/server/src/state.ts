@@ -7,7 +7,9 @@ import {
   fortifyResolutions,
   parseResolutionDays,
   type AchievementKey,
+  type Alliance,
   type Captain,
+  type Guest,
   type BuildingKind,
   type HouseId,
   type PrestigeBreakdown,
@@ -106,6 +108,8 @@ export interface TileRow {
   siege_nights: number;
   /** Ríos por los lados de la casilla (bloque 1, 0011). */
   river: number;
+  /** Tropas de paso de casas aliadas (bloque 8, tabla `tile_guests`). */
+  guests?: Guest[];
 }
 
 export async function loadGame(db: D1Database, gameId: number): Promise<GameRow | null> {
@@ -118,13 +122,95 @@ export async function loadHouses(db: D1Database, gameId: number): Promise<HouseR
 }
 
 export async function loadTiles(db: D1Database, gameId: number): Promise<TileRow[]> {
-  const { results } = await db
-    .prepare(
-      "SELECT id, x, y, type, name, owner_house_id, troops, jinetes, catapultas, fortified_until, castle_of, besieged_by, siege_nights, river FROM tiles WHERE game_id = ? ORDER BY y, x",
-    )
-    .bind(gameId)
-    .all<TileRow>();
+  const [{ results }, guests] = await Promise.all([
+    db
+      .prepare(
+        "SELECT id, x, y, type, name, owner_house_id, troops, jinetes, catapultas, fortified_until, castle_of, besieged_by, siege_nights, river FROM tiles WHERE game_id = ? ORDER BY y, x",
+      )
+      .bind(gameId)
+      .all<TileRow>(),
+    db
+      .prepare("SELECT tile_id, house_id, troops, jinetes, catapultas FROM tile_guests WHERE game_id = ? ORDER BY tile_id, house_id")
+      .bind(gameId)
+      .all<{ tile_id: number; house_id: number; troops: number; jinetes: number; catapultas: number }>(),
+  ]);
+  // Tropas de paso (bloque 8), en el formato del motor y por casa.
+  const byTile = new Map<number, Guest[]>();
+  for (const g of guests.results) {
+    const list = byTile.get(g.tile_id) ?? [];
+    list.push({
+      house: g.house_id,
+      troops: g.troops,
+      ...(g.jinetes > 0 ? { jinetes: g.jinetes } : {}),
+      ...(g.catapultas > 0 ? { catapultas: g.catapultas } : {}),
+    });
+    byTile.set(g.tile_id, list);
+  }
+  return results.map((t) => (byTile.has(t.id) ? { ...t, guests: byTile.get(t.id) } : t));
+}
+
+/**
+ * Sentencias para guardar las tropas de paso que han cambiado entre `before` y
+ * `after` (por ejemplo, tras una resolución): se borran las de esa casilla y
+ * se escriben las nuevas.
+ */
+export function guestStatements(db: D1Database, gameId: number, before: Tile[], after: Tile[]): D1PreparedStatement[] {
+  const old = new Map(before.map((t) => [t.id, JSON.stringify(t.guests ?? [])]));
+  const out: D1PreparedStatement[] = [];
+  for (const t of after) {
+    if (old.get(t.id) === JSON.stringify(t.guests ?? [])) continue;
+    out.push(db.prepare("DELETE FROM tile_guests WHERE tile_id = ?").bind(t.id));
+    for (const g of t.guests ?? []) {
+      if (g.troops <= 0) continue;
+      out.push(
+        db.prepare("INSERT INTO tile_guests (game_id, tile_id, house_id, troops, jinetes, catapultas) VALUES (?, ?, ?, ?, ?, ?)").bind(
+          gameId,
+          t.id,
+          g.house,
+          g.troops,
+          g.jinetes ?? 0,
+          g.catapultas ?? 0,
+        ),
+      );
+    }
+  }
+  return out;
+}
+
+export interface AllianceRow {
+  id: number;
+  game_id: number;
+  name: string;
+  house_a: number;
+  house_b: number;
+  proposed_by: number;
+  status: "proposed" | "active" | "breaking" | "ended" | "declined" | "withdrawn" | "expired";
+  proposed_at: string;
+  expires_resolution: number;
+  signed_resolution: number | null;
+  signed_at: string | null;
+  broken_by: number | null;
+  broken_at: string | null;
+  ends_resolution: number | null;
+  closed_at: string | null;
+}
+
+export async function loadAlliances(db: D1Database, gameId: number): Promise<AllianceRow[]> {
+  const { results } = await db.prepare("SELECT * FROM alliances WHERE game_id = ? ORDER BY id").bind(gameId).all<AllianceRow>();
   return results;
+}
+
+/** Alianzas en vigor o en aviso, en el formato del motor. */
+export function toEngineAlliances(rows: AllianceRow[]): Alliance[] {
+  return rows
+    .filter((r) => r.status === "active" || r.status === "breaking")
+    .map((r) => ({
+      a: r.house_a,
+      b: r.house_b,
+      status: r.status === "active" ? "active" : "breaking",
+      endsAt: r.status === "breaking" ? r.ends_resolution : null,
+      since: r.signed_resolution ?? 0,
+    }));
 }
 
 export function toEngineTiles(rows: TileRow[]): Tile[] {
@@ -141,6 +227,7 @@ export function toEngineTiles(rows: TileRow[]): Tile[] {
     castleOf: t.castle_of,
     ...(t.besieged_by != null ? { besiegedBy: t.besieged_by, siegeNights: t.siege_nights } : {}),
     ...(t.river ? { river: t.river } : {}),
+    ...(t.guests?.length ? { guests: t.guests.map((g) => ({ ...g })) } : {}),
   }));
 }
 

@@ -8,6 +8,10 @@
 // - Quien las crea puede "jugar como" cualquier casa.
 
 import {
+  ALLIANCE,
+  ALLIANCE_BOTS,
+  alliesOf,
+  planDiplomacy,
   ANY_ORIGIN,
   recruitSite,
   BATTLE_TWEAKS,
@@ -45,8 +49,10 @@ import {
   type CardEffect,
   type CardKey,
   type BuildingKind,
+  type Alliance,
   type HouseId,
   type ObjectiveKey,
+  type Order,
   type Personality,
   type PersonalityName,
   type Tile,
@@ -56,7 +62,8 @@ import { crownCost, crownMarket, crownPurchaseStatements } from "./corona";
 import { hireStatements } from "./mercenarios";
 import { hashCode, randomCode } from "./auth";
 import { COLORS, pickShield } from "./heraldry";
-import { clockOf, runGameJobs } from "./jobs";
+import { clockOf, orderOf, runGameJobs, ORDER_COLUMNS, type OrderRow } from "./jobs";
+import { acceptAlliance, breakAlliance, cooling, declineAlliance, proposeAlliance } from "./alianzas";
 import type { NotifyEnv } from "./notify";
 import { acceptOffer, bundle, type OfferRow } from "./offers";
 import { lotOf, openAuctionWeek, useCardStatements, type CardRow, type LotRow } from "./subasta";
@@ -72,6 +79,9 @@ import {
   type GameRow,
   type HouseRow,
   rhythmOf,
+  loadAlliances,
+  toEngineAlliances,
+  type AllianceRow,
 } from "./state";
 
 /** Hora local a la que empieza cada día simulado. */
@@ -211,6 +221,8 @@ export async function advance(env: BotEnv, gameId: number, until: "paso" | "reso
       stop >= resolutionInstant(clock.startDate, next, clock.resolveTime, clock.timezone, clock.days);
     // Las ofertas se hicieron durante el día: los bots contestan antes de nada.
     await botsAnswerOffers(env, game);
+    // Bloque 8: antes de la noche, los bots contestan las propuestas de alianza que les han llegado.
+    if (resolving) await botsDiplomacy(env, game, true);
     if (resolving) await addBotOrders(env, game, next);
     await db.prepare("UPDATE games SET sim_now = ? WHERE id = ?").bind(stop.toISOString(), game.id).run();
     game = { ...game, sim_now: stop.toISOString() };
@@ -237,12 +249,17 @@ interface BotContext {
   day: number;
   cards: CardRow[];
   lotsWon: Map<HouseId, number>;
+  /** Bloque 8: alianzas en vigor o en aviso y quién ha atacado a quién hace poco. */
+  alliances: Alliance[];
+  attacks: { attacker: HouseId; defender: HouseId }[];
 }
 
 async function botContext(db: D1Database, game: GameRow): Promise<BotContext> {
   const now = gameNow(game);
   const since = new Date(now.getTime() - PRESTIGE.tradeWindowDays * 864e5).toISOString();
-  const [houses, tileRows, buildings, trades, cards, lots] = await Promise.all([
+  // Rencillas de los bots (bloque 8): ataques de los últimos `grudgeDays` días, en resoluciones.
+  const grudge = Math.ceil((ALLIANCE_BOTS.grudgeDays * rhythmOf(game).days.length) / 7);
+  const [houses, tileRows, buildings, trades, cards, lots, allianceRows, combats] = await Promise.all([
     loadHouses(db, game.id),
     loadTiles(db, game.id),
     loadBuildings(db, game.id),
@@ -253,8 +270,21 @@ async function botContext(db: D1Database, game: GameRow): Promise<BotContext> {
     db.prepare("SELECT winner_house_id AS house, COUNT(*) AS n FROM auction_lots WHERE game_id = ? AND winner_house_id IS NOT NULL GROUP BY winner_house_id")
       .bind(game.id)
       .all<{ house: number; n: number }>(),
+    loadAlliances(db, game.id),
+    db.prepare(
+      "SELECT e.payload FROM event_log e JOIN resolutions r ON r.id = e.resolution_id WHERE e.game_id = ? AND e.type = 'combate' AND r.number > ?",
+    )
+      .bind(game.id, game.current_resolution - grudge)
+      .all<{ payload: string }>(),
   ]);
   const tiles = toEngineTiles(tileRows);
+  const attacks: { attacker: HouseId; defender: HouseId }[] = [];
+  for (const c of combats.results) {
+    const e = JSON.parse(c.payload) as { sides: { house: HouseId | null; role: string }[] };
+    const def = e.sides.find((x) => x.role === "defensa")?.house;
+    if (def == null) continue;
+    for (const x of e.sides) if (x.role === "ataque" && x.house != null) attacks.push({ attacker: x.house, defender: def });
+  }
   const prestige = await computeAllPrestige(db, game.id, houses, tiles, now);
   const partners = new Map<HouseId, HouseId[]>();
   for (const t of trades.results) {
@@ -273,6 +303,8 @@ async function botContext(db: D1Database, game: GameRow): Promise<BotContext> {
     day,
     cards: cards.results,
     lotsWon: new Map(lots.results.map((l) => [l.house, l.n])),
+    alliances: toEngineAlliances(allianceRows),
+    attacks,
   };
 }
 
@@ -306,6 +338,9 @@ function botView(ctx: BotContext, h: HouseRow): AiView {
       .map(cardEffect)
       .reduce((a, e) => a + (e.drums && e.drums.resolution === g.current_resolution + 1 ? e.drums.bonus : 0), 0),
     auctionsWon: ctx.lotsWon.get(h.id) ?? 0,
+    // Bloque 8: el registro de alianzas es público; los ataques recibidos, también.
+    alliances: ctx.alliances,
+    attackedBy: [...new Set(ctx.attacks.filter((a) => a.defender === h.id).map((a) => a.attacker))],
     // Evento anunciado el martes por la noche: combate del miércoles y mantenimiento del domingo.
     ...(() => {
       const week = Math.floor(ctx.day / 7) + 1;
@@ -380,6 +415,12 @@ async function botBuysFromCrown(db: D1Database, game: GameRow, ctx: BotContext, 
 }
 
 export async function botsPlayDay(env: NotifyEnv, game: GameRow): Promise<void> {
+  await botsPlayDayInner(env, game);
+  // Bloque 8: tras construir, la diplomacia (como el paso 2b del simulador).
+  await botsDiplomacy(env, game, false);
+}
+
+async function botsPlayDayInner(env: NotifyEnv, game: GameRow): Promise<void> {
   const db = env.DB;
   await botRansoms(db, game);
   const ctx = await botContext(db, game);
@@ -524,12 +565,15 @@ export async function botsPlayDay(env: NotifyEnv, game: GameRow): Promise<void> 
 /** Órdenes de los bots para la resolución `n` (si aún no tienen): ataques con apoyos, defensa y avance. */
 async function addBotOrders(env: NotifyEnv, game: GameRow, n: number): Promise<void> {
   const db = env.DB;
-  const [ctx, existing] = await Promise.all([
+  const [ctx, given] = await Promise.all([
     botContext(db, game),
-    db.prepare("SELECT DISTINCT house_id FROM orders WHERE game_id = ? AND resolution_no = ?")
+    db.prepare(`SELECT ${ORDER_COLUMNS} FROM orders WHERE game_id = ? AND resolution_no = ? ORDER BY id`)
       .bind(game.id, n)
-      .all<{ house_id: number }>(),
+      .all<OrderRow>(),
   ]);
+  const existing = { results: [...new Set(given.results.map((o) => o.house_id))].map((house_id) => ({ house_id })) };
+  // Órdenes ya dadas esta noche: los bots ven las de sus aliados, como si lo hablaran (igual que en el simulador).
+  const planned: Order[] = given.results.map(orderOf);
   // Antes de dar órdenes, Tregua y Tambores de guerra.
   for (const h of activeBots(ctx.houses, game)) {
     if (!existing.results.some((e) => e.house_id === h.id)) await botPlaysCards(db, game, ctx, h, true);
@@ -537,11 +581,14 @@ async function addBotOrders(env: NotifyEnv, game: GameRow, n: number): Promise<v
   const statements: D1PreparedStatement[] = [];
   for (const h of activeBots(ctx.houses, game)) {
     if (existing.results.some((e) => e.house_id === h.id)) continue;
-    const orders = withRhythm(rhythmOf(game), () => planOrders(situation(botView(ctx, h), personalityOf(h))));
+    const allies = alliesOf(ctx.alliances, h.id);
+    const allyOrders = planned.filter((o) => allies.includes(o.house));
+    const orders = withRhythm(rhythmOf(game), () => planOrders(situation({ ...botView(ctx, h), allyOrders }, personalityOf(h))));
+    planned.push(...orders);
     for (const o of orders) {
       statements.push(
         db.prepare(
-          "INSERT INTO orders (game_id, house_id, resolution_no, kind, from_tile_id, troops, jinetes, catapultas, captain, target_tile_id, supported_from_tile_id, supports_any) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "INSERT INTO orders (game_id, house_id, resolution_no, kind, from_tile_id, troops, jinetes, catapultas, captain, guest, target_tile_id, supported_from_tile_id, supports_any) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         ).bind(
           game.id,
           h.id,
@@ -552,6 +599,7 @@ async function addBotOrders(env: NotifyEnv, game: GameRow, n: number): Promise<v
           o.jinetes ?? 0,
           o.catapultas ?? 0,
           o.kind === "move" && o.captain ? 1 : 0,
+          o.guest ? 1 : 0,
           o.kind === "move" ? o.to : o.target,
           o.kind === "support" && o.supportedFrom !== ANY_ORIGIN ? o.supportedFrom : null,
           o.kind === "support" && o.supportedFrom === ANY_ORIGIN ? 1 : 0,
@@ -609,6 +657,8 @@ export async function deleteTestGame(env: NotifyEnv, game: GameRow): Promise<voi
     db.prepare("DELETE FROM event_log WHERE game_id = ?").bind(game.id),
     db.prepare("DELETE FROM resolutions WHERE game_id = ?").bind(game.id),
     db.prepare("DELETE FROM orders WHERE game_id = ?").bind(game.id),
+    db.prepare("DELETE FROM tile_guests WHERE game_id = ?").bind(game.id),
+    db.prepare("DELETE FROM alliances WHERE game_id = ?").bind(game.id),
     db.prepare("DELETE FROM trades WHERE game_id = ?").bind(game.id),
     db.prepare("DELETE FROM crown_purchases WHERE game_id = ?").bind(game.id),
     db.prepare("DELETE FROM mercenaries WHERE game_id = ?").bind(game.id),
@@ -625,10 +675,68 @@ export async function deleteTestGame(env: NotifyEnv, game: GameRow): Promise<voi
     db.prepare("DELETE FROM prestige_snapshots WHERE game_id = ?").bind(game.id),
     db.prepare("DELETE FROM notifications WHERE game_id = ?").bind(game.id),
     db.prepare("DELETE FROM job_runs WHERE game_id = ?").bind(game.id),
+    // El Capitán apunta a una casilla (0009): se suelta antes de borrar las casillas.
+    db.prepare("UPDATE houses SET captain_tile = NULL WHERE game_id = ?").bind(game.id),
     db.prepare("DELETE FROM tiles WHERE game_id = ?").bind(game.id),
     db.prepare(`DELETE FROM buildings WHERE house_id IN ${inHouses}`),
     db.prepare("DELETE FROM houses WHERE game_id = ?").bind(game.id),
     db.prepare("DELETE FROM games WHERE id = ?").bind(game.id),
     ...botUsers.map((u) => db.prepare("DELETE FROM users WHERE id = ?").bind(u)),
   ]);
+}
+
+/**
+ * Diplomacia de los bots (bloque 8), con las reglas de `ai/alliances.ts` y en
+ * el orden del simulador: cada bot rompe lo que ya no le compensa, contesta
+ * las propuestas que tiene (también las de personas) y propone una. Con
+ * `answerOnly`, solo acepta las que le convienen: se usa antes de la
+ * resolución, para que una propuesta de una persona hecha por la tarde valga
+ * esa noche.
+ */
+export async function botsDiplomacy(env: NotifyEnv, game: GameRow, answerOnly: boolean): Promise<void> {
+  if (!ALLIANCE.enabled || game.status !== "active") return;
+  const db = env.DB;
+  const ctx = await botContext(db, game);
+  const now = gameNow(game);
+  for (const h of activeBots(ctx.houses, game)) {
+    const rows = await loadAlliances(db, game.id);
+    ctx.alliances = toEngineAlliances(rows);
+    const proposed = rows.filter((r) => r.status === "proposed");
+    const other = (r: AllianceRow) => (r.house_a === h.id ? r.house_b : r.house_a);
+    const received = proposed.filter((r) => r.proposed_by !== h.id && (r.house_a === h.id || r.house_b === h.id));
+    if (answerOnly && received.length === 0) continue;
+    const plan = planDiplomacy(situation(botView(ctx, h), personalityOf(h)), {
+      received: received.map((r) => r.proposed_by),
+      sent: proposed.filter((r) => r.proposed_by === h.id).map(other),
+      cooldown: cooling(rows, h.id, now),
+      blocked: ctx.houses.filter((o) => cooling(rows, o.id, now)).map((o) => o.id),
+      // No insiste con quien le rechazó en los últimos días.
+      refused: rows
+        .filter((r) => r.status === "declined" && r.proposed_by === h.id && r.closed_at && now.getTime() - Date.parse(r.closed_at) < ALLIANCE.cooldownDays * 864e5)
+        .map(other),
+    });
+    if (!answerOnly) {
+      for (const a of plan.break) {
+        const row = rows.find((r) => r.status === "active" && other(r) === a && (r.house_a === h.id || r.house_b === h.id));
+        if (row) await breakAlliance(env, game, h, row.id);
+      }
+    }
+    const limit = Math.min(ALLIANCE_BOTS.maxAlliances, ALLIANCE.maxPerHouse ?? Infinity);
+    for (const r of received) {
+      const from = r.proposed_by;
+      const proposer = ctx.houses.find((x) => x.id === from);
+      // Como en el simulador: un bot que propuso puede haber llegado ya a su límite.
+      const full =
+        proposer?.is_bot === 1 &&
+        (await loadAlliances(db, game.id)).filter((x) => (x.status === "active" || x.status === "breaking") && (x.house_a === from || x.house_b === from)).length >= limit;
+      if (plan.accept.includes(from) && !full) {
+        const res = await acceptAlliance(env, game, h, r.id);
+        if (!res.ok && !answerOnly) await declineAlliance(env, game, h, r.id);
+      } else if (!answerOnly) {
+        // Antes de la noche solo acepta; lo demás lo contesta por la mañana, como en el simulador.
+        await declineAlliance(env, game, h, r.id);
+      }
+    }
+    if (!answerOnly && plan.propose != null) await proposeAlliance(env, game, h, plan.propose);
+  }
 }

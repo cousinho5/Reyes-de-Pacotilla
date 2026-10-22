@@ -1,6 +1,6 @@
 # Banco de frases de Fray Abundio
 
-Banco de textos del cronista de Reyes de Pacotilla, versión 2 (adaptada al diseño v2: sin puntos de acción, con apoyos, rebotes, logros y objetivos secretos). Complementa la sección 17 del documento de diseño. En el código, las secciones 1 a 8 están en `packages/engine/src/texts/cronista.ts` y los eventos en `packages/engine/src/events.ts`: si cambia una frase aquí, se cambia también allí.
+Banco de textos del cronista de Reyes de Pacotilla, versión 2 (adaptada al diseño v2: sin puntos de acción, con apoyos, rebotes, logros y objetivos secretos). Complementa la sección 17 del documento de diseño. En el código, las secciones 1 a 8 (y los avisos de alianzas, 11.15 a 11.19) están en `packages/engine/src/texts/cronista.ts` y los eventos en `packages/engine/src/events.ts`: si cambia una frase aquí, se cambia también allí.
 
 ## Cómo se usa
 
@@ -107,6 +107,18 @@ Banco de textos del cronista de Reyes de Pacotilla, versión 2 (adaptada al dise
 4. Un ataque oportuno corta el apoyo de {apoyo} y desbarata los planes de {a}. Alguien lo había pensado muy bien.
 5. Sin el apoyo de {apoyo}, el ataque de {a} sobre {casilla} se queda en un repliegue genial.
 
+### 1.8 Ataque conjunto (bloque 8)
+
+1. {ganador} y {apoyo} atacan juntas {casilla} ({n} tropas contra {m}) y la casilla queda para {ganador}. {perdedor} descubre que la amistad ajena también hace daño.
+2. Ataque conjunto en {casilla}: {ganador} y {apoyo} suman {n} tropas frente a las {m} de {perdedor}. El cronista anota quién se queda la casilla y quién la factura.
+3. Dos banderas, una sola carga: {ganador} y {apoyo} ({n}) toman {casilla} a {perdedor} ({m}). Ya discuten el reparto.
+
+### 1.9 Resiste un ataque conjunto (bloque 8)
+
+1. {atacante} y {apoyo} atacan juntas {casilla} con {m} tropas, y {defensor} ({n}) resiste a las dos. La alianza se lame las heridas a medias.
+2. Ni juntas: {defensor} ({n}) rechaza en {casilla} el ataque conjunto de {atacante} y {apoyo} ({m}). Ahora se culparán la una a la otra.
+3. {defensor} aguanta en {casilla} con {n} tropas frente a las {m} de {atacante} y {apoyo}. Dos contra una, y aun así.
+
 ## 2. Boletín: la clasificación
 
 ### 2.1 Elogio al líder (abre cada boletín)
@@ -197,6 +209,20 @@ Lo que más vendió la Corona en la semana, sin decir a quién: las compras son 
 1. La Corona vende {n} de {recurso} esta semana. El tesorero real cobra con una sonrisa que no le cabe en la cara.
 2. Salen de los graneros reales {n} de {recurso}. La Corona no pregunta para qué; solo cobra, y cobra bien.
 3. {n} de {recurso} comprados a la Corona. Más caros que en el mercado, pero sin tener que sonreír a un vecino.
+
+### 3.6 Fin del aviso (bloque 8)
+
+La alianza rota deja de existir al terminar sus noches de aviso.
+
+1. Expira la {pacto} entre {a} y {b}. Las noches de aviso dan para mucho, sobre todo para afilar espadas.
+2. La {pacto} pasa a mejor vida. {a} y {b} vuelven a ser vecinas, que es bastante peor.
+3. Se cierra la página de la {pacto} en el libro de la Corona. La de al lado ya está escrita.
+
+### 3.7 Tropas de paso que vuelven a casa (bloque 8)
+
+1. {n} tropas de {jugador} salen de {casilla} con el equipaje a medio hacer: ya no son bienvenidas.
+2. Fin de la hospitalidad en {casilla}: {jugador} recoge sus {n} tropas y vuelve a casa. Nadie las despide.
+3. {jugador} saca {n} tropas de {casilla} a toda prisa. El anfitrión cuenta las gallinas por si acaso.
 
 ## 4. Boletín: la vida del reino
 
@@ -486,3 +512,35 @@ Pocas palabras y siempre con la información primero. Cinco variantes por tipo c
 1. {tropas} de alquiler cumplen sus 7 días y se van sin despedirse.
 2. Se acaba la paga: {tropas} mercenarias recogen sus cosas y se marchan.
 3. {tropas} de alquiler se van al amanecer. Dicen que volverían, por el precio adecuado.
+
+### 11.15 Propuesta de alianza (notificación, bloque 8)
+
+1. {jugador} os propone la {pacto}. Tenéis {n} resoluciones para contestar.
+2. Llega un mensajero de {jugador} con la {pacto} bajo el brazo. Caduca en {n} resoluciones.
+3. {jugador} quiere firmar la {pacto}. El cronista ya ha preparado la cera, por si acaso.
+
+### 11.16 Alianza aceptada (notificación, bloque 8)
+
+1. {jugador} acepta la {pacto}. Vale desde la próxima resolución.
+2. La {pacto} queda firmada con {jugador}. Paso libre desde esta noche.
+3. {jugador} dice que sí: nace la {pacto}. Que dure.
+
+### 11.17 Alianza rota (notificación, bloque 8)
+
+1. {jugador} rompe la {pacto}. Deja de existir tras la resolución del {día}.
+2. PACTO ROTO: {jugador} pone fin a la {pacto}. Quedan {n} noches de aviso, hasta el {día}.
+3. {jugador} da por terminada la {pacto}. Sacad las tropas antes del {día}.
+
+### 11.18 Tropas aliadas dentro (notificación, bloque 8)
+
+Cuando las tropas de un aliado dentro de tus casillas llegan a `ALLIANCE.warnTroops`.
+
+1. {jugador} tiene {n} tropas dentro de tus tierras. Fray Abundio solo lo comenta.
+2. Hay {n} tropas de {jugador} de paso por tus casillas. Muy amigas, muy amigas.
+3. {n} tropas aliadas de {jugador} acampan en tus tierras. El cronista cuenta las tiendas.
+
+### 11.19 Órdenes anuladas al firmar (notificación, bloque 8)
+
+1. Con la {pacto}, {n} órdenes contra {jugador} se quedan en casa.
+2. La {pacto} anula {n} órdenes contra {jugador}. Las tropas no salen.
+3. Firmada la {pacto}: {n} órdenes contra {jugador} quedan en papel mojado.

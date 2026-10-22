@@ -11,7 +11,7 @@ import { projectForHouse } from "./fog";
 import { BATTLE_TWEAKS, QUEUE } from "./rules";
 import { crossingPoint, marchKind, marchPath } from "./terrain";
 import { canEnter, orderUnits, totalUnits, unitFields, unitsOf, type Units } from "./units";
-import type { CampaignEvent, Captain, HouseId, Order, Tile, TileId } from "./types";
+import type { Alliance, CampaignEvent, Captain, HouseId, Order, Tile, TileId } from "./types";
 
 /** Las tropas que no se ven (troops null) cuentan como 0. */
 type SeenTile = Omit<Tile, "troops"> & { troops: number | null };
@@ -177,13 +177,15 @@ export function planNights(
   house: HouseId,
   captainTile: TileId | null,
   first: number,
+  /** Bloque 8: alianzas de la casa (las suyas son públicas para ella). */
+  alliances: Alliance[] = [],
 ): PlannedNight[] {
   let tiles = seen.map(asTile);
   let captain: Captain[] = captainTile != null ? [{ house, tile: captainTile }] : [];
   const out: PlannedNight[] = [];
   nights.slice(0, QUEUE.nights).forEach((orders, i) => {
     const resolution = first + i;
-    const r = resolveCampaign({ resolution, tiles, orders: fitOrders(tiles, orders), captains: captain });
+    const r = resolveCampaign({ resolution, tiles, orders: fitOrders(tiles, orders), captains: captain, alliances });
     tiles = r.tiles;
     captain = r.captains;
     out.push({ resolution, tiles, events: r.events, captainTile: r.captains.find((c) => c.house === house)?.tile ?? null });

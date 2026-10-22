@@ -95,8 +95,12 @@ check("no se puede repetir color", repeated.status === 409, repeated);
 
 const notCreator = await players[0].call("POST", `/api/partidas/${gameId}/empezar`, {});
 check("solo quien crea puede empezar", notCreator.status === 403, notCreator);
-const start = await pablo("POST", `/api/partidas/${gameId}/empezar`, { inicio: "2026-10-19" });
-check("empezar la partida el lunes 19", start.status === 200, start);
+// El lunes que viene: así las órdenes de la primera noche siguen abiertas sea cuando sea.
+const hoyMadrid = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(new Date());
+const lunes = new Date(`${hoyMadrid}T12:00:00Z`);
+lunes.setUTCDate(lunes.getUTCDate() + ((8 - lunes.getUTCDay()) % 7 || 7));
+const start = await pablo("POST", `/api/partidas/${gameId}/empezar`, { inicio: lunes.toISOString().slice(0, 10) });
+check(`empezar la partida el lunes ${lunes.getUTCDate()}`, start.status === 200, start);
 
 // Entrar con el código desde otro dispositivo (como el iPhone instalado).
 const other = client("Marta en el móvil");
@@ -233,6 +237,82 @@ const fourth = await pablo("POST", `/api/partidas/${gameId}/ofertas`, { para: nu
 check("como mucho 3 ofertas públicas abiertas", fourth.status === 409, fourth);
 const sameRes = await pablo("POST", `/api/partidas/${gameId}/ofertas`, { para: null, da: { oro: 1 }, pide: { oro: 2 } });
 check("no se puede dar y pedir el mismo recurso", sameRes.status === 400, sameRes);
+
+// --- Bloque 8: alianzas ---
+const martaCall = players[0].call;
+const daniCall = players[1].call;
+const luciaCall = players[2].call;
+const daniId = (await daniCall("GET", `/api/partidas/${gameId}`)).data.yo.casa;
+const luciaId = (await luciaCall("GET", `/api/partidas/${gameId}`)).data.yo.casa;
+const pabloId = after.yo.casa;
+const nombre = (await pablo("GET", `/api/partidas/${gameId}/alianzas/nombre`)).data.nombre;
+const inventado = await pablo("POST", `/api/partidas/${gameId}/alianzas`, { casa: martaId, nombre: "Liga de los Listos" });
+check(`Fray Abundio pone el nombre (${nombre}); uno inventado no vale`, typeof nombre === "string" && /^\S+/.test(nombre) && inventado.status === 400, { nombre, inventado });
+const propuesta = await pablo("POST", `/api/partidas/${gameId}/alianzas`, { casa: martaId, nombre });
+const repetida = await pablo("POST", `/api/partidas/${gameId}/alianzas`, { casa: martaId });
+check("proponer una alianza a Marta (y solo una a la vez)", propuesta.status === 200 && repetida.status === 409, { propuesta, repetida });
+const aid = propuesta.data.id;
+const martaVe = (await martaCall("GET", `/api/partidas/${gameId}`)).data.alianzas;
+const daniVe = (await daniCall("GET", `/api/partidas/${gameId}`)).data.alianzas;
+check(
+  "la propuesta solo la ven las dos casas",
+  martaVe.propuestas.some((p) => p.id === aid && p.de === pabloId && p.caducaTras === 3) && daniVe.propuestas.length === 0,
+  { martaVe, daniVe },
+);
+const intrusa = await daniCall("POST", `/api/partidas/${gameId}/alianzas/${aid}/aceptar`);
+const propia = await pablo("POST", `/api/partidas/${gameId}/alianzas/${aid}/aceptar`);
+check("ni otra casa ni quien propone pueden aceptarla", intrusa.status === 403 && propia.status === 409, { intrusa, propia });
+const firma = await martaCall("POST", `/api/partidas/${gameId}/alianzas/${aid}/aceptar`);
+const registro = (await daniCall("GET", `/api/partidas/${gameId}`)).data;
+check(
+  "Marta acepta: la alianza está en el registro público desde la primera resolución",
+  firma.status === 200 && registro.alianzas.lista.some((a) => a.id === aid && a.estado === "activa" && a.desde === 1) &&
+    registro.eventos.some((e) => e.tipo === "alianza" && e.datos.name === nombre),
+  { firma, lista: registro.alianzas.lista },
+);
+const pabloVe = (await pablo("GET", `/api/partidas/${gameId}`)).data;
+const castilloMarta = pabloVe.casillas.find((t) => t.type === "castillo" && t.owner === martaId);
+check("visión compartida: Pablo ve las tropas del castillo de Marta", castilloMarta?.troops != null, castilloMarta);
+const rota = await martaCall("POST", `/api/partidas/${gameId}/alianzas/${aid}/romper`);
+const otraVez = await martaCall("POST", `/api/partidas/${gameId}/alianzas`, { casa: daniId });
+const aviso = (await luciaCall("GET", `/api/partidas/${gameId}`)).data.alianzas.lista.find((a) => a.id === aid);
+check(
+  "Marta rompe: tres noches de aviso (termina tras la 3) y no puede firmar otra",
+  rota.status === 200 && rota.data.terminaTras === 3 && aviso?.estado === "aviso" && aviso.rotaPor === martaId && otraVez.status === 409,
+  { rota, aviso, otraVez },
+);
+const sinVision = (await pablo("GET", `/api/partidas/${gameId}`)).data.casillas.find((t) => t.id === castilloMarta.id);
+check("durante el aviso se corta la visión compartida", sinVision.troops === null, sinVision);
+const aDani = await luciaCall("POST", `/api/partidas/${gameId}/alianzas`, { casa: daniId });
+const rechazo = await daniCall("POST", `/api/partidas/${gameId}/alianzas/${aDani.data.id}/rechazar`);
+const aPablo = await luciaCall("POST", `/api/partidas/${gameId}/alianzas`, { casa: pabloId });
+const retiro = await luciaCall("POST", `/api/partidas/${gameId}/alianzas/${aPablo.data.id}/retirar`);
+const tarde = await pablo("POST", `/api/partidas/${gameId}/alianzas/${aPablo.data.id}/aceptar`);
+check("rechazar y retirar propuestas (una retirada ya no se acepta)", rechazo.status === 200 && retiro.status === 200 && tarde.status === 404, { rechazo, retiro, tarde });
+
+// Fin del aviso en una partida de prueba (con reloj simulado): Pablo maneja dos casas.
+const prueba = await pablo("POST", "/api/partidas", { nombre: "Alianzas de prueba", semanas: 2, prueba: true, bots: 3 }, { "x-admin": ADMIN });
+const pruebaInfo = await pablo("GET", `/api/invitacion/${prueba.data.codigoInvitacion}`);
+await pablo("POST", `/api/invitacion/${prueba.data.codigoInvitacion}/unirse`, { casa: "Casa del Nabo", color: pruebaInfo.data.coloresLibres[0] });
+await pablo("POST", `/api/partidas/${prueba.data.id}/empezar`, { inicio: lunes.toISOString().slice(0, 10) });
+const pruebaState = (await pablo("GET", `/api/partidas/${prueba.data.id}`)).data;
+const yoPrueba = pruebaState.yo.casa;
+const bot = pruebaState.prueba.casas.find((h) => h.bot).id;
+const pacto = await pablo("POST", `/api/partidas/${prueba.data.id}/alianzas`, { casa: bot });
+await pablo("POST", `/api/partidas/${prueba.data.id}/prueba/jugar-como`, { casa: bot });
+const firmaBot = await pablo("POST", `/api/partidas/${prueba.data.id}/alianzas/${pacto.data.id}/aceptar`);
+const rompeBot = await pablo("POST", `/api/partidas/${prueba.data.id}/alianzas/${pacto.data.id}/romper`);
+await pablo("POST", `/api/partidas/${prueba.data.id}/prueba/jugar-como`, { casa: yoPrueba });
+for (let i = 0; i < 3; i++) await pablo("POST", `/api/partidas/${prueba.data.id}/prueba/avanzar`, { hasta: "resolucion" });
+const trasAviso = (await pablo("GET", `/api/partidas/${prueba.data.id}`)).data;
+check(
+  "en la prueba: firmada, rota y, tras tres resoluciones, deja de existir",
+  firmaBot.status === 200 && rompeBot.status === 200 && trasAviso.partida.resolucionActual === 3 &&
+    !trasAviso.alianzas.lista.some((a) => a.id === pacto.data.id) && trasAviso.eventos.some((e) => e.tipo === "alianza_fin" && e.datos.id === pacto.data.id),
+  { firmaBot, rompeBot, resolucion: trasAviso.partida.resolucionActual, lista: trasAviso.alianzas.lista },
+);
+const borrada = await pablo("DELETE", `/api/partidas/${prueba.data.id}`);
+check("borrar la partida de prueba entera", borrada.status === 200, borrada);
 
 // --- MVP 2: notificaciones ---
 const key = await pablo("GET", "/api/push/clave");

@@ -60,7 +60,9 @@ Esquema de Reyes de Pacotilla para Cloudflare D1, que usa SQL de SQLite. Corresp
 | `crown_purchases` | Compras a la Corona (bloque 5, migración 0014): casa, recurso, unidades, Oro pagado y hora de la partida. El precio sube con las unidades compradas en los últimos 7 días entre todas las casas. |
 | `mercenaries` | Mercenarios de alquiler (bloque 5, migración 0015): una fila por contratación, con cuántos quedan y el día en que se van. |
 | `treaties` | Tratados comerciales semanales (versión 2), con su cancelación avisada. |
-| `pacts` | Pactos de no agresión: propuesto, activo, roto (y por quién) o rechazado. |
+| `pacts` | Pactos de no agresión de la primera versión. Sin uso: las alianzas del bloque 8 van en `alliances`. |
+| `alliances` | Alianzas (bloque 8, migración 0016): nombre solemne, las dos casas, quién propone y su estado (propuesta, en vigor, en aviso, terminada, rechazada, retirada o caducada), con la resolución en que empieza y la última del aviso. |
+| `tile_guests` | Tropas de paso (bloque 8, migración 0016): tropas de una casa dentro de una casilla de su aliada, por tipo. |
 
 ### Subasta, cartas, eventos y cronista
 
@@ -136,7 +138,13 @@ Cambio con la Corona (bloque 5, migración 0014): `crown_purchases` guarda cada 
 
 Mercenarios de alquiler (bloque 5, migración 0015): `mercenaries` guarda cada contratación (casa, unidades, Oro, hora y `leaves_on`, la fecha local en que se van). La tarea de producción de ese día, en su mismo lote, quita sus tropas (primero del castillo; cada casilla solo se escribe si nadie la tocó entretanto), borra la fila y deja un `mercenarios` en `event_log` para la casa. Si a una casa le quedan menos tropas que mercenarios, se rebajan `units` (murieron). El mantenimiento del domingo no cuenta sus tropas.
 
-Borrar una prueba elimina la partida, sus filas y los usuarios de sus bots en un solo lote.
+Alianzas (bloque 8, migración 0016):
+
+- `alliances`, una fila por propuesta. `house_a < house_b` y un índice único parcial impiden dos propuestas o alianzas abiertas (`proposed`, `active` o `breaking`) entre las mismas casas, así que tampoco se puede volver a firmar durante el aviso. La propuesta caduca tras la resolución `expires_resolution`; al aceptarla vale desde `signed_resolution` (la de esa noche) y, en el mismo lote, se borran las órdenes de cada casa contra la otra (también las de la cola) y se avisa a su dueño. Al romperla pasa a `breaking` con `broken_by`, `broken_at` (hora de la partida, para los 7 días sin firmar) y `ends_resolution`; la resolución de esa noche la pasa a `ended` en su propio lote.
+- `tile_guests`, las tropas de paso por casilla y casa. `loadTiles` las lee con las casillas (`Tile.guests` del motor) y `guestStatements` escribe lo que cambió tras la resolución o la marcha de los mercenarios.
+- `orders.guest`: la orden sale de las tropas de paso de la casa en esa casilla aliada.
+
+Borrar una prueba elimina la partida, sus filas y los usuarios de sus bots en un solo lote (antes suelta `houses.captain_tile`, que apunta a una casilla).
 
 ## 8. SQL completo (migración 0001)
 

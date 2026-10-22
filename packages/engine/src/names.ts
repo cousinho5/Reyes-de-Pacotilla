@@ -154,3 +154,63 @@ export function captainName(seed: string, house: number): string {
   for (const ch of `${seed}:${house}`) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
   return CAPTAIN_NAMES[h % CAPTAIN_NAMES.length]!;
 }
+
+/**
+ * Nombres solemnes de las alianzas (bloque 8): Fray Abundio los compone con
+ * una cosa y un adjetivo, como «Alianza de la Roca Eterna». Se guardan sin
+ * artículo; las frases ponen «la».
+ */
+export const ALLIANCE_NAME_PARTS = {
+  kinds: ["Alianza", "Liga", "Hermandad", "Concordia", "Santa Unión", "Entente"],
+  things: [
+    { word: "Roca", feminine: true },
+    { word: "Espada", feminine: true },
+    { word: "Corona", feminine: true },
+    { word: "Torre", feminine: true },
+    { word: "Llama", feminine: true },
+    { word: "Rosa", feminine: true },
+    { word: "Muralla", feminine: true },
+    { word: "Luna", feminine: true },
+    { word: "Puente", feminine: false },
+    { word: "Roble", feminine: false },
+    { word: "Juramento", feminine: false },
+    { word: "Estandarte", feminine: false },
+    { word: "Cáliz", feminine: false },
+    { word: "Nabo", feminine: false },
+    { word: "Yelmo", feminine: false },
+    { word: "Río", feminine: false },
+  ],
+  adjectives: [
+    ["Eterna", "Eterno"],
+    ["Inquebrantable", "Inquebrantable"],
+    ["Sagrada", "Sagrado"],
+    ["Dorada", "Dorado"],
+    ["Fiel", "Fiel"],
+    ["Invicta", "Invicto"],
+    ["Perpetua", "Perpetuo"],
+    ["Bendita", "Bendito"],
+    ["Imperecedera", "Imperecedero"],
+    ["Leal", "Leal"],
+    ["Serena", "Sereno"],
+    ["Provisional", "Provisional"],
+  ],
+} as const;
+
+/** Nombre de alianza a partir de una semilla (el servidor pone el azar). */
+export function allianceName(seed: string): string {
+  let h = 2166136261;
+  for (const ch of seed) h = Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0;
+  const { kinds, things, adjectives } = ALLIANCE_NAME_PARTS;
+  const kind = kinds[h % kinds.length]!;
+  const thing = things[Math.floor(h / kinds.length) % things.length]!;
+  const adj = adjectives[Math.floor(h / kinds.length / things.length) % adjectives.length]!;
+  return `${kind} ${thing.feminine ? "de la" : "del"} ${thing.word} ${adj[thing.feminine ? 0 : 1]}`;
+}
+
+/** Si un nombre es uno de los que compone Fray Abundio (el cliente no puede inventarlos). */
+export function isAllianceName(name: string): boolean {
+  const { kinds, things, adjectives } = ALLIANCE_NAME_PARTS;
+  return kinds.some((k) =>
+    things.some((t) => adjectives.some((a) => name === `${k} ${t.feminine ? "de la" : "del"} ${t.word} ${a[t.feminine ? 0 : 1]}`)),
+  );
+}
