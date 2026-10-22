@@ -23,6 +23,8 @@ export function Game({ id }: { id: number }) {
   // Noche de la cola que se planea en el mapa (0 = la próxima resolución).
   const [night, setNight] = useState(0);
   const [toast, setToast] = useState<string | null>(null);
+  // Bloque 6: en el Mapa, el reloj y el evento se abren desde una etiqueta de la barra fina.
+  const [statusOpen, setStatusOpen] = useState(false);
   // Mientras se guarda una orden, las recargas no pisan lo que se ve.
   const savingRef = useRef(false);
 
@@ -119,73 +121,114 @@ export function Game({ id }: { id: number }) {
     }
   };
 
-  return (
-    <div className="game">
-      <header className="topbar">
-        <div className="topbar-title">
-          <button className="back" onClick={() => navigate("/")} aria-label="Volver al inicio">
-            ‹
-          </button>
-          <ShieldIcon color={me.color} escudo={me.escudo} size={34} />
-          <div className="grow">
-            <strong>{me.nombre}</strong>
-            <span className="standing">
-              <Icon name="corona" size={16} color="#d6a64b" />
-              <b>{me.prestigio?.total ?? 0}</b> de Prestigio
-              {rank > 0 && <> · {rank}.º de {state.casas.length}</>}
-            </span>
-          </div>
+  const mapMode = tab === "mapa";
+  const countdown = p.ordenesAbiertas
+    ? timeLeft(p.cierre, state.prueba?.ahora ? Date.parse(state.prueba.ahora) : undefined).replace("faltan ", "")
+    : "cerradas";
+  const resources = (
+    <div className={`resources${mapMode ? " thin" : ""}`} aria-label="Recursos">
+      {RESOURCES.map((r) => (
+        <span key={r} className="res" title={RESOURCE_LABEL[r]}>
+          <ResourceIcon r={r} size={mapMode ? 16 : 20} />
+          {state.yo.recursos?.[r] ?? 0}
+          <span className="sr-only"> de {RESOURCE_LABEL[r]}</span>
+        </span>
+      ))}
+    </div>
+  );
+  const status = (
+    <div className="status">
+      {p.estado === "active" && p.proximaResolucion && (
+        <div className="clock">
+          <Icon name="reloj" size={18} color="#d6a64b" />
+          {p.haEmpezado ? (
+            <>
+              <span>
+                Resolución {p.proximaResolucion} de {p.totalResoluciones}: <strong>{formatShort(p.resolucion)}</strong>
+              </span>
+              <span className={`countdown ${p.ordenesAbiertas ? "" : "closed"}`} title="Tiempo para dar órdenes">
+                {countdown}
+              </span>
+            </>
+          ) : (
+            <span>La partida empieza el {formatDay(p.inicio)}. Ya puedes preparar tus órdenes.</span>
+          )}
         </div>
-        <div className="resources" aria-label="Recursos">
-          {RESOURCES.map((r) => (
-            <span key={r} className="res" title={RESOURCE_LABEL[r]}>
-              <ResourceIcon r={r} size={20} />
-              {state.yo.recursos?.[r] ?? 0}
-              <span className="sr-only"> de {RESOURCE_LABEL[r]}</span>
+      )}
+      {p.estado === "finished" && <div className="clock">Partida terminada. ¡Larga vida al nuevo rey!</div>}
+      {p.estado === "active" && state.evento && (
+        <details className="event-banner" open={mapMode || undefined}>
+          <summary>
+            <strong>{state.evento.nombre}.</strong> {state.evento.texto}
+          </summary>
+          <p className="event-line">
+            <FrayAbundio mood="solemne" size={44} />
+            <span>
+              <em>«{state.evento.linea}»</em>
             </span>
-          ))}
-        </div>
-      </header>
+          </p>
+        </details>
+      )}
+    </div>
+  );
 
-      <div className="status">
-        {p.estado === "active" && p.proximaResolucion && (
-          <div className="clock">
-            <Icon name="reloj" size={18} color="#d6a64b" />
-            {p.haEmpezado ? (
-              <>
-                <span>
-                  Resolución {p.proximaResolucion} de {p.totalResoluciones}: <strong>{formatShort(p.resolucion)}</strong>
-                </span>
-                <span className={`countdown ${p.ordenesAbiertas ? "" : "closed"}`} title="Tiempo para dar órdenes">
-                  {p.ordenesAbiertas
-                    ? timeLeft(p.cierre, state.prueba?.ahora ? Date.parse(state.prueba.ahora) : undefined).replace("faltan ", "")
-                    : "cerradas"}
-                </span>
-              </>
-            ) : (
-              <span>La partida empieza el {formatDay(p.inicio)}. Ya puedes preparar tus órdenes.</span>
+  return (
+    <div className={`game${mapMode ? " map-mode" : ""}`}>
+      <header className="topbar">
+        {mapMode ? (
+          // Mapa a toda pantalla: una barra fina con los recursos y una etiqueta para el reloj y el evento.
+          <div className="topbar-thin">
+            <button className="back" onClick={() => navigate("/")} aria-label="Volver al inicio">
+              ‹
+            </button>
+            <ShieldIcon color={me.color} escudo={me.escudo} size={24} />
+            {resources}
+            <button
+              className={`status-chip${p.ordenesAbiertas ? "" : " closed"}`}
+              onClick={() => setStatusOpen(!statusOpen)}
+              aria-expanded={statusOpen}
+              aria-label={`Reloj${state.evento ? " y evento" : ""}: ${p.estado === "active" ? countdown : "partida terminada"}`}
+            >
+              <Icon name="reloj" size={16} color="#2c1d12" />
+              {p.estado === "active" && p.haEmpezado ? countdown.replace(/^(\d+ h) \d+ min$/, "$1") : p.estado === "finished" ? "Fin" : "Empieza"}
+              {state.evento && <span className="status-dot" aria-hidden />}
+            </button>
+            {statusOpen && (
+              <div className="status-pop">
+                {status}
+                {state.prueba?.ahora && <TestBench state={state} gameId={id} act={act} />}
+              </div>
             )}
           </div>
+        ) : (
+          <>
+            <div className="topbar-title">
+              <button className="back" onClick={() => navigate("/")} aria-label="Volver al inicio">
+                ‹
+              </button>
+              <ShieldIcon color={me.color} escudo={me.escudo} size={34} />
+              <div className="grow">
+                <strong>{me.nombre}</strong>
+                <span className="standing">
+                  <Icon name="corona" size={16} color="#d6a64b" />
+                  <b>{me.prestigio?.total ?? 0}</b> de Prestigio
+                  {rank > 0 && <> · {rank}.º de {state.casas.length}</>}
+                </span>
+              </div>
+            </div>
+            {resources}
+          </>
         )}
-        {p.estado === "finished" && <div className="clock">Partida terminada. ¡Larga vida al nuevo rey!</div>}
-        {p.estado === "active" && state.evento && (
-          <details className="event-banner">
-            <summary>
-              <strong>{state.evento.nombre}.</strong> {state.evento.texto}
-            </summary>
-            <p className="event-line">
-              <FrayAbundio mood="solemne" size={44} />
-              <span>
-                <em>«{state.evento.linea}»</em>
-              </span>
-            </p>
-          </details>
-        )}
-      </div>
+      </header>
 
-      {state.prueba?.ahora && <TestBench state={state} gameId={id} act={act} />}
+      {!mapMode && (
+        <>
+          {status}
+          {state.prueba?.ahora && <TestBench state={state} gameId={id} act={act} />}
+        </>
+      )}
 
-      <main className="game-body">
+      <main className="game-body" onPointerDown={statusOpen ? () => setStatusOpen(false) : undefined}>
         {tab === "mapa" && <MapView state={state} draft={draft} setDraft={updateDraft} act={act} night={night} setNight={setNight} />}
         {tab === "castillo" && <CastlePanel state={state} act={act} gameId={id} />}
         {tab === "ordenes" && (

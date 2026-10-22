@@ -10,7 +10,7 @@ Primero se definen todos los bloques; después se hacen uno a uno, en el orden d
 | 2.º | 4. Retoques sistema de batalla | Hecho | Apoyo sin origen, jinete más caro, Capitán libre, choques en el camino y fortificación con mantenimiento |
 | 3.º | 5. Retoques recursos | Hecho | Oro en todas las mejoras, cambio con la Corona, mercenarios de alquiler y mejoras con algo más de Madera y Piedra |
 | 4.º | 8. Alianzas | Hecho | Alianzas formales: paso por las casillas del aliado, ruptura con aviso de tres días y ataques conjuntos |
-| 5.º | 6. Optimización y controles en móvil | En curso (pasos 1 a 3 hechos) | Mapa guardado y dibujado en segundo plano, zoom con pinza, ficha que sube desde abajo, órdenes arrastrando, botones de 48 y juego sin conexión |
+| 5.º | 6. Optimización y controles en móvil | En curso (pasos 1 a 6 hechos) | Mapa guardado y dibujado en segundo plano, zoom con pinza, ficha que sube desde abajo, órdenes arrastrando, botones de 48 y juego sin conexión |
 | 6.º | 9. Diseño de la sección Mapa | Decidido | Capas (con Alcance automático), escudos y nombres, tropas por color y tipo, niebla con recuerdo, botones de salto, barra de avisos y leyenda |
 | 7.º | 12. Diseño de la sección Órdenes | Decidido | Verbo según el destino, botones de tropas, cambiar órdenes, tarjetas agrupadas, simulación con «¿Y si atacan?», repetir asedios y aviso 1 hora antes del cierre |
 | 8.º | 2. Vista del castillo y construcciones | Decidido | Escena del castillo en pixel art, un dibujo por nivel de cada edificio y castillo que crece |

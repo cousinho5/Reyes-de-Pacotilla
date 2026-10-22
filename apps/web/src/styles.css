@@ -4,6 +4,8 @@
    en Alegreya Sans. Pensado primero para móvil. */
 
 :root {
+  /* Bloque 6: lo que se toca mide al menos esto de alto (y de ancho, si es pequeño). */
+  --touch: 48px;
   /* Madera */
   --wood-0: #170f0a;
   --wood-1: #22160e;
@@ -94,7 +96,7 @@ a {
 button,
 .button {
   font: 700 1rem var(--font-text);
-  min-height: 44px;
+  min-height: var(--touch);
   padding: 0.45rem 1rem;
   border-radius: 6px;
   border: 2px solid var(--ink);
@@ -141,7 +143,7 @@ button.link {
   text-decoration: underline;
   text-decoration-thickness: 1px;
   text-underline-offset: 3px;
-  min-height: 36px;
+  min-height: var(--touch);
   padding: 0.25rem 0.4rem;
   font-weight: 500;
 }
@@ -155,7 +157,7 @@ select,
 textarea {
   font: inherit;
   width: 100%;
-  min-height: 44px;
+  min-height: var(--touch);
   padding: 0.45rem 0.7rem;
   border: 2px solid var(--vellum-line);
   border-radius: 6px;
@@ -481,9 +483,10 @@ svg.ico {
   box-shadow: none;
   background: none;
   color: var(--dust);
-  min-height: 40px;
+  min-height: var(--touch);
   padding: 0 0.15rem;
   font-size: 1.5rem;
+  min-width: var(--touch);
 }
 .topbar-title strong {
   display: block;
@@ -560,6 +563,7 @@ svg.ico {
   color: var(--dust);
 }
 .event-banner summary {
+  min-height: var(--touch);
   cursor: pointer;
   list-style: none;
 }
@@ -613,7 +617,7 @@ svg.ico {
 }
 .testbench-buttons button,
 .testbench .actions button {
-  min-height: 34px;
+  min-height: var(--touch);
   padding: 0.2rem 0.3rem;
   font-size: 0.88rem;
 }
@@ -631,7 +635,7 @@ svg.ico {
   margin: 0.4rem 0;
 }
 .testbench-houses button {
-  min-height: 36px;
+  min-height: var(--touch);
   padding: 0.2rem 0.5rem;
   font-size: 0.88rem;
 }
@@ -747,7 +751,7 @@ svg.ico {
   z-index: 8;
   top: 12px;
   right: 12px;
-  min-height: 34px;
+  min-height: var(--touch);
   padding: 0.2rem 0.65rem;
   font-size: 0.88rem;
   background: rgba(251, 243, 223, 0.94);
@@ -1063,7 +1067,7 @@ svg.ico {
   margin-right: 0.4rem;
 }
 .offer .actions button {
-  min-height: 40px;
+  min-height: var(--touch);
 }
 .stepper {
   display: grid;
@@ -1075,13 +1079,13 @@ svg.ico {
 .stepper input {
   margin: 0;
   text-align: center;
-  min-height: 40px;
+  min-height: var(--touch);
   padding: 0.25rem;
   font-family: var(--font-pixel);
   font-weight: 600;
 }
 .stepper button {
-  min-height: 40px;
+  min-height: var(--touch);
   padding: 0;
   font-size: 1.2rem;
 }
@@ -1102,6 +1106,11 @@ label.check {
   align-items: center;
   gap: 0.5rem;
   font-weight: 500;
+}
+/* Bloque 6: la casilla de marcar es pequeña, pero se toca toda la línea. */
+label.check,
+label.radio {
+  min-height: var(--touch);
 }
 label.check input {
   width: auto;
@@ -1158,7 +1167,7 @@ label.check input {
 }
 .bulletin-weeks button {
   white-space: nowrap;
-  min-height: 36px;
+  min-height: var(--touch);
   padding: 0.2rem 0.65rem;
   font-size: 0.9rem;
 }
@@ -1345,7 +1354,7 @@ label.check input {
 }
 .unit-picker button {
   flex: 1;
-  min-height: 40px;
+  min-height: var(--touch);
   padding: 0.3rem 0.4rem;
 }
 .unit-picker button.chosen {
@@ -1398,7 +1407,7 @@ label.check {
 }
 .nights button {
   flex: 1 0 auto;
-  min-height: 38px;
+  min-height: var(--touch);
   padding: 0.2rem 0.7rem;
   font-size: 0.92rem;
   color: var(--chalk);
@@ -1701,7 +1710,7 @@ label.check {
   background: var(--wood-2);
 }
 .replay-bar button {
-  min-height: 34px;
+  min-height: var(--touch);
   padding: 0.15rem 0.8rem;
   font-size: 0.9rem;
 }
@@ -1785,7 +1794,7 @@ label.check {
   margin: 0;
 }
 .alliance-row .actions button {
-  min-height: 40px;
+  min-height: var(--touch);
 }
 .propose label {
   display: block;
@@ -1795,4 +1804,236 @@ label.check {
 }
 .alliance-row .grow {
   flex: 1 1 12rem;
+}
+
+/* ------------------------------------------------------------------ */
+/* Bloque 6: el Mapa a toda pantalla, con una barra fina arriba y la ficha
+   de la casilla en una hoja que sube desde abajo. */
+
+.game.map-mode {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+  padding-bottom: calc(64px + env(safe-area-inset-bottom));
+}
+.game.map-mode .topbar {
+  padding: 0.3rem 0.5rem;
+}
+.topbar-thin {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.topbar-thin .back {
+  border: none;
+  box-shadow: none;
+  background: none;
+  color: var(--dust);
+  min-height: var(--touch);
+  padding: 0 0.15rem;
+  font-size: 1.5rem;
+  min-width: var(--touch);
+}
+.resources.thin {
+  flex: 1;
+  min-width: 0;
+  margin-top: 0;
+  padding: 0.2rem 0.4rem;
+}
+.resources.thin .res {
+  font-size: 0.92rem;
+  gap: 0.1rem;
+}
+.status-chip {
+  position: relative;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: var(--touch);
+  padding: 0.15rem 0.5rem;
+  font-family: var(--font-pixel);
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--ink);
+  background: var(--brass);
+  box-shadow: 0 2px 0 var(--brass-lo);
+}
+.status-chip.closed {
+  background: var(--dust);
+  box-shadow: 0 2px 0 #7d6c55;
+}
+.status-dot {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--seal);
+  box-shadow: 0 0 0 2px #2c1d12;
+}
+/* Reloj, evento (y mesa de pruebas) al tocar la etiqueta, encima del mapa. */
+.status-pop {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  max-height: 70vh;
+  overflow: auto;
+  padding-bottom: 0.6rem;
+  background: linear-gradient(180deg, #3a281a, #2a1c12);
+  border-bottom: 2px solid var(--brass);
+  box-shadow: 0 10px 18px rgba(0, 0, 0, 0.5);
+}
+.game.map-mode .game-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 0.4rem 0.4rem 0;
+}
+.map-screen {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.map-screen .board {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.map-screen .map-viewport {
+  flex: 1;
+  min-height: 0;
+  max-height: none;
+}
+.map-screen .map-viewport.whole {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.map-screen .map-viewport.whole .world-wrap {
+  flex: none;
+}
+.sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100% - 0.25rem);
+  background:
+    repeating-linear-gradient(90deg, rgba(255, 220, 170, 0.03) 0 2px, transparent 2px 9px),
+    linear-gradient(180deg, #3a281a, #2a1c12);
+  border-top: 2px solid var(--brass);
+  border-radius: 12px 12px 0 0;
+  box-shadow: 0 -8px 18px rgba(0, 0, 0, 0.5);
+  transition: height 0.2s ease;
+}
+.sheet.peek {
+  max-height: 9.5rem;
+}
+.sheet.half {
+  height: 50%;
+}
+.sheet.full {
+  height: calc(100% - 0.25rem);
+}
+.sheet.dragging {
+  transition: none;
+  max-height: calc(100% - 0.25rem);
+}
+.sheet-handle {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--touch);
+  touch-action: none;
+  cursor: grab;
+}
+.sheet-grip {
+  width: 44px;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--dust);
+  opacity: 0.7;
+}
+.sheet-close {
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  right: 4px;
+  min-height: var(--touch);
+  width: var(--touch);
+  padding: 0;
+  border: none;
+  box-shadow: none;
+  background: none;
+  color: var(--dust);
+  font-size: 1.1rem;
+}
+.sheet-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 0 0.5rem 0.6rem;
+}
+.sheet.peek .sheet-body {
+  overflow: hidden;
+}
+.sheet-body > :first-child {
+  margin-top: 0;
+}
+.sheet-body .card {
+  margin: 0;
+}
+.sheet-body .hint {
+  margin: 0.4rem 0 0.2rem;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sheet {
+    transition: none;
+  }
+}
+
+/* Bloque 6: órdenes con el dedo e información rápida al mantener pulsada una casilla. */
+.world-overlay .tile {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.quick-info {
+  position: absolute;
+  z-index: 12;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 11rem;
+  max-width: 15rem;
+  padding: 0.45rem 0.65rem;
+  transform: translate(-50%, calc(-100% - 44px));
+  font-size: 0.88rem;
+  line-height: 1.25;
+  color: var(--ink);
+  background: linear-gradient(180deg, var(--vellum), var(--vellum-2));
+  border-radius: 5px;
+  box-shadow: 0 0 0 1px rgba(80, 50, 20, 0.55), 0 8px 16px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+}
+.quick-info.below {
+  transform: translate(-50%, 44px);
+}
+.quick-info strong {
+  font-size: 0.98rem;
 }
