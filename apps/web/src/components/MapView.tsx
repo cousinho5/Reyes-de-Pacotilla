@@ -108,7 +108,8 @@ export function MapView({ state, draft, setDraft, act, night, setNight, editOrde
     }
   };
   const [layersOpen, setLayersOpen] = useState(false);
-  const [nightsMenu, setNightsMenu] = useState(false);
+  // Bloque 12: la etiqueta de la noche abre la lista rápida de órdenes en la hoja.
+  const [ordersList, setOrdersList] = useState(false);
   const [legend, setLegend] = useState(false);
   // Bloque 8: aliados en vigor (paso libre) y casas con la alianza en aviso (ni atacar ni entrar).
   const allies = useMemo(() => myAllies(state), [state]);
@@ -531,6 +532,7 @@ export function MapView({ state, draft, setDraft, act, night, setNight, editOrde
     const captainAlone = o.tipo === "mover" && o.tropas === 0 && !!o.capitan;
     setSelected(null);
     setLegend(false);
+    setOrdersList(false);
     setCompose({
       from: o.desde,
       mode: captainAlone ? "capitan" : "orden",
@@ -564,7 +566,7 @@ export function MapView({ state, draft, setDraft, act, night, setNight, editOrde
 
   const onTile = (t: TileView) => {
     setLayersOpen(false);
-    setNightsMenu(false);
+    setOrdersList(false);
     if (swallowClick.current) {
       swallowClick.current = false;
       return;
@@ -592,7 +594,16 @@ export function MapView({ state, draft, setDraft, act, night, setNight, editOrde
     setSelected(null);
     setCompose(null);
     setLegend(false);
+    setOrdersList(false);
     setSheet("peek");
+  };
+  const openOrdersList = () => {
+    setLayersOpen(false);
+    setSelected(null);
+    setCompose(null);
+    setLegend(false);
+    setOrdersList(true);
+    setSheet("half");
   };
   const openLegend = () => {
     setLayersOpen(false);
@@ -656,41 +667,14 @@ export function MapView({ state, draft, setDraft, act, night, setNight, editOrde
           <div className="night-pick">
             <button
               className={`night-chip${k > 0 ? " planning" : ""}`}
-              onClick={() => nightsOpen > 1 && setNightsMenu(!nightsMenu)}
-              aria-expanded={nightsOpen > 1 ? nightsMenu : undefined}
-              aria-label={`Órdenes para ${nightLabel(state.partida, k, true)}: ${ordersText(nightDraft.length)}${nightsOpen > 1 ? ". Cambiar de noche" : ""}`}
+              onClick={() => (ordersList ? closeSheet() : openOrdersList())}
+              aria-expanded={ordersList}
+              aria-label={`Órdenes para ${nightLabel(state.partida, k, true)}: ${ordersText(nightDraft.length)}. Ver la lista`}
             >
               {k > 0 && "Planeando: "}
               {nightNames[k]} · {ordersText(nightDraft.length)}
               {otherNights.length > 0 && <span className="badge" title="Órdenes en otras noches">{otherNights.length}</span>}
             </button>
-            {nightsMenu && (
-              <div className="nights-menu" role="menu" aria-label="Noche para la que das órdenes">
-                {nightNames.map((label, i) => {
-                  const count = draft.filter((o) => nightOf(o, next) === next + i).length;
-                  return (
-                    <button
-                      key={i}
-                      role="menuitemradio"
-                      aria-checked={k === i}
-                      className={k === i ? "active" : ""}
-                      onClick={() => {
-                        setNight(i);
-                        setCompose(null);
-                        setNightsMenu(false);
-                      }}
-                    >
-                      <strong>{label}</strong>
-                      <small>{i === 0 ? "La próxima resolución" : "En cola"} · {ordersText(count)}</small>
-                    </button>
-                  );
-                })}
-                <p className="hint">
-                  En las noches en cola el mapa muestra cómo quedaría si todo sale como esperas; las demás casas también mueven, y al
-                  llegar la noche cada orden sale con las tropas que queden.
-                </p>
-              </div>
-            )}
           </div>
         )}
         <div className="layers">
@@ -700,7 +684,7 @@ export function MapView({ state, draft, setDraft, act, night, setNight, editOrde
               // La ficha baja para que no tape el menú.
               if (!layersOpen) setSheet("peek");
               setLayersOpen(!layersOpen);
-              setNightsMenu(false);
+              setOrdersList(false);
             }} aria-expanded={layersOpen} aria-haspopup="menu">
             <Icon name="mapa" size={18} color="#d6a64b" /> {LAYERS.find((l) => l.id === layer)!.label}
           </button>
@@ -985,12 +969,28 @@ export function MapView({ state, draft, setDraft, act, night, setNight, editOrde
           ref={sheetRef}
           state={sheet}
           setState={setSheet}
-          onClose={tile || compose || legend ? closeSheet : undefined}
-          compact={!tile && !compose && !legend && sheet === "peek"}
-          label={legend ? "Leyenda del mapa" : tile ? `Ficha de ${tile.nombre}` : "Lo último en el mapa"}
+          onClose={tile || compose || legend || ordersList ? closeSheet : undefined}
+          compact={!tile && !compose && !legend && !ordersList && sheet === "peek"}
+          label={legend ? "Leyenda del mapa" : tile ? `Ficha de ${tile.nombre}` : ordersList ? "Órdenes de la noche" : "Lo último en el mapa"}
         >
           {legend ? (
             <Legend color={TERRITORY[mine?.color ?? ""] ?? "#f1cf7d"} />
+          ) : ordersList && !compose ? (
+            <QuickOrders
+              state={state}
+              nights={nightNames}
+              night={k}
+              counts={nightNames.map((_, i) => draft.filter((o) => nightOf(o, next) === next + i).length)}
+              orders={nightDraft}
+              byId={byId}
+              allies={allies}
+              bound={bound}
+              onNight={(i) => {
+                setNight(i);
+                setCompose(null);
+              }}
+              onEdit={editExisting}
+            />
           ) : compose ? (
             <Composer
               state={state}
@@ -1138,6 +1138,85 @@ export function MapView({ state, draft, setDraft, act, night, setNight, editOrde
         </Sheet>
       )}
     </div>
+  );
+}
+
+/** Bloque 12: lista rápida de las órdenes de una noche, con las noches de la cola como pestañas. */
+function QuickOrders({
+  state,
+  nights,
+  night,
+  counts,
+  orders,
+  byId,
+  allies,
+  bound,
+  onNight,
+  onEdit,
+}: {
+  state: GameState;
+  nights: string[];
+  night: number;
+  counts: number[];
+  orders: OrderView[];
+  byId: Map<number, TileView>;
+  allies: number[];
+  bound: number[];
+  onNight: (i: number) => void;
+  onEdit: (o: OrderView) => void;
+}) {
+  const me = state.yo.casa ?? -1;
+  const name = (id: number) => byId.get(id)?.nombre ?? "?";
+  return (
+    <section className="card quick-orders">
+      {nights.length > 1 && (
+        <div className="night-tabs" role="tablist" aria-label="Noche">
+          {nights.map((label, i) => (
+            <button key={i} role="tab" aria-selected={night === i} className={night === i ? "active" : ""} onClick={() => onNight(i)}>
+              {label}
+              {counts[i]! > 0 && <span className="badge">{counts[i]}</span>}
+            </button>
+          ))}
+        </div>
+      )}
+      <h2>{night === 0 ? `Órdenes para ${nights[0]}` : `En cola para ${nights[night]}`}</h2>
+      {night > 0 && (
+        <p className="hint">
+          El mapa muestra cómo quedaría si todo sale como esperas; las demás casas también mueven, y al llegar la noche cada orden sale con
+          las tropas que queden.
+        </p>
+      )}
+      {orders.length === 0 ? (
+        <p>Sin órdenes esta noche: tus tropas se quedan donde están. Toca una casilla tuya para dar una, o arrastra desde ella.</p>
+      ) : (
+        <ul className="tile-orders">
+          {orders.map((o, i) => (
+            <li key={i}>
+              <button className="row-button" onClick={() => onEdit(o)}>
+                <span className="grow">
+                  {o.tropas === 0 && o.capitan ? (
+                    <>
+                      El Capitán va solo a <strong>{name(o.hacia)}</strong>
+                    </>
+                  ) : (
+                    <>
+                      {VERB_LABEL[verbOf(o, byId.get(o.hacia), me, allies, bound)]} <strong>{name(o.hacia)}</strong>
+                      <small className="muted">
+                        {" "}
+                        · {troopsText(o.tropas, o.jinetes, o.catapultas)}
+                        {o.dePaso ? " de paso" : ""} desde {name(o.desde)}
+                        {o.capitan ? " · con el Capitán" : ""}
+                      </small>
+                    </>
+                  )}
+                </span>
+                <small>Cambiar ›</small>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
 

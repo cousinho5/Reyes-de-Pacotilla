@@ -57,7 +57,7 @@ Al empezar el bloque se repasó el documento con el código delante. Lo que camb
 10. **Repetir cada noche:** si la orden deja de ser posible (por ejemplo, se rompe el asedio), la repetición se quita sola y Fray Abundio avisa.
 11. **Correcciones de los pasos:** cambiar una orden no necesita una acción nueva en el servidor (la lista se guarda entera con `PUT /ordenes`); la cuenta «6 contra 4, +25% de bosque» necesita una función del motor que desglose la fuerza, con su prueba.
 
-**PR:** 1, compositor (puntos 1 a 3), hecho el 22 de octubre: `apps/web/src/verbs.ts` (verbos según el destino, con su prueba) y `Composer` y `Stepper` en `MapView.tsx`; la orden se cambia tocando su flecha, su línea en la ficha de la casilla de salida o en la pestaña Órdenes; 2, lista rápida desde la etiqueta; 3, tarjetas, simulación y papelera; 4, repetir cada noche (migración) y aviso antes del cierre.
+**PR:** 1, compositor (puntos 1 a 3), hecho el 22 de octubre: `apps/web/src/verbs.ts` (verbos según el destino, con su prueba) y `Composer` y `Stepper` en `MapView.tsx`; la orden se cambia tocando su flecha, su línea en la ficha de la casilla de salida o en la pestaña Órdenes; 2, lista rápida desde la etiqueta, hecha el 22 de octubre (`QuickOrders` en `MapView.tsx`: la etiqueta abre la lista en la hoja, con las noches de la cola como pestañas; sustituye al menú de noches); 3, tarjetas, simulación y papelera; 4, repetir cada noche (migración) y aviso antes del cierre.
 
 ## Pasos
 
