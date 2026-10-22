@@ -10,6 +10,7 @@
 // - en la Gran Subasta de ese miércoles.
 
 import { lastPlace } from "./actions";
+import { guestTroops } from "./alliances";
 import { defenseMultiplier, survivors } from "./combat";
 import type { ProductionModifiers } from "./economy";
 import { distance } from "./map";
@@ -276,7 +277,7 @@ export function applyEventNow(e: WeekEvent, tiles: Tile[], houses: EventHouse[],
       break;
     }
     case "torneo_real": {
-      const troops = (h: EventHouse) => tiles.filter((t) => t.owner === h.house).reduce((a, t) => a + t.troops, 0);
+      const troops = (h: EventHouse) => tiles.filter((t) => t.owner === h.house).reduce((a, t) => a + t.troops, 0) + guestTroops(tiles, h.house);
       const winners = best(troops);
       for (const w of winners) add(w, { oro: V.tournamentGold });
       out.log = { ...out.log, winners };

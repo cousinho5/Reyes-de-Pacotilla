@@ -3,6 +3,7 @@
 // días, estén donde estén. La casa solo lleva la cuenta de cuántos tiene y
 // cuándo se van: no se marcan en el mapa.
 
+import { guestStacks, takeGuests } from "./alliances";
 import { MERCENARIES } from "./rules";
 import type { HouseId, Tile } from "./types";
 import { clampUnits } from "./units";
@@ -14,8 +15,9 @@ export function mercenaryCost(n: number): number {
 
 /**
  * Quita `n` tropas de una casa cuando se van sus mercenarios: primero del
- * castillo y luego de las casillas con más tropas (las de menor id en empate).
- * Se van como Mesnada; si no queda, Jinetes y Catapultas (`clampUnits`).
+ * castillo, luego de las casillas con más tropas (las de menor id en empate) y
+ * por último de las tropas de paso en casillas aliadas (bloque 8), también por
+ * el grupo más grande. Se van como Mesnada; si no queda, Jinetes y Catapultas.
  */
 export function dismissTroops<T extends Tile>(tiles: T[], house: HouseId, n: number): { tiles: T[]; removed: number } {
   const own = tiles
@@ -29,10 +31,13 @@ export function dismissTroops<T extends Tile>(tiles: T[], house: HouseId, n: num
     if (k > 0) cut.set(t.id, k);
     left -= k;
   }
-  return {
-    tiles: tiles.map((t) => (cut.has(t.id) ? clampUnits({ ...t, troops: t.troops - cut.get(t.id)! }) : t)),
-    removed: n - left,
-  };
+  const after = tiles.map((t) => (cut.has(t.id) ? clampUnits({ ...t, troops: t.troops - cut.get(t.id)! }) : t));
+  if (left <= 0) return { tiles: after, removed: n };
+  const away = guestStacks(after, house)
+    .sort((a, b) => b.guest.troops - a.guest.troops || a.tile.id - b.tile.id)
+    .map((s) => s.tile.id);
+  const gone = takeGuests(after, house, left, away);
+  return { tiles: gone.tiles, removed: n - left + gone.removed };
 }
 
 /**
