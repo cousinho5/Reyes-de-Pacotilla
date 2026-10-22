@@ -18,6 +18,8 @@ export function WorldCanvas({ img, className, label }: { img: WorldImage; classN
     c.width = img.width;
     c.height = img.height;
     c.getContext("2d")?.putImageData(new ImageData(toImageData(img), img.width, img.height), 0, 0);
+    // Para scripts/medir-movil.mjs: cuándo se ve el mapa.
+    performance.mark("mapa-dibujado");
   }, [img]);
   return <canvas ref={ref} className={`world-canvas ${className ?? ""}`} role={label ? "img" : undefined} aria-label={label} />;
 }
