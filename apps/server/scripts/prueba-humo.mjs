@@ -152,6 +152,23 @@ const tooMuch = await dani("POST", `/api/partidas/${gameId}/corona/presupuesto`,
 const broke = await dani("POST", `/api/partidas/${gameId}/corona/comprar`, { recurso: "hierro", unidades: 40, oro: tooMuch.data.oro });
 check("sin Oro suficiente la Corona no vende", broke.status === 409, broke);
 
+// Mercenarios de alquiler (bloque 5): 6 de Oro cada uno, en el castillo, se van a los 7 días.
+const lucia = players[2].call;
+const hire = await lucia("POST", `/api/partidas/${gameId}/mercenarios`, { cantidad: 1 });
+const luciaAfter = (await lucia("GET", `/api/partidas/${gameId}`)).data;
+const luciaCastle = luciaAfter.casillas.find((t) => t.type === "castillo" && t.owner === luciaAfter.yo.casa);
+check(
+  "contratar 1 mercenario: 6 de Oro, una tropa más en el castillo y se va a los 7 días",
+  hire.status === 200 &&
+    luciaAfter.yo.recursos.oro === 4 &&
+    luciaCastle.troops === 7 &&
+    luciaAfter.mercenarios?.grupos?.[0]?.seVan ===
+      new Date(Date.parse(`${new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(new Date())}T12:00:00Z`) + 7 * 864e5).toISOString().slice(0, 10),
+  { hire, mercenarios: luciaAfter.mercenarios },
+);
+const poor = await lucia("POST", `/api/partidas/${gameId}/mercenarios`, { cantidad: 1 });
+check("sin Oro no hay mercenarios", poor.status === 409, poor);
+
 const adjacent = after.casillas.filter(
   (t) => Math.abs(t.x - castle.x) + Math.abs(t.y - castle.y) === 1 && t.owner === null,
 );

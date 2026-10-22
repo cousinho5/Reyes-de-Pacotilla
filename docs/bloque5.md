@@ -22,7 +22,7 @@ Hoy el Oro se gasta en la Gran Subasta (unos 385 por partida entre todas las cas
 
 | Punto | Decisión |
 | --- | --- |
-| 1. Oro en las mejoras | 5 de Oro al nivel 2, 10 al 3, 20 al 4 y 30 al 5. El objetivo «tesoro» baja de 150 a 100 de Oro |
+| 1. Oro en las mejoras | 5 de Oro al nivel 2, 10 al 3, 20 al 4 y 30 al 5. El objetivo «tesoro» baja de 150 a 100 de Oro (y a 60 con los mercenarios, el 22 de octubre) |
 | 2. Cambio con la Corona | Precio dinámico según la escasez en el reino y lo que se le ha comprado en la última semana, más un 30%. La Corona solo vende. Sin tope semanal (cambiado el 22 de octubre): el límite es el Oro de cada casa |
 | 3. Mercenarios | De alquiler: 6 de Oro por tropa, se van solos a los 7 días, no comen Pan. Sin tope semanal (cambiado el 22 de octubre) |
 | 4. Espías | Descartado de momento |
@@ -91,9 +91,9 @@ El mantenimiento de las fortificaciones solo gasta unos 72 de Piedra por partida
 
 1. **Punto 1 y punto 6 (hecho el 22 de octubre; simulación en `docs/simulaciones.md`):** cambiar `UPGRADE_COST` en `rules.ts` (Oro en todos los niveles y un 15% más de Madera y Piedra, redondeado) y `OBJECTIVE_TARGETS` (`gold` a 100, `totalLevels` a 16). Simular las dos cosas juntas antes y después (`--oro-mejora 5,10,20,0 --mejora-madera-piedra 1.15`) y revisar los objetivos.
 2. **Cambio con la Corona (hecho el 22 de octubre; simulación en `docs/simulaciones.md`):** pasar a `rules.ts` los valores elegidos (`reference: "media"`, `base: 2`, solo venta) y quitar la compra de `crown.ts`. Migración nueva para las compras a la Corona (casa, día, recurso, unidades). Acción en `app.ts` con el precio calculado en el servidor y el cobro en un `db.batch()`. El cliente solo recibe el precio, no lo que guarda el reino. Hecho así: migración 0014 (`crown_purchases`), `apps/server/src/corona.ts`, rutas `corona/presupuesto` y `corona/comprar` (si el precio cambió, no compra), `CrownPanel` en la pestaña Comercio, los bots de las partidas de prueba compran antes de gastar y el boletín cuenta lo que más vendió la Corona.
-3. **Mercenarios:** migración nueva (casa, cuántos, día en que se van). Acción en `app.ts`; en `jobs.ts`, quitar los que cumplen y descontarlos del mantenimiento del domingo, en el mismo orden que el simulador.
-4. **Cliente:** coste en Oro en las fichas de los edificios; «Cambio con la Corona» en la pestaña Comercio y «Mercenarios» en la pestaña Castillo (bloque 10), con el precio de hoy.
-5. **Bots:** ya saben comprar a la Corona y contratar mercenarios (`packages/engine/src/ai/oro.ts`); las partidas de prueba (`pruebas.ts`) tienen que usarlo.
-6. **Cronista:** frases para las compras a la Corona y los mercenarios que se van (encaja con el bloque 3).
-7. **Diseño:** secciones de economía, objetivos y Prestigio de `docs/diseno.md`.
+3. **Mercenarios (hecho el 22 de octubre; simulación en `docs/simulaciones.md`):** migración nueva (casa, cuántos, día en que se van). Acción en `app.ts`; en `jobs.ts`, quitar los que cumplen y descontarlos del mantenimiento del domingo, en el mismo orden que el simulador. Hecho así: migración 0015 (`mercenaries`, una fila por contratación con el día en que se van), `apps/server/src/mercenarios.ts`, ruta `mercenarios`, la tarea de producción los despide al amanecer en su mismo lote y el mantenimiento del domingo no los cuenta. Con los tres puntos juntos sobraba tan poco Oro que el objetivo «tesoro» baja a 60.
+4. **Cliente (hecho):** coste en Oro en las fichas de los edificios; «Cambio con la Corona» en la pestaña Comercio y «Mercenarios» en la pestaña Castillo (bloque 10), con el precio de hoy.
+5. **Bots (hecho):** ya saben comprar a la Corona y contratar mercenarios (`packages/engine/src/ai/oro.ts`); las partidas de prueba (`pruebas.ts`) tienen que usarlo.
+6. **Cronista (hecho: tres frases para cada cosa; el resto, con el bloque 3):** frases para las compras a la Corona y los mercenarios que se van (encaja con el bloque 3).
+7. **Diseño (hecho):** secciones de economía, objetivos y Prestigio de `docs/diseno.md`.
 8. ~~**Partidas en curso:** siguen con los costes de antes.~~ Descartado: todas las partidas son de prueba.

@@ -1,4 +1,5 @@
 import { Icon, ResourceIcon } from "../art";
+import { MercenariesCard } from "./MercenariesCard";
 import { useState } from "react";
 import { BUILDINGS, FORTIFY_UPKEEP, RESOURCES, UNIT_KINDS, canAfford, recruitCost as costOf, upgradeCost, unitsOf, type Resource, type Resources, type UnitKind } from "@reyes/engine";
 import { api, type GameState, type HouseInfo } from "../api";
@@ -195,6 +196,8 @@ export function CastlePanel({ state, gameId, act }: Props) {
           Reclutar
         </button>
       </section>
+
+      <MercenariesCard state={state} act={act} />
 
       <CaptainCard state={state} gameId={gameId} act={act} />
 

@@ -195,6 +195,8 @@ export interface GameState {
   /** Solo en partidas de prueba (y solo para quien las creó, en juego). */
   prueba?: TestInfo | null;
   subasta?: AuctionInfo | null;
+  /** Bloque 5: mercenarios de alquiler de tu casa y cuándo se van (fecha local). */
+  mercenarios?: { precio: number; dias: number; grupos: { unidades: number; seVan: string }[] } | null;
   /** Bloque 5: Oro que cuesta la próxima unidad de cada recurso en la Corona. */
   corona?: { precios: Record<CrownGood, number> } | null;
   boletines?: { semana: number; titular: string }[];
@@ -286,6 +288,8 @@ export const api = {
   bulletin: (id: number, semana: number) => call<Bulletin & { publicado: string }>("GET", `/partidas/${id}/boletin/${semana}`),
   bribe: (id: number, plantilla: number) => call<{ ok: true }>("POST", `/partidas/${id}/soborno`, { plantilla }),
   bid: (id: number, lote: number, cantidad: number) => call<{ ok: true }>("PUT", `/partidas/${id}/subasta/${lote}`, { cantidad }),
+  hireMercenaries: (id: number, cantidad: number) =>
+    call<{ ok: true; oro: number; seVan: string }>("POST", `/partidas/${id}/mercenarios`, { cantidad }),
   crownQuote: (id: number, recurso: CrownGood, unidades: number) =>
     call<{ oro: number }>("POST", `/partidas/${id}/corona/presupuesto`, { recurso, unidades }),
   crownBuy: (id: number, recurso: CrownGood, unidades: number, oro: number) =>

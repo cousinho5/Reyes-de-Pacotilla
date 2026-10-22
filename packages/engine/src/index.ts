@@ -7,6 +7,7 @@ export * from "./combat";
 export * from "./plan";
 export * from "./economy";
 export * from "./crown";
+export * from "./mercenaries";
 export * from "./prestige";
 export * from "./schedule";
 export * from "./names";

@@ -57,6 +57,8 @@ import {
   type Resources,
   CROWN_GOODS,
   ECONOMY_TWEAKS,
+  MERCENARIES,
+  mercenaryCost,
 } from "@reyes/engine";
 import {
   SESSION_COOKIE,
@@ -76,6 +78,7 @@ import { auctionView, handView, openAuctionWeek, spiedHouses, useCardStatements,
 import { addBots, advance, botsPlayDay, deleteTestGame, testStart } from "./pruebas";
 import { ransomStatements } from "./rescate";
 import { crownCost, crownMarket, crownPriceView, crownPurchaseStatements } from "./corona";
+import { hireStatements, leavingDay, loadMercenaries } from "./mercenarios";
 import { acceptOffer, bundle, offerView, type OfferRow } from "./offers";
 import { ordersOpen } from "./scheduler";
 import {
@@ -696,6 +699,17 @@ app.get("/api/partidas/:id", async (c) => {
         : null,
     subasta: game.status === "active" ? await auctionView(db, game, house.id) : null,
     // Bloque 5: precio de la próxima unidad de cada recurso. Lo que guarda el reino no sale de aquí.
+    // Bloque 5: mercenarios de alquiler de esta casa y cuándo se van.
+    mercenarios:
+      game.status === "active" && ECONOMY_TWEAKS.mercenaries === "alquiler"
+        ? {
+            precio: MERCENARIES.hire,
+            dias: MERCENARIES.days,
+            grupos: (await loadMercenaries(db, game.id))
+              .filter((r) => r.house_id === house.id)
+              .map((r) => ({ unidades: r.units, seVan: r.leaves_on })),
+          }
+        : null,
     corona: game.status === "active" && ECONOMY_TWEAKS.crown ? { precios: crownPriceView(await crownMarket(db, game, houses)) } : null,
     evento: game.status === "active" ? await eventView(db, game) : null,
     boletines: (
@@ -862,6 +876,23 @@ app.post("/api/partidas/:id/reclutar", async (c) => {
         ).bind(n, kind === "jinetes" ? n : 0, kind === "catapultas" ? n : 0, m.game.id, m.house.id),
   ]);
   return err ?? c.json({ ok: true });
+});
+
+// Bloque 5: mercenarios de alquiler. Aparecen en el castillo y se van solos a los 7 días.
+app.post("/api/partidas/:id/mercenarios", async (c) => {
+  const m = await activeMembership(c);
+  if (m instanceof Response) return m;
+  if (ECONOMY_TWEAKS.mercenaries !== "alquiler") return fail(c, 409, "No hay mercenarios en esta partida.");
+  const { cantidad } = await c.req.json<{ cantidad?: number }>().catch(() => ({ cantidad: undefined }));
+  const n = Number(cantidad);
+  if (!Number.isInteger(n) || n < 1 || n > 100) return fail(c, 400, "Elige cuántos mercenarios quieres (de 1 a 100).");
+  const castle = await c.env.DB.prepare("SELECT id FROM tiles WHERE game_id = ? AND castle_of = ? AND owner_house_id = ?")
+    .bind(m.game.id, m.house.id, m.house.id)
+    .first<{ id: number }>();
+  if (!castle) return fail(c, 409, "Los mercenarios solo se presentan en tu castillo, y no lo tienes.");
+  if (m.house.oro < mercenaryCost(n)) return fail(c, 409, `Hacen falta ${mercenaryCost(n)} de Oro.`);
+  const err = await runPaid(c, hireStatements(c.env.DB, m.game, m.house, n));
+  return err ?? c.json({ ok: true, oro: mercenaryCost(n), seVan: leavingDay(m.game) });
 });
 
 app.post("/api/partidas/:id/fortificar", async (c) => {

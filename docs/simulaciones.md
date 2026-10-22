@@ -53,6 +53,29 @@ npm run simular -- --semanas 4                    # duración de la partida
 npm run simular -- --json datos.json              # además, todos los datos
 ```
 
+## Mercenarios de alquiler (22 de octubre de 2026, punto 3 del bloque 5, aplicado)
+
+`npm run simular -- --partidas 300 --mercenarios no` (antes) frente a la misma orden sin `--mercenarios no` (después), ya con el Oro en las mejoras y la Corona. 6 de Oro por tropa, se van a los 7 días, no comen y sin tope semanal. Para el objetivo «tesoro», la misma orden con `--tesoro 75` y `--tesoro 60`.
+
+| dato | sin mercenarios | con mercenarios |
+| --- | --- | --- |
+| Mercenarios contratados (Oro), por partida | — | 42 (254) |
+| Oro sin gastar al final (por casa) | 80-92 | 39-54 |
+| Oro gastado en la Gran Subasta (por partida) | 184 | 160 |
+| Prestigio por Riqueza (por casa) | 2,7-3,2 | 1,1-1,7 |
+| Objetivo «tesoro» cumplido (100 de Oro) | 34% | 5% |
+| Personalidades (x lo esperado) | 0,7-1,3 | 0,7-1,2 |
+| Casas con deserciones | 4% | 3% |
+| El líder de la semana 2 gana | 26% | 28% |
+| Prestigio medio del ganador | 61,2 | 59,9 |
+
+| Umbral del objetivo «tesoro» | 100 | 75 | 60 (elegido) |
+| --- | --- | --- | --- |
+| Cumplido | 5% | 16% | 29% |
+
+- **Los bots contratan unos 6 mercenarios por casa y partida**, cuando les falta ejército y el Oro les vale menos que la tropa. Las personalidades quedan en la misma franja; la oportunista y el guerrero suben un poco (0,8 → 1,0 y 1,0 → 1,2) y el mercader baja (1,1 → 0,9).
+- **Con las tres cosas juntas el Oro ya no sobra**: quedan unos 40-55 por casa al final, por debajo de los 68 que esperaba `docs/bloque5.md`. El objetivo «tesoro» con 100 se quedaba en el 5%, así que baja a 60 de Oro (29%, como el resto de objetivos). La Riqueza sigue como estaba decidido (1 punto por cada 25 de Oro, hasta 10).
+
 ## Cambio con la Corona (22 de octubre de 2026, punto 2 del bloque 5, aplicado)
 
 `npm run simular -- --partidas 300 --corona no` (antes) frente a la misma orden sin `--corona no` (después), ya con el Oro en las mejoras del punto 1. La Corona solo vende, sin tope semanal, y cada unidad encarece la siguiente también dentro de la misma compra.
