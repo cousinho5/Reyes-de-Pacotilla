@@ -27,8 +27,9 @@ describe("Tareas del cron horario", () => {
     expect(kinds("2026-10-19T22:00:00Z")).toEqual(["produccion:2026-10-20"]); // 00:00 del 20 en Madrid
   });
 
-  it("aviso de cierre dos horas antes y resolución el miércoles a las 22:00 (verano: 20:00 UTC)", () => {
-    expect(kinds("2026-10-21T17:00:00Z")).toContain("aviso_cierre:1"); // 19:00 en Madrid
+  it("aviso de cierre una hora antes y resolución el miércoles a las 22:00 (verano: 20:00 UTC)", () => {
+    expect(kinds("2026-10-21T17:00:00Z")).not.toContain("aviso_cierre:1"); // 19:00 en Madrid, aún no
+    expect(kinds("2026-10-21T18:00:00Z")).toContain("aviso_cierre:1"); // 20:00, una hora antes del cierre de las 21:00
     expect(kinds("2026-10-21T19:00:00Z")).not.toContain("resolucion:1"); // 21:00, aún no
     expect(kinds("2026-10-21T20:00:00Z")).toContain("resolucion:1");
   });
@@ -58,7 +59,7 @@ describe("Tareas del cron horario", () => {
 
   it("con resolución diaria: una cada noche a las 22:00, la del martes después del anuncio y 14 en dos semanas", () => {
     expect(kinds("2026-10-19T20:00:00Z", daily)).toContain("resolucion:1"); // lunes 19, 22:00 en Madrid
-    expect(kinds("2026-10-19T17:00:00Z", daily)).toContain("aviso_cierre:1");
+    expect(kinds("2026-10-19T18:00:00Z", daily)).toContain("aviso_cierre:1");
     const tuesday = kinds("2026-10-20T20:00:00Z", { ...daily, currentResolution: 1 });
     expect(tuesday).toEqual(["produccion:2026-10-20", "anuncio:1", "resolucion:2"]);
     // El jueves ya no se repite el anuncio.

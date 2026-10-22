@@ -204,6 +204,21 @@ export const ICONS = {
     ".kdk....kdk.",
     "..k......k..",
   ],
+  // Bloque 12: papelera del botón «Quitar» de las órdenes (docs/maquetas/bloque12/pxl/papelera.px.js).
+  papelera: [
+    "....kkkk....",
+    "...kk..kk...",
+    ".kkkkkkkkkk.",
+    ".kllllmmmdk.",
+    ".kkkkkkkkkk.",
+    "..kmlmlmdk..",
+    "..kmlmlmdk..",
+    "..kmlmlmdk..",
+    "..kmlmlmdk..",
+    "..kmlmlmdk..",
+    "..kddddddk..",
+    "...kkkkkk...",
+  ],
 } as const;
 
 export type IconName = keyof typeof ICONS;

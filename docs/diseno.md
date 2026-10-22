@@ -513,7 +513,7 @@ El objetivo secreto da una meta propia a quien va detrás y hace que el marcador
 
 ## 13. Respeto al tiempo
 
-- **Notificaciones push** cuando: te llega una oferta, se anuncia el evento, quedan 2 horas para el cierre, hay resultados que te afectan o sale el boletín. En iPhone solo funcionan si el juego se añade a la pantalla de inicio y se abre desde ese icono; el juego lo pide con un aviso amable la primera vez.
+- **Notificaciones push** cuando: te llega una oferta, se anuncia el evento, queda 1 hora para el cierre y aún no has dado órdenes (se puede apagar), hay resultados que te afectan o sale el boletín. En iPhone solo funcionan si el juego se añade a la pantalla de inicio y se abre desde ese icono; el juego lo pide con un aviso amable la primera vez.
 
 - **Compartir en WhatsApp:** el boletín y las pantallas de resolución tienen un botón "Compartir en el grupo" que abre WhatsApp con el titular del cronista y un enlace. No se usa la API de WhatsApp para mensajes automáticos: se paga por mensaje y Meta tiene que aprobar las plantillas.
 
@@ -619,7 +619,7 @@ El tono es épico con humor: lo grande se cuenta con solemnidad y los detalles p
 | Boletín semanal | Mucho. Aquí se luce. | GLORIOSA JORNADA EN EL PUENTE QUE NADIE CRUZA. Las huestes de Dani (12 tropas) caen ante Marta (20). El cronista, que siempre creyó en Marta, lo celebra. |
 | Eventos | Un titular y una línea. | La Gran Plaga de Ratas. Las ratas reclaman su parte de la cosecha: -25% de Pan para todos. |
 | Interfaz | Casi nada: estados vacíos, errores y confirmaciones. | Órdenes selladas. |
-| Notificaciones | La información primero y, como mucho, cinco palabras suyas. | Cierre en 2 h. Fray Abundio se impacienta. |
+| Notificaciones | La información primero y, como mucho, cinco palabras suyas. | Cierre en 1 h. Aún no has dado órdenes. Fray Abundio se impacienta. |
 | Pactos | Solemne al firmar, de tribunal al romperse. | Pacto roto. Fray Abundio lo apunta con tinta indeleble. |
 | Pantalla de resolución | Una frase por combate. | Villa Mediocre cambia de dueño. Sigue igual de mediocre. |
 

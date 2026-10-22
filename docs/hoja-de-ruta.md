@@ -12,15 +12,15 @@ Primero se definen todos los bloques; después se hacen uno a uno, en el orden d
 | 4.º | 8. Alianzas | ✅ Hecho | #57 a #60 | Alianzas formales: paso por las casillas del aliado, ruptura con aviso de tres días y ataques conjuntos |
 | 5.º | 6. Optimización y controles en móvil | ✅ Hecho (falta probarlo en un móvil de verdad) | #61 a #64 | Mapa guardado y dibujado en segundo plano, zoom con pinza, ficha que sube desde abajo, órdenes arrastrando, botones de 48 y juego sin conexión |
 | 6.º | 9. Diseño de la sección Mapa | ✅ Hecho (falta probarlo en un móvil de verdad) | #65 y #66 | Capas (con Alcance automático), escudos, tropas por color y tipo, niebla, línea de avisos y leyenda |
-| 7.º | 12. Diseño de la sección Órdenes | 🔨 En curso: PR 1 a 3 listas; falta la 4 (repetir cada noche y aviso) | #67 a #70 | Verbo según el destino, botones de tropas, cambiar órdenes, tarjetas agrupadas, simulación con «¿Y si atacan?», repetir asedios y aviso 1 hora antes del cierre |
-| 8.º | 2. Vista del castillo y construcciones | ⏳ Pendiente (decidido) | — | Escena del castillo en pixel art, un dibujo por nivel de cada edificio y castillo que crece |
+| 7.º | 12. Diseño de la sección Órdenes | ✅ Hecho (falta probarlo en un móvil de verdad) | #67 a #71 | Verbo según el destino, botones de tropas, cambiar órdenes, tarjetas agrupadas, simulación con «¿Y si atacan?», repetir asedios y aviso 1 hora antes del cierre |
+| 8.º | 2. Vista del castillo y construcciones | ⏳ Pendiente (decidido; es el siguiente) | — | Escena del castillo en pixel art, un dibujo por nivel de cada edificio y castillo que crece |
 | 9.º | 10. Diseño de la sección Comercio | ⏳ Pendiente (decidido) | — | Lo urgente arriba, oferta en dos líneas con «Precio justo», valor en Oro de la Corona, aceptar en gris, ofertas que caducan, Corona en Comercio e hilo del trato con frase |
 | 10.º | 3. Mejora del cronista | ⏳ Pendiente (decidido) | — | Fray Abundio: dos boletines por semana, repetición narrada, frases nuevas, memoria, proclamas y dibujo nuevo |
 | 11.º | 11. Diseño de la sección Reino | ⏳ Pendiente (decidido) | — | Clasificación con podio y flechas arriba, gráfica de la carrera, boletín en tarjeta, crónica por noches, ficha de casa, tira de diplomacia y pantalla de coronación |
 | 12.º | 13. Historia y cinemáticas | ⏳ Pendiente (decidido) | — | Cinco cinemáticas en pixel art: prólogo de la muerte de Aldric, coronación con mapa por semanas y títulos cómicos, viñetas de eventos, última semana y fantasma de Aldric; sin sonido de momento |
 | 13.º | 7. Mejorar pagina de inicio del juego | ⏳ Pendiente (decidido) | — | Portada con Aldricia viva en pixel art según la hora real, tarjeta de la partida más urgente con cuenta atrás y avisos, entrar con código en una hoja, invitación como bando real, vitrina de coronas e instalar |
 
-**Cómo vamos:** 6 de 13 bloques hechos; ahora, el 12 (Órdenes). La tabla se actualiza al empezar y al cerrar cada bloque, con sus PR.
+**Cómo vamos:** 7 de 13 bloques hechos; el siguiente, el 2 (Castillo). La tabla se actualiza al empezar y al cerrar cada bloque, con sus PR.
 
 **Por qué este orden:**
 
@@ -214,7 +214,7 @@ Decidido el 20 de octubre de 2026. Las decisiones y los pasos están en `docs/bl
 8. **Final:** pantalla «La coronación».
 9. **Movimiento:** ligero, respeta «reducir movimiento».
 
-## Bloque 12: diseño de la sección Órdenes **(en curso)**
+## Bloque 12: diseño de la sección Órdenes **(hecho; falta probarlo en un móvil de verdad)**
 
 Decidido el 20 de octubre de 2026 y revisado el 22 (sin «ejércitos sin orden», aviso 1 h antes solo a quien no ha dado órdenes, Defender también en casillas ajenas). Las decisiones y los pasos están en `docs/bloque12.md`. No cambia reglas de combate.
 

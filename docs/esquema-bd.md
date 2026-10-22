@@ -143,6 +143,8 @@ Alianzas (bloque 8, migración 0016):
 - `alliances`, una fila por propuesta. `house_a < house_b` y un índice único parcial impiden dos propuestas o alianzas abiertas (`proposed`, `active` o `breaking`) entre las mismas casas, así que tampoco se puede volver a firmar durante el aviso. La propuesta caduca tras la resolución `expires_resolution`; al aceptarla vale desde `signed_resolution` (la de esa noche) y, en el mismo lote, se borran las órdenes de cada casa contra la otra (también las de la cola) y se avisa a su dueño. Al romperla pasa a `breaking` con `broken_by`, `broken_at` (hora de la partida, para los 7 días sin firmar) y `ends_resolution`; la resolución de esa noche la pasa a `ended` en su propio lote.
 - `tile_guests`, las tropas de paso por casilla y casa. `loadTiles` las lee con las casillas (`Tile.guests` del motor) y `guestStatements` escribe lo que cambió tras la resolución o la marcha de los mercenarios.
 - `orders.guest`: la orden sale de las tropas de paso de la casa en esa casilla aliada.
+- `orders.repeat` (bloque 12, 0017): «Repetir cada noche». Al resolver, `jobs.ts` copia la orden a la noche siguiente si sigue siendo posible (en el mismo lote que la resolución); si no, la casa recibe el evento `repeticion_fin`.
+- `houses.close_warning` (bloque 12, 0017): la casa quiere el aviso 1 hora antes del cierre si aún no ha dado órdenes (1, por defecto) o lo ha apagado (0).
 
 Borrar una prueba elimina la partida, sus filas y los usuarios de sus bots en un solo lote (antes suelta `houses.captain_tile`, que apunta a una casilla).
 
@@ -243,6 +245,7 @@ CREATE TABLE houses (
   -- Ausencias
   autopilot_template TEXT NOT NULL DEFAULT 'equilibrada'
                   CHECK (autopilot_template IN ('defensiva','economica','equilibrada')),
+  close_warning   INTEGER NOT NULL DEFAULT 1 CHECK (close_warning IN (0, 1)),  -- aviso 1 h antes del cierre si no ha dado órdenes (0017)
   vacation        INTEGER NOT NULL DEFAULT 0,        -- modo vacaciones avisado (0/1)
   last_seen_at    TEXT,                              -- piloto automático si > 3 días
   joined_at       TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
@@ -312,6 +315,7 @@ CREATE TABLE orders (
   supports_any    INTEGER NOT NULL DEFAULT 0 CHECK (supports_any IN (0, 1)), -- support: apoya el primer ataque a la casilla (0013)
   captain         INTEGER NOT NULL DEFAULT 0 CHECK (captain IN (0, 1)),  -- 1 si el Capitán va con este grupo (0009)
   updated_at      TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  repeat          INTEGER NOT NULL DEFAULT 0 CHECK (repeat IN (0, 1)),  -- se copia a la noche siguiente al resolver: asedios y defensas (0017)
   CHECK (kind = 'support' OR supported_from_tile_id IS NULL),
   CHECK (from_tile_id <> target_tile_id)
 );

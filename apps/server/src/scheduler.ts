@@ -2,7 +2,7 @@
 // Es pura: el cron horario la llama y luego ejecuta las tareas contra D1.
 // Cada tarea tiene una clave única, así que repetirla no tiene efecto.
 
-import { announceInstant, localDate, resolutionInfo, resolutionInstant, totalResolutions, zonedToUtc } from "@reyes/engine";
+import { CLOSE_WARNING_MINUTES, announceInstant, localDate, resolutionInfo, resolutionInstant, totalResolutions, zonedToUtc } from "@reyes/engine";
 
 export interface GameClock {
   timezone: string;
@@ -24,7 +24,7 @@ export type Job =
   | { kind: "resolucion"; key: string; resolution: number }
   | { kind: "fin"; key: string };
 
-const TWO_HOURS = 2 * 60 * 60 * 1000;
+const CLOSE_WARNING_MS = CLOSE_WARNING_MINUTES * 60 * 1000;
 
 export function dueJobs(now: Date, game: GameClock): Job[] {
   const jobs: Job[] = [];
@@ -50,7 +50,7 @@ export function dueJobs(now: Date, game: GameClock): Job[] {
   }
 
   const close = resolutionInstant(game.startDate, next, game.closeTime, game.timezone, game.days);
-  if (now.getTime() >= close.getTime() - TWO_HOURS && now < close) {
+  if (now.getTime() >= close.getTime() - CLOSE_WARNING_MS && now < close) {
     jobs.push({ kind: "aviso_cierre", key: `aviso_cierre:${next}`, resolution: next });
   }
 

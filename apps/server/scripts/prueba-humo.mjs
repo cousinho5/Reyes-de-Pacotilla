@@ -183,6 +183,22 @@ check("una orden a una casilla no adyacente se rechaza", badOrder.status === 400
 const order = await pablo("PUT", `/api/partidas/${gameId}/ordenes`, { ordenes: [{ tipo: "mover", desde: castle.id, hacia: target.id, tropas: 8 }] });
 check(`orden: 8 tropas contra ${target.nombre} (${target.troops})`, order.status === 200, order);
 
+// Bloque 12: «Repetir cada noche» solo en asedios y defensas, y el aviso de cierre se puede apagar.
+const repeatMove = await pablo("PUT", `/api/partidas/${gameId}/ordenes`, {
+  ordenes: [{ tipo: "mover", desde: castle.id, hacia: target.id, tropas: 8, repetir: true }],
+});
+check("un ataque no se puede repetir cada noche", repeatMove.status === 400, repeatMove);
+const repeatDefense = await pablo("PUT", `/api/partidas/${gameId}/ordenes`, {
+  ordenes: [{ tipo: "apoyar", desde: castle.id, hacia: target.id, apoyaDesde: null, tropas: 2, repetir: true }],
+});
+const withRepeat = (await pablo("GET", `/api/partidas/${gameId}`)).data.ordenes ?? [];
+check("una defensa se guarda con «Repetir cada noche»", repeatDefense.status === 200 && withRepeat.length === 1 && withRepeat[0].repetir === true, { repeatDefense, withRepeat });
+await pablo("PUT", `/api/partidas/${gameId}/ordenes`, { ordenes: [{ tipo: "mover", desde: castle.id, hacia: target.id, tropas: 8 }] });
+const warnOff = await pablo("POST", `/api/partidas/${gameId}/aviso-cierre`, { activo: false });
+const warnState = (await pablo("GET", `/api/partidas/${gameId}`)).data.yo.avisoCierre;
+await pablo("POST", `/api/partidas/${gameId}/aviso-cierre`, { activo: true });
+check("el aviso 1 hora antes del cierre se puede apagar", warnOff.status === 200 && warnState === false, { warnOff, warnState });
+
 // --- MVP 2: objetivo secreto y ausencia ---
 const obj = after.yo.objetivo;
 check("objetivo secreto: dos opciones y se puede elegir", obj.opciones.length === 2 && obj.puedeElegir, obj);

@@ -70,6 +70,8 @@ export interface HouseRow extends Resources {
   help_resource: Resource | null;
   help_until_resolution: number | null;
   vacation: number;
+  /** Bloque 12: aviso 1 hora antes del cierre si aún no ha dado órdenes (1) o apagado (0). */
+  close_warning?: number;
   last_seen_at: string | null;
   autopilot_template: string | null;
   autopilot_ran_on: string | null;

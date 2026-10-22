@@ -142,6 +142,8 @@ export interface OrderView {
   resolucion?: number;
   /** Bloque 8: salen las tropas de paso de tu casa en esa casilla aliada. */
   dePaso?: boolean;
+  /** Bloque 12: se copia a la noche siguiente al resolver (asedios y defensas). */
+  repetir?: boolean;
 }
 
 /** Bloque 8: alianzas, tal como llegan del servidor. */
@@ -218,6 +220,8 @@ export interface GameState {
       cumplido: boolean | null;
     };
     ausencia?: { vacaciones: boolean; plantilla: "defensiva" | "economica" | "equilibrada" };
+    /** Bloque 12: aviso 1 hora antes del cierre si aún no has dado órdenes. */
+    avisoCierre?: boolean;
   };
   casas: HouseInfo[];
   /** Solo en partidas de prueba (y solo para quien las creó, en juego). */
@@ -370,6 +374,7 @@ export const api = {
   chooseObjective: (id: number, clave: string) => call<{ ok: true }>("POST", `/partidas/${id}/objetivo`, { clave }),
   setAbsence: (id: number, body: { vacaciones?: boolean; plantilla?: string }) =>
     call<{ ok: true }>("POST", `/partidas/${id}/ausencia`, body),
+  setCloseWarning: (id: number, activo: boolean) => call<{ ok: true }>("POST", `/partidas/${id}/aviso-cierre`, { activo }),
   pushKey: () => call<{ clave: string | null }>("GET", "/push/clave"),
   pushSubscribe: (sub: PushSubscriptionJSON) => call<{ ok: true }>("POST", "/push/suscribir", sub),
   pushUnsubscribe: (endpoint: string) => call<{ ok: true }>("POST", "/push/baja", { endpoint }),
