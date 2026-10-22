@@ -53,6 +53,26 @@ npm run simular -- --semanas 4                    # duración de la partida
 npm run simular -- --json datos.json              # además, todos los datos
 ```
 
+## Fortificación hasta que la atacan (21 de octubre de 2026, punto 5 del bloque 4, aplicado)
+
+`npm run simular -- --partidas 1500 --semilla a --fortificar-hasta-ataque no` (la de antes: 4 noches, sin mantenimiento) frente a la misma orden sin esa opción (hasta que la atacan, 2 de Piedra cada domingo), ya con los puntos 4 y 2. Los bots pagan las fortificaciones que lindan con otra casa y quitan las demás.
+
+| dato | antes | hasta que la atacan |
+| --- | --- | --- |
+| Fortificaciones hechas por partida | 53,5 | 24,3 |
+| Casillas-noche fortificadas | 153 | 259 (+69%) |
+| Mantenimiento pagado (Piedra) / desmanteladas por partida | — | 77 / 2,5 |
+| Ataques a casillas fortificadas (los toman) | 11,5 (58%) | 11,7 (69%) |
+| Piedra sin gastar al final (por casa) | 49-82 | 59-107 |
+| Personalidades (x lo esperado) | 0,8-1,3 | 0,8-1,1 |
+| El líder de la semana 2 gana | 30% | 28% |
+| Prestigio medio del ganador | 62,9 | 62,3 |
+
+- **Las fortificaciones duran mucho más con la mitad de obras**: las casas fortifican una vez y la mantienen, en vez de volver a fortificar cada pocas noches. Por eso sobra algo más de Piedra (unos 10-25 por casa), aunque se pagan unos 77 de mantenimiento por partida.
+- **Una fortificación vieja cae más a menudo** (58% → 69% de los ataques la toman): el ataque llega cuando el atacante ya se ha preparado, con catapultas o un asedio. Y basta un ataque para quitarla.
+- No ayuda al que va primero (el líder de la semana 2 gana un 28%) y las personalidades se igualan algo (la estratega baja de 1,3 a 1,1).
+- Con las casas que fortifican toda su frontera (`--atrincherar pares`), la simulación del 19 de octubre ya mostró que 2 de Piedra frena el atrincheramiento sin cambiar el equilibrio.
+
 ## Jinete a 3 de Oro (21 de octubre de 2026, punto 2 del bloque 4, aplicado)
 
 `npm run simular -- --partidas 1500 --semilla a --coste-jinete hierro:3,pan:2,oro:1` (antes) frente a la misma orden sin `--coste-jinete` (3 de Oro), ya con los cruces del punto 4. Para ver a quien juega con jinetes, 1000 partidas más con `--jinetes-pares 1 --jinetes-impares 0`: las casas pares reclutan solo jinetes y las impares solo Mesnada.

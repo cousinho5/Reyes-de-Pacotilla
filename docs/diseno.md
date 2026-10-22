@@ -208,7 +208,7 @@ Cada día puedes hacer, sin límite más allá de lo que puedas pagar:
 | --- | --- | --- |
 | Mejorar un edificio | Ver tabla de la sección 5 | Sube un nivel; la producción aumenta al día siguiente. |
 | Reclutar | 2 Hierro + 2 Pan por tropa | Las tropas aparecen en tu castillo, o en una aldea tuya si lo eliges (bloque 1), y pueden recibir órdenes para la siguiente resolución. |
-| Fortificar una casilla tuya | 8 Piedra | +25% de defensa durante las cuatro resoluciones siguientes (dos en las partidas con miércoles y domingo). |
+| Fortificar una casilla tuya | 8 Piedra | +25% de defensa **hasta que ataquen la casilla** (bloque 4): el primer ataque, gane o pierda, la quita. Cada domingo cuesta 2 de Piedra de mantenimiento. Antes duraba cuatro resoluciones (dos en las partidas con miércoles y domingo). |
 | Dar órdenes | Gratis | Mover, atacar, apoyar o mantener (sección 8). |
 | Comerciar | Gratis | Ofertas, contraofertas y tratados (sección 9). |
 
@@ -285,6 +285,7 @@ Las tropas se mueven como máximo una casilla por resolución: siete por semana 
 ### 8.6 Mantenimiento
 
 - **Cada domingo:** 1 Pan por cada 3 tropas. Si no puedes pagar, desertan las tropas que falten por cubrir, empezando por las más alejadas del castillo.
+- **Fortificaciones (bloque 4):** después, 2 de Piedra por cada casilla fortificada. Si no llega, se desmantelan las que no se pueden pagar. Las catapultas y los asedios siguen desgastando la fortificación en combate, y cambiar de manos la quita.
 
 - **Estirarse cuesta:** a partir de la quinta casilla controlada, cada casilla extra cuesta 2 Pan más por semana. Es un freno suave al que más se expande.
 
@@ -380,7 +381,7 @@ El comercio es la mitad del juego, así que tiene que ser excelente:
 | Carta | Efecto |
 | --- | --- |
 | Espía | Ves todas las casillas y tropas de una casa hasta la próxima resolución. |
-| Muralla | Fortifica gratis una casilla tuya durante dos resoluciones. |
+| Muralla | Fortifica gratis una casilla tuya hasta que la ataquen (bloque 4; el mantenimiento del domingo sí se paga). |
 | Mercenarios | 5 tropas en tu castillo. |
 | Carreta | Cambia 20 de un recurso por 20 de otro. |
 | Maestro de obras | Sube gratis un nivel un edificio de nivel 1, 2 o 3. |

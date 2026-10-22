@@ -17,6 +17,9 @@ import {
   BUILDINGS,
   PRESTIGE,
   applyUpkeep,
+  applyFortifyUpkeep,
+  areAdjacent,
+  RESOURCES,
   dailyProduction,
   lastPlace,
   objectiveMet,
@@ -429,6 +432,26 @@ export async function runResolution(env: NotifyEnv, game: GameRow, n: number, no
       finalTiles = upkeep.tiles;
       if (upkeep.paid > 0) extraStatements.push(db.prepare("UPDATE houses SET pan = pan - ? WHERE id = ?").bind(upkeep.paid, h.id));
       extraEvents.push({ type: "mantenimiento", visibleTo: h.id, payload: { house: h.id, ...upkeep, tiles: undefined } });
+    }
+    // Mantenimiento de las fortificaciones (bloque 4): FORTIFY_UPKEEP por casilla
+    // fortificada; las que no se pueden pagar se desmantelan. Los bots solo
+    // conservan las que lindan con otra casa, como en el simulador.
+    for (const h of houses) {
+      const keep = h.is_bot
+        ? (t: Tile) => finalTiles.some((o) => o.owner != null && o.owner !== h.id && areAdjacent(o, t))
+        : undefined;
+      const fort = applyFortifyUpkeep(finalTiles, h.id, h, n + 1, keep);
+      if (fort.dropped === 0 && RESOURCES.every((r) => fort.cost[r] === 0)) continue;
+      finalTiles = fort.tiles;
+      for (const r of RESOURCES) {
+        // MAX(0, …): si la casa gastó algo después de leerla, no se rompe el lote (nunca negativo).
+        if (fort.cost[r] > 0) extraStatements.push(db.prepare(`UPDATE houses SET ${r} = MAX(0, ${r} - ?) WHERE id = ?`).bind(fort.cost[r], h.id));
+      }
+      extraEvents.push({
+        type: "mantenimiento_fortificaciones",
+        visibleTo: h.id,
+        payload: { house: h.id, piedra: fort.cost.piedra, oro: fort.cost.oro, kept: finalTiles.filter((t) => t.owner === h.id && t.fortifiedUntil != null && t.fortifiedUntil > n).length, dropped: fort.dropped },
+      });
     }
   }
 

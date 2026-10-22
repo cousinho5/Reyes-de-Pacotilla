@@ -280,6 +280,13 @@ export function describeEvent(e: EventView, houses: HouseInfo[], tiles: TileView
       return d.deserted > 0
         ? `Mantenimiento: costaba ${d.cost} de Pan y solo había ${d.paid}. Desertan: ${troops(d.deserted)}.`
         : `Mantenimiento pagado: ${d.cost} de Pan.`;
+    case "mantenimiento_fortificaciones": {
+      const paid = [d.piedra > 0 && `${d.piedra} de Piedra`, d.oro > 0 && `${d.oro} de Oro`].filter(Boolean).join(" y ");
+      const kept = d.kept === 1 ? "1 casilla fortificada" : `${d.kept} casillas fortificadas`;
+      const dropped = d.dropped === 1 ? "se desmantela 1 fortificación" : `se desmantelan ${d.dropped} fortificaciones`;
+      if (d.dropped > 0) return paid ? `Fortificaciones: pagas ${paid} por ${kept} y ${dropped}.` : `Fortificaciones: no llega para pagarlas y ${dropped}.`;
+      return `Fortificaciones: pagas ${paid} por ${kept}.`;
+    }
     case "ayuda_ultimo":
       return `La Corona ayuda a ${houseName(houses, d.house)}, última en Prestigio, durante la próxima semana.`;
     case "orden_invalida":
