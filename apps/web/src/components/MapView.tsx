@@ -977,12 +977,14 @@ export function MapView({ state, draft, setDraft, act, night, setNight }: Props)
                     if (replayable) {
                       setReplay(true);
                       showBoard();
-                    } else goNext("batallas", [...battles]);
+                    } else if (battles.size > 0) goNext("batallas", [...battles]);
+                    else setShowLast(!showLast);
                   }}
+                  aria-pressed={!replayable && battles.size === 0 ? showLast : undefined}
                 >
                   <Icon name="ordenes" size={16} color="#f1cf7d" />
-                  {battles.size > 0 ? `${battles.size} ${battles.size === 1 ? "batalla" : "batallas"}` : "Movimientos"}
-                  {replayable && " · Ver la noche"}
+                  {battles.size > 0 ? `${battles.size} ${battles.size === 1 ? "batalla" : "batallas"}` : "Movimientos de anoche"}
+                  {replayable ? " · Ver la noche" : battles.size === 0 ? (showLast ? " · Ocultar flechas" : " · Ver flechas") : ""}
                 </button>
               )}
               {threatIds.length === 0 && bannerIds.length === 0 && !(k === 0 && (battles.size > 0 || lastMoves.length > 0)) && (

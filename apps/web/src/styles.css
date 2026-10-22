@@ -909,8 +909,12 @@ svg.ico {
   stroke: rgba(28, 20, 16, 0.22);
   stroke-width: 1;
 }
+/* Bloque 9: en la niebla (sepia) el dueño se sigue viendo: la frontera casi entera y algo menos de relleno. */
 .territory.fogged {
-  opacity: 0.7;
+  opacity: 0.9;
+}
+.territory.fogged polygon {
+  fill-opacity: 0.08;
 }
 .cell-selected {
   fill: none;
