@@ -168,18 +168,18 @@ Propuesto y decidido el 19 de octubre de 2026, a partir de Reyes de Pacotilla: i
 
 ## Bloque 9: diseño de la sección Mapa **(decidido, pendiente de hacer)**
 
-Decidido el 20 de octubre de 2026. Las decisiones y los pasos están en `docs/bloque9.md`. No cambia reglas.
+Decidido el 20 de octubre de 2026 y revisado el 22. Las decisiones y los pasos están en `docs/bloque9.md`. No cambia reglas.
 
 **Decisiones:**
 
-1. **Capas:** Territorio, Recursos, Defensa y Alcance; la de Alcance sale sola al elegir una casilla tuya (a prueba).
-2. **Nombres y casas:** nombres de casa con todo el reino y de casilla de cerca; escudo en lugar del banderín.
-3. **Tropas:** etiqueta del color de la casa, iconos de Jinetes y Catapultas, y «6 → 2» en la noche planeada.
-4. **Niebla:** dos niveles y recuerdo de las últimas tropas vistas, guardado por casa.
-5. **Orientarse:** botones «Mi castillo» y «Siguiente ejército», sin minimapa.
-6. **Avisos:** barra fina sobre las pestañas y marcas en las casillas, con flecha en el borde.
-7. **Noches en cola:** etiqueta «Planeando: …» en la esquina.
-8. **Leyenda:** botón «?», sin primeros pasos.
+1. **Capas:** Territorio, Recursos, Defensa y Alcance (tuyo y de los enemigos que ves); al elegir una casilla tuya se marcan solos sus destinos (a prueba).
+2. **Casas:** escudo de cada casa sobre su territorio solo en la vista de todo el reino; sin nombres.
+3. **Tropas:** placa con franja del color de la casa y borde de latón si son tuyas, iconos de Jinetes y Catapultas, y «6 → 2» en la noche planeada.
+4. **Niebla:** dos estados (ves / no ves, en sepia), sin recuerdo de tropas.
+5. **Orientarse:** sin botones flotantes ni minimapa; zoom con pinza y dos toques.
+6. **Avisos:** la hoja asomada en una línea que lleva a cada aviso, y marcas en las casillas con flecha en el borde.
+7. **Noches en cola:** etiqueta «Sáb 31 · 3 órdenes» arriba a la izquierda, en lugar de la fila de noches.
+8. **Leyenda:** al final del botón de capas, sin primeros pasos.
 
 ## Bloque 10: diseño de la sección Comercio **(decidido, pendiente de hacer)**
 

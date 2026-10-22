@@ -2,7 +2,7 @@
 
 Decidido el 20 de octubre de 2026 · copia del documento «Reyes de Pacotilla: bloque 12, diseño de la sección Órdenes» (claude.ai). No cambia reglas de combate.
 
-Este bloque decide cómo se compone, se repasa y se corrige una orden. Ya está decidido en otros bloques: arrastrar de una casilla a otra abre la orden rellena, la ficha sube desde abajo y vibra al confirmar (bloque 6); la etiqueta «Planeando: …» de las noches en cola y el «6 → 2» de las tropas que quedan (bloque 9).
+Este bloque decide cómo se compone, se repasa y se corrige una orden. Ya está decidido en otros bloques: arrastrar de una casilla a otra abre la orden rellena, la ficha sube desde abajo y vibra al confirmar (bloque 6); la etiqueta de la noche planeada («Sáb 31 · 3 órdenes»), a la que este bloque añade «· 2 sin orden», y el «6 → 2» de las tropas que quedan (bloque 9).
 
 ## Cómo es hoy
 
