@@ -48,6 +48,8 @@ export function Game({ id }: { id: number }) {
   // Bloque 12: orden que abrir en el mapa para cambiarla (desde la pestaña Órdenes).
   const [editOrder, setEditOrder] = useState<OrderView | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  // Bloque 12: al quitar una orden, el aviso lleva «Deshacer» unos segundos (las órdenes de antes).
+  const [undo, setUndo] = useState<OrderView[] | null>(null);
   // Bloque 6: en el Mapa, el reloj y el evento se abren desde una etiqueta de la barra fina.
   const [statusOpen, setStatusOpen] = useState(false);
   // Mientras se guarda una orden, las recargas no pisan lo que se ve.
@@ -94,9 +96,12 @@ export function Game({ id }: { id: number }) {
 
   useEffect(() => {
     if (!toast) return;
-    const t = window.setTimeout(() => setToast(null), 3500);
+    const t = window.setTimeout(() => {
+      setToast(null);
+      setUndo(null);
+    }, undo ? 5000 : 3500);
     return () => window.clearTimeout(t);
-  }, [toast]);
+  }, [toast, undo]);
 
   /** Ejecuta una acción y recarga; los errores se muestran como aviso. */
   const act = useCallback(
@@ -150,6 +155,7 @@ export function Game({ id }: { id: number }) {
       return;
     }
     const removed = wanted.length < draft.length;
+    const before = draft;
     const { draft: orders, dropped } = pruneQueue(state, wanted);
     const next = nextResolution(state);
     const added = removed ? null : wanted[wanted.length - 1];
@@ -159,6 +165,7 @@ export function Game({ id }: { id: number }) {
     try {
       await api.saveOrders(id, orders);
       if (!removed) vibrate("orden");
+      setUndo(removed && note == null ? before : null);
       setToast(
         note ?? removed
           ? dropped > 0
@@ -325,8 +332,20 @@ export function Game({ id }: { id: number }) {
       </main>
 
       {toast && (
-        <div className="toast" role="status">
+        <div className={`toast${undo ? " with-action" : ""}`} role="status">
           {toast}
+          {undo && (
+            <button
+              className="toast-action"
+              onClick={() => {
+                const back = undo;
+                setUndo(null);
+                void updateDraft(back, "Orden recuperada.");
+              }}
+            >
+              Deshacer
+            </button>
+          )}
         </div>
       )}
 

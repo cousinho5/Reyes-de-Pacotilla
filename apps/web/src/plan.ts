@@ -2,7 +2,7 @@
 // el servidor y solo lo que la casa ve: las tropas que no se ven cuentan como 0
 // y las órdenes de las demás casas no entran.
 
-import { alliesOf, checkOrders, fitOrders, planNights, type Alliance, type Order, type PlannedNight, type Tile } from "@reyes/engine";
+import { alliesOf, checkOrders, fitOrders, planNights, worstAttacks, type Alliance, type Order, type PlannedNight, type Tile, type WorstAttack } from "@reyes/engine";
 import type { GameState, OrderView, TileView } from "./api";
 
 /** Una casilla tal como la entiende el motor. */
@@ -151,4 +151,13 @@ export function pruneQueue(state: GameState, draft: OrderView[]): { draft: Order
     kept = [...kept, ...ok];
   }
   return { draft: kept, dropped };
+}
+
+/** Bloque 12, «¿Y si atacan?»: las casillas que perderías esta noche si una casa a la vista ataca con todo lo que le ves. */
+export function whatIfAttacked(state: GameState, draft: OrderView[]): WorstAttack[] {
+  const tiles = state.casillas ?? [];
+  const me = state.yo.casa;
+  const next = nextResolution(state);
+  const tonight = draft.filter((o) => nightOf(o, next) === next).map((o) => toOrder(o, me));
+  return worstAttacks(tiles.map(asTile), me, tonight, next, alliancesOf(state), myCaptainTile(tiles, me));
 }

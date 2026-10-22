@@ -6,7 +6,7 @@ import { cellBox, sharedEdge, type Geo } from "../art/grid";
 import { geoOf } from "../art/world";
 import { WorldCanvas, useWorldMeta } from "./WorldCanvas";
 import { HOUSE_COLORS, RESOURCE_LABEL, TERRAIN_NOTE, TERRITORY, TILE_LABEL, UNIT_LABEL, captainOf, houseName, nightLabel, troops as troopsWord, troopsText, wallsLeft, withArticle } from "../ui";
-import { asTile, myAllies, myBreaking, nextResolution, nightOf, project, queueNights } from "../plan";
+import { asTile, myAllies, myBreaking, nextResolution, nightOf, project, queueNights, whatIfAttacked } from "../plan";
 import { VERB_LABEL, orderOf, share, verbOf, verbTitle, verbsFor, type Verb } from "../verbs";
 import { NightReplay, replaySteps } from "./NightReplay";
 import { useMapZoom } from "./useMapZoom";
@@ -110,6 +110,8 @@ export function MapView({ state, draft, setDraft, act, night, setNight, editOrde
   const [layersOpen, setLayersOpen] = useState(false);
   // Bloque 12: la etiqueta de la noche abre la lista rápida de órdenes en la hoja.
   const [ordersList, setOrdersList] = useState(false);
+  // «¿Y si atacan?» (bloque 12): las casillas que perderías, marcadas en el mapa hasta que cambien tus órdenes.
+  const [whatIf, setWhatIf] = useState<{ key: string; lost: { tile: number; by: number[]; troops: number }[] } | null>(null);
   const [legend, setLegend] = useState(false);
   // Bloque 8: aliados en vigor (paso libre) y casas con la alianza en aviso (ni atacar ni entrar).
   const allies = useMemo(() => myAllies(state), [state]);
@@ -137,6 +139,8 @@ export function MapView({ state, draft, setDraft, act, night, setNight, editOrde
     [now, me, k, bound],
   );
   const threatAt = new Map(threatened.map((x) => [x.tile, x.by]));
+  const whatIfKey = JSON.stringify(draft.filter((o) => nightOf(o, next) === next));
+  const lostIds = k === 0 && whatIf?.key === whatIfKey ? whatIf.lost.map((w) => w.tile) : [];
   const banners = k === 0 ? lastEvents.filter((e) => e.tipo === "estandartes").map((e) => e.datos as { house: number; tile: number; troops: number; near: number }) : [];
   const bannerNear = new Map(banners.map((b) => [b.near, b]));
   // Bloque 9: casillas con aviso (amenazas y estandartes), sin repetir.
@@ -762,6 +766,10 @@ export function MapView({ state, draft, setDraft, act, night, setNight, editOrde
               tiles
                 .filter((t) => threatAt.has(t.id))
                 .map((t) => <polygon key={`a${t.id}`} points={points(t, 2.5)} className="cell-threat" />)}
+            {!replay &&
+              lostIds.map((id) => byId.get(id)).filter((t): t is TileView => !!t).map((t) => (
+                <polygon key={`p${t.id}`} points={points(t, 2.5)} className="cell-lost" />
+              ))}
             {tiles.filter(isTarget).map((t) => (
               <polygon key={`t${t.id}`} points={points(t, 2)} className="cell-target" />
             ))}
@@ -990,6 +998,17 @@ export function MapView({ state, draft, setDraft, act, night, setNight, editOrde
                 setCompose(null);
               }}
               onEdit={editExisting}
+              whatIf={k === 0 && whatIf?.key === whatIfKey ? whatIf.lost : null}
+              onWhatIf={
+                k === 0 && me != null
+                  ? () => {
+                      const lost = whatIfAttacked(state, draft);
+                      setWhatIf({ key: whatIfKey, lost });
+                      if (lost.length > 0) goTo(lost[0]!.tile);
+                    }
+                  : undefined
+              }
+              onGo={goTo}
             />
           ) : compose ? (
             <Composer
@@ -1153,6 +1172,9 @@ function QuickOrders({
   bound,
   onNight,
   onEdit,
+  whatIf,
+  onWhatIf,
+  onGo,
 }: {
   state: GameState;
   nights: string[];
@@ -1164,6 +1186,10 @@ function QuickOrders({
   bound: number[];
   onNight: (i: number) => void;
   onEdit: (o: OrderView) => void;
+  /** «¿Y si atacan?»: lo que perderías (null si no se ha probado con estas órdenes). */
+  whatIf: { tile: number; by: number[]; troops: number }[] | null;
+  onWhatIf?: () => void;
+  onGo: (tile: number) => void;
 }) {
   const me = state.yo.casa ?? -1;
   const name = (id: number) => byId.get(id)?.nombre ?? "?";
@@ -1215,6 +1241,31 @@ function QuickOrders({
             </li>
           ))}
         </ul>
+      )}
+      {onWhatIf && (
+        <div className="what-if">
+          <button className="secondary wide" onClick={onWhatIf}>
+            ¿Y si atacan?
+          </button>
+          {whatIf &&
+            (whatIf.length === 0 ? (
+              <p className="hint">Con lo que ves, ninguna casa podría quitarte una casilla esta noche.</p>
+            ) : (
+              <ul className="tile-orders">
+                {whatIf.map((w) => (
+                  <li key={w.tile}>
+                    <button className="row-button" onClick={() => onGo(w.tile)}>
+                      <span className="grow">
+                        Perderías <strong>{name(w.tile)}</strong> si {w.by.map((h) => withArticle(houseName(state.casas, h))).join(" o ")}{" "}
+                        {w.by.length === 1 ? "ataca" : "atacan"} con todo ({troopsWord(w.troops)} a la vista)
+                      </span>
+                      <small>Ver ›</small>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ))}
+        </div>
       )}
     </section>
   );
