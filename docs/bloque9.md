@@ -27,25 +27,24 @@ El mapa enseña bien el terreno y tus tropas, pero casi todo lo demás hay que a
 
 ## Decisiones
 
+Revisadas con Pablo el 22 de octubre de 2026, antes de empezar a programar (las de la primera versión se han ajustado al mapa que dejó el bloque 6).
+
 | Punto | Decisión |
 | --- | --- |
-| 1. Capas del mapa | Selector en una esquina con cuatro capas: Territorio (como hoy), Recursos (qué da cada casilla), Defensa (terreno, murallas y ríos) y Alcance (adonde llegan tus tropas esta noche). Al elegir una casilla tuya con tropas sale sola la capa de Alcance y, al cerrar la ficha, vuelve la que tenías. **A prueba:** si en el móvil molesta, se queda solo el selector |
-| 2. Nombres y casas | Con todo el reino, el nombre de cada casa en grande sobre su territorio; de cerca, el nombre de cada casilla al pie. El escudo de la casa sustituye al banderín de color |
-| 3. Tropas | Etiqueta del color de la casa, con borde dorado si son tuyas, y un iconito si hay Jinetes o Catapultas. En la noche que planeas, lo que queda tras tus órdenes («6 → 2») |
-| 4. Niebla | Dos niveles: lo que ves esta noche, nítido; lo que no, en sepia; lo que nunca has visto, más oscuro. En la sepia, las últimas tropas que viste con su noche («4, hace 2 noches»), en gris. El servidor lo guarda por casa y nunca da más de lo que esa casa llegó a ver |
-| 5. Orientarse | Botones «Mi castillo» y «Siguiente ejército» (pasa por tus casillas con tropas libres). Sin minimapa |
-| 6. Parte de guerra y avisos | Una barra fina encima de las pestañas de abajo («2 batallas · Ver la noche», «3 casillas amenazadas»). Los avisos van además en las propias casillas, con una flecha en el borde de la pantalla para los que quedan fuera. Tocar el aviso de la barra lleva a la casilla |
-| 7. Noches en cola | Etiqueta pequeña en la esquina («Planeando: sáb 31») que al tocarla abre las noches; lleva un número si hay órdenes en otras noches |
-| 8. Leyenda | Botón «?» que abre la leyenda de cada icono y cada borde. Sin primeros pasos guiados |
+| 1. Capas del mapa | Botón de capas arriba a la derecha con cuatro: Territorio (como hoy), Recursos (qué da cada casilla), Defensa (terreno, murallas y ríos) y Alcance. Elegida en el botón, Alcance enseña adónde llegan esta noche todos tus ejércitos, en tu color, y adónde llegan los enemigos que ves, con el rayado de las amenazas. Al elegir una casilla tuya con tropas se marcan solos sus destinos (sin pulsar «Mover o atacar») y, al cerrar la ficha, vuelve la capa que tenías. El alcance sale del motor (`marchKind`, `distance`), nunca calculado a mano. **A prueba:** si en el móvil molesta, se queda solo el botón |
+| 2. Casas | Solo en la vista más lejana (todo el reino), un escudo de la casa en el centro de cada trozo de su territorio, para indicar de quién es. Sin nombres de casa ni de casilla. En los demás zooms, la casa se reconoce por la frontera de su color y por la etiqueta de tropas; desaparece el escudito de 14 px por trozo |
+| 3. Tropas | Placa oscura como hoy, con una franja del color de la casa (el Negro y el Marrón no se leerían como fondo) y un borde de latón grueso si son tuyas. Un iconito si hay Jinetes o Catapultas. En la noche que planeas, lo que queda tras tus órdenes («6 → 2») |
+| 4. Niebla | Dos estados: lo que ves esta noche, nítido; lo que no, en sepia. No hay nivel «nunca visto»: el dueño, el terreno y los asedios ya son públicos, así que no escondería nada. Sin recuerdo de las últimas tropas vistas. No cambia el servidor ni la base de datos |
+| 5. Orientarse | Sin botones flotantes de zoom, «Mi castillo» ni «Siguiente ejército», y sin minimapa. El zoom se cambia con la pinza y con dos toques (en el ordenador, con doble clic o con Ctrl y la rueda); al abrir, el mapa se centra en tu castillo |
+| 6. Parte de guerra y avisos | La hoja asomada de abajo (bloque 6) se reduce a una línea: «2 batallas · Ver la noche», «3 casillas amenazadas ›». Al tocar el aviso lleva a la casilla y, si se vuelve a tocar, a la siguiente. Los avisos van además en las propias casillas, con una flecha en el borde de la pantalla para los que quedan fuera |
+| 7. Noches en cola | Una sola etiqueta arriba a la izquierda («Sáb 31 · 3 órdenes») que sustituye a la fila de noches; al tocarla abre las noches, y lleva un número si hay órdenes en otras noches. El bloque 12 le añade «· 2 sin orden» |
+| 8. Leyenda | Al final del botón de capas, la leyenda de cada icono y cada borde. Sin primeros pasos guiados |
 
 ## Pasos
 
-Van después del bloque 6, porque usan el mapa a pantalla completa y la ficha que sube desde abajo.
+Van después del bloque 6, porque usan el mapa a pantalla completa y la ficha que sube desde abajo. Solo cliente: no hay migración.
 
-1. **Tropas y nombres** (puntos 2 y 3): etiqueta del color de la casa, iconos de tipo, «6 → 2» en la noche planeada, escudos y nombres según el zoom. Solo cliente (`MapView.tsx`, `apps/web/src/art`).
-2. **Capas** (punto 1): selector y las cuatro capas; la de Alcance sale sola al elegir una casilla tuya (a prueba). El alcance sale del motor (`marchKind`, `distance` de `map.ts`), nunca calculado a mano en el cliente.
-3. **Avisos** (punto 6): barra de avisos y marcas en el borde de la pantalla.
-4. **Orientarse y noches** (puntos 5 y 7): botones de salto y etiqueta de la noche planeada.
-5. **Niebla con recuerdo** (punto 4): migración nueva con lo último visto por casa y casilla; se rellena en `jobs.ts` al resolver, en el mismo lote; la API lo envía solo a esa casa. Prueba de que nunca sale nada que la casa no vio.
-6. **Leyenda** (punto 8): botón «?» con cada icono y cada borde.
-7. **Comprobar en un móvil** de 390x844 con Playwright, de cerca y con todo el reino, con 4 y con 8 casas.
+1. **PR 1, tropas y escudos** (puntos 2 y 3): placa con franja de color y borde de latón, iconos de tipo, «6 → 2» en la noche planeada y escudos en la vista lejana (`MapView.tsx`, `apps/web/src/art`).
+2. **PR 2, capas** (puntos 1 y 8): botón de capas con las cuatro y la leyenda; destinos marcados al elegir una casilla tuya; Alcance de tus ejércitos y de los enemigos.
+3. **PR 3, avisos y noches** (puntos 5, 6 y 7): hoja asomada en una línea que lleva a cada aviso, marcas en las casillas y flechas en el borde, etiqueta de la noche planeada, fuera el botón de zoom (y doble clic en el ordenador).
+4. **PR 4, niebla y comprobación** (punto 4 y final): niebla en sepia y comprobación en un móvil de 390x844 con Playwright, de cerca y con todo el reino, con 4 y con 8 casas.
