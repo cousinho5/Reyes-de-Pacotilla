@@ -317,7 +317,7 @@ Simulación (300 partidas de 6 semanas, `docs/simulaciones.md`): con terreno hay
 | Tropa | Coste | Fuerza | Movimiento | Notas |
 | --- | --- | --- | --- | --- |
 | **Mesnada** | 2 Hierro + 2 Pan | 1 | Una casilla | La única que sube a la montaña. |
-| **Jinetes** | 3 Hierro + 2 Pan + 1 Oro | 1; **2 al atacar una casilla llana** (campos o páramo) sin murallas; 0,5 en el bosque | Una casilla, o **dos por lo llano** si el grupo es solo de jinetes y la de en medio es tuya | No suben a la montaña. |
+| **Jinetes** | 3 Hierro + 2 Pan + 3 Oro (bloque 4; antes 1 Oro) | 1; **2 al atacar una casilla llana** (campos o páramo) sin murallas; 0,5 en el bosque | Una casilla, o **dos por lo llano** si el grupo es solo de jinetes y la de en medio es tuya | No suben a la montaña. |
 | **Catapultas** | 4 Madera + 2 Hierro | 0 | Una casilla | Cada una que ataca quita **25%** al bono de fortificación o de fortaleza (nunca al resto). Si el ataque fracasa, se pierden. No suben a la montaña. Comen como dos tropas. |
 
 - Cada casilla guarda cuántas tropas tiene y, de ellas, cuántas son Jinetes y Catapultas. Cada orden dice lo mismo.

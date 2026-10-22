@@ -9,7 +9,7 @@ Cada punto se hace en una solicitud de cambios propia, con su prueba, su simulac
 | Punto | Decisión | En el motor |
 | --- | --- | --- |
 | 1. Apoyo sin elegir origen | Apoyas el primer ataque que llegue a la casilla esa noche: el tuyo si atacas tú; si no, el que se ordenó antes | Parcial (`supportAnyOrigin`, solo ataques propios) |
-| 2. Mesnada frente a jinetes | El jinete cuesta 3 de Oro en vez de 1 | No |
+| 2. Mesnada frente a jinetes | El jinete cuesta 3 de Oro en vez de 1 | **Hecho** |
 | 3. Capitán como unidad propia | Se mueve solo; cae preso si lo atacan; libre a las 7 noches o con rescate negociado | Parcial (`captainAlone`, sin rescate) |
 | 4. Jinetes que se cruzan | El cruce por el camino es un choque frontal | **Hecho** (`crossingClash` encendido) |
 | 5. Fortificación hasta que la atacan | Mantenimiento de 2 de Piedra por casilla cada domingo | Sí (`fortifyUntilAttacked`, `FORTIFY_UPKEEP` vacío) |
@@ -46,6 +46,8 @@ Tu apoyo puede acabar ayudando a un enemigo que se adelantó: es parte del riesg
 5. Pruebas (ya hay tres en `bloque4.test.ts`; faltan las de varias casas) y sección 8 del diseño.
 
 ## Punto 2: Mesnada frente a jinetes
+
+**Hecho** el 21 de octubre de 2026: `UNITS.jinetes.cost` con 3 de Oro; el aviso al reclutar sin recursos sale de `rules.ts`. Simulación en `docs/simulaciones.md`.
 
 **Hoy.**
 
