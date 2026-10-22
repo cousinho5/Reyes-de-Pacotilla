@@ -63,24 +63,54 @@ export interface WorldOptions {
   coast?: "oeste-este" | "norte-sur" | null;
 }
 
-export interface WorldImage {
+/** Tamaño y forma del dibujo, sin dibujarlo (bloque 6: el dibujo va en segundo plano). */
+export interface WorldMeta {
   width: number;
   height: number;
   margin: number;
-  /** Una letra por píxel, fila a fila. */
-  pixels: string[];
-  palette: Palette;
   cols: number;
   rows: number;
-  /** Niebla por casilla: fog[y][x]. */
-  fog: boolean[][];
   grid: GridKind;
 }
 
+export interface WorldImage extends WorldMeta {
+  /** Una letra por píxel, fila a fila. */
+  pixels: string[];
+  palette: Palette;
+  /** Niebla por casilla: fog[y][x]. */
+  fog: boolean[][];
+}
+
+/** Lo que ocupará el dibujo de `renderWorld(opts)`, al instante. */
+export function worldMeta(opts: WorldOptions): WorldMeta {
+  const margin = opts.margin ?? (opts.coast ? FRAME : 20);
+  const grid = opts.grid ?? GRID.kind;
+  const geo = makeGeo(grid, opts.cols, opts.rows, margin);
+  return { width: geo.width, height: geo.height, margin, cols: opts.cols, rows: opts.rows, grid };
+}
+
 /** Geometría de un mundo ya dibujado (centros de casilla, contornos). */
-export function geoOf(img: Pick<WorldImage, "grid" | "cols" | "rows" | "margin">): Geo {
+export function geoOf(img: Pick<WorldMeta, "grid" | "cols" | "rows" | "margin">): Geo {
   return makeGeo(img.grid, img.cols, img.rows, img.margin);
 }
+
+/** Color de cada terreno en la vista previa, mientras se dibuja el mapa de verdad. */
+export const PREVIEW_COLOR: Record<TileType, string> = {
+  campos: WORLD.W!,
+  castillo: WORLD["4"]!,
+  puerto: WORLD["4"]!,
+  bosque: WORLD["2"]!,
+  montana: WORLD.t!,
+  cantera: WORLD.F!,
+  fortaleza: WORLD.f!,
+  paramo: WORLD.A!,
+  prado: WORLD["4"]!,
+  lago: WORLD.c!,
+  aldea: WORLD["3"]!,
+  ruinas: WORLD["3"]!,
+};
+/** Fondo de la vista previa: el marco de mar y montañas, en oscuro. */
+export const PREVIEW_BACKGROUND = WORLD.s!;
 
 const FLAG_MAIN = "αβγδεζηθ";
 const FLAG_SHADE = "ΑΒΓΔΕΖΗΘ";
@@ -193,9 +223,8 @@ class Layer {
 
 export function renderWorld(opts: WorldOptions): WorldImage {
   const { cols, rows, cells } = opts;
-  const M = opts.margin ?? (opts.coast ? FRAME : 20);
+  const { margin: M, grid: kind } = worldMeta(opts);
   const seed = opts.seed ?? 7;
-  const kind = opts.grid ?? GRID.kind;
   const geo = makeGeo(kind, cols, rows, M);
   const W = geo.width;
   const H = geo.height;

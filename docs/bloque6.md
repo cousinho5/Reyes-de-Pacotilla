@@ -24,6 +24,23 @@ Medido el 20 de octubre de 2026 con Playwright en un móvil simulado de 390x844 
 - **Botones.** 16 cosas que se tocan miden menos de 44 px (volver 11x40, zoom, «Ver la noche», «Flechas», Mesnada/Jinetes/Catapultas, «Ver en el mapa», una casilla de marcar de 13x13). En la vista de todo el reino cada casilla mide 34x39.
 - **Detalles.** Solo hay margen seguro abajo (`styles.css`, `.tabs`); nada para la muesca ni los lados. Ningún `touch-action`: la pinza y el doble toque hacen zoom a la página. Las ayudas con `title` no se ven al tocar. `min-height: 100vh` en vez de `dvh`. El service worker (`public/sw.js`) solo atiende las notificaciones: sin conexión no abre. La repetición de la noche vuelve a pintar todo en cada imagen (`NightReplay.tsx`).
 
+### Medidas antes de empezar (22 de octubre de 2026)
+
+Con `npm run medir-movil` (`scripts/medir-movil.mjs`, paso 1), que crea una partida de prueba de 7 casas, la avanza hasta la resolución 5 (o la primera después con una batalla a la vista, jugando como la casa que la ganó, para que salga la repetición) y la mide en los dos móviles. Los números bailan una décima de una vez a otra. Desde el 20 de octubre el JS ha crecido de 127 a 140 KB (bloques 5 y 8); las letras suben a 133 KB cuando la pantalla usa la cursiva.
+
+| Qué | Móvil normal | Móvil flojo y 4G lenta |
+| --- | --- | --- |
+| Descarga de la primera visita | 281 KB (JS 140, letras 133, CSS 7) | 281 KB |
+| Se ve la página | 0,15 s | 1,46 s |
+| Se ve el mapa | 1,14 s | 5,59 s |
+| Pantalla congelada mientras se dibuja el mapa | 0,98 s | 4,08 s |
+| Se ve el mapa en la segunda visita | 1,23 s | 4,57 s |
+| Fluidez al arrastrar el mapa | 61 imágenes/s | 61 imágenes/s |
+| Fluidez de la repetición de la noche | 60 imágenes/s | 58 imágenes/s |
+| Casilla de cerca / de todo el reino | 112x128 / 32x37 | 112x128 / 32x37 |
+
+Lo que se toca y mide menos de 48 px (sin contar la mesa de pruebas ni las casillas del mapa): 33 cosas, 13 de ellas por debajo de 44 px. Mapa: volver (11x40), el evento, los días de la cola (38 de alto), «Ver todo el reino», «Ver la noche» y «Flechas». Castillo: Mesnada, Jinetes y Catapultas (40 de alto), «Soltar gratis» y varios botones y desplegables de 44 de alto. Órdenes: «Ver en el mapa». Comercio: «Pedir otro a Fray Abundio», las cifras de la Corona y «Aceptar»/«Contraofertar» (40). Reino: los botones del boletín y la clasificación (44).
+
 ## Decisiones
 
 | Punto | Decisión |
@@ -39,8 +56,17 @@ Medido el 20 de octubre de 2026 con Playwright en un móvil simulado de 390x844 
 
 ## Pasos
 
-1. **Medidas de partida.** Guardar el script de medición (carga, primer dibujo del mapa, fluidez, tamaño de lo que se toca) en `scripts/` para repetirlo antes y después de cada paso.
-2. **Dibujo del mapa.** Guardar el dibujo por partida y estado (lo que cambia el dibujo: dueños, etapas de castillo, terreno) y dibujarlo en un Web Worker con `OffscreenCanvas`; mientras, una vista previa con el color de cada casilla.
+1. **Medidas de partida.** Guardar el script de medición (carga, primer dibujo del mapa, fluidez, tamaño de lo que se toca) en `scripts/` para repetirlo antes y después de cada paso. **Hecho:** `npm run medir-movil -- [url] [clave-admin]` con el servidor local; medidas arriba.
+2. **Dibujo del mapa.** Guardar el dibujo por partida y estado (lo que cambia el dibujo: dueños, etapas de castillo, terreno) y dibujarlo en un Web Worker con `OffscreenCanvas`; mientras, una vista previa con el color de cada casilla. **Hecho:** `apps/web/src/art/world.worker.ts` dibuja en segundo plano y `art/worldStore.ts` guarda el dibujo: en memoria (los 6 últimos, para volver a la pestaña Mapa al momento) y en el móvil como PNG en IndexedDB (los 8 últimos), con una huella de las opciones del dibujo y de la versión del juego (`__BUILD__` en `vite.config.ts`: cada versión dibuja de nuevo). `WorldCanvas.tsx` pinta mientras tanto la vista previa (`PREVIEW_COLOR` de `world.ts`) solo la primera vez; si ya había un dibujo, se queda hasta que llega el nuevo, y si llegan varios encargos seguidos solo se dibuja el último. Las casillas y las flechas se colocan con `worldMeta`, sin esperar al dibujo. Sin Worker, se dibuja en el hilo principal tras la vista previa.
+
+   | Qué | Antes (normal / flojo) | Después (normal / flojo) |
+   | --- | --- | --- |
+   | Se ve la vista previa del mapa | no había | 0,33 s / 2,06 s |
+   | Se ve el mapa | 1,14 s / 5,59 s | 1,23 s / 3,29 s |
+   | Pantalla congelada mientras se dibuja el mapa | 0,98 s / 4,08 s | 0,15 s / 0,55 s |
+   | Se ve el mapa en la segunda visita | 1,23 s / 4,57 s | 0,25 s / 1,07 s |
+
+   El dibujante es un archivo aparte de 38 KB que se descarga al abrir el mapa.
 3. **Zoom** con pinza y doble toque en `MapView.tsx`, encajando en escalas enteras de pixel art.
 4. **Hoja de la casilla** y mapa a toda pantalla con la barra fina.
 5. **Arrastrar para dar órdenes** y mantener pulsado para la información rápida, siempre con confirmación.

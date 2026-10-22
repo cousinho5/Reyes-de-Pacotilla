@@ -16,10 +16,12 @@
     "dev:web": "npm run dev -w @reyes/web",
     "dev:server": "npm run build -w @reyes/web && npm run dev -w @reyes/server",
     "prueba-humo": "node apps/server/scripts/prueba-humo.mjs",
+    "medir-movil": "node scripts/medir-movil.mjs",
     "simular-mapa": "esbuild scripts/simular-mapa.ts --bundle --platform=node --format=esm --log-level=warning --outfile=node_modules/.cache/simular-mapa.mjs && node node_modules/.cache/simular-mapa.mjs",
     "simular": "esbuild scripts/simular.ts --bundle --platform=node --format=esm --log-level=warning --outfile=node_modules/.cache/simular.mjs && node node_modules/.cache/simular.mjs"
   },
   "devDependencies": {
+    "playwright-core": "1.56.1",
     "typescript": "^5.9.0",
     "vitest": "^4.0.0"
   },
