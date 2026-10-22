@@ -1,24 +1,26 @@
 # Reyes de Pacotilla: hoja de ruta
 
-Actualizada el 20 de octubre de 2026 · copia del documento «Reyes de Pacotilla: hoja de ruta» (claude.ai)
+Actualizada el 22 de octubre de 2026 · copia del documento «Reyes de Pacotilla: hoja de ruta» (claude.ai)
 
 Primero se definen todos los bloques; después se hacen uno a uno, en el orden de la tabla. Cada bloque conserva su número aunque cambie de puesto, porque los documentos y el código lo citan así (`docs/bloque4.md`, «bloque 4» en `rules.ts`). Se pueden añadir o mover bloques sobre la marcha.
 
-| Orden | Bloque | Estado | Qué entra |
-| --- | --- | --- | --- |
-| 1.º | 1. Mapa y losetas | Hecho (fases 0 a 4); quedan para más adelante el dibujo a ×1,5 y más variedad de dibujos por tipo de loseta | Geografía, ríos, Prado, Aldea, Ruinas y marco de mar y montañas |
-| 2.º | 4. Retoques sistema de batalla | Hecho | Apoyo sin origen, jinete más caro, Capitán libre, choques en el camino y fortificación con mantenimiento |
-| 3.º | 5. Retoques recursos | Hecho | Oro en todas las mejoras, cambio con la Corona, mercenarios de alquiler y mejoras con algo más de Madera y Piedra |
-| 4.º | 8. Alianzas | Hecho | Alianzas formales: paso por las casillas del aliado, ruptura con aviso de tres días y ataques conjuntos |
-| 5.º | 6. Optimización y controles en móvil | En curso (pasos 1 a 7 hechos) | Mapa guardado y dibujado en segundo plano, zoom con pinza, ficha que sube desde abajo, órdenes arrastrando, botones de 48 y juego sin conexión |
-| 6.º | 9. Diseño de la sección Mapa | Decidido | Capas (con Alcance automático), escudos y nombres, tropas por color y tipo, niebla con recuerdo, botones de salto, barra de avisos y leyenda |
-| 7.º | 12. Diseño de la sección Órdenes | Decidido | Verbo según el destino, botones de tropas, cambiar órdenes, tarjetas agrupadas, simulación con «¿Y si atacan?», repetir asedios y aviso 1 hora antes del cierre |
-| 8.º | 2. Vista del castillo y construcciones | Decidido | Escena del castillo en pixel art, un dibujo por nivel de cada edificio y castillo que crece |
-| 9.º | 10. Diseño de la sección Comercio | Decidido | Lo urgente arriba, oferta en dos líneas con «Precio justo», valor en Oro de la Corona, aceptar en gris, ofertas que caducan, Corona en Comercio e hilo del trato con frase |
-| 10.º | 3. Mejora del cronista | Decidido | Fray Abundio: dos boletines por semana, repetición narrada, frases nuevas, memoria, proclamas y dibujo nuevo |
-| 11.º | 11. Diseño de la sección Reino | Decidido | Clasificación con podio y flechas arriba, gráfica de la carrera, boletín en tarjeta, crónica por noches, ficha de casa, tira de diplomacia y pantalla de coronación |
-| 12.º | 13. Historia y cinemáticas | Decidido | Cinco cinemáticas en pixel art: prólogo de la muerte de Aldric, coronación con mapa por semanas y títulos cómicos, viñetas de eventos, última semana y fantasma de Aldric; sin sonido de momento |
-| 13.º | 7. Mejorar pagina de inicio del juego | Decidido | Portada con Aldricia viva en pixel art según la hora real, tarjeta de la partida más urgente con cuenta atrás y avisos, entrar con código en una hoja, invitación como bando real, vitrina de coronas e instalar |
+| Orden | Bloque | Estado | PR | Qué entra |
+| --- | --- | --- | --- | --- |
+| 1.º | 1. Mapa y losetas | ✅ Hecho (quedan para más adelante el dibujo a ×1,5 y más variedad por loseta) | #44 a #48 | Geografía, ríos, Prado, Aldea, Ruinas y marco de mar y montañas |
+| 2.º | 4. Retoques sistema de batalla | ✅ Hecho | #49 a #53 | Apoyo sin origen, jinete más caro, Capitán libre, choques en el camino y fortificación con mantenimiento |
+| 3.º | 5. Retoques recursos | ✅ Hecho | #54 a #56 | Oro en todas las mejoras, cambio con la Corona, mercenarios de alquiler y mejoras con algo más de Madera y Piedra |
+| 4.º | 8. Alianzas | ✅ Hecho | #57 a #60 | Alianzas formales: paso por las casillas del aliado, ruptura con aviso de tres días y ataques conjuntos |
+| 5.º | 6. Optimización y controles en móvil | ✅ Hecho (falta probarlo en un móvil de verdad) | #61 a #64 | Mapa guardado y dibujado en segundo plano, zoom con pinza, ficha que sube desde abajo, órdenes arrastrando, botones de 48 y juego sin conexión |
+| 6.º | 9. Diseño de la sección Mapa | ✅ Hecho (falta probarlo en un móvil de verdad) | #65 y #66 | Capas (con Alcance automático), escudos, tropas por color y tipo, niebla, línea de avisos y leyenda |
+| 7.º | 12. Diseño de la sección Órdenes | 🔨 En curso: revisando las decisiones con Pablo | — | Verbo según el destino, botones de tropas, cambiar órdenes, tarjetas agrupadas, simulación con «¿Y si atacan?», repetir asedios y aviso 1 hora antes del cierre |
+| 8.º | 2. Vista del castillo y construcciones | ⏳ Pendiente (decidido) | — | Escena del castillo en pixel art, un dibujo por nivel de cada edificio y castillo que crece |
+| 9.º | 10. Diseño de la sección Comercio | ⏳ Pendiente (decidido) | — | Lo urgente arriba, oferta en dos líneas con «Precio justo», valor en Oro de la Corona, aceptar en gris, ofertas que caducan, Corona en Comercio e hilo del trato con frase |
+| 10.º | 3. Mejora del cronista | ⏳ Pendiente (decidido) | — | Fray Abundio: dos boletines por semana, repetición narrada, frases nuevas, memoria, proclamas y dibujo nuevo |
+| 11.º | 11. Diseño de la sección Reino | ⏳ Pendiente (decidido) | — | Clasificación con podio y flechas arriba, gráfica de la carrera, boletín en tarjeta, crónica por noches, ficha de casa, tira de diplomacia y pantalla de coronación |
+| 12.º | 13. Historia y cinemáticas | ⏳ Pendiente (decidido) | — | Cinco cinemáticas en pixel art: prólogo de la muerte de Aldric, coronación con mapa por semanas y títulos cómicos, viñetas de eventos, última semana y fantasma de Aldric; sin sonido de momento |
+| 13.º | 7. Mejorar pagina de inicio del juego | ⏳ Pendiente (decidido) | — | Portada con Aldricia viva en pixel art según la hora real, tarjeta de la partida más urgente con cuenta atrás y avisos, entrar con código en una hoja, invitación como bando real, vitrina de coronas e instalar |
+
+**Cómo vamos:** 6 de 13 bloques hechos; ahora, el 12 (Órdenes). La tabla se actualiza al empezar y al cerrar cada bloque, con sus PR.
 
 **Por qué este orden:**
 
@@ -28,7 +30,7 @@ Primero se definen todos los bloques; después se hacen uno a uno, en el orden d
 - **El cronista (3), cuando ya existe todo lo que tiene que contar.** Sus frases nuevas cubren asedios, alianzas, la Corona y los mercenarios. Justo detrás, Reino (11), que es donde viven el boletín y las proclamas.
 - **Al final, lo que presenta el juego terminado.** Historia y cinemáticas (13), que usan el arte y el Fray Abundio nuevos, y la página de inicio (7), que puede enseñarlas.
 
-## Bloque 1: mapa y losetas
+## Bloque 1: mapa y losetas **(hecho)**
 
 Decidido el 18 de octubre a partir de Reyes de Pacotilla: evaluación del mapa y las losetas (copia completa, con las simulaciones y las fuentes, en `docs/bloque1.md`). Cada fase se simula antes y después, y solo afecta a partidas nuevas: las que están en curso conservan su mapa.
 
@@ -212,7 +214,7 @@ Decidido el 20 de octubre de 2026. Las decisiones y los pasos están en `docs/bl
 8. **Final:** pantalla «La coronación».
 9. **Movimiento:** ligero, respeta «reducir movimiento».
 
-## Bloque 12: diseño de la sección Órdenes **(decidido, pendiente de hacer)**
+## Bloque 12: diseño de la sección Órdenes **(en curso)**
 
 Decidido el 20 de octubre de 2026. Las decisiones y los pasos están en `docs/bloque12.md`. No cambia reglas de combate.
 
