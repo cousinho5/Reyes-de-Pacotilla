@@ -53,6 +53,27 @@ npm run simular -- --semanas 4                    # duración de la partida
 npm run simular -- --json datos.json              # además, todos los datos
 ```
 
+## Cambio con la Corona (22 de octubre de 2026, punto 2 del bloque 5, aplicado)
+
+`npm run simular -- --partidas 300 --corona no` (antes) frente a la misma orden sin `--corona no` (después), ya con el Oro en las mejoras del punto 1. La Corona solo vende, sin tope semanal, y cada unidad encarece la siguiente también dentro de la misma compra.
+
+| dato | sin Corona | con Corona |
+| --- | --- | --- |
+| Comprado a la Corona, por partida | — | Madera 36, Piedra 10, Pan 0,5, Hierro 0,4 |
+| Precio medio (Oro por unidad) | — | Pan 2,4, Madera 2,5, Piedra 2,4, Hierro 5,0 |
+| Oro pagado a la Corona, por partida | — | 131 |
+| Oro sin gastar al final (por casa) | 93-101 | 80-92 |
+| Oro gastado en la Gran Subasta (por partida) | 237 | 184 |
+| Objetivo «tesoro» cumplido | 43% | 34% |
+| Personalidades (x lo esperado) | 0,7-1,3 | 0,7-1,3 |
+| Casas con deserciones | 4% | 4% |
+| El líder de la semana 2 gana | 24% | 26% |
+| Prestigio medio del ganador | 62,5 | 61,2 |
+
+- **No desequilibra nada**: las personalidades, las deserciones y la forma de la partida quedan igual. Con los topes de antes (20 por recurso y semana) salía lo mismo: los bots nunca llegaban a 20.
+- **Se compra sobre todo Madera** para las mejoras, que con el punto 6 piden más. El Hierro sale a unos 5 de Oro y a los bots no les compensa: prefieren comerciar o reclutar menos. Una persona con prisa por un ataque sí podría pagarlo.
+- El Oro que se va a la Corona sale sobre todo de la subasta (unos 50 menos por partida).
+
 ## Oro y más Madera y Piedra en las mejoras (22 de octubre de 2026, puntos 1 y 6 del bloque 5, aplicado)
 
 `npm run simular -- --partidas 300` antes y después del cambio. Las mejoras piden 5, 10, 20 y 30 de Oro para subir a los niveles 2, 3, 4 y 5 (antes solo el 5) y un 15% más de Madera y Piedra; el objetivo «tesoro» baja de 150 a 100 de Oro y «niveles» de 17 a 16.

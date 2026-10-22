@@ -190,6 +190,14 @@ Banco de textos del cronista de Reyes de Pacotilla, versión 2 (adaptada al dise
 7. {traidor} ha roto la {pacto}. El tribunal de la Corona no puede castigarle, pero el cronista sí puede escribir sobre ello.
 8. Traición en el reino: {traidor} rompe la {pacto}. Se abre la candidatura de {traidor} al título de Traidor de la Corona.
 
+### 3.5 La Corona vende (bloque 5)
+
+Lo que más vendió la Corona en la semana, sin decir a quién: las compras son secretas.
+
+1. La Corona vende {n} de {recurso} esta semana. El tesorero real cobra con una sonrisa que no le cabe en la cara.
+2. Salen de los graneros reales {n} de {recurso}. La Corona no pregunta para qué; solo cobra, y cobra bien.
+3. {n} de {recurso} comprados a la Corona. Más caros que en el mercado, pero sin tener que sonreír a un vecino.
+
 ## 4. Boletín: la vida del reino
 
 ### 4.1 Semana tranquila
@@ -460,3 +468,9 @@ Pocas palabras y siempre con la información primero. Cinco variantes por tipo c
 3. Para recibir notificaciones, añade el juego a la pantalla de inicio y ábrelo desde ahí.
 4. Sin notificaciones te enterarás de todo por el boletín. Que llega tarde.
 5. Instala el juego: un toque y te avisamos de lo importante.
+
+### 11.12 Compra a la Corona (bloque 5)
+
+1. {n} de {recurso} por {oro} de Oro. El recaudador real lo cuenta dos veces.
+2. La Corona te vende {n} de {recurso} por {oro} de Oro. Sin regatear: la Corona no regatea.
+3. {n} de {recurso} de los almacenes reales. {oro} de Oro menos y un recibo con sello.

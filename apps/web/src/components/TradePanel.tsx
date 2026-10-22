@@ -1,5 +1,6 @@
 import { ResourceIcon, ShieldIcon } from "../art";
 import { AuctionPanel } from "./AuctionPanel";
+import { CrownPanel } from "./CrownPanel";
 import { useState } from "react";
 import { RESOURCES, type Resources } from "@reyes/engine";
 import { api, type GameState, type OfferInfo } from "../api";
@@ -92,6 +93,8 @@ export function TradePanel({ state, act }: Props) {
       )}
 
       <AuctionPanel state={state} act={act} />
+
+      <CrownPanel state={state} act={act} />
 
       <section className="card">
         <h2>Para ti ({forMe.length})</h2>

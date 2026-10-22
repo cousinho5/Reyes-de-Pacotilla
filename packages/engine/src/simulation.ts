@@ -242,9 +242,7 @@ export interface SimGameResult {
   /** Datos del bloque 5 de la hoja de ruta: cambio con la Corona y mercenarios. */
   economy: {
     crownBought: Resources;
-    crownSold: Resources;
     crownGoldPaid: number;
-    crownGoldReceived: number;
     mercsHired: number;
     mercsGold: number;
     mercsDeserted: number;
@@ -282,7 +280,6 @@ interface HouseState {
   captainNights: { castillo: number; frente: number; retaguardia: number; preso: number };
   captainAttacks: number;
   /** Bloque 5: lo comprado y vendido a la Corona esta semana, y sus mercenarios. */
-  crownWeek: { buy: Resources; sell: Resources };
   mercs: { n: number; until: number }[];
   mercsWeek: number;
 }
@@ -369,7 +366,6 @@ function runGame(opts: SimOptions): SimGameResult {
       recruitedHouse: { mesnada: 0, jinetes: 0, catapultas: 0 },
       captainNights: { castillo: 0, frente: 0, retaguardia: 0, preso: 0 },
       captainAttacks: 0,
-      crownWeek: { buy: zeroRes(), sell: zeroRes() },
       mercs: [],
       mercsWeek: 0,
     };
@@ -401,7 +397,7 @@ function runGame(opts: SimOptions): SimGameResult {
   let rankWeek2: Map<HouseId, number> | null = null;
   let firstHouseCombat: number | null = null;
   let firstHouseCombatDay: number | null = null;
-  const economy = { crownBought: zeroRes(), crownSold: zeroRes(), crownGoldPaid: 0, crownGoldReceived: 0, mercsHired: 0, mercsGold: 0, mercsDeserted: 0, crownPrice: zeroRes() };
+  const economy = { crownBought: zeroRes(), crownGoldPaid: 0, mercsHired: 0, mercsGold: 0, mercsDeserted: 0, crownPrice: zeroRes() };
   /** Compras (+) y ventas (-) a la Corona: [día, recurso, unidades]. */
   const crownLog: [number, Resource, number][] = [];
   /** Quita `n` tropas de una casa (mercenarios que se van): primero del castillo, luego de las casillas con más. */
@@ -521,7 +517,6 @@ function runGame(opts: SimOptions): SimGameResult {
     // combate dejan de contar; cada lunes se renuevan los topes de la semana.
     for (const h of houses) {
       if (day % 7 === 0) {
-        h.crownWeek = { buy: zeroRes(), sell: zeroRes() };
         h.mercsWeek = 0;
       }
       const gone = h.mercs.filter((m) => m.until <= day).reduce((a, m) => a + m.n, 0);
@@ -538,46 +533,36 @@ function runGame(opts: SimOptions): SimGameResult {
       h.mercs = h.mercs.filter((m) => m.n > 0);
     }
 
-    // 1c. Bloque 5: cambio con la Corona, antes de gastar.
+    // 1c. Bloque 5: cambio con la Corona, antes de gastar. Cada casa ve el precio
+    // que dejan las compras de las anteriores.
     if (ECONOMY_TWEAKS.crown) {
       const pre = ranking(day);
-      {
+      const realmNow = () => {
         const realm = zeroRes();
         for (const o of houses) for (const r of RESOURCES) realm[r] += o.res[r];
-        const net = zeroRes();
-        for (const [d, r, n] of crownLog) if (day - d < 7) net[r] += n;
-        const prices = crownPrices(realm, net);
-        for (const r of RESOURCES) economy.crownPrice[r] += prices.sell[r] / totalDays;
+        return realm;
+      };
+      const boughtNow = () => {
+        const bought = zeroRes();
+        for (const [d, r, n] of crownLog) if (day - d < CROWN.demandDays) bought[r] += n;
+        return bought;
+      };
+      {
+        const prices = crownPrices(realmNow(), boughtNow());
+        for (const r of RESOURCES) economy.crownPrice[r] += prices[r] / totalDays;
       }
       for (const h of houses) {
         if (!isSmart(h.strategy)) continue;
-        const realm = zeroRes();
-        for (const o of houses) for (const r of RESOURCES) realm[r] += o.res[r];
-        const net = zeroRes();
-        for (const [d, r, n] of crownLog) if (day - d < 7) net[r] += n;
-        const prices = crownPrices(realm, net);
-        const room = { buy: zeroRes(), sell: zeroRes() };
-        for (const r of RESOURCES) {
-          room.buy[r] = CROWN.weeklyCap - h.crownWeek.buy[r];
-          room.sell[r] = CROWN.weeklyCap - h.crownWeek.sell[r];
-        }
-        const plan = planCrown(situation(viewOf(h, day, pre), PERSONALITIES[h.strategy]), prices, room);
-        if (h.res.oro - plan.gold < 0) continue;
+        const plan = planCrown(situation(viewOf(h, day, pre), PERSONALITIES[h.strategy]), realmNow(), boughtNow());
+        if (plan.gold <= 0 || h.res.oro - plan.gold < 0) continue;
         h.res.oro -= plan.gold;
-        if (plan.gold > 0) economy.crownGoldPaid += plan.gold;
-        else economy.crownGoldReceived -= plan.gold;
+        economy.crownGoldPaid += plan.gold;
         for (const r of RESOURCES) {
           const n = plan.units[r];
           if (!n) continue;
           h.res[r] += n;
           crownLog.push([day, r, n]);
-          if (n > 0) {
-            h.crownWeek.buy[r] += n;
-            economy.crownBought[r] += n;
-          } else {
-            h.crownWeek.sell[r] -= n;
-            economy.crownSold[r] -= n;
-          }
+          economy.crownBought[r] += n;
         }
       }
     }

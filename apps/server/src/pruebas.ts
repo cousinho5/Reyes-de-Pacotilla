@@ -26,7 +26,10 @@ import {
   offerGain,
   planBids,
   planCards,
+  planCrown,
   planDay,
+  CROWN_GOODS,
+  ECONOMY_TWEAKS,
   planOrders,
   proposeOffer,
   resolutionInfo,
@@ -46,6 +49,7 @@ import {
   type Tile,
 } from "@reyes/engine";
 import { ransomStatements } from "./rescate";
+import { crownCost, crownMarket, crownPurchaseStatements } from "./corona";
 import { hashCode, randomCode } from "./auth";
 import { COLORS, pickShield } from "./heraldry";
 import { clockOf, runGameJobs } from "./jobs";
@@ -348,6 +352,29 @@ async function botPlaysCards(db: D1Database, game: GameRow, ctx: BotContext, h: 
  * El día de cada bot: elige objetivo secreto (el primer día), construye,
  * recluta y fortifica según su personalidad, y publica como mucho una oferta.
  */
+/** Compras de un bot a la Corona: las paga y las suma a su casa (también en `ctx`). */
+async function botBuysFromCrown(db: D1Database, game: GameRow, ctx: BotContext, h: HouseRow, p: Personality): Promise<void> {
+  const market = await crownMarket(db, game, ctx.houses);
+  const plan = planCrown(situation(botView(ctx, h), p), market.realm, market.bought);
+  for (const r of CROWN_GOODS) {
+    const units = plan.units[r];
+    if (units <= 0) continue;
+    const gold = crownCost(market, r, units);
+    if (gold > h.oro) continue;
+    try {
+      await db.batch(crownPurchaseStatements(db, game, h.id, r, units, gold));
+    } catch (err) {
+      console.error(`Corona, ${h.name}:`, err);
+      continue;
+    }
+    h.oro -= gold;
+    h[r] += units;
+    market.bought[r] += units;
+    market.realm[r] += units;
+    market.realm.oro -= gold;
+  }
+}
+
 export async function botsPlayDay(env: NotifyEnv, game: GameRow): Promise<void> {
   const db = env.DB;
   await botRansoms(db, game);
@@ -364,6 +391,8 @@ export async function botsPlayDay(env: NotifyEnv, game: GameRow): Promise<void> 
       h.objective_key = chooseObjective(options, p);
       st.push(db.prepare("UPDATE houses SET objective_key = ? WHERE id = ?").bind(h.objective_key, h.id));
     }
+    // Bloque 5: compra a la Corona antes de gastar, como en el simulador.
+    if (ECONOMY_TWEAKS.crown) await botBuysFromCrown(db, game, ctx, h, p);
     const s = situation(botView(ctx, h), p);
     const plan = withRhythm(rhythmOf(game), () => planDay(s));
     const c = plan.cost;
@@ -569,6 +598,7 @@ export async function deleteTestGame(env: NotifyEnv, game: GameRow): Promise<voi
     db.prepare("DELETE FROM resolutions WHERE game_id = ?").bind(game.id),
     db.prepare("DELETE FROM orders WHERE game_id = ?").bind(game.id),
     db.prepare("DELETE FROM trades WHERE game_id = ?").bind(game.id),
+    db.prepare("DELETE FROM crown_purchases WHERE game_id = ?").bind(game.id),
     db.prepare("DELETE FROM offers WHERE game_id = ? AND parent_offer_id IS NOT NULL").bind(game.id),
     db.prepare("DELETE FROM offers WHERE game_id = ?").bind(game.id),
     db.prepare("DELETE FROM achievements WHERE game_id = ?").bind(game.id),

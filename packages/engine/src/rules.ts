@@ -163,35 +163,37 @@ export const FORTIFY_UPKEEP: Partial<Resources> = { piedra: 2 };
 export const FORTIFY_FOREVER = 1_000_000;
 
 /**
- * Bloque 5 de la hoja de ruta (recursos), en estudio. Apagado: solo lo usa el simulador.
- * - `crown`: cambio con la Corona a precio dinámico (CROWN).
+ * Bloque 5 de la hoja de ruta (recursos). El simulador puede apagarlos para comparar.
+ * - `crown`: cambio con la Corona a precio dinámico (CROWN, `crown.ts`). Encendido.
  * - `mercenaries`: "alquiler" (se pagan al contratarlos y se van solos) o
  *   "soldada" (cobran cada domingo y desertan si no se les paga). Ver MERCENARIES.
  */
 export const ECONOMY_TWEAKS: { crown: boolean; mercenaries: null | "alquiler" | "soldada" } = {
-  crown: false,
+  crown: true,
   mercenaries: null,
 };
 
 /**
- * Cambio con la Corona (bloque 5, en estudio). Precio en Oro de 1 unidad:
- * (Oro del reino / ese recurso en el reino) ^ `scarcity`, corregido por lo que
- * se ha comprado y vendido a la Corona en los últimos 7 días. La Corona vende
- * más caro (`sellMarkup`) y compra más barato (`buyMarkdown`).
+ * Cambio con la Corona (bloque 5). La Corona solo vende, sin tope. Precio en Oro
+ * de 1 unidad: `base` × escasez × demanda × `markup`, donde
+ * escasez = ((media de los cuatro recursos en el reino + 10) / (ese recurso + 10)) ^ `scarcity`
+ * y demanda = 1 + `demandStep` × unidades compradas a la Corona en los últimos 7
+ * días (entre todas las casas, contando las de la misma compra). Antes del
+ * `markup`, entre `min` y `max`.
  */
 export const CROWN = {
-  /** Precio de partida (en Oro) de una unidad cuando el recurso abunda tanto como el Oro. */
-  base: 1,
+  /** Precio (en Oro) de una unidad cuando el recurso abunda como la media. */
+  base: 2,
   /** Con qué se compara la escasez: con el Oro del reino o con la media de los otros cuatro recursos. */
-  reference: "oro" as "oro" | "media",
+  reference: "media" as "oro" | "media",
   scarcity: 0.5,
   demandStep: 0.01,
-  sellMarkup: 1.3,
-  buyMarkdown: 0.7,
+  /** Lo que la Corona carga sobre el precio (un 30%). */
+  markup: 1.3,
   min: 0.25,
   max: 10,
-  /** Unidades de cada recurso que una casa puede comprar, y vender, por semana. */
-  weeklyCap: 20,
+  /** Días que cuentan para la demanda. */
+  demandDays: 7,
 };
 
 /** Mercenarios (bloque 5, en estudio). No comen Pan. */

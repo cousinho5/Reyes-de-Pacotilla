@@ -96,7 +96,7 @@ Decidido el 19 de octubre de 2026 a partir de «Reyes de Pacotilla: investigaci�
 5. **Fortificación hasta que la atacan.** Dura hasta el primer ataque, gane o pierda. Cada domingo se paga un mantenimiento por casilla fortificada; si no se paga, se desmantela. Cuesta 2 de Piedra por casilla (elegido tras simular, ver `docs/simulaciones.md`).
 6. ~~Dos guerras a la vez~~: descartado.
 
-## Bloque 5: retoques de recursos **(en curso: hechos los puntos 1 y 6)**
+## Bloque 5: retoques de recursos **(en curso: hechos los puntos 1, 2 y 6)**
 
 Decidido el 20 de octubre de 2026. Las decisiones, los datos y los pasos están en `docs/bloque5.md`. El cambio con la Corona y los mercenarios ya están en el motor para el simulador, apagados (`ECONOMY_TWEAKS` en `rules.ts`).
 

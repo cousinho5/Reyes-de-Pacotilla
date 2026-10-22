@@ -118,6 +118,11 @@ export const PHRASES = {
     "{n} tratos esta semana. Ambas partes de cada trato creen haber ganado, que es lo que distingue al buen comercio.",
     "{jugador} ha hecho negocios con {n} casas distintas. El cronista lo considera diplomacia; las casas, otra cosa."
   ],
+  "economia.corona": [
+    "La Corona vende {n} de {recurso} esta semana. El tesorero real cobra con una sonrisa que no le cabe en la cara.",
+    "Salen de los graneros reales {n} de {recurso}. La Corona no pregunta para qué; solo cobra, y cobra bien.",
+    "{n} de {recurso} comprados a la Corona. Más caros que en el mercado, pero sin tener que sonreír a un vecino."
+  ],
   "reino.tranquila": [
     "Semana sin batallas. El reino descansa, los pretendientes conspiran y el cronista se ha dormido sobre el pergamino.",
     "Ni una espada desenvainada. El cronista sospecha que se está tramando algo.",

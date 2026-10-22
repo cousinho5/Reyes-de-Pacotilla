@@ -6,7 +6,9 @@
 import { blazon } from "./heraldry";
 import { seededRandom } from "./random";
 import { PHRASES, type PhraseKey } from "./texts/cronista";
-import type { HouseId, TileId } from "./types";
+import type { HouseId, Resource, TileId } from "./types";
+
+const RESOURCE_NAMES: Record<Resource, string> = { pan: "Pan", madera: "Madera", piedra: "Piedra", hierro: "Hierro", oro: "Oro" };
 
 /** Nombre de una casa en mitad de una frase: "la Casa del Nabo", "los Pocapena". */
 export function houseInSentence(name: string): string {
@@ -43,6 +45,8 @@ export interface BulletinInput {
   tileNames: Map<TileId, string>;
   /** Tratos cerrados esta semana (pares de casas). */
   trades: { a: HouseId; b: HouseId }[];
+  /** Bloque 5: unidades que vendió la Corona esta semana, entre todas las casas (sin decir a quién). */
+  crown?: Partial<Record<Resource, number>>;
   /** Sobornos de la semana: frase elegida (índice) y Oro pagado. */
   bribes: { house: HouseId; template: number; amount: number }[];
   /** Frases ya usadas en la partida ("categoria.indice"). */
@@ -194,6 +198,13 @@ export function writeBulletin(input: BulletinInput): Bulletin {
         !t.includes("casas distintas") && (n > 3 ? !t.includes("floja") : !t.includes("hierven")),
       ),
     );
+  }
+  // Bloque 5: lo que más vendió la Corona, sin decir a quién (las compras son secretas).
+  const crownTop = Object.entries(input.crown ?? {})
+    .filter(([, n]) => (n ?? 0) > 0)
+    .sort((a, b) => b[1]! - a[1]! || a[0].localeCompare(b[0]))[0];
+  if (crownTop) {
+    economy.push(say("economia.corona", { n: crownTop[1]!, recurso: RESOURCE_NAMES[crownTop[0] as Resource] }));
   }
   if (economy.length > 0) sections.push({ title: "Mercados y augurios", lines: economy });
 

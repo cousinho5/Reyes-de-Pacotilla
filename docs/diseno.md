@@ -70,7 +70,7 @@ Cinco recursos. En las reglas, la interfaz y el código se usa siempre la misma 
 | **Madera** | Mejorar edificios | — |
 | **Piedra** | Mejorar edificios | Fortificar casillas |
 | **Hierro** | Reclutar tropas | Mejoras de nivel 4 y 5 |
-| **Oro** | Pujas, comercio y sobornos | Prestigio por riqueza, mejoras de edificios, jinetes |
+| **Oro** | Pujas, comercio y sobornos | Prestigio por riqueza, mejoras de edificios, jinetes, compras a la Corona |
 
 **Edificios.** Hay cinco, dentro de tu castillo, con niveles del 1 al 5: Granja (Pan), Aserradero (Madera), Cantera (Piedra), Mina (Hierro) y Mercado (Oro).
 
@@ -377,6 +377,13 @@ El comercio es la mitad del juego, así que tiene que ser excelente:
   - **Adjudicación:** en la resolución del miércoles, antes de la campaña y lote a lote. Gana la puja más alta y, en empate, la más temprana. Si al ganador ya no le llega el Oro (por haber ganado otro lote), el lote pasa a la siguiente puja.
   - **El Oro de las pujas sale del juego.** En la simulación se pagan unos 450 de Oro por partida, que de otro modo se acumulaban sin uso.
   - **Logro:** cada lote ganado da +2 de Prestigio, hasta 3 veces.
+
+- **Cambio con la Corona** (bloque 5 de la hoja de ruta, en `packages/engine/src/crown.ts`). La Corona vende Pan, Madera, Piedra y Hierro por Oro, en cualquier momento de la partida y sin tope: el límite es el Oro de cada casa. No compra nada (cuando también compraba, los bots le vendían el Pan y el Hierro para juntar Oro y luego no podían mantener las tropas). El precio de una unidad es 2 de Oro × escasez × demanda, más un 30%:
+  - **escasez** = raíz de ((media de los cuatro recursos en el reino + 10) / (ese recurso en el reino + 10)); el reino es la suma de lo que guardan todas las casas;
+  - **demanda** = 1 + 0,01 × unidades de ese recurso compradas a la Corona en los últimos 7 días, entre todas las casas;
+  - antes del 30%, entre 0,25 y 10 de Oro.
+
+  Cada unidad encarece la siguiente, también dentro de la misma compra, y se cobra el total redondeado hacia arriba. Una casa solo ve el precio de la próxima unidad y lo que le costaría su compra, nunca lo que guardan las demás ni quién compra. Si el precio cambia entre que lo mira y compra, la compra no se hace. El boletín cuenta lo que más vendió la Corona en la semana, sin decir a quién. En la simulación se pagan unos 130 de Oro por partida a la Corona, casi todo en Madera.
 
 - **Cartas de la Corona** (8, en `packages/engine/src/cards.ts`). Se usan una vez, desde el castillo:
 

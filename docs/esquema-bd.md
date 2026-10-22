@@ -57,6 +57,7 @@ Esquema de Reyes de Pacotilla para Cloudflare D1, que usa SQL de SQLite. Corresp
 | --- | --- |
 | `offers` | Ofertas públicas o dirigidas, con lo que se da y lo que se pide de cada recurso. Las contraofertas enlazan con la oferta original. |
 | `trades` | Intercambios ejecutados, vengan de una oferta o de un tratado. La columna `valid` se calcula sola: vale 1 si cada lado entrega al menos 10 recursos. |
+| `crown_purchases` | Compras a la Corona (bloque 5, migración 0014): casa, recurso, unidades, Oro pagado y hora de la partida. El precio sube con las unidades compradas en los últimos 7 días entre todas las casas. |
 | `treaties` | Tratados comerciales semanales (versión 2), con su cancelación avisada. |
 | `pacts` | Pactos de no agresión: propuesto, activo, roto (y por quién) o rechazado. |
 
@@ -129,6 +130,8 @@ Gran Subasta y cartas (versión 1) usan las tablas que ya estaban en la migraci�
 Boletín (versión 1): `bulletins.content` guarda el boletín ya escrito en JSON (titular, secciones, notas al margen, patrocinio, líder y `lastEventId`, el último evento del registro incluido; el siguiente boletín empieza después). `phrase_usage` guarda las frases usadas para no repetirlas y `bribes` los sobornos (`template_key` es el número de la frase comprada). Las mejoras de nivel 3 o más quedan en `event_log` como `mejora` para la sección de obras.
 
 Aldeas y Ruinas (bloque 1, fase 3) no añaden columnas: son tipos de `tiles` que ya admite la migración 0010. Cuando una casa entra en unas ruinas, en el mismo lote de la resolución la casilla pasa a `type = 'prado'`, el premio va a `houses` (recursos) o a `cards` (una carta) y queda un `ruinas` en `event_log` con `{house, tile, prize}`. El premio sale de `ruinPrize(seed, casilla)`, así que no se guarda antes.
+
+Cambio con la Corona (bloque 5, migración 0014): `crown_purchases` guarda cada compra. El precio se calcula en el servidor con lo que guardan todas las casas y lo comprado en los últimos 7 días; al cliente solo le llega el precio. El cobro y la entrega van en un `db.batch()`, y la restricción `CHECK` del Oro deshace la compra si no llega.
 
 Borrar una prueba elimina la partida, sus filas y los usuarios de sus bots en un solo lote.
 
