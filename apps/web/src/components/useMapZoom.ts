@@ -1,6 +1,6 @@
 // Zoom del mapa (bloque 6): tres niveles (todo el reino, normal y cerca); normal y
 // cerca encajan en píxeles enteros de la pantalla para que el pixel art se vea nítido. Se cambia
-// con el botón, con la pinza (el dibujo sigue a los dedos y al soltar encaja en el
+// (bloque 9: ya sin botón) con la pinza (el dibujo sigue a los dedos y al soltar encaja en el
 // nivel más cercano) y con dos toques seguidos (acerca, y desde cerca vuelve al reino).
 // Arrastrar con un dedo sigue siendo el desplazamiento del navegador.
 
@@ -152,6 +152,13 @@ export function useMapZoom(viewport: RefObject<HTMLDivElement | null>, wrap: Ref
       const next = Math.min(2, Math.max(0, level + (e.deltaY < 0 ? 1 : -1))) as ZoomLevel;
       if (next !== level) setLevel(next, e);
     };
+    // Con ratón, dos clics hacen lo mismo que dos toques.
+    const dblclick = (e: MouseEvent) => {
+      const { level, setLevel } = live.current;
+      if (Date.now() - lastChange.current < DOUBLE_TAP_MS + 300) return;
+      setLevel(level < 2 ? ((level + 1) as ZoomLevel) : 0, e);
+    };
+    el.addEventListener("dblclick", dblclick);
     el.addEventListener("wheel", wheel, { passive: false });
     el.addEventListener("touchstart", start, { passive: true });
     el.addEventListener("touchmove", move, { passive: false });
@@ -163,6 +170,7 @@ export function useMapZoom(viewport: RefObject<HTMLDivElement | null>, wrap: Ref
       el.removeEventListener("touchend", end);
       el.removeEventListener("touchcancel", end);
       el.removeEventListener("wheel", wheel);
+      el.removeEventListener("dblclick", dblclick);
     };
   }, [viewport, wrap]);
 

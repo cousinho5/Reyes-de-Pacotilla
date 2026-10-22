@@ -206,12 +206,16 @@ async function medir(browser, partida, nombre) {
   // Lo que se toca, pestaña a pestaña, y las casillas de cerca y de todo el reino.
   const pequenos = {};
   const casillas = { cerca: await casilla(page) };
-  const zoom = page.locator("button.zoom");
-  if (await zoom.count()) {
-    await zoom.click();
-    await page.waitForTimeout(300);
+  // Sin botón de zoom (bloque 9): doble clic en el mapa, de normal a cerca y de cerca a todo el reino.
+  const dobleClic = async () => {
+    await page.evaluate(() => document.querySelector(".map-viewport")?.dispatchEvent(new MouseEvent("dblclick", { bubbles: true })));
+    await page.waitForTimeout(700);
+  };
+  if (await page.locator(".map-viewport").count()) {
+    await dobleClic();
+    await dobleClic();
     casillas.reino = await casilla(page);
-    await zoom.click();
+    await dobleClic();
   }
   const pestanas = page.locator("nav.tabs button");
   for (let i = 0; i < (await pestanas.count()); i++) {

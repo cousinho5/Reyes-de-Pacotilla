@@ -754,15 +754,140 @@ svg.ico {
   height: 100%;
   image-rendering: pixelated;
 }
-.zoom {
+/* Bloque 9: botón de capas arriba a la derecha y su menú, con la leyenda al final. */
+.layers {
   position: absolute;
   z-index: 8;
   top: 12px;
   right: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+.layers-button {
   min-height: var(--touch);
   padding: 0.2rem 0.65rem;
   font-size: 0.88rem;
-  background: rgba(251, 243, 223, 0.94);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--chalk);
+  background: rgba(28, 20, 16, 0.88);
+  border: 1.5px solid var(--brass);
+}
+.layers-menu {
+  display: flex;
+  flex-direction: column;
+  width: min(250px, calc(100vw - 48px));
+  padding: 4px;
+  background: var(--wood-1);
+  border: 1.5px solid var(--brass);
+  border-radius: 6px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+}
+.layers-menu button {
+  min-height: var(--touch);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
+  padding: 0.3rem 0.6rem;
+  text-align: left;
+  color: var(--chalk);
+  background: none;
+  border: none;
+  box-shadow: none;
+  border-radius: 4px;
+}
+.layers-menu button.active {
+  background: rgba(214, 166, 75, 0.22);
+  box-shadow: inset 3px 0 0 var(--brass);
+}
+.layers-menu button small {
+  font-size: 0.78rem;
+  opacity: 0.8;
+}
+.layers-menu .legend-item {
+  border-top: 1px solid var(--wood-edge);
+  border-radius: 0;
+}
+.layer-dim {
+  fill: #000;
+  fill-opacity: 0.45;
+}
+.layer-river {
+  stroke: #63b8ff;
+  stroke-width: 3.5;
+  stroke-linecap: round;
+}
+.cell-reach {
+  fill: var(--brass-hi);
+  fill-opacity: 0.4;
+  stroke: #fff;
+  stroke-opacity: 0.6;
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+.layer-chip {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  top: 46%;
+  transform: translate(-50%, -50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0.12rem 0.32rem;
+  font-family: var(--font-pixel);
+  font-size: 0.8rem;
+  line-height: 1;
+  color: #f1cf7d;
+  background: rgba(28, 20, 16, 0.88);
+  border-radius: 3px;
+  box-shadow: 0 0 0 1px rgba(214, 166, 75, 0.7);
+  white-space: nowrap;
+  pointer-events: none;
+}
+.layer-chip span {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.map-viewport.whole .layer-chip {
+  font-size: 0.55rem;
+  padding: 0.05rem 0.15rem;
+}
+.legend ul {
+  list-style: none;
+  margin: 0.4rem 0;
+  padding: 0;
+}
+.legend li {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0.35rem 0;
+  font-size: 0.92rem;
+}
+.legend-mark {
+  flex: 0 0 52px;
+  display: flex;
+  justify-content: center;
+}
+.legend .legend-troops {
+  position: static;
+}
+.legend-plain {
+  font-family: var(--font-pixel);
+  color: var(--chalk);
+}
+.legend-fog {
+  width: 30px;
+  height: 30px;
+  border-radius: 4px;
+  background: #8a7350;
+  filter: sepia(0.8);
 }
 /* Encima del dibujo: territorio y selección (SVG), botones de cada casilla y sus marcas. */
 .world-marks,
@@ -1723,7 +1848,7 @@ label.check {
 .replay-chrome[hidden] {
   display: none;
 }
-.board.replaying .zoom {
+.board.replaying .layers {
   display: none;
 }
 .replay-bar {
