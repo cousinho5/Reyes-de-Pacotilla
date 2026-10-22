@@ -6,7 +6,7 @@ import { cellBox, sharedEdge, type Geo } from "../art/grid";
 import { geoOf } from "../art/world";
 import { WorldCanvas, useWorld } from "./WorldCanvas";
 import { HOUSE_COLORS, TERRAIN_NOTE, TERRITORY, TILE_LABEL, UNIT_LABEL, captainOf, houseName, nightLabel, troops as troopsWord, troopsText, wallsLeft, withArticle } from "../ui";
-import { asTile, nextResolution, nightOf, project, queueNights } from "../plan";
+import { asTile, myAllies, myBreaking, nextResolution, nightOf, project, queueNights } from "../plan";
 import { NightReplay, replaySteps } from "./NightReplay";
 
 interface Props {
@@ -21,11 +21,15 @@ interface Props {
 
 /** "capitan": el Capitán va solo, sin tropas, a otra casilla tuya (bloque 4). */
 type Mode = "mover" | "apoyar" | "sitiar" | "capitan";
-type Compose = { from: number; mode: Mode; target: number | null; mix: Units; apoyaDesde: number | null; capitan?: boolean };
+/** `guest`: salen las tropas de paso de tu casa en esa casilla aliada (bloque 8). */
+type Compose = { from: number; mode: Mode; target: number | null; mix: Units; apoyaDesde: number | null; capitan?: boolean; guest?: boolean };
 
-/** Se puede sitiar: fortalezas y castillos que no son tuyos. */
-const siegeable = (t: TileView, me: number | null | undefined) =>
-  t.owner !== me && (t.type === "fortaleza" || (t.type === "castillo" && t.castleOf != null));
+/** Se puede sitiar: fortalezas y castillos que no son tuyos ni de una casa con la que tienes alianza. */
+const siegeable = (t: TileView, me: number | null | undefined, bound: number[] = []) =>
+  t.owner !== me && (t.owner == null || !bound.includes(t.owner)) && (t.type === "fortaleza" || (t.type === "castillo" && t.castleOf != null));
+
+/** Tus tropas de paso en una casilla aliada (bloque 8). */
+const myGuests = (t: TileView | undefined, me: number) => t?.guests?.find((g) => g.house === me);
 
 const NO_UNITS: Units = { mesnada: 0, jinetes: 0, catapultas: 0 };
 const RIDERS_ONLY = (n: number): Units => ({ mesnada: 0, jinetes: n, catapultas: 0 });
@@ -64,6 +68,10 @@ export function MapView({ state, draft, setDraft, act, night, setNight }: Props)
   const rows = state.partida.filas ?? 5;
   const mine = state.casas.find((h) => h.id === me);
   const [showLast, setShowLast] = useState(false);
+  // Bloque 8: aliados en vigor (paso libre) y casas con la alianza en aviso (ni atacar ni entrar).
+  const allies = useMemo(() => myAllies(state), [state]);
+  const breaking = useMemo(() => myBreaking(state), [state]);
+  const bound = useMemo(() => [...allies, ...breaking], [allies, breaking]);
 
   // Lo que pasó en la última resolución (solo lo que esta casa pudo ver).
   const last = state.partida.resolucionActual;
@@ -75,7 +83,16 @@ export function MapView({ state, draft, setDraft, act, night, setNight }: Props)
     .filter((e) => e.tipo === "movimiento")
     .map((e) => e.datos as { house: number; from: number; to: number; troops: number });
   // Avisos: casillas tuyas que un enemigo a la vista puede atacar, y estandartes vistos esta noche.
-  const threatened = useMemo(() => (k === 0 && me != null ? threats(now, me) : []), [now, me, k]);
+  // Las casas con las que tienes alianza no amenazan (no os podéis atacar).
+  const threatened = useMemo(
+    () =>
+      k === 0 && me != null
+        ? threats(now, me)
+            .map((x) => ({ ...x, by: x.by.filter((h) => !bound.includes(h)) }))
+            .filter((x) => x.by.length > 0)
+        : [],
+    [now, me, k, bound],
+  );
   const threatAt = new Map(threatened.map((x) => [x.tile, x.by]));
   const banners = k === 0 ? lastEvents.filter((e) => e.tipo === "estandartes").map((e) => e.datos as { house: number; tile: number; troops: number; near: number }) : [];
   const bannerNear = new Map(banners.map((b) => [b.near, b]));
@@ -192,14 +209,16 @@ export function MapView({ state, draft, setDraft, act, night, setNight }: Props)
   };
   const points = (t: TileView, inset = 0) => geo.outline(t.x, t.y, inset).map(([x, y]) => `${x},${y}`).join(" ");
 
-  const committed = (tileId: number) => nightDraft.filter((o) => o.desde === tileId).reduce((a, o) => a + o.tropas, 0);
-  /** Tropas de cada tipo que quedan libres en una casilla tras las órdenes ya dadas. */
-  const freeUnits = (tileId: number): Units => {
+  const committed = (tileId: number, guest = false) =>
+    nightDraft.filter((o) => o.desde === tileId && !!o.dePaso === guest).reduce((a, o) => a + o.tropas, 0);
+  /** Tropas de cada tipo que quedan libres en una casilla tras las órdenes ya dadas (las propias o las de paso). */
+  const freeUnits = (tileId: number, guest = false): Units => {
     const t = tiles.find((x) => x.id === tileId);
-    if (!t || t.troops == null) return NO_UNITS;
+    const stack = guest ? myGuests(t, me) : t && t.troops != null ? { ...t, troops: t.troops } : undefined;
+    if (!stack) return NO_UNITS;
     return nightDraft
-      .filter((o) => o.desde === tileId)
-      .reduce((u, o) => subUnits(u, unitsOf({ troops: o.tropas, jinetes: o.jinetes, catapultas: o.catapultas })), unitsOf({ ...t, troops: t.troops }));
+      .filter((o) => o.desde === tileId && !!o.dePaso === guest)
+      .reduce((u, o) => subUnits(u, unitsOf({ troops: o.tropas, jinetes: o.jinetes, catapultas: o.catapultas })), unitsOf(stack));
   };
   const tile = tiles.find((t) => t.id === selected) ?? null;
   const byId = useMemo(() => new Map(tiles.map((t) => [t.id, t])), [tiles]);
@@ -210,20 +229,23 @@ export function MapView({ state, draft, setDraft, act, night, setNight }: Props)
     if (!compose) return false;
     const from = byId.get(compose.from)!;
     if (compose.mode === "capitan") {
-      return me != null && t.owner === me && t.id !== from.id && marchKind(asTile(from), asTile(t), engineTiles, me) != null;
+      return me != null && t.owner === me && t.id !== from.id && marchKind(asTile(from), asTile(t), engineTiles, me, undefined, allies) != null;
     }
     if (compose.mode === "mover") {
       // Vecinas, y además por camino (dos casillas), por mar (de puerto a puerto)
       // o a la carga (solo jinetes, por lo llano). A la montaña solo sube la Mesnada.
+      // Bloque 8: en las casillas aliadas se entra (nunca en su castillo); en las de
+      // una alianza en aviso no se entra, salvo para mover por ellas las tropas de paso.
       if (t.type === "castillo" && t.castleOf !== me) return false;
       if (me == null) return false;
-      const free = freeUnits(from.id);
+      if (t.owner != null && breaking.includes(t.owner) && !compose.guest) return false;
+      const free = freeUnits(from.id, compose.guest);
       if (t.type === "montana" && free.mesnada === 0) return false;
-      if (marchKind(asTile(from), asTile(t), engineTiles, me) != null) return true;
-      return free.jinetes > 0 && marchKind(asTile(from), asTile(t), engineTiles, me, RIDERS_ONLY(free.jinetes)) === "carga";
+      if (marchKind(asTile(from), asTile(t), engineTiles, me, undefined, allies) != null) return true;
+      return free.jinetes > 0 && marchKind(asTile(from), asTile(t), engineTiles, me, RIDERS_ONLY(free.jinetes), allies) === "carga";
     }
     if (!areAdjacent(from, t)) return false;
-    if (compose.mode === "sitiar") return siegeable(t, me);
+    if (compose.mode === "sitiar") return siegeable(t, me, bound);
     return t.type !== "castillo";
   };
 
@@ -309,6 +331,12 @@ export function MapView({ state, draft, setDraft, act, night, setNight }: Props)
                 </g>
               );
             })}
+            {/* Bloque 8: casillas de tus aliados, con un filo de puntos (las de una alianza en aviso, más apagado). */}
+            {tiles
+              .filter((t) => t.owner != null && bound.includes(t.owner))
+              .map((t) => (
+                <polygon key={`al${t.id}`} points={points(t, 3)} className={allies.includes(t.owner!) ? "cell-ally" : "cell-ally ending"} />
+              ))}
             {!replay &&
               tiles
                 .filter((t) => threatAt.has(t.id))
@@ -340,6 +368,7 @@ export function MapView({ state, draft, setDraft, act, night, setNight }: Props)
                   {t.troops != null && (
                     <span className="tile-troops" aria-hidden>
                       {t.troops}
+                      {(t.guests ?? []).length > 0 && <small className="tile-guests">+{t.guests!.reduce((a, g) => a + g.troops, 0)}</small>}
                     </span>
                   )}
                   {(t.capitanes ?? []).length > 0 && (
@@ -491,13 +520,14 @@ export function MapView({ state, draft, setDraft, act, night, setNight }: Props)
           compose={compose}
           setCompose={setCompose}
           byId={byId}
-          available={freeUnits(compose.from)}
+          available={freeUnits(compose.from, compose.guest)}
+          allies={allies}
           engineTiles={engineTiles}
           captainHere={
-            !!byId.get(compose.from)?.capitanes?.includes(me ?? -1) && !nightDraft.some((o) => o.capitan)
+            !compose.guest && !!byId.get(compose.from)?.capitanes?.includes(me ?? -1) && !nightDraft.some((o) => o.capitan)
           }
           onAdd={(o) => {
-            setDraft([...draft, { ...o, resolucion: next + k }]);
+            setDraft([...draft, { ...o, resolucion: next + k, ...(compose.guest ? { dePaso: true } : {}) }]);
             setCompose(null);
           }}
         />
@@ -507,11 +537,14 @@ export function MapView({ state, draft, setDraft, act, night, setNight }: Props)
             state={state}
             tile={tile}
             available={(tile.troops ?? 0) - committed(tile.id)}
+            guestsAvailable={(myGuests(tile, me)?.troops ?? 0) - committed(tile.id, true)}
+            bound={bound}
+            allies={allies}
             open={open}
             planning={k > 0}
             captainHere={!!tile.capitanes?.includes(me ?? -1) && !nightDraft.some((o) => o.capitan)}
-            onOrder={(mode) =>
-              setCompose({ from: tile.id, mode, target: null, mix: freeUnits(tile.id), apoyaDesde: null })
+            onOrder={(mode, guest) =>
+              setCompose({ from: tile.id, mode, target: null, mix: freeUnits(tile.id, guest), apoyaDesde: null, ...(guest ? { guest: true } : {}) })
             }
             onFortify={() => act(() => api.fortify(state.partida.id, tile.id), "Murallas reforzadas.")}
           />
@@ -578,6 +611,9 @@ function TilePanel({
   state,
   tile,
   available,
+  guestsAvailable,
+  bound,
+  allies,
   open,
   planning,
   captainHere,
@@ -587,21 +623,29 @@ function TilePanel({
   state: GameState;
   tile: TileView;
   available: number;
+  /** Bloque 8: tus tropas de paso aquí que aún no tienen orden esa noche. */
+  guestsAvailable: number;
+  /** Casas con las que tienes alianza (en vigor o en aviso) y solo las en vigor. */
+  bound: number[];
+  allies: number[];
   open: boolean;
   /** Se están dando órdenes en cola: fortificar es de hoy, no se planea. */
   planning?: boolean;
   /** Tu Capitán está aquí y aún no va con ninguna orden esa noche. */
   captainHere?: boolean;
-  onOrder: (mode: Mode) => void;
+  onOrder: (mode: Mode, guest?: boolean) => void;
   onFortify: () => void;
 }) {
+  const me = state.yo.casa;
+  const ally = tile.owner != null && bound.includes(tile.owner);
+  const alliance = ally ? state.alianzas?.lista.find((a) => a.casas.includes(me) && a.casas.includes(tile.owner!)) : undefined;
   const mine = tile.owner === state.yo.casa;
   const owner = tile.owner != null ? state.casas.find((h) => h.id === tile.owner) : undefined;
   const note =
     tile.type === "castillo" ? null : TILE_NAMES[tile.type]?.find((n) => tile.nombre.startsWith(n.name))?.note ?? null;
   const fortified = tile.fortifiedUntil != null && tile.fortifiedUntil > state.partida.resolucionActual;
   // Sitiar: hay al lado una fortaleza o un castillo ajeno.
-  const canSiege = (state.casillas ?? []).some((t) => siegeable(t, state.yo.casa) && areAdjacent(t, tile));
+  const canSiege = (state.casillas ?? []).some((t) => siegeable(t, state.yo.casa, bound) && areAdjacent(t, tile));
   return (
     <section className="card tile-panel">
       <div className="tile-head">
@@ -619,6 +663,24 @@ function TilePanel({
         </div>
       </div>
       {note && <p className="note">«{note}»</p>}
+      {alliance && (
+        <p className="ally-note">
+          Casilla aliada: <em>{alliance.nombre}</em>
+          {alliance.estado === "aviso"
+            ? ". La alianza está en aviso: no se puede entrar, solo sacar tus tropas."
+            : tile.type === "castillo"
+              ? ". En su castillo no se entra."
+              : allies.includes(tile.owner!)
+                ? ". Puedes entrar con tus tropas sin combatir."
+                : "."}
+        </p>
+      )}
+      {(tile.guests ?? []).map((g) => (
+        <p key={g.house} className="guest-note">
+          {g.house === me ? "Tus tropas de paso aquí" : `Tropas de paso de ${houseName(state.casas, g.house)}`}: {troopsText(g.troops, g.jinetes, g.catapultas)}.
+          {" "}Defienden la casilla si la atacan.
+        </p>
+      ))}
       {tile.troops != null && ((tile.jinetes ?? 0) > 0 || (tile.catapultas ?? 0) > 0) && (
         <p className="unit-mix">
           {tile.troops - (tile.jinetes ?? 0) - (tile.catapultas ?? 0)} de Mesnada · {tile.jinetes ?? 0}{" "}
@@ -654,6 +716,15 @@ function TilePanel({
           {canSiege && <button onClick={() => onOrder("sitiar")}>Sitiar</button>}
         </div>
       )}
+      {!mine && open && guestsAvailable > 0 && (
+        <div className="actions">
+          <button className="primary grow" onClick={() => onOrder("mover", true)}>
+            Mover tus tropas de paso
+          </button>
+          {alliance?.estado !== "aviso" && <button onClick={() => onOrder("apoyar", true)}>Apoyar</button>}
+          {alliance?.estado !== "aviso" && canSiege && <button onClick={() => onOrder("sitiar", true)}>Sitiar</button>}
+        </div>
+      )}
       {mine && open && captainHere && BATTLE_TWEAKS.captainAlone && (
         <button className="secondary wide" onClick={() => onOrder("capitan")}>
           <Icon name="capitan" size={18} color="#d6a64b" /> Mover al Capitán solo
@@ -680,10 +751,12 @@ function Composer({
   byId,
   available,
   engineTiles,
+  allies,
   captainHere,
   onAdd,
 }: {
   state: GameState;
+  allies: number[];
   compose: Compose;
   setCompose: (c: Compose | null) => void;
   byId: Map<number, TileView>;
@@ -695,15 +768,25 @@ function Composer({
 }) {
   const from = byId.get(compose.from)!;
   const target = compose.target != null ? byId.get(compose.target)! : null;
-  const verb =
-    compose.mode === "capitan" ? "Mover al Capitán" : compose.mode === "mover" ? "Mover o atacar" : compose.mode === "sitiar" ? "Sitiar" : "Apoyar";
-  // Qué tipos pueden ir: a la carga solo jinetes; a la montaña solo Mesnada; los apoyos, sin catapultas.
   const me = state.yo.casa;
+  // Bloque 8: a una casilla aliada se entra sin combatir (quedan como tropas de paso).
+  const entering = compose.mode === "mover" && target?.owner != null && allies.includes(target.owner);
+  const verb =
+    compose.mode === "capitan"
+      ? "Mover al Capitán"
+      : entering
+        ? "Entrar"
+        : compose.mode === "mover"
+          ? "Mover o atacar"
+          : compose.mode === "sitiar"
+            ? "Sitiar"
+            : "Apoyar";
+  // Qué tipos pueden ir: a la carga solo jinetes; a la montaña solo Mesnada; los apoyos, sin catapultas.
   const charge =
     target != null &&
     compose.mode === "mover" &&
     me != null &&
-    marchKind(asTile(from), asTile(target), engineTiles, me) == null;
+    marchKind(asTile(from), asTile(target), engineTiles, me, undefined, allies) == null;
   const kinds: (keyof Units)[] = !target
     ? []
     : charge
@@ -757,6 +840,7 @@ function Composer({
     <section className="card composer">
       <h2>
         {verb} desde {from.nombre}
+        {compose.guest && " (tropas de paso)"}
       </h2>
       {!target ? (
         <p>
@@ -769,7 +853,8 @@ function Composer({
       ) : (
         <>
           <p>
-            Objetivo: <strong>{target.nombre}</strong>
+            {entering ? "Destino" : "Objetivo"}: <strong>{target.nombre}</strong>
+            {entering && " · casilla aliada: entras sin combatir y tus tropas quedan de paso"}
             {charge && " · a la carga: solo van jinetes"}
             {!charge && compose.mode === "mover" && target.type === "montana" && " · a la montaña solo sube la Mesnada"}
           </p>

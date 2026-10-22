@@ -1,6 +1,7 @@
 import { ResourceIcon, ShieldIcon } from "../art";
 import { AuctionPanel } from "./AuctionPanel";
 import { CrownPanel } from "./CrownPanel";
+import { DiplomacyPanel } from "./DiplomacyPanel";
 import { useState } from "react";
 import { RESOURCES, type Resources } from "@reyes/engine";
 import { api, type GameState, type OfferInfo } from "../api";
@@ -67,6 +68,8 @@ export function TradePanel({ state, act }: Props) {
 
   return (
     <div>
+      {/* Bloque 8: las alianzas, arriba mientras no tengan su sitio en el diseño de Comercio (bloque 10). */}
+      <DiplomacyPanel state={state} act={act} />
       {draft ? (
         <OfferForm
           state={state}

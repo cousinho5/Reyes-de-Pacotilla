@@ -1745,3 +1745,52 @@ label.check {
 .prisoner .ransom input {
   width: 4.5rem;
 }
+
+/* Bloque 8: alianzas. */
+.cell-ally {
+  fill: none;
+  stroke: #7fd0ff;
+  stroke-width: 2;
+  stroke-dasharray: 1.5 3.5;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 1px rgba(28, 20, 16, 0.9));
+}
+.cell-ally.ending {
+  stroke: #b8aa96;
+}
+.tile-guests {
+  margin-left: 0.15rem;
+  font-size: 0.7rem;
+  color: #7fd0ff;
+}
+.ally-note,
+.guest-note {
+  margin: 0.4rem 0;
+  font-size: 0.92rem;
+  color: var(--ink-soft);
+}
+.diplomacy h3 {
+  margin: 0.9rem 0 0.2rem;
+  font-size: 1rem;
+}
+.alliance-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+.alliance-row .actions {
+  margin: 0;
+}
+.alliance-row .actions button {
+  min-height: 40px;
+}
+.propose label {
+  display: block;
+}
+.list.compact > li {
+  padding: 0.3rem 0;
+}
+.alliance-row .grow {
+  flex: 1 1 12rem;
+}

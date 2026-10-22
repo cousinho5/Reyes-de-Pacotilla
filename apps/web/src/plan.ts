@@ -2,7 +2,7 @@
 // el servidor y solo lo que la casa ve: las tropas que no se ven cuentan como 0
 // y las órdenes de las demás casas no entran.
 
-import { checkOrders, fitOrders, planNights, type Order, type PlannedNight, type Tile } from "@reyes/engine";
+import { alliesOf, checkOrders, fitOrders, planNights, type Alliance, type Order, type PlannedNight, type Tile } from "@reyes/engine";
 import type { GameState, OrderView, TileView } from "./api";
 
 /** Una casilla tal como la entiende el motor. */
@@ -19,11 +19,40 @@ export function asTile(t: TileView): Tile {
     fortifiedUntil: t.fortifiedUntil,
     castleOf: t.castleOf ?? null,
     ...(t.besiegedBy != null ? { besiegedBy: t.besiegedBy, siegeNights: t.siegeNights ?? 0 } : {}),
+    ...(t.guests?.length ? { guests: t.guests.map((g) => ({ ...g })) } : {}),
   };
 }
 
+/** Bloque 8: las alianzas del registro público, en el formato del motor. */
+export function alliancesOf(state: GameState): Alliance[] {
+  return (state.alianzas?.lista ?? []).map((a) => ({
+    a: a.casas[0],
+    b: a.casas[1],
+    status: a.estado === "activa" ? "active" : "breaking",
+    endsAt: a.estado === "aviso" ? a.terminaTras : null,
+    since: a.desde ?? 0,
+  }));
+}
+
+/** Casas aliadas en vigor de la tuya. */
+export function myAllies(state: GameState): number[] {
+  return alliesOf(alliancesOf(state), state.yo.casa);
+}
+
+/** Casas con las que tienes una alianza en aviso (no se pueden atacar ni se puede entrar en lo suyo). */
+export function myBreaking(state: GameState): number[] {
+  const me = state.yo.casa;
+  return (state.alianzas?.lista ?? [])
+    .filter((a) => a.estado === "aviso" && a.casas.includes(me))
+    .map((a) => (a.casas[0] === me ? a.casas[1] : a.casas[0]));
+}
+
 export function toOrder(o: OrderView, house: number): Order {
-  const units = { ...(o.jinetes ? { jinetes: o.jinetes } : {}), ...(o.catapultas ? { catapultas: o.catapultas } : {}) };
+  const units = {
+    ...(o.jinetes ? { jinetes: o.jinetes } : {}),
+    ...(o.catapultas ? { catapultas: o.catapultas } : {}),
+    ...(o.dePaso ? { guest: true } : {}),
+  };
   if (o.tipo === "mover") return { kind: "move", house, from: o.desde, to: o.hacia, troops: o.tropas, ...units, ...(o.capitan ? { captain: true } : {}) };
   if (o.tipo === "sitiar") return { kind: "siege", house, from: o.desde, target: o.hacia, troops: o.tropas, ...units };
   return { kind: "support", house, from: o.desde, target: o.hacia, supportedFrom: o.apoyaDesde, troops: o.tropas, ...units };
@@ -61,7 +90,7 @@ export function project(state: GameState, draft: OrderView[]): Projection {
   const next = nextResolution(state);
   const n = queueNights(state);
   const byNight: Order[][] = Array.from({ length: n }, (_, k) => draft.filter((o) => nightOf(o, next) === next + k).map((o) => toOrder(o, me)));
-  const nights = planNights(tiles, byNight, me, myCaptainTile(tiles, me), next);
+  const nights = planNights(tiles.map(asTile), byNight, me, myCaptainTile(tiles, me), next, alliancesOf(state));
   const maps: TileView[][] = [tiles];
   for (const night of nights) {
     const byId = new Map(night.tiles.map((t) => [t.id, t]));
@@ -80,6 +109,7 @@ export function project(state: GameState, draft: OrderView[]): Projection {
           fortifiedUntil: p.fortifiedUntil ?? null,
           besiegedBy: p.besiegedBy ?? null,
           siegeNights: p.siegeNights ?? 0,
+          ...(known && p.guests?.length ? { guests: p.guests } : {}),
           ...(night.captainTile === t.id ? { capitanes: [me] } : {}),
         };
       }),
@@ -108,7 +138,7 @@ export function pruneQueue(state: GameState, draft: OrderView[]): { draft: Order
     let captainUsed = false;
     // Todas las de la noche juntas, como en el servidor: se reparten las tropas en orden.
     const fitted = fitOrders(engineTiles, night.map((o) => toOrder(o, me)));
-    const invalid = new Set(checkOrders(engineTiles, fitted, next + k).invalid.map((x) => x.order));
+    const invalid = new Set(checkOrders(engineTiles, fitted, next + k, alliancesOf(state)).invalid.map((x) => x.order));
     for (const [i, o] of night.entries()) {
       if (invalid.has(fitted[i]!)) {
         dropped++;

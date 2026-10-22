@@ -81,7 +81,10 @@ export function Game({ id }: { id: number }) {
   }
 
   const me = state.casas.find((h) => h.id === state.yo.casa)!;
-  const offersForMe = (state.ofertas ?? []).filter((o) => o.estado === "open" && o.para === state.yo.casa).length;
+  // En Comercio: ofertas para ti y propuestas de alianza que esperan respuesta (bloque 8).
+  const offersForMe =
+    (state.ofertas ?? []).filter((o) => o.estado === "open" && o.para === state.yo.casa).length +
+    (state.alianzas?.propuestas ?? []).filter((p) => p.para === state.yo.casa).length;
   const p = state.partida;
   const rank = [...state.casas]
     .sort((x, y) => (y.prestigio?.total ?? 0) - (x.prestigio?.total ?? 0))

@@ -124,7 +124,13 @@ export function OrdersPanel({ state, draft, setDraft, onPlan }: Props) {
 }
 
 function OrderText({ o, name }: { o: OrderView; name: (id: number | null) => string }) {
-  const n = <strong>{troopsText(o.tropas, o.jinetes, o.catapultas)}</strong>;
+  // Bloque 8: las tropas de paso salen de una casilla aliada.
+  const n = (
+    <>
+      <strong>{troopsText(o.tropas, o.jinetes, o.catapultas)}</strong>
+      {o.dePaso && " de paso"}
+    </>
+  );
   if (o.tipo === "sitiar")
     return (
       <>

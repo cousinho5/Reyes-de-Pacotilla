@@ -9,7 +9,7 @@ Primero se definen todos los bloques; después se hacen uno a uno, en el orden d
 | 1.º | 1. Mapa y losetas | Hecho (fases 0 a 4); quedan para más adelante el dibujo a ×1,5 y más variedad de dibujos por tipo de loseta | Geografía, ríos, Prado, Aldea, Ruinas y marco de mar y montañas |
 | 2.º | 4. Retoques sistema de batalla | Hecho | Apoyo sin origen, jinete más caro, Capitán libre, choques en el camino y fortificación con mantenimiento |
 | 3.º | 5. Retoques recursos | Hecho | Oro en todas las mejoras, cambio con la Corona, mercenarios de alquiler y mejoras con algo más de Madera y Piedra |
-| 4.º | 8. Alianzas | Decidido | Alianzas formales: paso por las casillas del aliado, ruptura con aviso de tres días y ataques conjuntos |
+| 4.º | 8. Alianzas | Hecho | Alianzas formales: paso por las casillas del aliado, ruptura con aviso de tres días y ataques conjuntos |
 | 5.º | 6. Optimización y controles en móvil | Decidido | Mapa guardado y dibujado en segundo plano, zoom con pinza, ficha que sube desde abajo, órdenes arrastrando, botones de 48 y juego sin conexión |
 | 6.º | 9. Diseño de la sección Mapa | Decidido | Capas (con Alcance automático), escudos y nombres, tropas por color y tipo, niebla con recuerdo, botones de salto, barra de avisos y leyenda |
 | 7.º | 12. Diseño de la sección Órdenes | Decidido | Verbo según el destino, botones de tropas, cambiar órdenes, tarjetas agrupadas, simulación con «¿Y si atacan?», repetir asedios y aviso 1 hora antes del cierre |
@@ -143,9 +143,9 @@ Decidido el 21 de octubre de 2026. Las decisiones y los pasos están en `docs/bl
 11. **Instalar:** tarjeta en la portada.
 12. **Movimiento:** animada y ligera, quieta con «reducir movimiento».
 
-## Bloque 8: Alianzas **(en curso)**
+## Bloque 8: Alianzas **(hecho)**
 
-Propuesto y decidido el 19 de octubre de 2026, a partir de Reyes de Pacotilla: investigación de las alianzas. Las reglas completas y los pasos para hacerlo están en `docs/alianzas.md`, con las dudas resueltas al empezar (22 de octubre). Hecho: el motor (fase 1), los bots en el simulador con su simulación (fases 5 y 6) y la base de datos, el servidor, los avisos, los bots de las partidas de prueba y Fray Abundio (fases 2 y 4). Falta la pantalla sencilla (fase 3).
+Propuesto y decidido el 19 de octubre de 2026, a partir de Reyes de Pacotilla: investigación de las alianzas. Las reglas completas y los pasos para hacerlo están en `docs/alianzas.md`, con las dudas resueltas al empezar (22 de octubre). Hecho: el motor (fase 1), los bots en el simulador con su simulación (fases 5 y 6) y la base de datos, el servidor, los avisos, los bots de las partidas de prueba y Fray Abundio (fases 2 y 4) y la pantalla sencilla (fase 3).
 
 **Decisiones:**
 
