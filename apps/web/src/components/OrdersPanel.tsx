@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { ANY_ORIGIN, crossingRisks, defenseBreakdown, type CampaignEvent, type DefensePart } from "@reyes/engine";
 import type { GameState, OrderView, TileView } from "../api";
-import { TileArt } from "../art";
+import { Icon, TileArt } from "../art";
 import { describeEvent, formatWhen, HOUSE_COLORS, houseName, nightLabel, TILE_LABEL, troopsText, withArticle } from "../ui";
 import { asTile, myAllies, myBreaking, nextResolution, nightOf, project, queueNights, toOrder, whatIfAttacked } from "../plan";
 import { VERB_LABEL, verbOf } from "../verbs";
@@ -239,7 +239,7 @@ function OrderCard({
               </button>
               {open && (
                 <button className="order-remove" aria-label="Quitar orden" title="Quitar orden" onClick={() => onRemove(o)}>
-                  Quitar
+                  <Icon name="papelera" size={24} color="#b3291d" />
                 </button>
               )}
             </li>
