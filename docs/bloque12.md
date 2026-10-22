@@ -53,11 +53,11 @@ Al empezar el bloque se repasó el documento con el código delante. Lo que camb
 6. **Botones «−» y «+»:** mantener pulsado acelera; atajos «Ninguna», «La mitad» y «Todas».
 7. **Arrastrar:** al soltar, la hoja sale con el verbo propuesto y un botón grande («Atacar con 6»).
 8. **«¿Y si atacan?»:** para cada casilla tuya, el peor ataque de una sola casa con lo que le ves, contando el hueco que dejan tus órdenes; se marcan en el mapa las que perderías. Nada de todos los vecinos a la vez.
-9. **Dibujo de origen y destino en las tarjetas:** pendiente de confirmar; la propuesta es usar en pequeño el dibujo de esas casillas en el mapa, sin iconos nuevos.
+9. **Dibujo de origen y destino en las tarjetas:** el de esas casillas en el mapa, en pequeño (`TileArt`), sin iconos nuevos.
 10. **Repetir cada noche:** si la orden deja de ser posible (por ejemplo, se rompe el asedio), la repetición se quita sola y Fray Abundio avisa.
 11. **Correcciones de los pasos:** cambiar una orden no necesita una acción nueva en el servidor (la lista se guarda entera con `PUT /ordenes`); la cuenta «6 contra 4, +25% de bosque» necesita una función del motor que desglose la fuerza, con su prueba.
 
-**PR:** 1, compositor (puntos 1 a 3); 2, lista rápida desde la etiqueta; 3, tarjetas, simulación y papelera; 4, repetir cada noche (migración) y aviso antes del cierre.
+**PR:** 1, compositor (puntos 1 a 3), hecho el 22 de octubre: `apps/web/src/verbs.ts` (verbos según el destino, con su prueba) y `Composer` y `Stepper` en `MapView.tsx`; la orden se cambia tocando su flecha, su línea en la ficha de la casilla de salida o en la pestaña Órdenes; 2, lista rápida desde la etiqueta; 3, tarjetas, simulación y papelera; 4, repetir cada noche (migración) y aviso antes del cierre.
 
 ## Pasos
 

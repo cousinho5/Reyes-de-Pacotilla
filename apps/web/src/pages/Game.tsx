@@ -45,6 +45,8 @@ export function Game({ id }: { id: number }) {
   const [draft, setDraft] = useState<OrderView[]>([]);
   // Noche de la cola que se planea en el mapa (0 = la próxima resolución).
   const [night, setNight] = useState(0);
+  // Bloque 12: orden que abrir en el mapa para cambiarla (desde la pestaña Órdenes).
+  const [editOrder, setEditOrder] = useState<OrderView | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   // Bloque 6: en el Mapa, el reloj y el evento se abren desde una etiqueta de la barra fina.
   const [statusOpen, setStatusOpen] = useState(false);
@@ -142,7 +144,7 @@ export function Game({ id }: { id: number }) {
 
   // Cada cambio de órdenes se guarda al momento (no hay que "sellar").
   // Al quitar una orden, las de la cola que dependían de ella se quitan también.
-  const updateDraft = async (wanted: OrderView[]) => {
+  const updateDraft = async (wanted: OrderView[], note?: string) => {
     if (!fresh) {
       setToast(OFFLINE_TOAST);
       return;
@@ -158,7 +160,7 @@ export function Game({ id }: { id: number }) {
       await api.saveOrders(id, orders);
       if (!removed) vibrate("orden");
       setToast(
-        removed
+        note ?? removed
           ? dropped > 0
             ? `Orden quitada, y ${dropped} ${dropped === 1 ? "orden en cola que dependía" : "órdenes en cola que dependían"} de ella.`
             : "Orden quitada."
@@ -288,7 +290,18 @@ export function Game({ id }: { id: number }) {
 
       <main className="game-body" onPointerDown={statusOpen ? () => setStatusOpen(false) : undefined}>
         <Suspense fallback={<p className="hint">Abriendo…</p>}>
-        {tab === "mapa" && <MapView state={state} draft={draft} setDraft={updateDraft} act={act} night={night} setNight={setNight} />}
+        {tab === "mapa" && (
+          <MapView
+            state={state}
+            draft={draft}
+            setDraft={updateDraft}
+            act={act}
+            night={night}
+            setNight={setNight}
+            editOrder={editOrder}
+            onEditOpened={() => setEditOrder(null)}
+          />
+        )}
         {tab === "castillo" && <CastlePanel state={state} act={act} gameId={id} />}
         {tab === "ordenes" && (
           <OrdersPanel
@@ -297,6 +310,11 @@ export function Game({ id }: { id: number }) {
             setDraft={updateDraft}
             onPlan={(n) => {
               setNight(n);
+              setTab("mapa");
+            }}
+            onEdit={(o, n) => {
+              setNight(n);
+              setEditOrder(o);
               setTab("mapa");
             }}
           />

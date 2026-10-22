@@ -2338,3 +2338,109 @@ label.check {
   font-size: 0.8rem;
   color: var(--dust);
 }
+
+/* ------------------------------------------------------------------ */
+/* Bloque 12: compositor de órdenes */
+
+.verb-choice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.5rem 0;
+}
+.verb-choice button {
+  min-height: 48px;
+  padding: 0 0.9rem;
+}
+.verb-choice button.active {
+  background: var(--brass, #d6a64b);
+  color: var(--wood-0, #1c1410);
+  font-weight: 700;
+}
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.35rem 0;
+}
+.stepper button {
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  font-size: 1.5rem;
+  line-height: 1;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.stepper strong {
+  min-width: 2.2ch;
+  text-align: center;
+  font-family: var(--font-pixel);
+  font-size: 1.4rem;
+}
+.troop-shortcuts {
+  display: flex;
+  gap: 0.4rem;
+  margin: 0.5rem 0 0.75rem;
+}
+.troop-shortcuts button {
+  flex: 1;
+  min-height: 48px;
+}
+.composer .primary.wide {
+  min-height: 52px;
+  font-size: 1.05rem;
+}
+.composer-foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+.composer-foot .link,
+.composer .muted .link {
+  min-height: 48px;
+}
+.link.danger {
+  color: var(--seal);
+}
+.tile-orders {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0;
+}
+.tile-orders .row-button {
+  width: 100%;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  text-align: left;
+}
+.world-arrows .arrow-hit {
+  pointer-events: stroke;
+  cursor: pointer;
+}
+.world-arrows g.arrow-hit {
+  pointer-events: all;
+}
+/* El botón de la orden se queda abajo a la vista aunque la hoja esté a media altura. */
+.composer .composer-go {
+  position: sticky;
+  bottom: -0.6rem;
+  z-index: 1;
+  margin: 0.5rem -0.5rem 0;
+  padding: 0.5rem 0.5rem 0.6rem;
+  background: var(--vellum-2);
+  box-shadow: 0 -8px 10px -6px rgba(42, 29, 20, 0.35);
+}
+.order-edit {
+  display: block;
+  text-align: left;
+  min-height: 48px;
+  color: inherit;
+  text-decoration: none;
+  font-weight: inherit;
+}
