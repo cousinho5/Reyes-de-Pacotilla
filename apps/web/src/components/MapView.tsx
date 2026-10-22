@@ -9,6 +9,7 @@ import { HOUSE_COLORS, TERRAIN_NOTE, TERRITORY, TILE_LABEL, UNIT_LABEL, captainO
 import { asTile, myAllies, myBreaking, nextResolution, nightOf, project, queueNights } from "../plan";
 import { NightReplay, replaySteps } from "./NightReplay";
 import { useMapZoom } from "./useMapZoom";
+import { Sheet, type SheetState } from "./Sheet";
 
 interface Props {
   state: GameState;
@@ -173,12 +174,29 @@ export function MapView({ state, draft, setDraft, act, night, setNight }: Props)
   const { level, setLevel, scale } = useMapZoom(viewport, wrapRef, W);
   const close = level > 0;
   const focus = useRef<{ x: number; y: number } | null>(null);
+  // Ficha de la casilla (bloque 6): hoja que sube desde abajo, encima del mapa.
+  const [sheet, setSheet] = useState<SheetState>("peek");
+  const sheetRef = useRef<HTMLElement>(null);
+  const [sheetH, setSheetH] = useState(0);
+  useEffect(() => {
+    const el = sheetRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setSheetH(el.getBoundingClientRect().height));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [replay]);
+  /** Alto de la ventana del mapa que no tapa la hoja. */
+  const visibleH = (el: HTMLElement) => {
+    const top = sheetRef.current?.getBoundingClientRect().top;
+    const r = el.getBoundingClientRect();
+    return top == null ? el.clientHeight : Math.max(80, Math.min(el.clientHeight, top - r.top));
+  };
   const centerOn = (x: number, y: number) => {
     const el = viewport.current;
     if (!el) return;
     const [cx, cy] = geo.center(x, y);
     el.scrollLeft = cx * scale - el.clientWidth / 2;
-    el.scrollTop = cy * scale - el.clientHeight / 2;
+    el.scrollTop = cy * scale - visibleH(el) / 2;
   };
   // Al abrir, el mapa se centra en tu castillo.
   const myCastle = tiles.find((t) => t.type === "castillo" && t.castleOf === me) ?? tiles.find((t) => t.owner === me);
@@ -247,15 +265,43 @@ export function MapView({ state, draft, setDraft, act, night, setNight }: Props)
       focus.current = { x: t.x, y: t.y };
       setLevel(1);
       setSelected(t.id);
+      openSheet();
       return;
     }
     if (compose && compose.target == null && isTarget(t)) {
       setCompose({ ...compose, target: t.id });
+      openSheet();
       return;
     }
     setSelected(t.id);
     setCompose(null);
+    openSheet();
   };
+  const openSheet = () => setSheet((s) => (s === "full" ? "full" : "half"));
+  const closeSheet = () => {
+    setSelected(null);
+    setCompose(null);
+    setSheet("peek");
+  };
+  // El mapa se mueve para que la casilla elegida no quede bajo la hoja (cuando la hoja ya ha subido).
+  useEffect(() => {
+    if (selected == null || !close) return;
+    const t = window.setTimeout(() => {
+      const el = viewport.current;
+      const tl = tiles.find((x) => x.id === selected);
+      if (!el || !tl) return;
+      const [cx, cy] = geo.center(tl.x, tl.y);
+      const x = cx * scale - el.scrollLeft;
+      const y = cy * scale - el.scrollTop;
+      const h = visibleH(el);
+      const m = 48;
+      if (x < m || x > el.clientWidth - m || y < m || y > h - m) {
+        el.scrollTo({ left: cx * scale - el.clientWidth / 2, top: cy * scale - h / 2, behavior: "smooth" });
+      }
+    }, 230);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected, sheet, scale]);
 
 
   // Frontera de cada casa: una línea de su color (con un filo claro por dentro)
@@ -267,7 +313,7 @@ export function MapView({ state, draft, setDraft, act, night, setNight }: Props)
 
   const nightNames = Array.from({ length: nightsOpen }, (_, i) => nightLabel(state.partida, i));
   return (
-    <div>
+    <div className="map-screen">
       {nightsOpen > 1 && (
         <div className="nights" role="tablist" aria-label="Noche para la que das órdenes">
           {nightNames.map((label, i) => {
@@ -454,96 +500,111 @@ export function MapView({ state, draft, setDraft, act, night, setNight }: Props)
             />
           )}
         </div>
+        {/* Sitio para desplazar el mapa por encima de la hoja: ninguna casilla se queda debajo. */}
+        {close && <div className="sheet-room" style={{ height: sheetH }} aria-hidden />}
         </div>
       </div>
       {/* Franja de la repetición: fija abajo, encima de las pestañas, para que se lea siempre. */}
       <div className="replay-chrome" ref={setChrome} style={{ bottom: dock }} hidden={!replay} />
-      {k === 0 && threatened.length > 0 && !replay && (
-        <p className="threat-note">
-          <span className="threat-swatch" aria-hidden />
-          {threatened.length === 1
-            ? `${tiles.find((t) => t.id === threatened[0]!.tile)?.nombre ?? "Una casilla"} está al alcance de ${withArticle(houseName(state.casas, threatened[0]!.by[0]))}.`
-            : `${threatened.length} casillas tuyas están al alcance de un enemigo a la vista.`}
-        </p>
-      )}
-      {banners.length > 0 && !replay && (
-        <ul className="banner-alerts">
-          {banners.map((b, i) => (
-            <li key={i}>
-              <Icon name="estandarte" size={18} color={TERRITORY[state.casas.find((h) => h.id === b.house)?.color ?? ""] ?? "#fff"} />
-              Se ven estandartes de {withArticle(houseName(state.casas, b.house))} en {now.find((t) => t.id === b.tile)?.nombre} ({troopsWord(b.troops)}), junto a{" "}
-              {now.find((t) => t.id === b.near)?.nombre}.
-            </li>
-          ))}
-        </ul>
-      )}
-      {k === 0 && (battles.size > 0 || lastMoves.length > 0) && (
-        <div className="war-report">
-          <span>
-            <Icon name="ordenes" size={18} color="#f1cf7d" />
-            {battles.size > 0
-              ? `${battles.size} ${battles.size === 1 ? "batalla" : "batallas"} en la última resolución`
-              : "Movimientos de la última resolución"}
-            {conquests > 0 && ` · ${conquests} ${conquests === 1 ? "casilla cambia" : "casillas cambian"} de bandera`}
-          </span>
-          <span className="war-actions">
-            {replayable && (
-              <button
-                className="link"
-                onClick={() => {
-                  setReplay(true);
-                  showBoard();
-                }}
-                disabled={replay}
-              >
-                Ver la noche
-              </button>
-            )}
-            <button className="link" onClick={() => setShowLast(!showLast)} aria-pressed={showLast}>
-              {showLast ? "Ocultar" : "Flechas"}
-            </button>
-          </span>
-        </div>
-      )}
-
-      {compose ? (
-        <Composer
-          state={state}
-          compose={compose}
-          setCompose={setCompose}
-          byId={byId}
-          available={freeUnits(compose.from, compose.guest)}
-          allies={allies}
-          engineTiles={engineTiles}
-          captainHere={
-            !compose.guest && !!byId.get(compose.from)?.capitanes?.includes(me ?? -1) && !nightDraft.some((o) => o.capitan)
-          }
-          onAdd={(o) => {
-            setDraft([...draft, { ...o, resolucion: next + k, ...(compose.guest ? { dePaso: true } : {}) }]);
-            setCompose(null);
-          }}
-        />
-      ) : (
-        tile && (
-          <TilePanel
-            state={state}
-            tile={tile}
-            available={(tile.troops ?? 0) - committed(tile.id)}
-            guestsAvailable={(myGuests(tile, me)?.troops ?? 0) - committed(tile.id, true)}
-            bound={bound}
-            allies={allies}
-            open={open}
-            planning={k > 0}
-            captainHere={!!tile.capitanes?.includes(me ?? -1) && !nightDraft.some((o) => o.capitan)}
-            onOrder={(mode, guest) =>
-              setCompose({ from: tile.id, mode, target: null, mix: freeUnits(tile.id, guest), apoyaDesde: null, ...(guest ? { guest: true } : {}) })
-            }
-            onFortify={() => act(() => api.fortify(state.partida.id, tile.id), "Murallas reforzadas.")}
-          />
-        )
-      )}
-      {!tile && !compose && (
-        <p className="hint">Toca una casilla con la frontera de tu color (al principio, tu castillo) para mover o atacar con sus tropas.</p>
+      {!replay && (
+        <Sheet
+          ref={sheetRef}
+          state={sheet}
+          setState={setSheet}
+          onClose={tile || compose ? closeSheet : undefined}
+          label={tile ? `Ficha de ${tile.nombre}` : "Lo último en el mapa"}
+        >
+          {compose ? (
+            <Composer
+              state={state}
+              compose={compose}
+              setCompose={setCompose}
+              byId={byId}
+              available={freeUnits(compose.from, compose.guest)}
+              allies={allies}
+              engineTiles={engineTiles}
+              captainHere={
+                !compose.guest && !!byId.get(compose.from)?.capitanes?.includes(me ?? -1) && !nightDraft.some((o) => o.capitan)
+              }
+              onAdd={(o) => {
+                setDraft([...draft, { ...o, resolucion: next + k, ...(compose.guest ? { dePaso: true } : {}) }]);
+                setCompose(null);
+              }}
+            />
+          ) : tile ? (
+            <TilePanel
+              state={state}
+              tile={tile}
+              available={(tile.troops ?? 0) - committed(tile.id)}
+              guestsAvailable={(myGuests(tile, me)?.troops ?? 0) - committed(tile.id, true)}
+              bound={bound}
+              allies={allies}
+              open={open}
+              planning={k > 0}
+              captainHere={!!tile.capitanes?.includes(me ?? -1) && !nightDraft.some((o) => o.capitan)}
+              onOrder={(mode, guest) => {
+                setCompose({ from: tile.id, mode, target: null, mix: freeUnits(tile.id, guest), apoyaDesde: null, ...(guest ? { guest: true } : {}) });
+                // Mientras eliges el destino, la hoja se encoge para ver el mapa.
+                setSheet("peek");
+              }}
+              onFortify={() => act(() => api.fortify(state.partida.id, tile.id), "Murallas reforzadas.")}
+            />
+          ) : (
+            <>
+              {k === 0 && threatened.length > 0 && (
+                <p className="threat-note">
+                  <span className="threat-swatch" aria-hidden />
+                  {threatened.length === 1
+                    ? `${tiles.find((t) => t.id === threatened[0]!.tile)?.nombre ?? "Una casilla"} está al alcance de ${withArticle(houseName(state.casas, threatened[0]!.by[0]))}.`
+                    : `${threatened.length} casillas tuyas están al alcance de un enemigo a la vista.`}
+                </p>
+              )}
+              {banners.length > 0 && (
+                <ul className="banner-alerts">
+                  {banners.map((b, i) => (
+                    <li key={i}>
+                      <Icon name="estandarte" size={18} color={TERRITORY[state.casas.find((h) => h.id === b.house)?.color ?? ""] ?? "#fff"} />
+                      Se ven estandartes de {withArticle(houseName(state.casas, b.house))} en {now.find((t) => t.id === b.tile)?.nombre} ({troopsWord(b.troops)}), junto a{" "}
+                      {now.find((t) => t.id === b.near)?.nombre}.
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {k === 0 && (battles.size > 0 || lastMoves.length > 0) && (
+                <div className="war-report">
+                  <span>
+                    <Icon name="ordenes" size={18} color="#f1cf7d" />
+                    {battles.size > 0
+                      ? `${battles.size} ${battles.size === 1 ? "batalla" : "batallas"} en la última resolución`
+                      : "Movimientos de la última resolución"}
+                    {conquests > 0 && ` · ${conquests} ${conquests === 1 ? "casilla cambia" : "casillas cambian"} de bandera`}
+                  </span>
+                  <span className="war-actions">
+                    {replayable && (
+                      <button
+                        className="link"
+                        onClick={() => {
+                          setReplay(true);
+                          showBoard();
+                        }}
+                        disabled={replay}
+                      >
+                        Ver la noche
+                      </button>
+                    )}
+                    <button className="link" onClick={() => setShowLast(!showLast)} aria-pressed={showLast}>
+                      {showLast ? "Ocultar" : "Flechas"}
+                    </button>
+                  </span>
+                </div>
+              )}
+              {/* La ayuda, solo si no hay nada más que contar: la hoja asomada solo enseña lo primero. */}
+              {!(k === 0 && threatened.length > 0) && banners.length === 0 && !(k === 0 && (battles.size > 0 || lastMoves.length > 0)) && (
+                <p className="hint">Toca una casilla con la frontera de tu color (al principio, tu castillo) para mover o atacar con sus tropas.</p>
+              )}
+            </>
+          )}
+        </Sheet>
       )}
     </div>
   );

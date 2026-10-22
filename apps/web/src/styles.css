@@ -1796,3 +1796,203 @@ label.check {
 .alliance-row .grow {
   flex: 1 1 12rem;
 }
+
+/* ------------------------------------------------------------------ */
+/* Bloque 6: el Mapa a toda pantalla, con una barra fina arriba y la ficha
+   de la casilla en una hoja que sube desde abajo. */
+
+.game.map-mode {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+  padding-bottom: calc(64px + env(safe-area-inset-bottom));
+}
+.game.map-mode .topbar {
+  padding: 0.3rem 0.5rem;
+}
+.topbar-thin {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.topbar-thin .back {
+  border: none;
+  box-shadow: none;
+  background: none;
+  color: var(--dust);
+  min-height: 40px;
+  padding: 0 0.15rem;
+  font-size: 1.5rem;
+}
+.resources.thin {
+  flex: 1;
+  min-width: 0;
+  margin-top: 0;
+  padding: 0.2rem 0.4rem;
+}
+.resources.thin .res {
+  font-size: 0.92rem;
+  gap: 0.1rem;
+}
+.status-chip {
+  position: relative;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: 36px;
+  padding: 0.15rem 0.5rem;
+  font-family: var(--font-pixel);
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--ink);
+  background: var(--brass);
+  box-shadow: 0 2px 0 var(--brass-lo);
+}
+.status-chip.closed {
+  background: var(--dust);
+  box-shadow: 0 2px 0 #7d6c55;
+}
+.status-dot {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--seal);
+  box-shadow: 0 0 0 2px #2c1d12;
+}
+/* Reloj, evento (y mesa de pruebas) al tocar la etiqueta, encima del mapa. */
+.status-pop {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  max-height: 70vh;
+  overflow: auto;
+  padding-bottom: 0.6rem;
+  background: linear-gradient(180deg, #3a281a, #2a1c12);
+  border-bottom: 2px solid var(--brass);
+  box-shadow: 0 10px 18px rgba(0, 0, 0, 0.5);
+}
+.game.map-mode .game-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 0.4rem 0.4rem 0;
+}
+.map-screen {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.map-screen .board {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.map-screen .map-viewport {
+  flex: 1;
+  min-height: 0;
+  max-height: none;
+}
+.map-screen .map-viewport.whole {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.map-screen .map-viewport.whole .world-wrap {
+  flex: none;
+}
+.sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100% - 0.25rem);
+  background:
+    repeating-linear-gradient(90deg, rgba(255, 220, 170, 0.03) 0 2px, transparent 2px 9px),
+    linear-gradient(180deg, #3a281a, #2a1c12);
+  border-top: 2px solid var(--brass);
+  border-radius: 12px 12px 0 0;
+  box-shadow: 0 -8px 18px rgba(0, 0, 0, 0.5);
+  transition: height 0.2s ease;
+}
+.sheet.peek {
+  max-height: 8.5rem;
+}
+.sheet.half {
+  height: 50%;
+}
+.sheet.full {
+  height: calc(100% - 0.25rem);
+}
+.sheet.dragging {
+  transition: none;
+  max-height: calc(100% - 0.25rem);
+}
+.sheet-handle {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 28px;
+  touch-action: none;
+  cursor: grab;
+}
+.sheet-grip {
+  width: 44px;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--dust);
+  opacity: 0.7;
+}
+.sheet-close {
+  position: absolute;
+  z-index: 1;
+  top: 2px;
+  right: 6px;
+  min-height: 40px;
+  width: 40px;
+  padding: 0;
+  border: none;
+  box-shadow: none;
+  background: none;
+  color: var(--dust);
+  font-size: 1.1rem;
+}
+.sheet-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 0 0.5rem 0.6rem;
+}
+.sheet.peek .sheet-body {
+  overflow: hidden;
+}
+.sheet-body > :first-child {
+  margin-top: 0;
+}
+.sheet-body .card {
+  margin: 0;
+}
+.sheet-body .hint {
+  margin: 0.4rem 0 0.2rem;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sheet {
+    transition: none;
+  }
+}
