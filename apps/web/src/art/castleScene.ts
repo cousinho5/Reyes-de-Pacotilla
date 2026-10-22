@@ -16,12 +16,12 @@ export type SceneTarget = BuildingKind | "castillo";
 
 /** Dónde va cada pieza: el centro de su base (como el pivote "bottom" de pxl). */
 export const SITES: Record<SceneTarget, [number, number]> = {
-  castillo: [98, 104],
-  aserradero: [30, 90],
+  castillo: [98, 106],
+  aserradero: [30, 92],
   cantera: [166, 70],
-  mina: [172, 108],
-  granja: [32, 132],
-  mercado: [150, 130],
+  mina: [171, 110],
+  granja: [33, 133],
+  mercado: [150, 131],
 };
 
 /** Orden de pintado: lo de detrás primero. */
@@ -60,7 +60,7 @@ export function housePalette(hex: string): Record<string, string> {
  * Dónde cuelga el escudo en cada etapa: esquina de arriba a la izquierda, en el
  * dibujo del castillo (ESCUDO_EN en castillo.px.js: filas por encima de la base).
  */
-const SHIELD_AT: Record<number, [number, number]> = { 1: [45, 71], 2: [45, 60], 3: [45, 60], 4: [45, 54], 5: [45, 42] };
+const SHIELD_AT: Record<number, [number, number]> = { 1: [49, 71], 2: [49, 59], 3: [49, 60], 4: [49, 54], 5: [49, 40] };
 
 export interface CastleSceneInput {
   stage: number;
