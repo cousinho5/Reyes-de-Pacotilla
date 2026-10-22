@@ -1,22 +1,44 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, lazy, useCallback, useEffect, useRef, useState } from "react";
 import { RESOURCES } from "@reyes/engine";
-import { api, ApiError, type GameState, type HouseForm, type OrderView } from "../api";
+import { api, ApiError, isOffline, saveGame, savedGame, type GameState, type HouseForm, type OrderView } from "../api";
 import { FrayAbundio, Icon, ResourceIcon, ShieldIcon } from "../art";
 import { HouseEditor } from "../components/HouseEditor";
 import { navigate } from "../App";
-import { CastlePanel } from "../components/CastlePanel";
 import { MapView } from "../components/MapView";
-import { OrdersPanel } from "../components/OrdersPanel";
-import { Realm } from "../components/Realm";
 import { TestBench } from "../components/TestBench";
-import { TradePanel } from "../components/TradePanel";
 import { RESOURCE_LABEL, formatDay, formatShort, timeLeft } from "../ui";
 import { nextResolution, nightOf, pruneQueue } from "../plan";
 
 type Tab = "mapa" | "castillo" | "ordenes" | "comercio" | "reino";
 
+// Bloque 6: cada pestaña, salvo el Mapa, en su propio trozo de JS que se baja al abrirla.
+const loadCastle = () => import("../components/CastlePanel");
+const loadOrders = () => import("../components/OrdersPanel");
+const loadTrade = () => import("../components/TradePanel");
+const loadRealm = () => import("../components/Realm");
+const CastlePanel = lazy(() => loadCastle().then((m) => ({ default: m.CastlePanel })));
+const OrdersPanel = lazy(() => loadOrders().then((m) => ({ default: m.OrdersPanel })));
+const TradePanel = lazy(() => loadTrade().then((m) => ({ default: m.TradePanel })));
+const Realm = lazy(() => loadRealm().then((m) => ({ default: m.Realm })));
+const OFFLINE_TOAST = "Sin conexión: podrás dar órdenes cuando vuelva la red.";
+
+/**
+ * Con el mapa ya en pantalla (unos segundos después, para no quitarle red), se bajan
+ * las demás pestañas para tenerlas también sin conexión.
+ */
+function preloadTabs() {
+  const idle = (window as { requestIdleCallback?: (f: () => void) => void }).requestIdleCallback ?? ((f: () => void) => setTimeout(f, 0));
+  setTimeout(() => idle(() => [loadCastle, loadOrders, loadTrade, loadRealm].forEach((f) => f().catch(() => {}))), 4000);
+}
+
 export function Game({ id }: { id: number }) {
-  const [state, setState] = useState<GameState | null>(null);
+  // Bloque 6: se abre con lo último que se vio y se pone al día en cuanto llega la red.
+  const [state, setState] = useState<GameState | null>(() => savedGame(id)?.state ?? null);
+  /** Lo que se ve viene de la red (si no, es lo guardado y no se pueden dar órdenes). */
+  const [fresh, setFresh] = useState(false);
+  /** Hora de lo guardado, si la red ha fallado. */
+  const [offlineAt, setOfflineAt] = useState<number | null>(null);
+  const preloaded = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("mapa");
   const [draft, setDraft] = useState<OrderView[]>([]);
@@ -27,18 +49,39 @@ export function Game({ id }: { id: number }) {
   const [statusOpen, setStatusOpen] = useState(false);
   // Mientras se guarda una orden, las recargas no pisan lo que se ve.
   const savingRef = useRef(false);
+  const freshRef = useRef(false);
+  freshRef.current = fresh;
 
   const load = useCallback(async () => {
     try {
       const s = await api.game(id);
       setState(s);
+      setFresh(true);
+      setOfflineAt(null);
       setError(null);
+      saveGame(id, s);
       if (!savingRef.current) setDraft(s.ordenes ?? []);
+      if (!preloaded.current) {
+        preloaded.current = true;
+        preloadTabs();
+      }
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) navigate("/entrar");
-      else setError((err as Error).message);
+      else if (isOffline(err) && savedGame(id)) {
+        setFresh(false);
+        setOfflineAt(savedGame(id)!.at);
+      } else setError(isOffline(err) ? "Sin conexión, y en este móvil no hay nada guardado de esta partida." : (err as Error).message);
     }
   }, [id]);
+
+  // Las órdenes guardadas se ven al momento, aunque aún no haya llegado la red.
+  useEffect(() => {
+    const saved = savedGame(id);
+    if (saved) setDraft(saved.state.ordenes ?? []);
+    const back = () => load();
+    window.addEventListener("online", back);
+    return () => window.removeEventListener("online", back);
+  }, [id, load]);
 
   useEffect(() => {
     load();
@@ -55,6 +98,10 @@ export function Game({ id }: { id: number }) {
   /** Ejecuta una acción y recarga; los errores se muestran como aviso. */
   const act = useCallback(
     async (fn: () => Promise<unknown>, ok?: string) => {
+      if (!freshRef.current) {
+        setToast(OFFLINE_TOAST);
+        return;
+      }
       try {
         await fn();
         if (ok) setToast(ok);
@@ -95,6 +142,10 @@ export function Game({ id }: { id: number }) {
   // Cada cambio de órdenes se guarda al momento (no hay que "sellar").
   // Al quitar una orden, las de la cola que dependían de ella se quitan también.
   const updateDraft = async (wanted: OrderView[]) => {
+    if (!fresh) {
+      setToast(OFFLINE_TOAST);
+      return;
+    }
     const removed = wanted.length < draft.length;
     const { draft: orders, dropped } = pruneQueue(state, wanted);
     const next = nextResolution(state);
@@ -221,6 +272,11 @@ export function Game({ id }: { id: number }) {
         )}
       </header>
 
+      {offlineAt != null && (
+        <p className="offline-note" role="status">
+          Sin conexión. Ves la partida como estaba {formatSavedAt(offlineAt)}; podrás dar órdenes cuando vuelva la red.
+        </p>
+      )}
       {!mapMode && (
         <>
           {status}
@@ -229,6 +285,7 @@ export function Game({ id }: { id: number }) {
       )}
 
       <main className="game-body" onPointerDown={statusOpen ? () => setStatusOpen(false) : undefined}>
+        <Suspense fallback={<p className="hint">Abriendo…</p>}>
         {tab === "mapa" && <MapView state={state} draft={draft} setDraft={updateDraft} act={act} night={night} setNight={setNight} />}
         {tab === "castillo" && <CastlePanel state={state} act={act} gameId={id} />}
         {tab === "ordenes" && (
@@ -244,6 +301,7 @@ export function Game({ id }: { id: number }) {
         )}
         {tab === "comercio" && <TradePanel state={state} act={act} />}
         {tab === "reino" && <Realm state={state} act={act} />}
+        </Suspense>
       </main>
 
       {toast && (
@@ -275,6 +333,13 @@ export function Game({ id }: { id: number }) {
       </nav>
     </div>
   );
+}
+
+/** «a las 18:05», o «el lunes a las 18:05» si no es de hoy. */
+function formatSavedAt(at: number): string {
+  const d = new Date(at);
+  const time = d.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
+  return d.toDateString() === new Date().toDateString() ? `a las ${time}` : `el ${d.toLocaleDateString("es-ES", { weekday: "long" })} a las ${time}`;
 }
 
 function Lobby({

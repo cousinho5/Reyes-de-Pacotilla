@@ -282,10 +282,70 @@ export interface TestInfo {
 
 export type CrownGood = "pan" | "madera" | "piedra" | "hierro";
 
+// --- Lo último que se vio (bloque 6): la partida abre al instante y, sin conexión,
+// enseña lo guardado. Se guarda en este navegador y se borra al entrar o salir.
+
+const SAVED_GAMES = 3;
+const savedKey = (id: number) => `partida:${id}`;
+function readSaved<T>(key: string): { at: number; data: T } | null {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as { at: number; data: T }) : null;
+  } catch {
+    return null;
+  }
+}
+function writeSaved(key: string, data: unknown) {
+  try {
+    localStorage.setItem(key, JSON.stringify({ at: Date.now(), data }));
+  } catch {
+    /* sin sitio: la próxima vez habrá que esperar a la red */
+  }
+}
+/** La última partida que se vio y cuándo (ms), o null. */
+export function savedGame(id: number): { at: number; state: GameState } | null {
+  const s = readSaved<GameState>(savedKey(id));
+  return s ? { at: s.at, state: s.data } : null;
+}
+export function saveGame(id: number, state: GameState) {
+  writeSaved(savedKey(id), state);
+  // Solo las últimas partidas: el sitio del navegador es poco.
+  try {
+    const games = Object.keys(localStorage)
+      .filter((k) => k.startsWith("partida:"))
+      .map((k) => ({ k, at: readSaved(k)?.at ?? 0 }))
+      .sort((a, b) => b.at - a.at);
+    games.slice(SAVED_GAMES).forEach((g) => localStorage.removeItem(g.k));
+  } catch {
+    /* sin almacenamiento */
+  }
+}
+function forgetSaved() {
+  try {
+    Object.keys(localStorage)
+      .filter((k) => k.startsWith("partida:") || k === "yo")
+      .forEach((k) => localStorage.removeItem(k));
+  } catch {
+    /* sin almacenamiento */
+  }
+}
+/** Sin red (no un error del servidor): fetch falla con TypeError. */
+export const isOffline = (err: unknown) => !(err instanceof ApiError);
+
 export const api = {
-  me: () => call<Me>("GET", "/yo"),
-  login: (codigo: string) => call<{ ok: true }>("POST", "/entrar", { codigo }),
-  logout: () => call<{ ok: true }>("POST", "/salir"),
+  me: async () => {
+    try {
+      const me = await call<Me>("GET", "/yo");
+      writeSaved("yo", me);
+      return me;
+    } catch (err) {
+      const saved = isOffline(err) ? readSaved<Me>("yo") : null;
+      if (saved) return saved.data;
+      throw err;
+    }
+  },
+  login: (codigo: string) => call<{ ok: true }>("POST", "/entrar", { codigo }).finally(forgetSaved),
+  logout: () => call<{ ok: true }>("POST", "/salir").finally(forgetSaved),
   invitation: (codigo: string) => call<Invitation>("GET", `/invitacion/${encodeURIComponent(codigo)}`),
   join: (codigo: string, body: { nombre?: string } & HouseForm) =>
     call<{ ok: true; partida: number; codigoAcceso: string | null }>("POST", `/invitacion/${encodeURIComponent(codigo)}/unirse`, body),

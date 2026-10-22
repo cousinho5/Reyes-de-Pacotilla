@@ -2037,3 +2037,13 @@ label.check {
 .quick-info strong {
   font-size: 0.98rem;
 }
+
+/* Bloque 6: sin conexión se ve lo último guardado. */
+.offline-note {
+  margin: 0;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.9rem;
+  color: var(--ink);
+  background: var(--dust);
+  border-bottom: 2px solid #7d6c55;
+}
