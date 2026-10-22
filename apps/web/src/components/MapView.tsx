@@ -8,6 +8,7 @@ import { WorldCanvas, useWorldMeta } from "./WorldCanvas";
 import { HOUSE_COLORS, TERRAIN_NOTE, TERRITORY, TILE_LABEL, UNIT_LABEL, captainOf, houseName, nightLabel, troops as troopsWord, troopsText, wallsLeft, withArticle } from "../ui";
 import { asTile, myAllies, myBreaking, nextResolution, nightOf, project, queueNights } from "../plan";
 import { NightReplay, replaySteps } from "./NightReplay";
+import { useMapZoom } from "./useMapZoom";
 
 interface Props {
   state: GameState;
@@ -165,21 +166,12 @@ export function MapView({ state, draft, setDraft, act, night, setNight }: Props)
   const bannerHere = (t: TileView) =>
     geo.neighbours(t.x, t.y).every(([nx, ny]) => !(ny < t.y || (ny === t.y && nx < t.x)) || ownerAt(nx, ny) !== t.owner);
 
-  // Zoom: de cerca (2 px de pantalla por píxel del dibujo, unas 3 casillas de ancho
-  // en un móvil) o el reino entero ajustado al ancho.
+  // Zoom (bloque 6): todo el reino, normal (2 px de pantalla por píxel del dibujo, unas
+  // 3 casillas de ancho en un móvil) y cerca; con el botón, la pinza o dos toques.
   const viewport = useRef<HTMLDivElement>(null);
-  const [viewW, setViewW] = useState(360);
-  const [close, setClose] = useState(true);
-  useEffect(() => {
-    const el = viewport.current;
-    if (!el) return;
-    const ro = new ResizeObserver(() => setViewW(el.clientWidth));
-    ro.observe(el);
-    setViewW(el.clientWidth);
-    return () => ro.disconnect();
-  }, []);
-  const fit = viewW / W;
-  const scale = close ? Math.max(2, fit) : fit;
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const { level, setLevel, scale } = useMapZoom(viewport, wrapRef, W);
+  const close = level > 0;
   const focus = useRef<{ x: number; y: number } | null>(null);
   const centerOn = (x: number, y: number) => {
     const el = viewport.current;
@@ -253,7 +245,7 @@ export function MapView({ state, draft, setDraft, act, night, setNight }: Props)
     // En la vista de todo el reino, tocar una casilla acerca el mapa a ella.
     if (!close) {
       focus.current = { x: t.x, y: t.y };
-      setClose(true);
+      setLevel(1);
       setSelected(t.id);
       return;
     }
@@ -305,11 +297,11 @@ export function MapView({ state, draft, setDraft, act, night, setNight }: Props)
         </p>
       )}
       <div className={`board${replay ? " replaying" : ""}${k > 0 ? " planning" : ""}`} ref={boardRef}>
-        <button className="zoom" onClick={() => setClose(!close)} aria-pressed={!close}>
+        <button className="zoom" onClick={() => setLevel(close ? 0 : 1)} aria-pressed={!close}>
           {close ? "Ver todo el reino" : "Acercar"}
         </button>
         <div className={`map-viewport ${close ? "close" : "whole"}`} ref={viewport}>
-        <div className="world-wrap" style={{ width: W * scale, height: H * scale }}>
+        <div className="world-wrap" ref={wrapRef} style={{ width: W * scale, height: H * scale }}>
           <WorldCanvas opts={world} label="Mapa de Aldricia" />
           <svg className="world-marks" viewBox={`0 0 ${W} ${H}`} aria-hidden>
             {tiles.map((t) => (

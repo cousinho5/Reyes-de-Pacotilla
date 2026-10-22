@@ -67,7 +67,7 @@ Lo que se toca y mide menos de 48 px (sin contar la mesa de pruebas ni las casil
    | Se ve el mapa en la segunda visita | 1,23 s / 4,57 s | 0,25 s / 1,07 s |
 
    El dibujante es un archivo aparte de 38 KB que se descarga al abrir el mapa.
-3. **Zoom** con pinza y doble toque en `MapView.tsx`, encajando en escalas enteras de pixel art.
+3. **Zoom** con pinza y doble toque en `MapView.tsx`, encajando en escalas enteras de pixel art. **Hecho:** `apps/web/src/components/useMapZoom.ts`. Tres niveles: todo el reino (ajustado al ancho, como antes), normal (2 px de pantalla por píxel del dibujo, como el «de cerca» de antes: casilla de 112x128) y cerca (3 px: 168x192); normal y cerca encajan en píxeles enteros de la pantalla. Con la pinza el dibujo sigue a los dedos y al soltar encaja en el nivel más cercano, sin moverse el punto entre los dedos. Dos toques seguidos acercan un nivel donde se toca, y desde cerca vuelven a todo el reino; si el primer toque ya acercó el mapa (una casilla en la vista del reino), el segundo no acerca otra vez. En el ordenador, Ctrl con la rueda (o la pinza del panel táctil). El botón se queda. El mapa lleva `touch-action: pan-x pan-y`: con un dedo se arrastra como antes y la pinza ya no agranda la página encima del mapa (en el resto de la página, en el paso 8).
 4. **Hoja de la casilla** y mapa a toda pantalla con la barra fina.
 5. **Arrastrar para dar órdenes** y mantener pulsado para la información rápida, siempre con confirmación.
 6. **Tamaños de 48x48** en `styles.css` (botones, casillas de marcar, flecha de volver).
