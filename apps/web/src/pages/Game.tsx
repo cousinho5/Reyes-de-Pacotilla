@@ -8,6 +8,7 @@ import { MapView } from "../components/MapView";
 import { TestBench } from "../components/TestBench";
 import { RESOURCE_LABEL, formatDay, formatShort, timeLeft } from "../ui";
 import { nextResolution, nightOf, pruneQueue } from "../plan";
+import { vibrate } from "../haptics";
 
 type Tab = "mapa" | "castillo" | "ordenes" | "comercio" | "reino";
 
@@ -155,6 +156,7 @@ export function Game({ id }: { id: number }) {
     savingRef.current = true;
     try {
       await api.saveOrders(id, orders);
+      if (!removed) vibrate("orden");
       setToast(
         removed
           ? dropped > 0

@@ -37,6 +37,8 @@
 
   font-family: var(--font-text);
   font-size: 17px;
+  /* Bloque 6: dos toques seguidos no acercan la página (el mapa tiene su propio zoom). */
+  touch-action: manipulation;
   line-height: 1.4;
   color: var(--chalk);
   background: var(--wood-1);
@@ -50,6 +52,7 @@
 body {
   margin: 0;
   min-height: 100vh;
+  min-height: 100dvh;
   color: var(--chalk);
   /* Vetas de nogal. */
   background:
@@ -366,7 +369,7 @@ svg.ico {
   position: fixed;
   left: 1rem;
   right: 1rem;
-  bottom: 5.6rem;
+  bottom: calc(5.6rem + env(safe-area-inset-bottom));
   max-width: 32rem;
   margin: 0 auto;
   background: var(--ink);
@@ -385,7 +388,7 @@ svg.ico {
 .page {
   max-width: 34rem;
   margin: 0 auto;
-  padding: 1rem 1rem 3rem;
+  padding: calc(1rem + env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right)) 3rem max(1rem, env(safe-area-inset-left));
 }
 .page > h1 {
   color: var(--chalk);
@@ -458,7 +461,11 @@ svg.ico {
   max-width: 34rem;
   margin: 0 auto;
   min-height: 100vh;
+  min-height: 100dvh;
   padding-bottom: 5.5rem;
+  /* La muesca y los bordes curvos, con el móvil tumbado. */
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
 }
 
 /* Cabecera: tablón de nogal con el escudo y la bolsa de recursos. */
@@ -466,7 +473,7 @@ svg.ico {
   position: sticky;
   top: 0;
   z-index: 10;
-  padding: 0.6rem 0.75rem 0.55rem;
+  padding: calc(0.6rem + env(safe-area-inset-top)) 0.75rem 0.55rem;
   background:
     repeating-linear-gradient(90deg, rgba(255, 220, 170, 0.03) 0 2px, transparent 2px 9px),
     linear-gradient(180deg, #45301f, #2f2016);
@@ -720,6 +727,7 @@ svg.ico {
 .map-viewport {
   overflow: auto;
   max-height: min(64vh, 34rem);
+  max-height: min(64dvh, 34rem);
   border-radius: 2px;
   overscroll-behavior: contain;
   scrollbar-width: thin;
@@ -1820,7 +1828,7 @@ label.check {
   padding-bottom: calc(64px + env(safe-area-inset-bottom));
 }
 .game.map-mode .topbar {
-  padding: 0.3rem 0.5rem;
+  padding: calc(0.3rem + env(safe-area-inset-top)) 0.5rem 0.3rem;
 }
 .topbar-thin {
   display: flex;
@@ -1883,6 +1891,7 @@ label.check {
   left: 0;
   right: 0;
   max-height: 70vh;
+  max-height: 70dvh;
   overflow: auto;
   padding-bottom: 0.6rem;
   background: linear-gradient(180deg, #3a281a, #2a1c12);
@@ -2046,4 +2055,18 @@ label.check {
   color: var(--ink);
   background: var(--dust);
   border-bottom: 2px solid #7d6c55;
+}
+
+/* Bloque 6: bocadillo con la explicación de lo que se toca (tapHints.ts). */
+.tap-hint {
+  position: fixed;
+  z-index: 30;
+  max-width: min(18rem, calc(100vw - 16px));
+  padding: 0.35rem 0.6rem;
+  border-radius: 4px;
+  background: var(--ink);
+  color: var(--chalk);
+  font-size: 0.9rem;
+  box-shadow: 0 0 0 2px var(--brass), 0 6px 12px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
 }

@@ -82,8 +82,24 @@ Lo que se toca y mide menos de 48 px (sin contar la mesa de pruebas ni las casil
    | Descarga hasta ver el mapa | 282 KB (JS 142, letras 133) | 226 KB (JS 137, letras 81) |
    | Se ve el mapa en la segunda visita | 0,23 s / 1,21 s | 0,25 s / 1,05 s |
    | Sin conexión | no abre | abre con lo último visto |
-8. **Detalles:** `env(safe-area-inset-*)` arriba y a los lados, `touch-action` y el `viewport` para que solo el mapa haga zoom, ayudas al tocar, `dvh`, vibración con `navigator.vibrate` (con su ajuste) y repetición dibujada en canvas.
-9. **Comprobación** con Playwright a 390x844, con el procesador lento y la 4G lenta, y en un móvil de verdad (Android e iPhone).
+8. **Detalles:** `env(safe-area-inset-*)` arriba y a los lados, `touch-action` y el `viewport` para que solo el mapa haga zoom, ayudas al tocar, `dvh`, vibración con `navigator.vibrate` (con su ajuste) y repetición dibujada en canvas. **Hecho:**
+   - Muesca y bordes: la barra de arriba (la normal y la fina del Mapa) baja lo que mida la muesca, la partida y las páginas dejan sitio a los lados con el móvil tumbado, y el aviso de abajo sube sobre la barra del sistema.
+   - Zoom: `touch-action: manipulation` en toda la página (dos toques ya no la acercan) y `maximum-scale=1, user-scalable=no` en el `viewport` (Android). Safari en iPhone no hace caso del `viewport`, así que `main.tsx` le quita la pinza con `gesturestart`. El mapa sigue con su zoom (`useMapZoom.ts`), que no depende de nada de esto.
+   - Ayudas al tocar: `apps/web/src/tapHints.ts`. En el móvil, tocar algo que tiene explicación (`title`, o el `<title>` de un dibujo), como los recursos de la barra, el reloj o un escudo, la enseña en un bocadillo 2,2 s. Lo que ya hace algo al tocarlo (botones, enlaces, casillas del mapa, etiquetas) no la enseña.
+   - Altura: `100dvh` (con `100vh` antes, para navegadores viejos) en la página, la partida, la ventana del mapa y el reloj desplegado.
+   - Vibración: `apps/web/src/haptics.ts`. Un toque corto al guardar una orden (no al quitarla) y tres al acabar la repetición de la noche (no al saltarla). Se apaga en Castillo > Avisos («Vibrar…», solo si el aparato vibra; el ajuste es de cada aparato). iPhone no tiene `navigator.vibrate`: allí no sale el ajuste.
+   - Repetición: **no se pasa a canvas.** Medida con `npm run medir-movil`, va a 60 imágenes por segundo también en el móvil flojo, así que dibujarla en canvas no se notaría y costaría rehacer la repetición entera (batallas, marchas, asedios, cámara). Si algún día baja, se mide antes de tocarla.
+9. **Comprobación** con Playwright a 390x844, con el procesador lento y la 4G lenta, y en un móvil de verdad (Android e iPhone). **Hecho con Playwright** (la prueba en un móvil de verdad la hace Pablo): bocadillo al tocar un recurso, sin zoom de página con la pinza fuera del mapa, ajuste de vibración, sin conexión, gestos del mapa y la hoja, y `npm run medir-movil` al final del bloque:
+
+   | Qué | Antes del bloque (normal / flojo) | Al acabar (normal / flojo) |
+   | --- | --- | --- |
+   | Descarga de la primera visita | 282 KB | 226 KB |
+   | Se ve la vista previa del mapa | no había | 0,35 s / 2,02 s |
+   | Se ve el mapa | 1,14 s / 5,59 s | 1,27 s / 3,28 s |
+   | Pantalla congelada mientras se dibuja el mapa | 0,98 s / 4,08 s | 0,12 s / 0,49 s |
+   | Se ve el mapa en la segunda visita | 1,23 s / 4,57 s | 0,23 s / 0,86 s |
+   | Fluidez de la repetición de la noche | 59 / 56 imágenes/s | 60 / 60 imágenes/s |
+   | Cosas que tocar por debajo de 48 px | 33 | 0 |
 
 ## Lo que queda para otros bloques
 

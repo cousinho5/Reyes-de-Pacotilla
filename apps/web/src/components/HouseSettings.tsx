@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, type GameState } from "../api";
+import { canVibrate, setVibrationOn, vibrate, vibrationOn } from "../haptics";
 import { currentSubscription, disablePush, enablePush, isIOS, pushSupport } from "../push";
 
 interface Props {
@@ -14,6 +15,7 @@ export function HouseSettings({ state, act }: Props) {
   const aus = state.yo.ausencia;
   const [pushOn, setPushOn] = useState<boolean | null>(null);
   const support = pushSupport();
+  const [buzz, setBuzz] = useState(vibrationOn);
 
   useEffect(() => {
     currentSubscription().then((s) => setPushOn(!!s));
@@ -132,6 +134,20 @@ export function HouseSettings({ state, act }: Props) {
               Activar avisos
             </button>
           </>
+        )}
+        {canVibrate() && (
+          <label className="radio">
+            <input
+              type="checkbox"
+              checked={buzz}
+              onChange={(e) => {
+                setVibrationOn(e.target.checked);
+                setBuzz(e.target.checked);
+                vibrate("orden");
+              }}
+            />
+            Vibrar al dar una orden y al acabar la repetición de la noche (en este aparato)
+          </label>
         )}
       </section>
     </>

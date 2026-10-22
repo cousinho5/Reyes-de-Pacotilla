@@ -109,7 +109,7 @@ Decidido el 20 de octubre de 2026. Las decisiones, los datos y los pasos están 
 5. **Riqueza:** como hoy.
 6. **Madera y Piedra:** las mejoras piden un 15% más. El objetivo «niveles 17» baja a 16.
 
-## Bloque 6: optimización y controles en móvil **(en curso)**
+## Bloque 6: optimización y controles en móvil **(hecho; falta probarlo en un móvil de verdad)**
 
 Decidido el 20 de octubre de 2026. Las medidas, las decisiones y los pasos están en `docs/bloque6.md`. No cambia reglas.
 
