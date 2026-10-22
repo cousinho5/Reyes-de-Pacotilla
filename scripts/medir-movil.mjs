@@ -142,7 +142,9 @@ const casilla = (page) =>
 
 async function medir(browser, partida, nombre) {
   const perfil = PERFILES[nombre];
-  const context = await browser.newContext(MOVIL);
+  // La primera visita, sin service worker: así se cuenta todo lo que se baja y nada
+  // viene guardado. La segunda, en otro contexto con service worker (como en el móvil).
+  const context = await browser.newContext({ ...MOVIL, serviceWorkers: "block" });
   await context.addInitScript(() => {
     window.__largas = [];
     try {
@@ -176,9 +178,10 @@ async function medir(browser, partida, nombre) {
   const url = `${BASE}/partida/${partida.id}`;
   await page.goto(url, { waitUntil: "load" });
   await page.waitForFunction(() => performance.getEntriesByName("mapa-dibujado").length > 0, null, { timeout: 60_000 });
+  // Lo bajado hasta ver el mapa (después se bajan las demás pestañas para tenerlas sin conexión).
+  const descarga = { ...bytes };
   await page.waitForTimeout(300);
   const primera = await tiempos(page);
-  const descarga = { ...bytes };
 
   // La repetición de la noche sale sola la primera vez.
   let repeticion = null;
@@ -218,13 +221,27 @@ async function medir(browser, partida, nombre) {
     pequenos[nombrePestana] = await tocables(page);
   }
 
-  // Segunda visita: con lo que haya guardado el navegador.
-  await page.goto("about:blank");
-  await page.goto(url, { waitUntil: "load" });
-  await page.waitForFunction(() => performance.getEntriesByName("mapa-dibujado").length > 0, null, { timeout: 60_000 });
-  const segunda = await tiempos(page);
-
   await context.close();
+
+  // Segunda visita: con lo que hayan guardado el navegador y el service worker en la primera.
+  const again = await browser.newContext(MOVIL);
+  await again.request.post(`${BASE}/api/entrar`, { data: { codigo: partida.codigo } });
+  const page2 = await again.newPage();
+  const cdp2 = await again.newCDPSession(page2);
+  if (perfil.cpu > 1) await cdp2.send("Emulation.setCPUThrottlingRate", { rate: perfil.cpu });
+  if (perfil.red) {
+    await cdp2.send("Network.enable");
+    await cdp2.send("Network.emulateNetworkConditions", { offline: false, ...perfil.red });
+  }
+  await page2.goto(url, { waitUntil: "load" });
+  await page2.waitForFunction(() => performance.getEntriesByName("mapa-dibujado").length > 0, null, { timeout: 60_000 });
+  await page2.evaluate(() => navigator.serviceWorker?.ready);
+  await page2.waitForTimeout(3000);
+  await page2.goto("about:blank");
+  await page2.goto(url, { waitUntil: "load" });
+  await page2.waitForFunction(() => performance.getEntriesByName("mapa-dibujado").length > 0, null, { timeout: 60_000 });
+  const segunda = await tiempos(page2);
+  await again.close();
   return { perfil: nombre, descarga, primera, segunda, repeticion, arrastre, casillas, pequenos };
 }
 

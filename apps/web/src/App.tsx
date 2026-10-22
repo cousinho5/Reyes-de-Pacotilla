@@ -1,9 +1,11 @@
-import { useEffect, useState } from "react";
-import { Create } from "./pages/Create";
+import { Suspense, lazy, useEffect, useState } from "react";
 import { Game } from "./pages/Game";
 import { Home } from "./pages/Home";
-import { Join } from "./pages/Join";
-import { Login } from "./pages/Login";
+
+// Bloque 6: las páginas que se usan poco, en su propio trozo de JS.
+const Create = lazy(() => import("./pages/Create").then((m) => ({ default: m.Create })));
+const Join = lazy(() => import("./pages/Join").then((m) => ({ default: m.Join })));
+const Login = lazy(() => import("./pages/Login").then((m) => ({ default: m.Login })));
 
 /** Enrutador mínimo: /, /entrar, /crear, /unirse/:codigo, /partida/:id */
 export function navigate(path: string) {
@@ -25,9 +27,8 @@ export function App() {
   const path = usePath();
   const join = path.match(/^\/unirse\/([^/]+)/);
   const game = path.match(/^\/partida\/(\d+)/);
-  if (join) return <Join code={decodeURIComponent(join[1]!)} />;
   if (game) return <Game id={Number(game[1])} />;
-  if (path === "/entrar") return <Login />;
-  if (path === "/crear") return <Create />;
+  const page = join ? <Join code={decodeURIComponent(join[1]!)} /> : path === "/entrar" ? <Login /> : path === "/crear" ? <Create /> : null;
+  if (page) return <Suspense fallback={<main className="page">Cargando…</main>}>{page}</Suspense>;
   return <Home />;
 }

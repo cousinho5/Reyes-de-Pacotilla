@@ -1,0 +1,72 @@
+/* Generado por scripts/recortar-letras.mjs: no editar a mano. */
+/* Caracteres: 173. */
+@font-face {
+  font-family: "Alegreya Sans";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(./alegreya-sans-400-normal.woff2) format("woff2");
+}
+@font-face {
+  font-family: "Alegreya Sans";
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url(./alegreya-sans-400-italic.woff2) format("woff2");
+}
+@font-face {
+  font-family: "Alegreya Sans";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url(./alegreya-sans-500-normal.woff2) format("woff2");
+}
+@font-face {
+  font-family: "Alegreya Sans";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url(./alegreya-sans-700-normal.woff2) format("woff2");
+}
+@font-face {
+  font-family: "Alegreya Sans";
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url(./alegreya-sans-800-normal.woff2) format("woff2");
+}
+@font-face {
+  font-family: "Alegreya";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(./alegreya-400-normal.woff2) format("woff2");
+}
+@font-face {
+  font-family: "Alegreya";
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url(./alegreya-400-italic.woff2) format("woff2");
+}
+@font-face {
+  font-family: "Alegreya";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url(./alegreya-700-normal.woff2) format("woff2");
+}
+@font-face {
+  font-family: "Pixelify Sans";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url(./pixelify-sans-500-normal.woff2) format("woff2");
+}
+@font-face {
+  font-family: "Pixelify Sans";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url(./pixelify-sans-600-normal.woff2) format("woff2");
+}

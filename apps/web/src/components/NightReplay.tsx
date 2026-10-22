@@ -10,6 +10,7 @@ import { battleLine } from "@reyes/engine";
 import type { EventView, HouseInfo, TileView } from "../api";
 import { FrayAbundio, Icon, ShieldIcon } from "../art";
 import { cellBox, type Geo } from "../art/grid";
+import { vibrate } from "../haptics";
 import { TERRITORY, captainOf, describeEvent, houseName, wallsLeft } from "../ui";
 
 interface Token {
@@ -128,7 +129,10 @@ export function NightReplay({ geo, W, H, tiles, houses, events, seed, resolution
       const el = now - t0;
       setT(el);
       if (el < total) raf = requestAnimationFrame(tick);
-      else onClose();
+      else {
+        vibrate("repeticion");
+        onClose();
+      }
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
