@@ -12,3 +12,4 @@ export { offerGain, proposeOffer, type OfferPlan } from "./trade";
 export { cardValue, lotValue, planBids, planCards } from "./auction";
 export { planCrown, planMercenaries, type CrownPlan } from "./oro";
 export { botPaysRansom, botRansomPrice } from "./ransom";
+export { allianceAppetite, breakReason, planDiplomacy, type DiplomacyContext, type DiplomacyPlan } from "./alliances";

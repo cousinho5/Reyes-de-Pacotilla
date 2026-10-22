@@ -160,6 +160,8 @@ Cada fase se prueba y se simula antes y después (`npm run simular`, con `--alia
 
 ### Fase 5: bots (`packages/engine/src/ai`)
 
+**Hecho en el simulador** el 22 de octubre de 2026 (las partidas de prueba, en la solicitud 3). `ai/alliances.ts` (`planDiplomacy`, `breakReason`) con los pesos de `ALLIANCE_BOTS` en `rules.ts`. Proponen a una vecina que no sea el líder (antes a la que también linda con el líder) y no insisten durante 7 días si les rechazan; aceptan si quien propone no es el líder y no les ha atacado en 7 días; rompen si el aliado pasa a ser el líder, si les adelanta (las traicioneras), si dejan de compartir frontera o si tiene demasiadas tropas dentro. En las órdenes: no atacan a los aliados, se suman a un ataque que su aliado ya ha mandado (en el simulador ven las órdenes de sus aliados, como si lo hablaran), apoyan la defensa de las casillas aliadas amenazadas y sacan las tropas de paso hacia casa. Pruebas en `test/alianzas-bots.test.ts`.
+
 1. **Proponer**: con una casa vecina con la que no está en guerra, si comparten un enemigo (o el líder es otra casa) y según la personalidad (`trade` y `leaderHatred` altos, `houseBias` bajo).
 2. **Aceptar**: si quien propone no es el líder y no le ha atacado en la última semana.
 3. **Romper**: cuando el aliado pasa a ser el líder, cuando ya no comparten frontera con ningún enemigo o cuando el aliado tiene muchas tropas dentro (más la personalidad oportunista).
@@ -167,6 +169,8 @@ Cada fase se prueba y se simula antes y después (`npm run simular`, con `--alia
 5. Solo usan lo que vería una persona (`view.ts`). Las partidas de prueba (`pruebas.ts`) las usan igual.
 
 ### Fase 6: simulación y ajuste
+
+**Hecho** el 22 de octubre de 2026: `npm run simular -- --alianzas no` compara, `--alianzas-tope 1` prueba el límite y `--alianzas-ganas 0.2` el umbral de los bots. Resultados en `docs/simulaciones.md`: ninguna alianza decide la partida, así que no hace falta freno.
 
 1. `npm run simular` con y sin alianzas: cuántas se firman y se rompen, cuánto duran, si sube "el líder de la semana 2 gana", si las casas aliadas ganan más de lo esperado y si una alianza fija decide la partida.
 2. Si una alianza de dos domina, probar `maxPerHouse: 1` o un coste de Prestigio por alianza activa, y anotarlo en `docs/simulaciones.md`.
