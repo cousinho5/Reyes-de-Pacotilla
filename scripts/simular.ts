@@ -89,7 +89,7 @@ if (args.has("oro-mejora")) {
   });
 }
 if (args.has("riqueza-tope")) PRESTIGE.goldMax = Number(args.get("riqueza-tope"));
-//   --corona si                     cambio con la Corona a precio dinámico (CROWN en rules.ts)
+//   --corona no                     sin el cambio con la Corona (encendido desde el bloque 5; CROWN en rules.ts)
 //   --mercenarios alquiler|soldada  mercenarios con Oro (MERCENARIES en rules.ts)
 //   --mejora-madera-piedra 1.3      multiplica la Madera y la Piedra de las mejoras
 // Bloque 1: --geografia no usa el generador de mapas de antes (sin geografía ni Prado).
@@ -106,13 +106,12 @@ if (args.has("campos")) {
 }
 // --prado-paramos 0.5: parte de los páramos que pasan a Prado.
 if (args.has("prado-paramos")) MAP_GEN.pradoShare = Number(args.get("prado-paramos"));
-if (args.get("corona") === "si") ECONOMY_TWEAKS.crown = true;
+if (args.get("corona") === "no") ECONOMY_TWEAKS.crown = false;
 if (args.has("corona-base")) CROWN.base = Number(args.get("corona-base"));
-//   --corona-referencia oro|media   --corona-compra 0.4 (lo que paga la Corona respecto al precio)
+//   --corona-referencia oro|media   --corona-recargo 1.3 (lo que carga la Corona sobre el precio)
 if (args.has("corona-referencia")) CROWN.reference = args.get("corona-referencia") as "oro" | "media";
-if (args.has("corona-compra")) CROWN.buyMarkdown = Number(args.get("corona-compra"));
-//   --corona-tope 20 | no   --mercenarios-tope 5 | no   unidades por casa y semana (no = sin tope)
-if (args.has("corona-tope")) CROWN.weeklyCap = args.get("corona-tope") === "no" ? Infinity : Number(args.get("corona-tope"));
+if (args.has("corona-recargo")) CROWN.markup = Number(args.get("corona-recargo"));
+//   --mercenarios-tope 5 | no   mercenarios por casa y semana (no = sin tope)
 if (args.has("mercenarios-tope")) MERCENARIES.weeklyCap = args.get("mercenarios-tope") === "no" ? Infinity : Number(args.get("mercenarios-tope"));
 if (args.has("mercenarios")) ECONOMY_TWEAKS.mercenaries = args.get("mercenarios") as "alquiler" | "soldada";
 if (args.has("mejora-madera-piedra")) {
@@ -320,12 +319,11 @@ if (BOT_TWEAKS.riderShare || BOT_TWEAKS.fortifyFrontier) {
 
 if (ECONOMY_TWEAKS.crown || ECONOMY_TWEAKS.mercenaries) {
   const sum = (f: (g: SimGameResult) => number) => f1(avg(results.map(f)));
-  const res = (k: "crownBought" | "crownSold") => RESOURCES.filter((r) => r !== "oro").map((r) => `${r} ${sum((g) => g.economy[k][r])}`).join(", ");
+  const res = (k: "crownBought") => RESOURCES.filter((r) => r !== "oro").map((r) => `${r} ${sum((g) => g.economy[k][r])}`).join(", ");
   table("Bloque 5: Oro (por partida)", ["dato", "valor"], [
     ["Comprado a la Corona", res("crownBought")],
-    ["Vendido a la Corona", res("crownSold")],
     ["Precio medio de la Corona (Oro por unidad)", RESOURCES.filter((r) => r !== "oro").map((r) => `${r} ${avg(results.map((g) => g.economy.crownPrice[r])).toFixed(2)}`).join(", ")],
-    ["Oro pagado / cobrado a la Corona", `${sum((g) => g.economy.crownGoldPaid)} / ${sum((g) => g.economy.crownGoldReceived)}`],
+    ["Oro pagado a la Corona", sum((g) => g.economy.crownGoldPaid)],
     ["Mercenarios contratados / Oro gastado en ellos", `${sum((g) => g.economy.mercsHired)} / ${sum((g) => g.economy.mercsGold)}`],
     ["Mercenarios que desertan sin soldada", sum((g) => g.economy.mercsDeserted)],
   ]);

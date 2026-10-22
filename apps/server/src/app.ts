@@ -53,7 +53,10 @@ import {
   checkShield,
   freeShield,
   type Order,
+  type Resource,
   type Resources,
+  CROWN_GOODS,
+  ECONOMY_TWEAKS,
 } from "@reyes/engine";
 import {
   SESSION_COOKIE,
@@ -72,6 +75,7 @@ import { bribeView, type StoredBulletin } from "./boletin";
 import { auctionView, handView, openAuctionWeek, spiedHouses, useCardStatements, type CardRow } from "./subasta";
 import { addBots, advance, botsPlayDay, deleteTestGame, testStart } from "./pruebas";
 import { ransomStatements } from "./rescate";
+import { crownCost, crownMarket, crownPriceView, crownPurchaseStatements } from "./corona";
 import { acceptOffer, bundle, offerView, type OfferRow } from "./offers";
 import { ordersOpen } from "./scheduler";
 import {
@@ -691,6 +695,8 @@ app.get("/api/partidas/:id", async (c) => {
           }
         : null,
     subasta: game.status === "active" ? await auctionView(db, game, house.id) : null,
+    // Bloque 5: precio de la próxima unidad de cada recurso. Lo que guarda el reino no sale de aquí.
+    corona: game.status === "active" && ECONOMY_TWEAKS.crown ? { precios: crownPriceView(await crownMarket(db, game, houses)) } : null,
     evento: game.status === "active" ? await eventView(db, game) : null,
     boletines: (
       await db.prepare("SELECT week, json_extract(content, '$.headline') AS headline FROM bulletins WHERE game_id = ? ORDER BY week DESC")
@@ -1114,6 +1120,42 @@ app.post("/api/partidas/:id/capitan/rescate", async (c) => {
     throw err;
   }
   return c.json({ ok: true });
+});
+
+// ---------------------------------------------------------------------------
+// Cambio con la Corona (bloque 5): solo vende, sin tope; cada unidad encarece la siguiente.
+// ---------------------------------------------------------------------------
+
+async function crownRequest(c: Ctx) {
+  const m = await activeMembership(c);
+  if (m instanceof Response) return m;
+  if (!ECONOMY_TWEAKS.crown) return fail(c, 409, "La Corona no vende en esta partida.");
+  const body = await c.req.json<{ recurso?: string; unidades?: number; oro?: number }>().catch(() => ({}) as Record<string, undefined>);
+  const resource = body.recurso as Resource;
+  const units = Number(body.unidades);
+  if (!CROWN_GOODS.includes(resource)) return fail(c, 400, "La Corona vende Pan, Madera, Piedra y Hierro.");
+  if (!Number.isInteger(units) || units < 1 || units > 500) return fail(c, 400, "Elige cuántas unidades quieres (de 1 a 500).");
+  const market = await crownMarket(c.env.DB, m.game, m.houses);
+  return { m, resource, units, gold: crownCost(market, resource, units), offered: body.oro };
+}
+
+/** Lo que costaría una compra ahora mismo. */
+app.post("/api/partidas/:id/corona/presupuesto", async (c) => {
+  const r = await crownRequest(c);
+  if (r instanceof Response) return r;
+  return c.json({ oro: r.gold });
+});
+
+/** Compra a la Corona. `oro` es el presupuesto que vio la persona: si el precio ha cambiado, no se compra. */
+app.post("/api/partidas/:id/corona/comprar", async (c) => {
+  const r = await crownRequest(c);
+  if (r instanceof Response) return r;
+  if (Number(r.offered) !== r.gold) {
+    return c.json({ error: `El precio ha cambiado: ahora son ${r.gold} de Oro.`, oro: r.gold }, 409);
+  }
+  if (r.m.house.oro < r.gold) return fail(c, 409, `Hacen falta ${r.gold} de Oro.`);
+  const err = await runPaid(c, crownPurchaseStatements(c.env.DB, r.m.game, r.m.house.id, r.resource, r.units, r.gold));
+  return err ?? c.json({ ok: true, oro: r.gold });
 });
 
 // ---------------------------------------------------------------------------

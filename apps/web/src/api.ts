@@ -195,6 +195,8 @@ export interface GameState {
   /** Solo en partidas de prueba (y solo para quien las creó, en juego). */
   prueba?: TestInfo | null;
   subasta?: AuctionInfo | null;
+  /** Bloque 5: Oro que cuesta la próxima unidad de cada recurso en la Corona. */
+  corona?: { precios: Record<CrownGood, number> } | null;
   boletines?: { semana: number; titular: string }[];
   soborno?: { semana: number; coste: number; pagado: number | null; frases: string[] } | null;
   evento?: { semana: number; clave: string; nombre: string; texto: string; linea: string; aplicado: boolean } | null;
@@ -247,6 +249,8 @@ export interface TestInfo {
   casas?: { id: number; nombre: string; color: string; escudo?: ShieldView; bot: boolean; personalidad?: string | null }[];
 }
 
+export type CrownGood = "pan" | "madera" | "piedra" | "hierro";
+
 export const api = {
   me: () => call<Me>("GET", "/yo"),
   login: (codigo: string) => call<{ ok: true }>("POST", "/entrar", { codigo }),
@@ -282,6 +286,10 @@ export const api = {
   bulletin: (id: number, semana: number) => call<Bulletin & { publicado: string }>("GET", `/partidas/${id}/boletin/${semana}`),
   bribe: (id: number, plantilla: number) => call<{ ok: true }>("POST", `/partidas/${id}/soborno`, { plantilla }),
   bid: (id: number, lote: number, cantidad: number) => call<{ ok: true }>("PUT", `/partidas/${id}/subasta/${lote}`, { cantidad }),
+  crownQuote: (id: number, recurso: CrownGood, unidades: number) =>
+    call<{ oro: number }>("POST", `/partidas/${id}/corona/presupuesto`, { recurso, unidades }),
+  crownBuy: (id: number, recurso: CrownGood, unidades: number, oro: number) =>
+    call<{ ok: true; oro: number }>("POST", `/partidas/${id}/corona/comprar`, { recurso, unidades, oro }),
   useCard: (id: number, carta: number, params: CardParamsInput) => call<{ ok: true }>("POST", `/partidas/${id}/cartas/${carta}/usar`, params),
   testAdvance: (id: number, hasta: "paso" | "resolucion") =>
     call<{ ok: true; ahora: string; resolucion: number; estado: string }>("POST", `/partidas/${id}/prueba/avanzar`, { hasta }),

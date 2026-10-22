@@ -1,52 +1,47 @@
-// Usos del Oro en estudio (hoja de ruta, bloque 5): cambio con la Corona y
-// mercenarios. El bot compra y vende de uno en uno mientras le compense.
+// Usos del Oro (hoja de ruta, bloque 5): cambio con la Corona y mercenarios.
+// El bot compra a la Corona de uno en uno mientras le compense.
 
-import type { CrownPrices } from "../crown";
+import { CROWN_GOODS, crownQuote, crownUnitPrice } from "../crown";
 import { MERCENARIES, TROOP_COST } from "../rules";
-import { RESOURCES, type Resource, type Resources } from "../types";
+import type { Resource, Resources } from "../types";
 import { militaryWant } from "./orders";
 import { valueOf, valuesWith, type Situation } from "./view";
 
 export interface CrownPlan {
-  /** Unidades compradas (+) o vendidas (-) de cada recurso. */
+  /** Unidades que compra de cada recurso. */
   units: Resources;
-  /** Oro que paga (+) o cobra (-), ya redondeado. */
+  /** Oro que paga, ya redondeado (cada recurso por su lado, como compras separadas). */
   gold: number;
 }
 
-/** `room`: lo que aún puede comprar y vender esta semana de cada recurso. */
-export function planCrown(s: Situation, prices: CrownPrices, room: { buy: Resources; sell: Resources }): CrownPlan {
+/**
+ * Compras a la Corona de hoy. `realm`: lo que guarda el reino (solo lo usa el
+ * precio: el bot, como una persona, solo ve lo que cuesta cada unidad).
+ * `bought`: unidades compradas a la Corona en los últimos 7 días.
+ */
+export function planCrown(s: Situation, realm: Resources, bought: Resources): CrownPlan {
   const have = { ...s.view.resources };
   const units = { pan: 0, madera: 0, piedra: 0, hierro: 0, oro: 0 } as Resources;
-  let cost = 0;
-  let income = 0;
+  const gold = () => CROWN_GOODS.reduce((a, r) => a + crownQuote(realm, r, bought[r], units[r]), 0);
   for (let i = 0; i < 80; i++) {
     const v = valuesWith(s, have);
-    let best: { r: Resource; side: 1 | -1; gain: number } | null = null;
-    for (const r of RESOURCES) {
-      if (r === "oro") continue;
-      // Comprar: lo que vale la unidad frente al Oro que cuesta (con un margen).
-      if (units[r] < room.buy[r] && have.oro - Math.ceil(cost + prices.sell[r]) + Math.floor(income) >= 0) {
-        const gain = v[r] - prices.sell[r] * v.oro * 1.1;
-        if (gain > 0 && (!best || gain > best.gain)) best = { r, side: 1, gain };
-      }
-      if (-units[r] < room.sell[r] && have[r] >= 1) {
-        const gain = prices.buy[r] * v.oro - v[r] * 1.1;
-        if (gain > 0 && (!best || gain > best.gain)) best = { r, side: -1, gain };
-      }
+    let best: { r: Resource; gain: number } | null = null;
+    for (const r of CROWN_GOODS) {
+      const price = crownUnitPrice(realm, r, bought[r] + units[r]);
+      units[r]++;
+      const affordable = gold() <= s.view.resources.oro;
+      units[r]--;
+      if (!affordable) continue;
+      // Lo que vale la unidad frente al Oro que cuesta (con un margen).
+      const gain = v[r] - price * v.oro * 1.1;
+      if (gain > 0 && (!best || gain > best.gain)) best = { r, gain };
     }
     if (!best) break;
-    units[best.r] += best.side;
-    have[best.r] += best.side;
-    if (best.side === 1) {
-      cost += prices.sell[best.r];
-      have.oro -= prices.sell[best.r];
-    } else {
-      income += prices.buy[best.r];
-      have.oro += prices.buy[best.r];
-    }
+    have.oro -= crownUnitPrice(realm, best.r, bought[best.r] + units[best.r]);
+    units[best.r]++;
+    have[best.r]++;
   }
-  return { units, gold: Math.ceil(cost) - Math.floor(income) };
+  return { units, gold: gold() };
 }
 
 /**

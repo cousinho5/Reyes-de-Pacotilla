@@ -129,6 +129,29 @@ const castle = after.casillas.find((t) => t.type === "castillo" && t.owner === a
 check("el castillo tiene 8 tropas (6 + 2)", castle.troops === 8, castle);
 check("reclutar cobra 4 de Hierro y 4 de Pan", after.yo.recursos.hierro === 6 && after.yo.recursos.pan === 6, after.yo.recursos);
 
+// Cambio con la Corona (bloque 5): solo el precio llega al cliente; el total se pide antes de comprar.
+const dani = players[1].call;
+const daniState = (await dani("GET", `/api/partidas/${gameId}`)).data;
+const precios = daniState.corona?.precios ?? {};
+check(
+  "la Corona da el precio de Pan, Madera, Piedra y Hierro, y nada del reino",
+  ["pan", "madera", "piedra", "hierro"].every((r) => precios[r] > 0) && Object.keys(daniState.corona ?? {}).join() === "precios",
+  daniState.corona,
+);
+const quote = await dani("POST", `/api/partidas/${gameId}/corona/presupuesto`, { recurso: "pan", unidades: 2 });
+const wrong = await dani("POST", `/api/partidas/${gameId}/corona/comprar`, { recurso: "pan", unidades: 2, oro: quote.data.oro - 1 });
+check("comprar a la Corona con un precio viejo no compra", wrong.status === 409 && wrong.data.oro === quote.data.oro, wrong);
+const bought = await dani("POST", `/api/partidas/${gameId}/corona/comprar`, { recurso: "pan", unidades: 2, oro: quote.data.oro });
+const daniAfter = (await dani("GET", `/api/partidas/${gameId}`)).data;
+check(
+  `comprar 2 de Pan a la Corona por ${quote.data.oro} de Oro`,
+  bought.status === 200 && daniAfter.yo.recursos.pan === 12 && daniAfter.yo.recursos.oro === 10 - quote.data.oro && daniAfter.corona.precios.pan > precios.pan,
+  { bought, recursos: daniAfter.yo.recursos },
+);
+const tooMuch = await dani("POST", `/api/partidas/${gameId}/corona/presupuesto`, { recurso: "hierro", unidades: 40 });
+const broke = await dani("POST", `/api/partidas/${gameId}/corona/comprar`, { recurso: "hierro", unidades: 40, oro: tooMuch.data.oro });
+check("sin Oro suficiente la Corona no vende", broke.status === 409, broke);
+
 const adjacent = after.casillas.filter(
   (t) => Math.abs(t.x - castle.x) + Math.abs(t.y - castle.y) === 1 && t.owner === null,
 );

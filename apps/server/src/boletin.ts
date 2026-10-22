@@ -38,13 +38,16 @@ export async function publishBulletin(env: NotifyEnv, game: GameRow, week: numbe
   ]);
   const previous = prev ? (JSON.parse(prev.content) as StoredBulletin) : null;
   const since = previous?.lastEventId ?? 0;
-  const [facts, trades] = await Promise.all([
+  const [facts, trades, crown] = await Promise.all([
     db.prepare("SELECT id, type, payload FROM event_log WHERE game_id = ? AND visible_to IS NULL AND id > ? ORDER BY id")
       .bind(game.id, since)
       .all<{ id: number; type: string; payload: string }>(),
     db.prepare("SELECT house_a, house_b FROM trades WHERE game_id = ? AND at >= ?")
       .bind(game.id, new Date(now.getTime() - 7 * 864e5).toISOString())
       .all<{ house_a: number; house_b: number }>(),
+    db.prepare("SELECT resource, SUM(units) AS units FROM crown_purchases WHERE game_id = ? AND at >= ? GROUP BY resource")
+      .bind(game.id, new Date(now.getTime() - 7 * 864e5).toISOString())
+      .all<{ resource: string; units: number }>(),
   ]);
   const tiles = toEngineTiles(tileRows);
   const prestige = await computeAllPrestige(db, game.id, houses, tiles, now);
@@ -86,6 +89,7 @@ export async function publishBulletin(env: NotifyEnv, game: GameRow, week: numbe
     facts: facts.results.map<BulletinFact>((f) => ({ type: f.type, data: JSON.parse(f.payload) as Record<string, unknown> })),
     tileNames: new Map(tileRows.map((t) => [t.id, t.name])),
     trades: trades.results.map((t) => ({ a: t.house_a, b: t.house_b })),
+    crown: Object.fromEntries(crown.results.map((r) => [r.resource, r.units])),
     bribes: bribes.results.map((b) => ({ house: b.house_id, template: Number(b.template_key), amount: b.amount })),
     used: used.results.map((u) => u.phrase_key),
     final: final
