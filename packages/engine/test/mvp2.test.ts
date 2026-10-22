@@ -41,7 +41,7 @@ describe("Objetivos secretos", () => {
       house: 1,
       tiles,
       buildings: { ...levels, mercado: 5 },
-      gold: 120,
+      gold: 90,
       partnersAllGame: 2,
       otherHouses: 3,
       validTradesAllGame: 4,
@@ -50,7 +50,8 @@ describe("Objetivos secretos", () => {
     };
     expect(objectiveMet("puerto_y_montana", ctx)).toBe(false);
     expect(objectiveMet("tesoro", ctx)).toBe(false);
-    expect(objectiveMet("tesoro", { ...ctx, gold: 150 })).toBe(true);
+    expect(objectiveMet("tesoro", { ...ctx, gold: 99 })).toBe(false);
+    expect(objectiveMet("tesoro", { ...ctx, gold: 100 })).toBe(true);
     expect(objectiveMet("tropas_40", ctx)).toBe(false);
     expect(objectiveMet("tropas_40", { ...ctx, tiles: [...ctx.tiles, { type: "campos", owner: 1, troops: 40 }] })).toBe(true);
     expect(objectiveMet("obra_maestra", ctx)).toBe(true);
@@ -60,7 +61,7 @@ describe("Objetivos secretos", () => {
     // Con solo 2 rivales basta comerciar con los dos.
     expect(objectiveMet("comercio_con_tres", { ...ctx, otherHouses: 2 })).toBe(true);
     expect(objectiveMet("niveles_17", ctx)).toBe(false);
-    expect(objectiveMet("niveles_17", { ...ctx, buildings: { granja: 4, aserradero: 4, cantera: 3, mina: 3, mercado: 3 } })).toBe(true);
+    expect(objectiveMet("niveles_17", { ...ctx, buildings: { granja: 4, aserradero: 3, cantera: 3, mina: 3, mercado: 3 } })).toBe(true);
     expect(objectiveMet("casillas_ajenas", ctx)).toBe(false);
     expect(objectiveMet("casillas_ajenas", { ...ctx, tilesTakenFromHouses: 3 })).toBe(true);
     expect(objectiveMet("dos_puertos" as never, ctx)).toBe(false); // retirado del catálogo
@@ -80,7 +81,7 @@ describe("Piloto automático", () => {
   it("económica: mejora el edificio de menor nivel que pueda pagar", () => {
     const plan = planAutopilot({ ...base, template: "economica", resources: { ...rich } });
     expect(plan.upgrade).toBe("cantera");
-    expect(plan.cost).toEqual({ madera: 15, piedra: 10 });
+    expect(plan.cost).toEqual({ madera: 17, piedra: 12, oro: 5 });
   });
 
   it("defensiva: fortifica la casilla amenazada y recluta guardando Pan", () => {

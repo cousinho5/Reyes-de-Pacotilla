@@ -9,7 +9,7 @@ describe("Acciones", () => {
   it("mejorar: coste del siguiente nivel, sin pasar de 5 y sin recursos negativos", () => {
     expect(checkUpgrade({ ...levels }, "cantera", rich)).toEqual({
       ok: true,
-      value: { cost: { madera: 15, piedra: 10 }, newLevel: 2 },
+      value: { cost: { madera: 17, piedra: 12, oro: 5 }, newLevel: 2 },
     });
     expect(checkUpgrade({ ...levels }, "mercado", rich).ok).toBe(false);
     expect(checkUpgrade({ ...levels }, "cantera", poor).ok).toBe(false);

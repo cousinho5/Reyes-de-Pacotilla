@@ -16,8 +16,8 @@ describe("Economía", () => {
   });
 
   it("costes de mejora (más Madera que Piedra)", () => {
-    expect(upgradeCost(1)).toEqual({ madera: 15, piedra: 10 });
-    expect(upgradeCost(4)).toEqual({ madera: 60, piedra: 35, hierro: 30, oro: 30 });
+    expect(upgradeCost(1)).toEqual({ madera: 17, piedra: 12, oro: 5 });
+    expect(upgradeCost(4)).toEqual({ madera: 69, piedra: 40, hierro: 30, oro: 30 });
     expect(upgradeCost(5)).toBeNull();
   });
 

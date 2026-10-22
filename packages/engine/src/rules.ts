@@ -17,11 +17,12 @@ export const BUILDING_RESOURCE: Record<BuildingKind, keyof Resources> = {
 
 /** Coste de subir AL nivel indicado (índice = nivel destino). */
 // Más Madera que Piedra: la Piedra también se usa para fortificar (simulación del 16-10-2026).
+// Bloque 5: Oro en todos los niveles (sobraba) y un 15% más de Madera y Piedra (también sobraban).
 export const UPGRADE_COST: Record<2 | 3 | 4 | 5, Partial<Resources>> = {
-  2: { madera: 15, piedra: 10 },
-  3: { madera: 30, piedra: 20 },
-  4: { madera: 50, piedra: 30, hierro: 25 },
-  5: { madera: 60, piedra: 35, hierro: 30, oro: 30 },
+  2: { madera: 17, piedra: 12, oro: 5 },
+  3: { madera: 35, piedra: 23, oro: 10 },
+  4: { madera: 58, piedra: 35, hierro: 25, oro: 20 },
+  5: { madera: 69, piedra: 40, hierro: 30, oro: 30 },
 };
 
 /**
@@ -437,14 +438,15 @@ export const BOT = {
 
 /** Umbrales de los objetivos secretos (ver objectives.ts). */
 export const OBJECTIVE_TARGETS = {
-  gold: 150,
+  /** Bloque 5: de 150 a 100, porque las mejoras gastan Oro. */
+  gold: 100,
   troops: 40,
   tiles: 5,
   tilesTakenFromHouses: 3,
   tradePartners: 3,
   validTrades: 10,
-  /** Niveles sumando los cinco edificios (se empieza con 7). */
-  totalLevels: 17,
+  /** Bloque 5: de 17 a 16, porque las mejoras piden más. Niveles sumando los cinco edificios (se empieza con 7). */
+  totalLevels: 16,
   auctionsWon: 3,
 } as const;
 

@@ -70,7 +70,7 @@ Cinco recursos. En las reglas, la interfaz y el código se usa siempre la misma 
 | **Madera** | Mejorar edificios | — |
 | **Piedra** | Mejorar edificios | Fortificar casillas |
 | **Hierro** | Reclutar tropas | Mejoras de nivel 4 y 5 |
-| **Oro** | Pujas, comercio y sobornos | Prestigio por riqueza, mejora de nivel 5 |
+| **Oro** | Pujas, comercio y sobornos | Prestigio por riqueza, mejoras de edificios, jinetes |
 
 **Edificios.** Hay cinco, dentro de tu castillo, con niveles del 1 al 5: Granja (Pan), Aserradero (Madera), Cantera (Piedra), Mina (Hierro) y Mercado (Oro).
 
@@ -84,12 +84,12 @@ Cinco recursos. En las reglas, la interfaz y el código se usa siempre la misma 
 
 | Subir a | Coste | Total |
 | --- | --- | --- |
-| Nivel 2 | 15 Madera + 10 Piedra | 25 |
-| Nivel 3 | 30 Madera + 20 Piedra | 50 |
-| Nivel 4 | 50 Madera + 30 Piedra + 25 Hierro | 105 |
-| Nivel 5 | 60 Madera + 35 Piedra + 30 Hierro + 30 Oro | 155 |
+| Nivel 2 | 17 Madera + 12 Piedra + 5 Oro | 34 |
+| Nivel 3 | 35 Madera + 23 Piedra + 10 Oro | 68 |
+| Nivel 4 | 58 Madera + 35 Piedra + 25 Hierro + 20 Oro | 138 |
+| Nivel 5 | 69 Madera + 40 Piedra + 30 Hierro + 30 Oro | 169 |
 
-Las mejoras piden más Madera que Piedra porque la Piedra también sirve para fortificar (ajuste tras la simulación del 16 de octubre de 2026: la Madera sobraba y la Piedra iba justa).
+Las mejoras piden más Madera que Piedra porque la Piedra también sirve para fortificar (ajuste tras la simulación del 16 de octubre de 2026: la Madera sobraba y la Piedra iba justa). Con el bloque 5 de la hoja de ruta, todos los niveles piden Oro (antes solo el 5) y un 15% más de Madera y Piedra: al final de la partida sobraban unos 165 de Oro, 100 de Madera y 80 de Piedra por casa.
 
 Una mejora se nota en la producción del día siguiente. En la simulación, quien solo construye tiene casi todo a nivel 5 al final de la sexta semana, no antes, así que construir siempre tiene sentido.
 
@@ -454,7 +454,7 @@ Pocos y públicos, que dan Prestigio permanente:
 
 Al empezar, cada casa recibe dos objetivos al azar y elige uno. Nadie más lo conoce. Si al final de la partida se cumple, da **+6 de Prestigio**, y se revela en el último boletín.
 
-Catálogo actual (10, en `packages/engine/src/objectives.ts`, umbrales en `rules.ts`): controlar un puerto y una montaña al final (antes «un puerto y una fortaleza»: con la geografía del bloque 1 los puertos quedan en la costa y las fortalezas tierra adentro, y bajó al 13%; con la montaña se cumple el 29%); sumar 17 niveles entre los cinco edificios; terminar con 150 Oro o más (antes 200: con la subasta, el Oro se gasta); cerrar tratos válidos con 3 casas distintas; controlar una fortaleza al final; tomar 3 casillas a otras casas; terminar con 40 tropas o más; controlar 5 casillas o más al final; tener un edificio a nivel 5; cerrar 10 tratos válidos; ganar 3 lotes de la Gran Subasta (añadido en la versión 1). Los umbrales se ajustaron con la simulación del 16 de octubre de 2026: con los anteriores, terminar con 100 Oro se cumplía casi siempre y controlar 2 puertos o comerciar con todas casi nunca. Un segundo ajuste, con los bots con personalidad, cambió "los 5 edificios a nivel 3" (se cumplía el 97%) por "17 niveles" (35%), "6 casillas" (3%) por "5 casillas" (15%), abarató el nivel 5 de los edificios (de 200 a 155 recursos), bajó la guarnición de las fortalezas de 10 a 8 y fortificar a 8 de Piedra. Con la versión 1 se añadirán los de subastas (ganar 2 Gran Subastas) y pactos (firmar 2 pactos sin romper ninguno).
+Catálogo actual (10, en `packages/engine/src/objectives.ts`, umbrales en `rules.ts`): controlar un puerto y una montaña al final (antes «un puerto y una fortaleza»: con la geografía del bloque 1 los puertos quedan en la costa y las fortalezas tierra adentro, y bajó al 13%; con la montaña se cumple el 29%); sumar 16 niveles entre los cinco edificios (17 hasta el bloque 5, cuando las mejoras pasaron a costar más); terminar con 100 Oro o más (antes 200 y luego 150: con la subasta y las mejoras con Oro, el Oro se gasta); cerrar tratos válidos con 3 casas distintas; controlar una fortaleza al final; tomar 3 casillas a otras casas; terminar con 40 tropas o más; controlar 5 casillas o más al final; tener un edificio a nivel 5; cerrar 10 tratos válidos; ganar 3 lotes de la Gran Subasta (añadido en la versión 1). Los umbrales se ajustaron con la simulación del 16 de octubre de 2026: con los anteriores, terminar con 100 Oro se cumplía casi siempre y controlar 2 puertos o comerciar con todas casi nunca. Un segundo ajuste, con los bots con personalidad, cambió "los 5 edificios a nivel 3" (se cumplía el 97%) por "17 niveles" (35%), "6 casillas" (3%) por "5 casillas" (15%), abarató el nivel 5 de los edificios (de 200 a 155 recursos), bajó la guarnición de las fortalezas de 10 a 8 y fortificar a 8 de Piedra. Con la versión 1 se añadirán los de subastas (ganar 2 Gran Subastas) y pactos (firmar 2 pactos sin romper ninguno).
 
 El objetivo se elige antes de la primera resolución; quien no elige se queda con la primera opción.
 

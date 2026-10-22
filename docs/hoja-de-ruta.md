@@ -8,7 +8,7 @@ Primero se definen todos los bloques; después se hacen uno a uno, en el orden d
 | --- | --- | --- | --- |
 | 1.º | 1. Mapa y losetas | Hecho (fases 0 a 4); quedan para más adelante el dibujo a ×1,5 y más variedad de dibujos por tipo de loseta | Geografía, ríos, Prado, Aldea, Ruinas y marco de mar y montañas |
 | 2.º | 4. Retoques sistema de batalla | Hecho | Apoyo sin origen, jinete más caro, Capitán libre, choques en el camino y fortificación con mantenimiento |
-| 3.º | 5. Retoques recursos | Decidido | Oro en todas las mejoras, cambio con la Corona, mercenarios de alquiler y mejoras con algo más de Madera y Piedra |
+| 3.º | 5. Retoques recursos | En curso | Oro en todas las mejoras, cambio con la Corona, mercenarios de alquiler y mejoras con algo más de Madera y Piedra |
 | 4.º | 8. Alianzas | Decidido | Alianzas formales: paso por las casillas del aliado, ruptura con aviso de tres días y ataques conjuntos |
 | 5.º | 6. Optimización y controles en móvil | Decidido | Mapa guardado y dibujado en segundo plano, zoom con pinza, ficha que sube desde abajo, órdenes arrastrando, botones de 48 y juego sin conexión |
 | 6.º | 9. Diseño de la sección Mapa | Decidido | Capas (con Alcance automático), escudos y nombres, tropas por color y tipo, niebla con recuerdo, botones de salto, barra de avisos y leyenda |
@@ -96,15 +96,15 @@ Decidido el 19 de octubre de 2026 a partir de «Reyes de Pacotilla: investigaci�
 5. **Fortificación hasta que la atacan.** Dura hasta el primer ataque, gane o pierda. Cada domingo se paga un mantenimiento por casilla fortificada; si no se paga, se desmantela. Cuesta 2 de Piedra por casilla (elegido tras simular, ver `docs/simulaciones.md`).
 6. ~~Dos guerras a la vez~~: descartado.
 
-## Bloque 5: retoques de recursos **(decidido, pendiente de hacer)**
+## Bloque 5: retoques de recursos **(en curso: hechos los puntos 1 y 6)**
 
 Decidido el 20 de octubre de 2026. Las decisiones, los datos y los pasos están en `docs/bloque5.md`. El cambio con la Corona y los mercenarios ya están en el motor para el simulador, apagados (`ECONOMY_TWEAKS` en `rules.ts`).
 
 **Decisiones:**
 
 1. **Oro en las mejoras:** 5 de Oro al nivel 2, 10 al 3, 20 al 4 y 30 al 5. El objetivo «tesoro» baja a 100 de Oro.
-2. **Cambio con la Corona:** la Corona vende recursos por Oro a un precio dinámico (escasez en el reino y compras de la última semana, más un 30%). Solo vende. Tope de 20 unidades de cada recurso por casa y semana.
-3. **Mercenarios de alquiler:** 6 de Oro por tropa, se van a los 7 días, no comen, como mucho 5 por semana.
+2. **Cambio con la Corona:** la Corona vende recursos por Oro a un precio dinámico (escasez en el reino y compras de la última semana, más un 30%). Solo vende. Sin tope semanal: el límite es el Oro de cada casa.
+3. **Mercenarios de alquiler:** 6 de Oro por tropa, se van a los 7 días, no comen. Sin tope semanal.
 4. ~~Espías~~: descartado de momento.
 5. **Riqueza:** como hoy.
 6. **Madera y Piedra:** las mejoras piden un 15% más. El objetivo «niveles 17» baja a 16.

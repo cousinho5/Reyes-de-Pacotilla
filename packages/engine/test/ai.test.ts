@@ -133,7 +133,7 @@ describe("Bots con personalidad: el día", () => {
   });
 
   it("en la última semana convierten lo que sobra en mejoras", () => {
-    const rich = { pan: 10, madera: 200, piedra: 200, hierro: 60, oro: 60 };
+    const rich = { pan: 10, madera: 230, piedra: 230, hierro: 60, oro: 80 };
     const early = planDay(situation(view(tiles, { resources: rich, day: 3 }), PERSONALITIES.guerrero));
     const late = planDay(situation(view(tiles, { resources: rich, day: 40 }), PERSONALITIES.guerrero));
     expect(late.upgrades.length).toBeGreaterThan(early.upgrades.length);

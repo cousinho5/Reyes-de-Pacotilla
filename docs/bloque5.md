@@ -23,8 +23,8 @@ Hoy el Oro se gasta en la Gran Subasta (unos 385 por partida entre todas las cas
 | Punto | Decisión |
 | --- | --- |
 | 1. Oro en las mejoras | 5 de Oro al nivel 2, 10 al 3, 20 al 4 y 30 al 5. El objetivo «tesoro» baja de 150 a 100 de Oro |
-| 2. Cambio con la Corona | Precio dinámico según la escasez en el reino y lo que se le ha comprado en la última semana, más un 30%. La Corona solo vende. Tope de 20 unidades de cada recurso por casa y semana |
-| 3. Mercenarios | De alquiler: 6 de Oro por tropa, se van solos a los 7 días, no comen Pan, como mucho 5 por casa y semana |
+| 2. Cambio con la Corona | Precio dinámico según la escasez en el reino y lo que se le ha comprado en la última semana, más un 30%. La Corona solo vende. Sin tope semanal (cambiado el 22 de octubre): el límite es el Oro de cada casa |
+| 3. Mercenarios | De alquiler: 6 de Oro por tropa, se van solos a los 7 días, no comen Pan. Sin tope semanal (cambiado el 22 de octubre) |
 | 4. Espías | Descartado de momento |
 | 5. Prestigio por el Oro (Riqueza) | Como hoy: 1 punto por cada 25 de Oro, hasta 10 |
 | 6. Madera y Piedra que sobran | Las mejoras piden un 15% más de Madera y Piedra. El objetivo «niveles 17» baja a 16 |
@@ -80,13 +80,20 @@ Simulado con el punto 1 y el mantenimiento de fortificaciones del bloque 4:
 
 El mantenimiento de las fortificaciones solo gasta unos 72 de Piedra por partida. Con un 30% más se gasta lo que sobra, pero se frenan las mejoras y gana ventaja el guerrero.
 
+## Al empezar a hacerlo (22 de octubre de 2026)
+
+- **Sin topes semanales** ni con la Corona ni con los mercenarios: el límite es el Oro de cada casa. Con 300 partidas, los bots nunca llegaban a comprar 20 de un recurso a la Corona, y los mercenarios pasan de 24 a 42 por partida sin que cambie quién gana. Como nada frena una compra grande, el precio de la Corona sube con cada unidad que se compra, también dentro de la misma compra; se cobra el total redondeado hacia arriba.
+- **Los costes nuevos valen para todas las partidas**: todas las que hay son de prueba (el paso 8 queda fuera).
+- **Los mercenarios** son Mesnada normal que aparece en el castillo, sin marca en el mapa. La casa lleva la cuenta de cuántos tiene y cuándo se van; al cumplir los 7 días, al amanecer, se quitan esas tropas empezando por el castillo y luego por las casillas con más tropas. Si la casa tiene menos tropas que mercenarios, se da por hecho que murieron mercenarios (como el simulador).
+- **Una PR por paso**: primero las mejoras (puntos 1 y 6), luego la Corona y al final los mercenarios, cada una con su pantalla sencilla, sus bots y dos o tres frases del cronista.
+
 ## Pasos
 
-1. **Punto 1 y punto 6:** cambiar `UPGRADE_COST` en `rules.ts` (Oro en todos los niveles y un 15% más de Madera y Piedra, redondeado) y `OBJECTIVE_TARGETS` (`gold` a 100, `totalLevels` a 16). Simular las dos cosas juntas antes y después (`--oro-mejora 5,10,20,0 --mejora-madera-piedra 1.15`) y revisar los objetivos.
+1. **Punto 1 y punto 6 (hecho el 22 de octubre; simulación en `docs/simulaciones.md`):** cambiar `UPGRADE_COST` en `rules.ts` (Oro en todos los niveles y un 15% más de Madera y Piedra, redondeado) y `OBJECTIVE_TARGETS` (`gold` a 100, `totalLevels` a 16). Simular las dos cosas juntas antes y después (`--oro-mejora 5,10,20,0 --mejora-madera-piedra 1.15`) y revisar los objetivos.
 2. **Cambio con la Corona:** pasar a `rules.ts` los valores elegidos (`reference: "media"`, `base: 2`, solo venta) y quitar la compra de `crown.ts`. Migración nueva para las compras a la Corona (casa, día, recurso, unidades). Acción en `app.ts` con el precio calculado en el servidor y el cobro en un `db.batch()`. El cliente solo recibe el precio, no lo que guarda el reino.
 3. **Mercenarios:** migración nueva (casa, cuántos, día en que se van). Acción en `app.ts`; en `jobs.ts`, quitar los que cumplen y descontarlos del mantenimiento del domingo, en el mismo orden que el simulador.
-4. **Cliente:** coste en Oro en las fichas de los edificios; «Cambio con la Corona» en la pestaña Comercio y «Mercenarios» en la pestaña Castillo (bloque 10), con el precio de hoy y lo que queda del tope de la semana.
+4. **Cliente:** coste en Oro en las fichas de los edificios; «Cambio con la Corona» en la pestaña Comercio y «Mercenarios» en la pestaña Castillo (bloque 10), con el precio de hoy.
 5. **Bots:** ya saben comprar a la Corona y contratar mercenarios (`packages/engine/src/ai/oro.ts`); las partidas de prueba (`pruebas.ts`) tienen que usarlo.
 6. **Cronista:** frases para las compras a la Corona y los mercenarios que se van (encaja con el bloque 3).
 7. **Diseño:** secciones de economía, objetivos y Prestigio de `docs/diseno.md`.
-8. **Partidas en curso:** siguen con los costes de antes.
+8. ~~**Partidas en curso:** siguen con los costes de antes.~~ Descartado: todas las partidas son de prueba.

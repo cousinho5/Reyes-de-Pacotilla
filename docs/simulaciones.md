@@ -53,6 +53,28 @@ npm run simular -- --semanas 4                    # duración de la partida
 npm run simular -- --json datos.json              # además, todos los datos
 ```
 
+## Oro y más Madera y Piedra en las mejoras (22 de octubre de 2026, puntos 1 y 6 del bloque 5, aplicado)
+
+`npm run simular -- --partidas 300` antes y después del cambio. Las mejoras piden 5, 10, 20 y 30 de Oro para subir a los niveles 2, 3, 4 y 5 (antes solo el 5) y un 15% más de Madera y Piedra; el objetivo «tesoro» baja de 150 a 100 de Oro y «niveles» de 17 a 16.
+
+| dato | antes | después |
+| --- | --- | --- |
+| Oro sin gastar al final (por casa) | 147-156 | 93-101 |
+| Madera / Piedra sin gastar al final (por casa) | 61-117 / 56-105 | 33-87 / 40-83 |
+| Oro gastado en la Gran Subasta (por partida) | 352 | 237 |
+| Prestigio por edificios (por casa) | 10,0-10,5 | 9,4-10,2 |
+| Prestigio por Riqueza (por casa) | 5,4-5,8 | 3,3-3,6 |
+| Objetivo «tesoro» cumplido (150 → 100) | 51% | 43% |
+| Objetivo «niveles» cumplido (17 → 16) | 8% | 22% |
+| Personalidades (x lo esperado) | 0,9-1,3 | 0,7-1,3 |
+| El líder de la semana 2 gana | 31% | 24% |
+| Prestigio medio del ganador | 63,7 | 62,5 |
+
+- **El Oro ya se gasta**: sobran unos 55 menos por casa. Los bots pujan menos en la subasta porque lo echan en las obras, como se esperaba en `docs/bloque5.md`.
+- **Los edificios se siguen subiendo casi igual** (unas décimas menos de Prestigio por edificios) y sobra menos Madera y Piedra.
+- **Los objetivos quedan más parejos**: «tesoro» en el 43% y «niveles» sube del 8% al 22% con el umbral a 16.
+- La arquitecta baja algo (0,9 → 0,7 veces lo esperado) y el guerrero sube (1,0 → 1,1), lo que ya apuntaba la simulación del 20 de octubre con el +15%. Se mirará otra vez con la Corona y los mercenarios.
+
 ## Apoyo sin elegir origen (21 de octubre de 2026, punto 1 del bloque 4, aplicado)
 
 `npm run simular -- --partidas 1500 --semilla a --apoyo-libre no` (el de antes: el apoyo elige de qué casilla sale el ataque) frente a la misma orden sin esa opción (apoya el primer ataque a la casilla), ya con los otros cuatro puntos. Repetido con `--semilla b`; las cifras son la media de las dos tandas. Los bots solo apoyan sus propios ataques: no se ponen de acuerdo con otras casas, así que el apoyo a otra casa no sale en estos números.
