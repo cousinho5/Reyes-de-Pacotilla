@@ -102,9 +102,11 @@ const tiempos = (page) =>
   page.evaluate(() => {
     const fcp = performance.getEntriesByName("first-contentful-paint")[0]?.startTime ?? null;
     const mapa = performance.getEntriesByName("mapa-dibujado")[0]?.startTime ?? null;
+    const previa = performance.getEntriesByName("mapa-vista-previa")[0]?.startTime ?? null;
     const largas = (window.__largas ?? []).filter((d) => mapa == null || d.start <= mapa + 50);
     return {
       pagina: fcp,
+      previa,
       mapa,
       congelada: largas.reduce((m, d) => Math.max(m, d.duration), 0),
       congeladaTotal: largas.reduce((s, d) => s + d.duration, 0),
@@ -239,6 +241,7 @@ function tabla(rs) {
       return `${kb(d.js + d.letras + d.css)} (JS ${Math.round(d.js / 1024)}, letras ${Math.round(d.letras / 1024)}, CSS ${Math.round(d.css / 1024)})`;
     }),
     fila("Se ve la página", (r) => s(r.primera.pagina)),
+    fila("Se ve la vista previa del mapa", (r) => (r.primera.previa == null ? "no hay" : s(r.primera.previa))),
     fila("Se ve el mapa", (r) => s(r.primera.mapa)),
     fila("Pantalla congelada mientras se dibuja el mapa", (r) => s(r.primera.congelada)),
     fila("Se ve el mapa en la segunda visita", (r) => s(r.segunda.mapa)),

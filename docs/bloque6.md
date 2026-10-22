@@ -57,7 +57,16 @@ Lo que se toca y mide menos de 48 px (sin contar la mesa de pruebas ni las casil
 ## Pasos
 
 1. **Medidas de partida.** Guardar el script de medición (carga, primer dibujo del mapa, fluidez, tamaño de lo que se toca) en `scripts/` para repetirlo antes y después de cada paso. **Hecho:** `npm run medir-movil -- [url] [clave-admin]` con el servidor local; medidas arriba.
-2. **Dibujo del mapa.** Guardar el dibujo por partida y estado (lo que cambia el dibujo: dueños, etapas de castillo, terreno) y dibujarlo en un Web Worker con `OffscreenCanvas`; mientras, una vista previa con el color de cada casilla.
+2. **Dibujo del mapa.** Guardar el dibujo por partida y estado (lo que cambia el dibujo: dueños, etapas de castillo, terreno) y dibujarlo en un Web Worker con `OffscreenCanvas`; mientras, una vista previa con el color de cada casilla. **Hecho:** `apps/web/src/art/world.worker.ts` dibuja en segundo plano y `art/worldStore.ts` guarda el dibujo: en memoria (los 6 últimos, para volver a la pestaña Mapa al momento) y en el móvil como PNG en IndexedDB (los 8 últimos), con una huella de las opciones del dibujo y de la versión del juego (`__BUILD__` en `vite.config.ts`: cada versión dibuja de nuevo). `WorldCanvas.tsx` pinta mientras tanto la vista previa (`PREVIEW_COLOR` de `world.ts`) solo la primera vez; si ya había un dibujo, se queda hasta que llega el nuevo, y si llegan varios encargos seguidos solo se dibuja el último. Las casillas y las flechas se colocan con `worldMeta`, sin esperar al dibujo. Sin Worker, se dibuja en el hilo principal tras la vista previa.
+
+   | Qué | Antes (normal / flojo) | Después (normal / flojo) |
+   | --- | --- | --- |
+   | Se ve la vista previa del mapa | no había | 0,33 s / 2,06 s |
+   | Se ve el mapa | 1,14 s / 5,59 s | 1,23 s / 3,29 s |
+   | Pantalla congelada mientras se dibuja el mapa | 0,98 s / 4,08 s | 0,15 s / 0,55 s |
+   | Se ve el mapa en la segunda visita | 1,23 s / 4,57 s | 0,25 s / 1,07 s |
+
+   El dibujante es un archivo aparte de 38 KB que se descarga al abrir el mapa.
 3. **Zoom** con pinza y doble toque en `MapView.tsx`, encajando en escalas enteras de pixel art.
 4. **Hoja de la casilla** y mapa a toda pantalla con la barra fina.
 5. **Arrastrar para dar órdenes** y mantener pulsado para la información rápida, siempre con confirmación.

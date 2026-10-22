@@ -4,7 +4,7 @@ import { api, type GameState, type OrderView, type TileView } from "../api";
 import { Icon, ShieldIcon, TileArt } from "../art";
 import { cellBox, sharedEdge, type Geo } from "../art/grid";
 import { geoOf } from "../art/world";
-import { WorldCanvas, useWorld } from "./WorldCanvas";
+import { WorldCanvas, useWorldMeta } from "./WorldCanvas";
 import { HOUSE_COLORS, TERRAIN_NOTE, TERRITORY, TILE_LABEL, UNIT_LABEL, captainOf, houseName, nightLabel, troops as troopsWord, troopsText, wallsLeft, withArticle } from "../ui";
 import { asTile, myAllies, myBreaking, nextResolution, nightOf, project, queueNights } from "../plan";
 import { NightReplay, replaySteps } from "./NightReplay";
@@ -155,7 +155,7 @@ export function MapView({ state, draft, setDraft, act, night, setNight }: Props)
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [JSON.stringify(tiles), JSON.stringify(state.casas.map((h) => [h.id, h.color])), last, [...battles].join()],
   );
-  const img = useWorld(world);
+  const img = useWorldMeta(world);
   const W = img.width;
   const H = img.height;
   const geo = useMemo(() => geoOf(img), [img]);
@@ -310,7 +310,7 @@ export function MapView({ state, draft, setDraft, act, night, setNight }: Props)
         </button>
         <div className={`map-viewport ${close ? "close" : "whole"}`} ref={viewport}>
         <div className="world-wrap" style={{ width: W * scale, height: H * scale }}>
-          <WorldCanvas img={img} label="Mapa de Aldricia" />
+          <WorldCanvas opts={world} label="Mapa de Aldricia" />
           <svg className="world-marks" viewBox={`0 0 ${W} ${H}`} aria-hidden>
             {tiles.map((t) => (
               <polygon key={`g${t.id}`} points={points(t)} className="cell-line" />
