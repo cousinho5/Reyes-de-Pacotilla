@@ -588,7 +588,7 @@ app.get("/api/partidas/:id", async (c) => {
     loadBuildings(db, game.id),
     computeAllPrestige(db, game.id, houses, tiles, now),
     db.prepare(
-      "SELECT id, resolution_no, kind, from_tile_id, troops, jinetes, catapultas, captain, guest, target_tile_id, supported_from_tile_id, supports_any FROM orders WHERE house_id = ? AND resolution_no >= ? ORDER BY resolution_no, id",
+      "SELECT id, resolution_no, kind, from_tile_id, troops, jinetes, catapultas, captain, guest, target_tile_id, supported_from_tile_id, supports_any, repeat FROM orders WHERE house_id = ? AND resolution_no >= ? ORDER BY resolution_no, id",
     )
       .bind(house.id, game.current_resolution + 1)
       .all<{
@@ -604,6 +604,7 @@ app.get("/api/partidas/:id", async (c) => {
         target_tile_id: number;
         supported_from_tile_id: number | null;
         supports_any: number;
+        repeat: number;
       }>(),
     db.prepare(
       `SELECT e.id, e.type, e.payload, e.at, r.number AS resolucion FROM event_log e LEFT JOIN resolutions r ON r.id = e.resolution_id
@@ -683,6 +684,7 @@ app.get("/api/partidas/:id", async (c) => {
         vacaciones: house.vacation === 1,
         plantilla: house.autopilot_template ?? "equilibrada",
       },
+      avisoCierre: house.close_warning !== 0,
     },
     casas: houses
       .map((h) => ({
@@ -768,6 +770,8 @@ app.get("/api/partidas/:id", async (c) => {
       ...(o.captain ? { capitan: true } : {}),
       // Sale de las tropas de paso de la casa en una casilla aliada (bloque 8).
       ...(o.guest ? { dePaso: true } : {}),
+      // Se copia a la noche siguiente al resolver (bloque 12).
+      ...(o.repeat ? { repetir: true } : {}),
     })),
     eventos: events.results.map((e) => ({ id: e.id, tipo: e.type, resolucion: e.resolucion, datos: JSON.parse(e.payload) })),
     ofertas: offers.results.map(offerView),
@@ -977,6 +981,16 @@ app.post("/api/partidas/:id/ausencia", async (c) => {
   return c.json({ ok: true });
 });
 
+/** Bloque 12: encender o apagar el aviso 1 hora antes del cierre. */
+app.post("/api/partidas/:id/aviso-cierre", async (c) => {
+  const m = await membership(c);
+  if (m instanceof Response) return m;
+  const body = await c.req.json<{ activo?: boolean }>().catch(() => ({}) as never);
+  if (typeof body.activo !== "boolean") return fail(c, 400, "Falta si quieres el aviso o no.");
+  await c.env.DB.prepare("UPDATE houses SET close_warning = ? WHERE id = ?").bind(body.activo ? 1 : 0, m.house.id).run();
+  return c.json({ ok: true });
+});
+
 interface OrderInput {
   tipo: "mover" | "apoyar" | "sitiar";
   desde: number;
@@ -990,6 +1004,8 @@ interface OrderInput {
   capitan?: boolean;
   /** Bloque 8: las tropas son las de paso de la casa en esa casilla aliada. */
   dePaso?: boolean;
+  /** Bloque 12: se copia a la noche siguiente al resolver (asedios y apoyos a la defensa). */
+  repetir?: boolean;
 }
 
 /**
@@ -1010,9 +1026,16 @@ app.put("/api/partidas/:id/ordenes", async (c) => {
   const n = m.game.current_resolution + 1;
   const last = Math.min(n + QUEUE.nights - 1, totalResolutions(m.game.weeks, rhythmOf(m.game).days));
   const nights: Order[][] = Array.from({ length: last - n + 1 }, () => []);
+  // Bloque 12: qué órdenes se repiten cada noche (mismo puesto que en `nights`).
+  const repeats: boolean[][] = nights.map(() => []);
   for (const o of ordenes) {
     const r = o.resolucion == null ? n : Number(o.resolucion);
     if (!Number.isInteger(r) || r < n || r > last) return fail(c, 400, "Solo se pueden dejar órdenes para las próximas noches.");
+    const repeat = o.repetir === true;
+    if (repeat && !(o.tipo === "sitiar" || (o.tipo === "apoyar" && o.apoyaDesde == null))) {
+      return fail(c, 400, "Solo se repiten cada noche los asedios y las defensas.");
+    }
+    repeats[r - n]!.push(repeat);
     nights[r - n]!.push(
       o.tipo === "mover"
         ? {
@@ -1103,7 +1126,7 @@ app.put("/api/partidas/:id/ordenes", async (c) => {
   const statements = [
     c.env.DB.prepare("DELETE FROM orders WHERE house_id = ? AND resolution_no >= ?").bind(m.house.id, n),
     ...nights.flatMap((orders, i) =>
-      orders.map((o) => {
+      orders.map((o, j) => {
         const supported = o.kind === "support" ? o.supportedFrom : null;
         const anyOrigin = supported === ANY_ORIGIN;
         const row = [
@@ -1119,8 +1142,8 @@ app.put("/api/partidas/:id/ordenes", async (c) => {
         ] as const;
         const at = keep.get([...row, supported ?? ""].join("|"))?.shift() ?? null;
         return c.env.DB.prepare(
-          "INSERT INTO orders (game_id, house_id, resolution_no, kind, from_tile_id, troops, jinetes, catapultas, captain, guest, target_tile_id, supported_from_tile_id, supports_any, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, strftime('%Y-%m-%dT%H:%M:%fZ','now')))",
-        ).bind(m.game.id, m.house.id, ...row, anyOrigin ? null : supported, anyOrigin ? 1 : 0, at);
+          "INSERT INTO orders (game_id, house_id, resolution_no, kind, from_tile_id, troops, jinetes, catapultas, captain, guest, target_tile_id, supported_from_tile_id, supports_any, updated_at, repeat) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, strftime('%Y-%m-%dT%H:%M:%fZ','now')), ?)",
+        ).bind(m.game.id, m.house.id, ...row, anyOrigin ? null : supported, anyOrigin ? 1 : 0, at, repeats[i]![j] ? 1 : 0);
       }),
     ),
   ];

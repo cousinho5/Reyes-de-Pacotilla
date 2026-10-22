@@ -32,7 +32,7 @@ type Mode = "orden" | "capitan";
  * `guest`: salen las tropas de paso de tu casa en esa casilla aliada (bloque 8).
  * `verb`: el elegido (si no, el propuesto). `edit`: la orden ya dada que se está cambiando.
  */
-type Compose = { from: number; mode: Mode; target: number | null; verb?: Verb; mix: Units; capitan?: boolean; guest?: boolean; edit?: OrderView };
+type Compose = { from: number; mode: Mode; target: number | null; verb?: Verb; mix: Units; capitan?: boolean; guest?: boolean; edit?: OrderView; repetir?: boolean };
 
 /** Tus tropas de paso en una casilla aliada (bloque 8). */
 const myGuests = (t: TileView | undefined, me: number) => t?.guests?.find((g) => g.house === me);
@@ -545,6 +545,7 @@ export function MapView({ state, draft, setDraft, act, night, setNight, editOrde
       mix: u,
       ...(o.capitan ? { capitan: true } : {}),
       ...(o.dePaso ? { guest: true } : {}),
+      ...(o.repetir ? { repetir: true } : {}),
       edit: o,
     });
     openSheet();
@@ -1232,6 +1233,7 @@ function QuickOrders({
                         · {troopsText(o.tropas, o.jinetes, o.catapultas)}
                         {o.dePaso ? " de paso" : ""} desde {name(o.desde)}
                         {o.capitan ? " · con el Capitán" : ""}
+                        {o.repetir ? " · cada noche" : ""}
                       </small>
                     </>
                   )}
@@ -1718,6 +1720,12 @@ function Composer({
           </div>
         </>
       )}
+      {(verb === "sitiar" || verb === "defender") && (
+        <label className="check">
+          <input type="checkbox" checked={!!compose.repetir} onChange={(e) => setCompose({ ...compose, verb, repetir: e.target.checked })} />
+          Repetir cada noche, hasta que la quites o deje de ser posible
+        </label>
+      )}
       {march && captainHere && (
         <label className="check">
           <input type="checkbox" checked={!!compose.capitan} onChange={(e) => setCompose({ ...compose, verb, capitan: e.target.checked })} />
@@ -1737,6 +1745,7 @@ function Composer({
               ...(mix.jinetes > 0 ? { jinetes: mix.jinetes } : {}),
               ...(mix.catapultas > 0 ? { catapultas: mix.catapultas } : {}),
               ...(march && captainHere && compose.capitan ? { capitan: true } : {}),
+              ...((verb === "sitiar" || verb === "defender") && compose.repetir ? { repetir: true } : {}),
             })
           }
         >

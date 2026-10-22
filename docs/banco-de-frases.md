@@ -441,11 +441,13 @@ Pocas palabras y siempre con la información primero. Cinco variantes por tipo c
 
 ### 11.5 Aviso de cierre (notificación)
 
-1. Cierre en 2 h. Fray Abundio se impacienta.
-2. Quedan 2 horas para dar órdenes.
-3. Cierre en 2 h. El mensajero ya se está poniendo las botas.
-4. 2 horas para el cierre. Última llamada, alteza.
-5. Cierre en 2 h. Después, que sea lo que el destino quiera.
+Sale 1 hora antes del cierre y solo a quien aún no ha dado órdenes (bloque 12).
+
+1. Cierre en 1 h. Aún no has dado órdenes. Fray Abundio se impacienta.
+2. Queda 1 hora para dar órdenes y no has dado ninguna.
+3. Cierre en 1 h. El mensajero ya se está poniendo las botas, y tus tropas siguen esperando.
+4. 1 hora para el cierre y ni una orden. Última llamada, alteza.
+5. Cierre en 1 h. Sin órdenes, que sea lo que el destino quiera.
 
 ### 11.6 Combate (notificación tras la resolución)
 

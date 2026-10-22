@@ -110,6 +110,9 @@ export const QUEUE = {
   nights: 3,
 };
 
+/** Bloque 12: el aviso de cierre sale esta cantidad de minutos antes, solo a quien no ha dado órdenes. */
+export const CLOSE_WARNING_MINUTES = 60;
+
 /**
  * Retoques del sistema de batalla (hoja de ruta, bloque 4, `docs/bloque4.md`).
  * Se encienden uno a uno, cada uno con su simulación. El simulador puede

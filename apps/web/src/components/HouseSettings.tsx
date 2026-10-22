@@ -121,7 +121,7 @@ export function HouseSettings({ state, act }: Props) {
           </>
         ) : (
           <>
-            <p className="muted">Te avisamos cuando te hagan una oferta, queden 2 horas para el cierre y haya resultados.</p>
+            <p className="muted">Te avisamos cuando te hagan una oferta, quede 1 hora para el cierre sin que hayas dado órdenes y haya resultados.</p>
             <button
               className="primary"
               onClick={() =>
@@ -134,6 +134,21 @@ export function HouseSettings({ state, act }: Props) {
               Activar avisos
             </button>
           </>
+        )}
+        {state.partida.estado === "active" && state.yo.avisoCierre != null && (
+          <label className="radio">
+            <input
+              type="checkbox"
+              checked={state.yo.avisoCierre}
+              onChange={(e) =>
+                act(
+                  () => api.setCloseWarning(gameId, e.target.checked),
+                  e.target.checked ? "Fray Abundio te avisará si se te olvidan las órdenes." : "Sin aviso antes del cierre.",
+                )
+              }
+            />
+            Avisarme 1 hora antes del cierre si aún no he dado órdenes
+          </label>
         )}
         {canVibrate() && (
           <label className="radio">

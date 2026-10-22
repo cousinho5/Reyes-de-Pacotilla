@@ -32,6 +32,7 @@ import {
   claimRuins,
   resolveCampaign,
   fitOrders,
+  checkOrders,
   bannersSeen,
   ALLIANCE,
   PHRASES,
@@ -39,6 +40,7 @@ import {
   houseInSentence,
   type AutopilotTemplate,
   type BuildingKind,
+  type Alliance,
   type CampaignEvent,
   type ObjectiveKey,
   type Order,
@@ -240,25 +242,21 @@ export async function runProduction(env: NotifyEnv, game: GameRow, key: string, 
   }
 }
 
-/** Aviso dos horas antes del cierre de órdenes. */
+/** Aviso 1 hora antes del cierre (bloque 12), solo a las casas que aún no han dado ninguna orden y no lo han apagado. */
 export async function closeWarning(env: NotifyEnv, game: GameRow, n: number): Promise<void> {
   await env.DB.prepare("INSERT INTO job_runs (game_id, job_key) VALUES (?, ?)").bind(game.id, `aviso_cierre:${n}`).run();
   const houses = await loadHouses(env.DB, game.id);
-  // Con resolución diaria, el aviso solo va a quien aún no ha dado órdenes:
-  // un aviso cada tarde a todo el mundo cansaría (respeto al tiempo).
-  let to = houses.map((h) => h.id);
-  if (rhythmOf(game).days.length > 2) {
-    const { results } = await env.DB.prepare("SELECT DISTINCT house_id FROM orders WHERE game_id = ? AND resolution_no = ?")
-      .bind(game.id, n)
-      .all<{ house_id: number }>();
-    const ordered = new Set(results.map((r) => r.house_id));
-    to = to.filter((id) => !ordered.has(id));
-  }
+  // Solo a quien aún no ha dado órdenes: un aviso cada tarde a todo el mundo cansaría (respeto al tiempo).
+  const { results } = await env.DB.prepare("SELECT DISTINCT house_id FROM orders WHERE game_id = ? AND resolution_no = ?")
+    .bind(game.id, n)
+    .all<{ house_id: number }>();
+  const ordered = new Set(results.map((r) => r.house_id));
+  const to = houses.filter((h) => !ordered.has(h.id) && h.close_warning !== 0).map((h) => h.id);
   if (to.length === 0) return;
   await notifyHouses(env, to, {
     kind: "cierre",
-    title: "Cierre en 2 h",
-    body: "Quedan dos horas para dar órdenes. Fray Abundio se impacienta.",
+    title: "Cierre en 1 h",
+    body: "Aún no has dado órdenes. Fray Abundio se impacienta.",
     url: `/partida/${game.id}`,
     dedupe: `cierre:${game.id}:${n}`,
   });
@@ -449,6 +447,10 @@ export async function runResolution(env: NotifyEnv, game: GameRow, n: number, no
     sightings.set(h.id, seen);
     for (const b of seen) extraEvents.push({ type: "estandartes", visibleTo: h.id, payload: { ...b, viewer: h.id } });
   }
+
+  // Bloque 12: los asedios y las defensas con «Repetir cada noche» se copian a la
+  // noche siguiente si siguen siendo posibles; si no, la repetición se acaba y se avisa.
+  extraStatements.push(...(await repeatStatements(db, game, n, orderRows.results, finalTiles, alliances, extraEvents)));
 
   const before = new Map(tiles.map((t) => [t.id, t]));
   const statements: D1PreparedStatement[] = [
@@ -743,6 +745,68 @@ export function crowding(before: Tile[], after: Tile[]): { host: number; guest: 
   return out.sort((a, b) => a.host - b.host || a.guest - b.guest);
 }
 
+/**
+ * Repetir cada noche (bloque 12): copia a la noche n + 1 las órdenes de la noche
+ * n marcadas para repetirse, con el mapa ya resuelto. Si una ya no es posible
+ * (asedio roto, casilla perdida, sin tropas), no se copia y su casa recibe un
+ * aviso en la crónica. Si la casa ya tiene esa misma orden en cola, no la duplica.
+ * Va en el mismo lote que la resolución (su clave es la de la resolución).
+ */
+async function repeatStatements(
+  db: D1Database,
+  game: GameRow,
+  n: number,
+  rows: OrderRow[],
+  tiles: Tile[],
+  alliances: Alliance[],
+  events: { type: string; visibleTo: number | null; payload: unknown }[],
+): Promise<D1PreparedStatement[]> {
+  const repeated = rows.filter((r) => r.repeat === 1);
+  if (repeated.length === 0 || n + 1 > totalResolutions(game.weeks, rhythmOf(game).days)) return [];
+  const { results: queued } = await db
+    .prepare("SELECT house_id, kind, from_tile_id, target_tile_id, supported_from_tile_id, supports_any FROM orders WHERE game_id = ? AND resolution_no = ?")
+    .bind(game.id, n + 1)
+    .all<{ house_id: number; kind: OrderRow["kind"]; from_tile_id: number; target_tile_id: number; supported_from_tile_id: number | null; supports_any: number }>();
+  const same = (a: Pick<OrderRow, "house_id" | "kind" | "from_tile_id" | "target_tile_id" | "supported_from_tile_id" | "supports_any">, b: typeof a) =>
+    a.house_id === b.house_id &&
+    a.kind === b.kind &&
+    a.from_tile_id === b.from_tile_id &&
+    a.target_tile_id === b.target_tile_id &&
+    a.supported_from_tile_id === b.supported_from_tile_id &&
+    a.supports_any === b.supports_any;
+  const out: D1PreparedStatement[] = [];
+  for (const r of repeated) {
+    if (queued.some((q) => same(q, r))) {
+      out.push(
+        db
+          .prepare(
+            "UPDATE orders SET repeat = 1 WHERE game_id = ? AND resolution_no = ? AND house_id = ? AND kind = ? AND from_tile_id = ? AND target_tile_id = ?",
+          )
+          .bind(game.id, n + 1, r.house_id, r.kind, r.from_tile_id, r.target_tile_id),
+      );
+      continue;
+    }
+    const order = orderOf(r);
+    const { invalid } = checkOrders(tiles, fitOrders(tiles, [order]), n + 1, alliances);
+    if (invalid.length > 0) {
+      events.push({
+        type: "repeticion_fin",
+        visibleTo: r.house_id,
+        payload: { house: r.house_id, kind: r.kind, from: r.from_tile_id, target: r.target_tile_id, reason: invalid[0]!.reason },
+      });
+      continue;
+    }
+    out.push(
+      db
+        .prepare(
+          "INSERT INTO orders (game_id, house_id, resolution_no, kind, from_tile_id, troops, jinetes, catapultas, captain, guest, target_tile_id, supported_from_tile_id, supports_any, updated_at, repeat) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, 1)",
+        )
+        .bind(game.id, r.house_id, n + 1, r.kind, r.from_tile_id, r.troops, r.jinetes, r.catapultas, r.guest, r.target_tile_id, r.supported_from_tile_id, r.supports_any, r.updated_at),
+    );
+  }
+  return out;
+}
+
 /** Una orden guardada (fila de `orders`), en el formato del motor. */
 export interface OrderRow {
   house_id: number;
@@ -757,10 +821,12 @@ export interface OrderRow {
   supported_from_tile_id: number | null;
   supports_any: number;
   updated_at: string;
+  /** Bloque 12: se copia a la noche siguiente al resolver. */
+  repeat?: number;
 }
 
 export const ORDER_COLUMNS =
-  "house_id, kind, from_tile_id, troops, jinetes, catapultas, captain, guest, target_tile_id, supported_from_tile_id, supports_any, updated_at";
+  "house_id, kind, from_tile_id, troops, jinetes, catapultas, captain, guest, target_tile_id, supported_from_tile_id, supports_any, updated_at, repeat";
 
 export function orderOf(o: OrderRow): Order {
   const guest = o.guest ? { guest: true } : {};

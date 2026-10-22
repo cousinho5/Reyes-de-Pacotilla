@@ -254,7 +254,7 @@ function OrderCard({
 function lineText(o: OrderView, name: (id: number) => string, target: TileView, me: number, allies: number[], bound: number[]): string {
   if (o.tipo === "mover" && o.tropas === 0 && o.capitan) return `El Capitán va solo desde ${name(o.desde)}`;
   const verb = o.tipo === "apoyar" && o.apoyaDesde !== null && o.apoyaDesde !== ANY_ORIGIN ? "Apoyar el ataque" : VERB_LABEL[verbOf(o, target, me, allies, bound)];
-  return `${verb} · ${troopsText(o.tropas, o.jinetes, o.catapultas)}${o.dePaso ? " de paso" : ""} desde ${name(o.desde)}${o.capitan ? ", con el Capitán" : ""}`;
+  return `${verb} · ${troopsText(o.tropas, o.jinetes, o.catapultas)}${o.dePaso ? " de paso" : ""} desde ${name(o.desde)}${o.capitan ? ", con el Capitán" : ""}${o.repetir ? " · cada noche" : ""}`;
 }
 
 /** El resultado previsto con lo que ves: «Ganarías: 6 contra 4, +25% del defensor y +25% de bosque». */

@@ -306,6 +306,8 @@ export function describeEvent(e: EventView, houses: HouseInfo[], tiles: TileView
       return `${houseName(houses, d.guest)} tiene ${troops(d.troops)} de paso dentro de tus tierras. Fray Abundio solo lo comenta.`;
     case "expulsion":
       return `${houseName(houses, d.house)} saca ${troops(d.troops)} de ${tile(d.from)} y vuelven a ${tile(d.to)}.`;
+    case "repeticion_fin":
+      return `Tu orden de ${d.kind === "siege" ? "sitiar" : "defender"} ${tile(d.target)} desde ${tile(d.from)} ya no se puede cumplir: deja de repetirse.`;
     case "estandartes":
       return `Se ven estandartes de ${withArticle(houseName(houses, d.house))} en ${tile(d.tile)} (${troops(d.troops)}), junto a ${tile(d.near)}.`;
     case "mantenimiento":
