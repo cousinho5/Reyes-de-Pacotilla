@@ -118,6 +118,8 @@ export interface TileView {
   siegeNights?: number;
   /** Ríos por los lados de la casilla (bloque 1): un bit por lado, como en el motor. */
   river?: number;
+  /** Bloque 8: tropas de paso de casas aliadas (solo si se ven las tropas de la casilla). */
+  guests?: { house: number; troops: number; jinetes?: number; catapultas?: number }[];
   visible: boolean;
   /** Se ve la casilla, pero sus tropas se esconden en el bosque (emboscada). */
   hidden?: boolean;
@@ -138,6 +140,32 @@ export interface OrderView {
   capitan?: boolean;
   /** Resolución para la que es (las siguientes a la próxima van en cola). */
   resolucion?: number;
+  /** Bloque 8: salen las tropas de paso de tu casa en esa casilla aliada. */
+  dePaso?: boolean;
+}
+
+/** Bloque 8: alianzas, tal como llegan del servidor. */
+export interface AlliancesInfo {
+  activas: boolean;
+  nochesDeAviso: number;
+  resolucionesPropuesta: number;
+  diasSinFirmar: number;
+  umbralTropas: number;
+  maximo: number | null;
+  /** Si rompiste una alianza hace poco, hasta cuándo no puedes firmar otra. */
+  sinFirmarHasta: string | null;
+  /** Registro público: alianzas en vigor y en aviso de todo el reino. */
+  lista: {
+    id: number;
+    nombre: string;
+    casas: [number, number];
+    estado: "activa" | "aviso";
+    desde: number | null;
+    terminaTras: number | null;
+    rotaPor: number | null;
+  }[];
+  /** Propuestas en las que está tu casa. */
+  propuestas: { id: number; nombre: string; de: number; para: number; caducaTras: number }[];
 }
 
 export interface EventView {
@@ -205,6 +233,7 @@ export interface GameState {
   cartas?: CardInfo[];
   /** Casas que vigilas con la carta Espía. */
   vigiladas?: number[];
+  alianzas?: AlliancesInfo | null;
   casillas?: TileView[];
   ordenes?: OrderView[];
   eventos?: EventView[];
@@ -295,6 +324,14 @@ export const api = {
   crownBuy: (id: number, recurso: CrownGood, unidades: number, oro: number) =>
     call<{ ok: true; oro: number }>("POST", `/partidas/${id}/corona/comprar`, { recurso, unidades, oro }),
   useCard: (id: number, carta: number, params: CardParamsInput) => call<{ ok: true }>("POST", `/partidas/${id}/cartas/${carta}/usar`, params),
+  allianceName: (id: number) => call<{ nombre: string }>("GET", `/partidas/${id}/alianzas/nombre`),
+  proposeAlliance: (id: number, casa: number, nombre: string) =>
+    call<{ ok: true; id: number; name: string }>("POST", `/partidas/${id}/alianzas`, { casa, nombre }),
+  acceptAlliance: (id: number, alianza: number) => call<{ ok: true }>("POST", `/partidas/${id}/alianzas/${alianza}/aceptar`),
+  declineAlliance: (id: number, alianza: number) => call<{ ok: true }>("POST", `/partidas/${id}/alianzas/${alianza}/rechazar`),
+  withdrawAlliance: (id: number, alianza: number) => call<{ ok: true }>("POST", `/partidas/${id}/alianzas/${alianza}/retirar`),
+  breakAlliance: (id: number, alianza: number) =>
+    call<{ ok: true; terminaTras: number }>("POST", `/partidas/${id}/alianzas/${alianza}/romper`),
   testAdvance: (id: number, hasta: "paso" | "resolucion") =>
     call<{ ok: true; ahora: string; resolucion: number; estado: string }>("POST", `/partidas/${id}/prueba/avanzar`, { hasta }),
   testPlayAs: (id: number, casa: number) => call<{ ok: true }>("POST", `/partidas/${id}/prueba/jugar-como`, { casa }),

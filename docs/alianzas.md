@@ -148,6 +148,8 @@ Cada fase se prueba y se simula antes y después (`npm run simular`, con `--alia
 
 ### Fase 3: cliente (`apps/web`)
 
+**Hecho** el 22 de octubre de 2026, en sencillo (la pantalla bonita llega con los bloques 9 a 12): panel de alianzas arriba de Comercio (`DiplomacyPanel.tsx`), casillas aliadas con un filo de puntos azules (gris durante el aviso) y las tropas de paso como «+N» junto a las tropas, órdenes de «Entrar» y de tropas de paso, la repetición con los escudos del bando conjunto, la crónica con los sucesos de las alianzas y la proyección con las alianzas (`alliancesOf` en `plan.ts`). La expulsión al terminar el aviso se cuenta en la crónica, no en la repetición.
+
 1. **Panel de diplomacia**: lista de casas con botón de proponer alianza, propuestas recibidas, alianzas activas y en aviso (con cuántas noches quedan) y botón de romper con confirmación.
 2. **Mapa**: borde o banderín del color del aliado en sus casillas; tropas de paso dibujadas aparte; el castillo aliado, marcado como no accesible.
 3. **Órdenes**: mover a casilla aliada aparece como "entrar" (no "atacar"); las tropas de paso se pueden mover desde la casilla donde están; durante el aviso, solo hacia la salida.

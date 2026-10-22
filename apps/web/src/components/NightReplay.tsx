@@ -297,21 +297,24 @@ function Battle({
 }) {
   const d = step.event.datos as Record<string, any>;
   const done = p > 0.55;
-  type Side = { house: number | null; label: string; strength: number; troops?: number; supporters?: number[] };
+  type Side = { house: number | null; label: string; strength: number; troops?: number; supporters?: number[]; joint?: number[] };
   const sides: Side[] =
     step.kind === "combate"
-      ? (d.sides as { house: number | null; role: string; strength: number; troops: number; supporters: number[] }[]).map((s) => ({
+      ? (d.sides as { house: number | null; role: string; strength: number; troops: number; supporters: number[]; joint?: number[] }[]).map((s) => ({
           house: s.house,
           label: s.role === "defensa" ? "Defensa" : "Ataque",
           strength: s.strength,
           troops: s.troops,
-          supporters: s.supporters.filter((x) => x !== s.house),
+          // Bloque 8: los aliados que luchan en el mismo bando.
+          joint: s.joint ?? [],
+          supporters: s.supporters.filter((x) => x !== s.house && !(s.joint ?? []).includes(x)),
         }))
       : step.kind === "choque"
         ? (d.sides as { house: number; strength: number }[]).map((s) => ({ house: s.house, label: "Choque", strength: s.strength }))
         : (d.houses as number[]).map((h) => ({ house: h, label: "Ataque", strength: d.strength }));
   const winner: number | null | undefined = step.kind === "rebote" ? undefined : d.winner;
-  const loser = (s: Side) => done && (step.kind === "rebote" || s.house !== winner);
+  const ours = (s: Side) => s.house === winner || (winner != null && (s.joint ?? []).includes(winner));
+  const loser = (s: Side) => done && (step.kind === "rebote" || !ours(s));
   const prisoner =
     step.kind === "combate" ? events.find((e) => e.tipo === "capitan_preso" && (e.datos as any).tile === step.tile) : undefined;
   const survivors = step.kind === "combate" ? (d.survivors as number) : null;
@@ -337,10 +340,15 @@ function Battle({
                   ? s.troops - survivors
                   : null;
           return (
-            <div key={i} className={`battle-side ${loser(s) ? "lost" : done && s.house === winner ? "won" : ""}`}>
+            <div key={i} className={`battle-side ${loser(s) ? "lost" : done && ours(s) ? "won" : ""}`}>
               {h ? <ShieldIcon color={h.color} escudo={h.escudo} size={16} title="" /> : <span className="neutral-dot" />}
+              {(s.joint ?? []).map((j) => {
+                const a = houses.find((x) => x.id === j);
+                return a ? <ShieldIcon key={j} color={a.color} escudo={a.escudo} size={16} title="" /> : null;
+              })}
               <span className="grow">
                 {s.label}
+                {(s.joint?.length ?? 0) > 0 && ` junto a ${s.joint!.map((x) => houseName(houses, x)).join(", ")}`}
                 {s.troops != null && ` · ${s.troops}`}
                 {(s.supporters?.length ?? 0) > 0 && ` + apoyo de ${s.supporters!.map((x) => houseName(houses, x)).join(", ")}`}
               </span>

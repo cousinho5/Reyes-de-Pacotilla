@@ -237,11 +237,14 @@ export function describeEvent(e: EventView, houses: HouseInfo[], tiles: TileView
         .filter((x) => x.by.length > 0 && x.s.house != null)
         .map((x) => ` ${x.by.map((h) => houseName(houses, h)).join(" y ")} apoyó a ${houseName(houses, x.s.house)}.`)
         .join("");
+      // Bloque 8: con quién iba (ataque conjunto o tropas de paso que defendían).
+      const allies = ((d.allies ?? []) as number[]).map((h) => houseName(houses, h));
+      const withAllies = allies.length > 0 ? ` junto a ${allies.map(withArticle).join(" y ")}` : "";
       if (d.conquered) {
         const prev = d.previousOwner == null ? "la guarnición neutral" : houseName(houses, d.previousOwner);
-        return `${houseName(houses, d.winner)} toma ${tile(d.tile)} a ${prev} y conserva ${troops(d.survivors)}.${helped}`;
+        return `${houseName(houses, d.winner)}${withAllies} toma ${tile(d.tile)} a ${prev} y conserva ${troops(d.survivors)}.${helped}`;
       }
-      return `${tile(d.tile)} resiste: ${houseName(houses, d.winner)} conserva ${troops(d.survivors)}.${helped}`;
+      return `${tile(d.tile)} resiste: ${houseName(houses, d.winner)}${withAllies} conserva ${troops(d.survivors)}.${helped}`;
     }
     case "rebote":
       return `Rebote en ${tile(d.tile)}: ${(d.houses as number[]).map((h) => houseName(houses, h)).join(" y ")} chocan con la misma fuerza y nadie entra.`;
@@ -284,7 +287,25 @@ export function describeEvent(e: EventView, houses: HouseInfo[], tiles: TileView
     case "movimiento":
       // Con 0 tropas es el Capitán, que va solo (bloque 4).
       if (d.troops === 0) return `${captainOf(houses, d.house)} va solo a ${tile(d.to)}.`;
+      if (d.guest) return `${houseName(houses, d.house)} entra con ${troops(d.troops)} en ${tile(d.to)}, casilla aliada.`;
       return `${houseName(houses, d.house)} mueve ${troops(d.troops)} a ${tile(d.to)}.`;
+    // Bloque 8: alianzas.
+    case "alianza":
+      return `${houseName(houses, d.a)} y ${withArticle(houseName(houses, d.b))} firman la ${d.name}. Vale desde la resolución ${d.since}.`;
+    case "alianza_rota":
+      return `${houseName(houses, d.by)} rompe la ${d.name}. Deja de existir tras la resolución ${d.endsAt}.`;
+    case "alianza_fin":
+      return `La ${d.name} entre ${withArticle(houseName(houses, d.a))} y ${withArticle(houseName(houses, d.b))} deja de existir.`;
+    case "alianza_propuesta":
+      return `${houseName(houses, d.from)} te propone la ${d.name}. Caduca tras la resolución ${d.expires}.`;
+    case "alianza_rechazada":
+      return `${houseName(houses, d.by)} rechaza la ${d.name}.`;
+    case "ordenes_anuladas":
+      return `Con la ${d.name}, ${d.orders === 1 ? "tu orden" : `tus ${d.orders} órdenes`} contra ${withArticle(houseName(houses, d.against))} no ${d.orders === 1 ? "sale" : "salen"}.`;
+    case "tropas_dentro":
+      return `${houseName(houses, d.guest)} tiene ${troops(d.troops)} de paso dentro de tus tierras. Fray Abundio solo lo comenta.`;
+    case "expulsion":
+      return `${houseName(houses, d.house)} saca ${troops(d.troops)} de ${tile(d.from)} y vuelven a ${tile(d.to)}.`;
     case "estandartes":
       return `Se ven estandartes de ${withArticle(houseName(houses, d.house))} en ${tile(d.tile)} (${troops(d.troops)}), junto a ${tile(d.near)}.`;
     case "mantenimiento":
