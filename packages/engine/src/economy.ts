@@ -1,6 +1,7 @@
 import {
   BUILDING_PRODUCTION,
   BUILDING_RESOURCE,
+  CASTLE_STAGES,
   LAST_PLACE_HELP,
   STRETCH_FREE_TILES,
   SIEGE,
@@ -36,6 +37,12 @@ export function upgradeCost(currentLevel: number): Partial<Resources> | null {
   const next = currentLevel + 1;
   if (next < 2 || next > 5) return null;
   return UPGRADE_COST[next as 2 | 3 | 4 | 5];
+}
+
+/** Etapa del castillo (1-5, bloque 2): solo de adorno, según la suma de los niveles de los edificios. */
+export function castleStage(buildings: Record<BuildingKind, number>): number {
+  const sum = Object.values(buildings).reduce((a, b) => a + b, 0);
+  return 1 + CASTLE_STAGES.from.filter((n) => sum >= n).length;
 }
 
 /** Cambios de producción de un evento (ver events.ts). */

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computePrestige, dailyProduction, isValidTrade, pay, upgradeCost, weeklyUpkeep } from "../src";
+import { castleStage, computePrestige, dailyProduction, isValidTrade, pay, upgradeCost, weeklyUpkeep } from "../src";
 
 const START = { granja: 2, aserradero: 2, cantera: 1, mina: 1, mercado: 1 } as const;
 
@@ -13,6 +13,16 @@ describe("Economía", () => {
     const p = dailyProduction({ ...START }, [{ type: "puerto" }, { type: "fortaleza" }], "hierro");
     expect(p.oro).toBe(2 + 2);
     expect(p.hierro).toBe(2 + 3);
+  });
+
+  it("el castillo crece en 5 etapas según la suma de niveles (bloque 2)", () => {
+    expect(castleStage({ ...START })).toBe(1);
+    expect(castleStage({ ...START, cantera: 2 })).toBe(1);
+    expect(castleStage({ ...START, cantera: 3 })).toBe(2);
+    expect(castleStage({ granja: 3, aserradero: 3, cantera: 3, mina: 1, mercado: 1 })).toBe(3);
+    expect(castleStage({ granja: 3, aserradero: 3, cantera: 3, mina: 3, mercado: 2 })).toBe(4);
+    expect(castleStage({ granja: 4, aserradero: 4, cantera: 3, mina: 3, mercado: 3 })).toBe(5);
+    expect(castleStage({ granja: 5, aserradero: 5, cantera: 5, mina: 5, mercado: 5 })).toBe(5);
   });
 
   it("costes de mejora (más Madera que Piedra)", () => {

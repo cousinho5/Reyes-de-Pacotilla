@@ -70,12 +70,15 @@ function tapiz(c, x, y, alto = 9) {
   c.px(x + 1, y + alto + 1, "7"); c.px(x + 3, y + alto + 1, "7")
   c.px(x + 2, y + 3, "O"); c.hline(x + 1, y + 4, 3, "O"); c.px(x + 2, y + 5, "O")
 }
-// Escudo de la casa sobre la puerta (en el juego, el escudo de verdad de cada casa).
+// Repostero: la barra dorada de la que cuelga el escudo de la casa en el torreón. El escudo lo pone
+// el juego (16x18, el de cada casa, de shield.ts) con su esquina de arriba a la izquierda en
+// (cx - 8, y); en esta maqueta va uno de muestra, en la escena, con ESCUDO_EN.
 function escudo(c, cx, y) {
-  c.rect(cx - 3, y, 7, 5, "7"); c.hline(cx - 2, y + 5, 5, "7"); c.px(cx, y + 6, "8")
-  c.vline(cx - 3, y, 5, "9"); c.vline(cx + 3, y, 5, "8"); c.px(cx, y + 2, "O"); c.hline(cx - 1, y + 1, 3, "O")
-  c.hline(cx - 4, y - 1, 9, "o")
+  c.hline(cx - 9, y - 1, 19, "o"); c.px(cx - 10, y - 1, "O"); c.px(cx + 10, y - 1, "O")
+  c.px(cx - 5, y - 2, "o"); c.px(cx + 5, y - 2, "o"); c.px(cx, y - 3, "o"); c.line(cx - 5, y - 2, cx, y - 3, "o"); c.line(cx + 5, y - 2, cx, y - 3, "o")
 }
+/** Dónde va el escudo en cada etapa (esquina de arriba a la izquierda, en el lienzo del castillo con su contorno). */
+const ESCUDO_EN = { 1: 38, 2: 49, 3: 49, 4: 55, 5: 67 }   // filas por encima de la base (CB)
 // Puerta en arco con rastrillo a medio subir.
 function puerta(c, cx, base, w, h, madera = false) {
   const x = cx - Math.floor(w / 2)
@@ -92,6 +95,7 @@ function puerta(c, cx, base, w, h, madera = false) {
 function antorcha(c, x, y) { c.px(x, y, "g"); c.px(x, y - 1, "O"); c.vline(x, y + 1, 2, "h") }
 // Torre redonda: sillería, almenas o tejado, ventanas.
 function torre(c, x, base, w, h, opciones = {}) {
+  if (opciones.liso) { sillares(c, x, base - h, w, h); for (let yy = base - h; yy < base; yy++) c.px(x + w - 1, yy, "s"); almenas(c, x, base - h, w); if (opciones.bandera) bandera(c, x + Math.floor(w / 2), base - h - 13); return }
   sillares(c, x, base - h, w, h)
   for (let yy = base - h; yy < base; yy++) { c.px(x + w - 1, yy, "s") }   // sombra del lado derecho
   if (opciones.tejado) cono(c, x + Math.floor(w / 2), base - h - 1, Math.floor(w / 2) + 2, opciones.tejado, opciones.teja)
@@ -101,6 +105,17 @@ function torre(c, x, base, w, h, opciones = {}) {
   aspillera(c, x + Math.floor(w / 2), base - h + 5, 4)
   if (h > 22) aspillera(c, x + Math.floor(w / 2), base - h + 16, 4)
 }
+
+// Escudo de muestra para la maqueta (español, partido, con una torre dorada).
+sprite("escudo_muestra", { w: 16, h: 18 }, (c) => {
+  for (let y = 0; y < 18; y++) for (let x = 0; x < 16; x++) {
+    const dentro = y < 11 || Math.hypot(x - 7.5, y - 10) < 8
+    if (!dentro) continue
+    const borde = x === 0 || x === 15 || y === 0 || (y >= 11 && Math.hypot(x - 7.5, y - 10) > 7)
+    c.px(x, y, borde ? "k" : x < 8 ? (y < 2 || x < 2 ? "9" : "7") : "8")
+  }
+  c.rect(6, 5, 4, 7, "O"); c.rect(5, 4, 6, 2, "O"); c.px(5, 3, "O"); c.px(7, 3, "O"); c.px(10, 3, "O"); c.vline(9, 6, 6, "o"); c.rect(7, 9, 2, 3, "k")
+})
 
 // ================================================================ el castillo, en 5 etapas
 // Todas en un lienzo de 104x112 con la base en la fila de abajo y el centro en x = 52.
@@ -118,7 +133,7 @@ function etapa1(c) {
   for (let x = CX - 11; x <= CX + 11; x++) for (let y = CB - 48; y < CB - 40; y++) c.px(x, y, (x - CX) % 3 === 0 ? "h" : y === CB - 48 ? "J" : "j")
   for (let yy = 0; yy < 7; yy++) c.hline(CX - 12 + yy, CB - 49 - yy, 25 - yy * 2, yy % 2 ? "H" : "j")
   bandera(c, CX, CB - 68)
-  aspillera(c, CX - 3, CB - 34, 4); aspillera(c, CX + 3, CB - 34, 4)
+  escudo(c, CX, CB - 38)
   // puerta de madera de la empalizada
   puerta(c, CX, CB, 10, 11, true)
   // banderín clavado en la empalizada y un cubo al lado
@@ -126,37 +141,34 @@ function etapa1(c) {
 }
 // Etapa 2: torre de piedra con almenas, muralla baja y dos torrecillas.
 function etapa2(c) {
-  torre(c, CX - 11, CB - 18, 22, 34, { bandera: true })
-  ventana(c, CX - 1, CB - 44, 4)
+  torre(c, CX - 11, CB - 18, 22, 34, { bandera: true, liso: true })
+  escudo(c, CX, CB - 49)
   sillares(c, CX - 30, CB - 20, 60, 20); almenas(c, CX - 30, CB - 20, 60, "T"); c.hline(CX - 30, CB - 20, 60, "T")
   torre(c, CX - 36, CB, 11, 26); torre(c, CX + 25, CB, 11, 26)
   puerta(c, CX, CB, 10, 12, true)
-  escudo(c, CX, CB - 19)
 }
 // Etapa 3: como el castillo del mapa. Torreón almenado, muralla con adarve y torres con tejado cónico.
 function etapa3(c) {
   sillares(c, CX - 13, CB - 52, 26, 30); almenas(c, CX - 13, CB - 52, 26)
   bandera(c, CX, CB - 66, 9, 6)
-  ventana(c, CX - 8, CB - 46, 4); ventana(c, CX + 6, CB - 46, 4)
+  ventana(c, CX - 11, CB - 46, 4); ventana(c, CX + 9, CB - 46, 4); escudo(c, CX, CB - 49)
   sillares(c, CX - 32, CB - 24, 64, 24); almenas(c, CX - 32, CB - 24, 64, "T"); c.hline(CX - 32, CB - 24, 64, "T")
   c.hline(CX - 32, CB - 21, 64, "S")
   torre(c, CX - 42, CB, 13, 36, { tejado: 12, bandera: true }); torre(c, CX + 29, CB, 13, 36, { tejado: 12, bandera: true })
   puerta(c, CX, CB, 12, 13)
-  escudo(c, CX, CB - 40)
   antorcha(c, CX - 10, CB - 10); antorcha(c, CX + 10, CB - 10)
 }
 // Etapa 4: torreón con tejado, puerta entre dos torres y tapices en la muralla.
 function etapa4(c) {
   sillares(c, CX - 14, CB - 58, 28, 34); almenas(c, CX - 14, CB - 58, 28)
   torre(c, CX - 5, CB - 58, 10, 10, { tejado: 12, bandera: true })
-  ventana(c, CX - 7, CB - 50, 5); ventana(c, CX + 5, CB - 50, 5); ventana(c, CX - 1, CB - 42, 4)
+  ventana(c, CX - 12, CB - 50, 5); ventana(c, CX + 10, CB - 50, 5); escudo(c, CX, CB - 55)
   sillares(c, CX - 38, CB - 26, 76, 26); almenas(c, CX - 38, CB - 26, 76, "T"); c.hline(CX - 38, CB - 26, 76, "T")
   c.hline(CX - 38, CB - 23, 76, "S")
   tapiz(c, CX - 30, CB - 22); tapiz(c, CX + 25, CB - 22)
   torre(c, CX - 48, CB, 14, 40, { tejado: 14, bandera: true }); torre(c, CX + 34, CB, 14, 40, { tejado: 14, bandera: true })
   torre(c, CX - 15, CB, 9, 32, { tejado: 9 }); torre(c, CX + 6, CB, 9, 32, { tejado: 9 })
   puerta(c, CX, CB, 12, 14)
-  escudo(c, CX, CB - 25)
   antorcha(c, CX - 18, CB - 12); antorcha(c, CX + 17, CB - 12)
 }
 // Etapa 5: doble muralla. La de dentro, alta, con el torreón; la de fuera, baja, con sus torres.
@@ -164,7 +176,7 @@ function etapa5(c) {
   // recinto de dentro
   sillares(c, CX - 15, CB - 70, 30, 34); almenas(c, CX - 15, CB - 70, 30)
   torre(c, CX - 6, CB - 70, 12, 10, { tejado: 14, bandera: true })
-  ventana(c, CX - 8, CB - 62, 5); ventana(c, CX + 6, CB - 62, 5); ventana(c, CX - 1, CB - 55, 4)
+  ventana(c, CX - 13, CB - 62, 5); ventana(c, CX + 11, CB - 62, 5); escudo(c, CX, CB - 67)
   sillares(c, CX - 34, CB - 38, 68, 16); almenas(c, CX - 34, CB - 38, 68, "T"); c.hline(CX - 34, CB - 38, 68, "T")
   torre(c, CX - 40, CB - 22, 12, 30, { tejado: 12, bandera: true }); torre(c, CX + 28, CB - 22, 12, 30, { tejado: 12, bandera: true })
   tapiz(c, CX - 26, CB - 36, 7); tapiz(c, CX + 21, CB - 36, 7)
@@ -174,7 +186,6 @@ function etapa5(c) {
   torre(c, CX - 52, CB, 12, 28, { tejado: 10 }); torre(c, CX + 40, CB, 12, 28, { tejado: 10 })
   torre(c, CX - 14, CB, 9, 24, { tejado: 8 }); torre(c, CX + 5, CB, 9, 24, { tejado: 8 })
   puerta(c, CX, CB, 10, 12)
-  escudo(c, CX, CB - 30)
   antorcha(c, CX - 18, CB - 8); antorcha(c, CX + 18, CB - 8)
   // estandartes grandes en las torres de fuera
   tapiz(c, CX - 49, CB - 20, 8); tapiz(c, CX + 42, CB - 20, 8)
@@ -396,7 +407,8 @@ function escena(nombre, etapa) {
   scene(nombre, { w: W, h: H, bg: "M" },
     layer("fondo", stamp("fondo", 0, 0)),
     layer("lejos", stamp("aserradero_3", ...SITIOS.aserradero), stamp("cantera_3", ...SITIOS.cantera)),
-    layer("castillo", stamp(`castillo_${etapa}`, ...SITIOS.castillo)),
+    layer("castillo", stamp(`castillo_${etapa}`, ...SITIOS.castillo),
+      stamp("escudo_muestra", SITIOS.castillo[0] - 53 + 1 + CX - 8, SITIOS.castillo[1] - CH - 2 + 1 + CB - ESCUDO_EN[etapa])),
     layer("cerca", stamp("mina_3", ...SITIOS.mina), stamp("granja_3", ...SITIOS.granja), stamp("mercado_3", ...SITIOS.mercado)),
   )
 }
@@ -414,5 +426,6 @@ const COLORES = [
 ]
 scene("lamina", { w: 5 * 108 + 4, h: 120, bg: "M" },
   layer("suelo", rect(0, 108, 5 * 108 + 4, 12, "4"), rect(0, 112, 5 * 108 + 4, 8, "3")),
-  layer("castillos", ...[1, 2, 3, 4, 5].map((e) => stamp(`castillo_${e}`, 56 + (e - 1) * 108, 112, { swap: COLORES[e - 1] }))),
+  layer("castillos", ...[1, 2, 3, 4, 5].flatMap((e) => [stamp(`castillo_${e}`, 56 + (e - 1) * 108, 112, { swap: COLORES[e - 1] }),
+    stamp("escudo_muestra", 56 + (e - 1) * 108 - 53 + 1 + CX - 8, 112 - CH - 2 + 1 + CB - ESCUDO_EN[e], { swap: COLORES[e - 1] })])),
 )

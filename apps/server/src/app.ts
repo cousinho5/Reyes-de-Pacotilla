@@ -558,6 +558,7 @@ app.get("/api/partidas/:id", async (c) => {
       filas: game.map_rows,
       /** Lados con costa (bloque 1); null en los mapas de antes. */
       costa: game.map_coast ?? null,
+      zonaHoraria: game.timezone,
       resolucionActual: game.current_resolution,
       totalResoluciones: totalResolutions(game.weeks, rhythmOf(game).days),
       /** Días con resolución (0 = lunes) y resoluciones que dura fortificar. */
