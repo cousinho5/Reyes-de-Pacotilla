@@ -35,6 +35,23 @@ Fray Abundio pasa a hablar dos veces por semana, a narrar la noche, a contar tod
 | 10. Casas en su color | Cuando nombra una casa, el nombre sale en su color, con borde para que se lea en el pergamino, y al tocarlo se ve el escudo |
 | 11. Dibujo | Fray Abundio nuevo de 48x48 con más detalle (hábito, tonsura, pluma, tintero, gafas) y animaciones cortas: parpadea, mueve la boca, moja la pluma, cabecea dormido y hace sonar las monedas |
 
+## Dudas resueltas al empezar (23 de octubre)
+
+| Duda | Respuesta |
+| --- | --- |
+| Boletín del miércoles | «Hoja volandera» corta: titular, armas, pactos y memoria. El domingo, el boletín completo con clasificación, sobornos y proclamas |
+| Proclamas | Gratis, firmadas, solo en el boletín del domingo y editables hasta el cierre. Pueden nombrar a otras casas; sin enlaces |
+| Memoria | Solo dentro de cada partida (nada entre partidas) |
+| Repetición | Cuando el paso es de tu casa, Fray Abundio te habla de «vuestra merced». Solo en los combates |
+| Crónica Definitiva | Pergamino de 8 a 12 momentos clave con letra capitular en pixel art, para compartir por WhatsApp como texto. Cada casa que pierde puede añadir una línea de «fe de erratas» al pie |
+| WhatsApp | Un cuadradito de color (🟥🟦…) delante de cada casa en el texto compartido |
+| Boletín emergente | Si hay dos sin leer, sale solo el último, con enlace al anterior |
+| Reino | Este bloque hace el contenido, la ventana emergente y las casas en su color; la tarjeta del boletín y el sitio de las proclamas se rediseñan en el bloque 11 |
+| Hambre | Las deserciones no salen en el boletín, porque delatarían que a la casa le falta Pan: solo las ve la propia casa |
+| Cargas, brechas y ríos | El combate anota en cada atacante `charge` (cargan sus jinetes) y `breach` (sus catapultas abren brecha), junto al `river` que ya había. La emboscada y el castillo que cae salen del tipo de casilla. No cambia ninguna regla |
+
+Las frases nuevas (borrador para revisar) están en el documento aparte del proyecto, `bloque3/frases-nuevas.md`.
+
 ## Pasos
 
 1. **Frases nuevas** en `docs/banco-de-frases.md` y en `texts/cronista.ts`. Se escriben y se revisan antes de meterlas.

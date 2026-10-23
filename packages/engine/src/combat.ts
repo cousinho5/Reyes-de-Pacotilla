@@ -439,6 +439,9 @@ export function resolveCampaign(input: CampaignInput): CampaignResult {
       strength: sum(ms.map((m) => attackStrength(m) * riverFactor(m))),
       supporters: unique(ms.flatMap((m) => attackSupport(m).map((s) => s.house))),
       river: ms.some(crossing),
+      // Para el cronista (bloque 3): si cargan sus jinetes o sus catapultas abren brecha.
+      charge: UNITS.enabled && isPlain(tile.type) && !walled(tile, resolution) && ms.some((m) => m.units.jinetes > 0),
+      breach: UNITS.enabled && walled(tile, resolution) && ms.some((m) => m.units.catapultas > 0),
       at: Math.min(...ms.map((m) => m.at)),
       seq: Math.min(...ms.map((m) => m.seq)),
     }));
@@ -475,6 +478,8 @@ export function resolveCampaign(input: CampaignInput): CampaignResult {
           supporters: a.supporters,
           from: unique(a.moves.map((m) => m.from)),
           ...(a.river ? { river: true } : {}),
+          ...(a.charge ? { charge: true } : {}),
+          ...(a.breach ? { breach: true } : {}),
           ...(joint.length > 0 ? { joint } : {}),
         };
       }),

@@ -99,6 +99,8 @@ export async function publishBulletin(env: NotifyEnv, game: GameRow, week: numbe
     previousLeader: previous?.leader ?? null,
     facts: facts.results.map<BulletinFact>((f) => ({ type: f.type, data: JSON.parse(f.payload) as Record<string, unknown> })),
     tileNames: new Map(tileRows.map((t) => [t.id, t.name])),
+    tileTypes: new Map(tiles.map((t) => [t.id, t.type])),
+    tileOwners: new Map(tiles.map((t) => [t.id, t.owner])),
     trades: trades.results.map((t) => ({ a: t.house_a, b: t.house_b })),
     crown: Object.fromEntries(crown.results.map((r) => [r.resource, r.units])),
     bribes: bribes.results.map((b) => ({ house: b.house_id, template: Number(b.template_key), amount: b.amount })),
