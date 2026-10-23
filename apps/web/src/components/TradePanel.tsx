@@ -3,7 +3,7 @@ import { AuctionPanel } from "./AuctionPanel";
 import { CrownPanel } from "./CrownPanel";
 import { DiplomacyPanel } from "./DiplomacyPanel";
 import { useState } from "react";
-import { RESOURCES, fairAmount, referenceValue, totalOf, type Resource, type Resources } from "@reyes/engine";
+import { RESOURCES, TRADE, fairAmount, referenceValue, totalOf, type Resource, type Resources } from "@reyes/engine";
 import { api, type GameState, type OfferInfo } from "../api";
 import { HOUSE_COLORS, RESOURCE_LABEL, houseName } from "../ui";
 
@@ -36,11 +36,67 @@ function Worth({ r, prices }: { r: Partial<Resources>; prices?: Partial<Resource
   );
 }
 
-function OfferCard({ state, o, children }: { state: GameState; o: OfferInfo; children?: React.ReactNode }) {
+/** Lo que te falta para aceptar una oferta: «5 de Hierro y 2 de Oro», o null si llega. */
+export function missingFor(have: Resources | undefined, want: Resources): string | null {
+  if (!have) return null;
+  const short = RESOURCES.filter((r) => want[r] > have[r]);
+  return short.length === 0 ? null : short.map((r) => `${want[r] - have[r]} de ${RESOURCE_LABEL[r]}`).join(" y ");
+}
+
+/** Cuenta atrás de una oferta abierta (bloque 10). */
+function expiryText(o: OfferInfo, current: number): string | null {
+  if (o.estado !== "open" || o.caducaTras == null) return null;
+  const left = o.caducaTras - current;
+  return left <= 1 ? "Se retira esta noche" : `Se retira en ${left} noches`;
+}
+
+/** Las ofertas de las que sale esta, de la primera a la última (bloque 10: hilo del trato). */
+function threadOf(offers: OfferInfo[], o: OfferInfo): OfferInfo[] {
+  const byId = new Map(offers.map((x) => [x.id, x]));
+  const chain: OfferInfo[] = [];
+  for (let p = o.contraofertaDe != null ? byId.get(o.contraofertaDe) : undefined; p && !chain.includes(p); ) {
+    chain.unshift(p);
+    p = p.contraofertaDe != null ? byId.get(p.contraofertaDe) : undefined;
+  }
+  return chain;
+}
+
+function OfferCard({
+  state,
+  o,
+  nested,
+  replies,
+  children,
+}: {
+  state: GameState;
+  o: OfferInfo;
+  /** Va debajo de su oferta madre: no repite el hilo. */
+  nested?: boolean;
+  /** Contraofertas que cuelgan de esta oferta. */
+  replies?: React.ReactNode;
+  children?: React.ReactNode;
+}) {
   const me = state.yo.casa;
   const house = state.casas.find((h) => h.id === o.de);
+  const expiry = expiryText(o, state.partida.resolucionActual);
+  const thread = nested ? [] : threadOf(state.ofertas ?? [], o);
   return (
-    <li className="offer">
+    <li className={nested ? "offer offer-reply" : "offer"}>
+      {thread.length > 0 && (
+        <ol className="offer-thread" aria-label="Antes en este trato">
+          {thread.map((t) => (
+            <li key={t.id}>
+              <strong>{t.de === me ? "Tú" : houseName(state.casas, t.de)}:</strong> <Bundle r={t.da} /> por <Bundle r={t.pide} />
+              {t.frase && (
+                <>
+                  {" "}
+                  <q className="offer-note-text">{t.frase}</q>
+                </>
+              )}
+            </li>
+          ))}
+        </ol>
+      )}
       <div className="offer-who">
         <ShieldIcon color={house?.color ?? ""} escudo={house?.escudo} size={26} />
         <span>
@@ -48,7 +104,9 @@ function OfferCard({ state, o, children }: { state: GameState; o: OfferInfo; chi
           {o.para != null && o.de === me && <> a {houseName(state.casas, o.para)}</>}
           {o.contraofertaDe != null && <small className="muted"> · contraoferta</small>}
         </span>
+        {expiry && <small className="offer-expiry">{expiry}</small>}
       </div>
+      {o.frase && <q className="offer-note-text">{o.frase}</q>}
       <div className="offer-terms">
         <span>
           <em>{o.de === me ? "Das" : "Te da"}</em> <Bundle r={o.da} />
@@ -60,6 +118,7 @@ function OfferCard({ state, o, children }: { state: GameState; o: OfferInfo; chi
         </span>
       </div>
       {state.partida.estado === "active" && children && <div className="actions">{children}</div>}
+      {replies}
     </li>
   );
 }
@@ -74,23 +133,49 @@ const STATUS: Record<OfferInfo["estado"], string> = {
 
 /**
  * Pestaña Comercio (bloque 10). Arriba lo que pide respuesta: Para ti, Mercado y
- * tus ofertas. Después la subasta (en una línea si está cerrada) y la Corona;
- * al final, plegados, lo reciente y los tratos del reino.
+ * tus ofertas (las propuestas de alianza que te hacen, en Para ti). Después la
+ * subasta (en una línea si está cerrada) y la Corona; al final, plegados, lo
+ * reciente, las alianzas y los tratos del reino.
  */
 export function TradePanel({ state, act }: Props) {
   const me = state.yo.casa;
   const gameId = state.partida.id;
   const offers = state.ofertas ?? [];
   const open = offers.filter((o) => o.estado === "open");
-  const forMe = open.filter((o) => o.para === me);
+  // Las contraofertas a tus ofertas públicas van debajo de ellas, en Tus ofertas.
+  const repliesTo = (o: OfferInfo) => open.filter((x) => x.contraofertaDe === o.id && x.para === me);
+  const forMe = open.filter((o) => o.para === me && !open.some((p) => p.id === o.contraofertaDe && p.de === me && p.para == null));
   const market = open.filter((o) => o.para === null && o.de !== me);
   const mine = open.filter((o) => o.de === me);
   const closed = offers.filter((o) => o.estado !== "open");
+  const proposals = state.alianzas?.activas ? state.alianzas.propuestas.filter((p) => p.para === me).length : 0;
   const [draft, setDraft] = useState<Draft | null>(null);
   const active = state.partida.estado === "active";
 
-  const startCounter = (o: OfferInfo) => setDraft({ para: o.de, da: toLines(o.pide), pide: toLines(o.da), contra: o });
-  const accept = (o: OfferInfo) => act(() => api.acceptOffer(gameId, o.id), "Trato cerrado. Ambas partes creen haber ganado.");
+  const startCounter = (o: OfferInfo) => setDraft({ para: o.de, da: toLines(o.pide), pide: toLines(o.da), frase: "", contra: o });
+  const answer = (o: OfferInfo) => (
+    <>
+      {acceptButton(o)}
+      <button onClick={() => startCounter(o)}>Contraofertar</button>
+      <button className="link" onClick={() => act(() => api.rejectOffer(gameId, o.id), "Oferta rechazada.")}>
+        Rechazar
+      </button>
+    </>
+  );
+  const [onlyAffordable, setOnlyAffordable] = useState(false);
+  const shown = onlyAffordable ? market.filter((o) => missingFor(state.yo.recursos, o.pide) == null) : market;
+  // Aceptar en gris si te falta algo, con lo que falta debajo (bloque 10).
+  const acceptButton = (o: OfferInfo) => {
+    const missing = missingFor(state.yo.recursos, o.pide);
+    return (
+      <>
+        <button className="primary" disabled={missing != null} onClick={() => act(() => api.acceptOffer(gameId, o.id), "Trato cerrado. Ambas partes creen haber ganado.")}>
+          Aceptar
+        </button>
+        {missing && <small className="offer-missing">Te faltan {missing}.</small>}
+      </>
+    );
+  };
 
   return (
     <div className="trade">
@@ -106,6 +191,7 @@ export function TradePanel({ state, act }: Props) {
                 da: toBundle(draft.da),
                 pide: toBundle(draft.pide),
                 contraofertaDe: draft.contra?.id,
+                frase: draft.frase.trim() || undefined,
               });
               setDraft(null);
             }, draft.para == null ? "Oferta publicada en el mercado." : "Oferta enviada.")
@@ -120,20 +206,15 @@ export function TradePanel({ state, act }: Props) {
       )}
 
       <section className="card">
-        <h2>Para ti ({forMe.length})</h2>
-        {forMe.length === 0 ? (
+        <h2>Para ti ({forMe.length + proposals})</h2>
+        {forMe.length + proposals === 0 ? (
           <p className="muted">Nadie te ha hecho una oferta directa. De momento.</p>
         ) : (
           <ul className="list">
+            <DiplomacyPanel state={state} act={act} part="propuestas" />
             {forMe.map((o) => (
               <OfferCard key={o.id} state={state} o={o}>
-                <button className="primary" onClick={() => accept(o)}>
-                  Aceptar
-                </button>
-                <button onClick={() => startCounter(o)}>Contraofertar</button>
-                <button className="link" onClick={() => act(() => api.rejectOffer(gameId, o.id), "Oferta rechazada.")}>
-                  Rechazar
-                </button>
+                {answer(o)}
               </OfferCard>
             ))}
           </ul>
@@ -142,15 +223,21 @@ export function TradePanel({ state, act }: Props) {
 
       <section className="card">
         <h2>Mercado ({market.length})</h2>
+        {market.length > 0 && (
+          <label className="check">
+            <input type="checkbox" checked={onlyAffordable} onChange={(e) => setOnlyAffordable(e.target.checked)} />
+            Solo las que puedo aceptar
+          </label>
+        )}
         {market.length === 0 ? (
           <p className="muted">No hay ofertas. El mercado está más vacío que el tesoro real.</p>
+        ) : shown.length === 0 ? (
+          <p className="muted">Ninguna está a tu alcance. Habrá que vender algo primero.</p>
         ) : (
           <ul className="list">
-            {market.map((o) => (
+            {shown.map((o) => (
               <OfferCard key={o.id} state={state} o={o}>
-                <button className="primary" onClick={() => accept(o)}>
-                  Aceptar
-                </button>
+                {acceptButton(o)}
                 <button onClick={() => startCounter(o)}>Contraofertar</button>
               </OfferCard>
             ))}
@@ -165,7 +252,22 @@ export function TradePanel({ state, act }: Props) {
         ) : (
           <ul className="list">
             {mine.map((o) => (
-              <OfferCard key={o.id} state={state} o={o}>
+              <OfferCard
+                key={o.id}
+                state={state}
+                o={o}
+                replies={
+                  repliesTo(o).length > 0 && (
+                    <ul className="list offer-replies">
+                      {repliesTo(o).map((r) => (
+                        <OfferCard key={r.id} state={state} o={r} nested>
+                          {answer(r)}
+                        </OfferCard>
+                      ))}
+                    </ul>
+                  )
+                }
+              >
                 <button className="link" onClick={() => act(() => api.cancelOffer(gameId, o.id), "Oferta retirada.")}>
                   Retirar
                 </button>
@@ -179,9 +281,6 @@ export function TradePanel({ state, act }: Props) {
 
       <CrownPanel state={state} act={act} />
 
-      {/* Bloque 8: las alianzas, aquí hasta que el bloque 11 las lleve a Reino. */}
-      <DiplomacyPanel state={state} act={act} />
-
       {closed.length > 0 && (
         <details className="card fold">
           <summary>
@@ -190,16 +289,31 @@ export function TradePanel({ state, act }: Props) {
           <ul className="list">
             {closed.slice(0, 8).map((o) => (
               <li key={o.id}>
+                {o.de !== me && <strong>{houseName(state.casas, o.de)}: </strong>}
                 <Bundle r={o.da} /> por <Bundle r={o.pide} /> ·{" "}
                 <small>
-                  {STATUS[o.estado]}
+                  {o.caducada ? "caducada" : STATUS[o.estado]}
                   {o.estado === "accepted" && o.aceptadaPor && o.aceptadaPor !== me ? ` por ${houseName(state.casas, o.aceptadaPor)}` : ""}
                 </small>
+                {active && o.de === me && o.estado === "cancelled" && (
+                  <button
+                    className="link"
+                    onClick={() => {
+                      setDraft({ para: o.para, da: toLines(o.da), pide: toLines(o.pide), frase: o.frase ?? "" });
+                      window.scrollTo({ top: 0, behavior: "smooth" });
+                    }}
+                  >
+                    Volver a publicar
+                  </button>
+                )}
               </li>
             ))}
           </ul>
         </details>
       )}
+
+      {/* Bloque 8: las alianzas, plegadas aquí hasta que el bloque 11 las lleve a Reino. */}
+      <DiplomacyPanel state={state} act={act} />
 
       <details className="card fold">
         <summary>
@@ -237,6 +351,8 @@ interface Draft {
   para: number | null;
   da: Line[];
   pide: Line[];
+  /** Frase corta (bloque 10), opcional. */
+  frase: string;
   contra?: OfferInfo;
 }
 
@@ -251,7 +367,7 @@ const toLines = (b: Partial<Resources>): Line[] => RESOURCES.filter((r) => (b[r]
 /** Oferta nueva: das de lo que más tienes y pides de lo que menos. */
 function newDraft(have: Resources): Draft {
   const sorted = [...RESOURCES].sort((a, b) => have[b] - have[a]);
-  return { para: null, da: [{ r: sorted[0]!, n: 0 }], pide: [{ r: sorted[sorted.length - 1]!, n: 0 }] };
+  return { para: null, da: [{ r: sorted[0]!, n: 0 }], pide: [{ r: sorted[sorted.length - 1]!, n: 0 }], frase: "" };
 }
 
 const STEPS = [1, 5, 10];
@@ -378,6 +494,15 @@ function OfferForm({
       {draft.contra && <p className="muted">Para {state.casas.find((h) => h.id === draft.para)?.nombre}.</p>}
       {side("da")}
       {side("pide")}
+      <label className="offer-note">
+        Una frase, si quieres
+        <input
+          maxLength={TRADE.noteMax}
+          placeholder={draft.contra ? "Mi última palabra, majestad." : "Busco Madera para la muralla."}
+          value={draft.frase}
+          onChange={(e) => setDraft({ ...draft, frase: e.target.value.slice(0, TRADE.noteMax) })}
+        />
+      </label>
       {short.length > 0 && (
         <p className="error">
           No tienes todo lo que ofreces: te {short.length === 1 && give[short[0]!] - have[short[0]!] === 1 ? "falta" : "faltan"}{" "}

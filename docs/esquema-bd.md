@@ -112,6 +112,7 @@ He creado el esquema en SQLite 3.45 (la familia de D1), con una partida de ejemp
 ## 6. Migración 0002 (MVP 2)
 
 - `offers.accepted_by` y `offers.accept_token`: aceptación segura. El lote de aceptación marca primero la oferta con un token único y solo mueve recursos y crea el trato si el token de la oferta es el propio. Si dos casas aceptan a la vez, la segunda no cambia nada y recibe "Otra casa se te adelantó". Comprobado en la prueba de humo con dos aceptaciones simultáneas.
+- `offers.expires_after`, `offers.expired` y `offers.note` (migración 0018, bloque 10): resolución tras la que la oferta se retira sola si sigue abierta (la resolución actual + 3 al crearla), si se retiró por caducar, y la frase corta de quien la hace (80 letras como mucho, con `CHECK`).
 - `houses.autopilot_ran_on`: fecha del último día en que actuó el piloto automático, para que nunca actúe dos veces el mismo día.
 
 Los objetivos secretos usan las columnas que ya existían (`objective_options`, `objective_key`, `objective_met`), y las notificaciones, las tablas `push_subscriptions` y `notifications`.

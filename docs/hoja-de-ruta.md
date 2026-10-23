@@ -14,13 +14,13 @@ Primero se definen todos los bloques; después se hacen uno a uno, en el orden d
 | 6.º | 9. Diseño de la sección Mapa | ✅ Hecho (falta probarlo en un móvil de verdad) | #65 y #66 | Capas (con Alcance automático), escudos, tropas por color y tipo, niebla, línea de avisos y leyenda |
 | 7.º | 12. Diseño de la sección Órdenes | ✅ Hecho (falta probarlo en un móvil de verdad) | #67 a #71 | Verbo según el destino, botones de tropas, cambiar órdenes, tarjetas agrupadas, simulación con «¿Y si atacan?», repetir asedios y aviso 1 hora antes del cierre |
 | 8.º | 2. Vista del castillo y construcciones | ✅ Hecho (falta probarlo en un móvil de verdad) | #72 a #74 | Escena del castillo en pixel art con su hora del día, 25 dibujos de edificios, castillo que crece en 5 etapas (también en el mapa), ficha al tocar, lista con dibujos, tiendas del asedio y obra al mejorar |
-| 9.º | 10. Diseño de la sección Comercio | 🔨 En curso | #75 | Lo urgente arriba, oferta en dos líneas con «Precio justo», valor en Oro de la Corona, aceptar en gris, ofertas que caducan, Corona en Comercio e hilo del trato con frase |
+| 9.º | 10. Diseño de la sección Comercio | ✅ Hecho (falta probarlo en un móvil de verdad) | #75 | Lo urgente arriba, oferta en dos líneas con «Precio justo», valor en Oro de la Corona, aceptar en gris, ofertas que caducan, Corona en Comercio e hilo del trato con frase |
 | 10.º | 3. Mejora del cronista | ⏳ Pendiente (decidido) | — | Fray Abundio: dos boletines por semana, repetición narrada, frases nuevas, memoria, proclamas y dibujo nuevo |
 | 11.º | 11. Diseño de la sección Reino | ⏳ Pendiente (decidido) | — | Clasificación con podio y flechas arriba, gráfica de la carrera, boletín en tarjeta, crónica por noches, ficha de casa, tira de diplomacia y pantalla de coronación |
 | 12.º | 13. Historia y cinemáticas | ⏳ Pendiente (decidido) | — | Cinco cinemáticas en pixel art: prólogo de la muerte de Aldric, coronación con mapa por semanas y títulos cómicos, viñetas de eventos, última semana y fantasma de Aldric; sin sonido de momento |
 | 13.º | 7. Mejorar pagina de inicio del juego | ⏳ Pendiente (decidido) | — | Portada con Aldricia viva en pixel art según la hora real, tarjeta de la partida más urgente con cuenta atrás y avisos, entrar con código en una hoja, invitación como bando real, vitrina de coronas e instalar |
 
-**Cómo vamos:** 8 de 13 bloques hechos; en curso, el 10 (Comercio). La tabla se actualiza al empezar y al cerrar cada bloque, con sus PR.
+**Cómo vamos:** 9 de 13 bloques hechos; el siguiente, el 3 (Cronista). La tabla se actualiza al empezar y al cerrar cada bloque, con sus PR.
 
 **Por qué este orden:**
 
@@ -183,9 +183,9 @@ Decidido el 20 de octubre de 2026 y revisado el 22. Las decisiones y los pasos e
 7. **Noches en cola:** etiqueta «Sáb 31 · 3 órdenes» arriba a la izquierda, en lugar de la fila de noches.
 8. **Leyenda:** al final del botón de capas, sin primeros pasos.
 
-## Bloque 10: diseño de la sección Comercio **(decidido, pendiente de hacer)**
+## Bloque 10: diseño de la sección Comercio **(hecho; falta probarlo en un móvil de verdad)**
 
-Decidido el 20 de octubre de 2026. Las decisiones y los pasos están en `docs/bloque10.md`. Solo cambia una regla: las ofertas caducan.
+Decidido el 20 de octubre de 2026 y revisado el 23 (alianzas pendientes en «Para ti», retirada automática si a quien ofrece ya no le llega, «Volver a publicar» y frase en cualquier oferta). Las decisiones y los pasos están en `docs/bloque10.md`. Solo cambia una regla: las ofertas caducan.
 
 **Decisiones:**
 
@@ -195,7 +195,7 @@ Decidido el 20 de octubre de 2026. Las decisiones y los pasos están en `docs/bl
 4. **Aceptar:** en gris si falta algo, con filtro «solo las que puedo aceptar».
 5. **Caducidad:** a las 3 resoluciones.
 6. **Qué busca cada casa:** nada nuevo; se publica una oferta.
-7. **Corona y mercenarios:** la Corona en Comercio; los mercenarios en Castillo.
+7. **Corona y mercenarios:** la Corona en Comercio, con el precio del día (ya no hay tope); los mercenarios en Castillo.
 8. **Contraofertas:** hilo en una tarjeta y frase corta.
 
 ## Bloque 11: diseño de la sección Reino **(decidido, pendiente de hacer)**

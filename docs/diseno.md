@@ -370,6 +370,12 @@ El comercio es la mitad del juego, así que tiene que ser excelente:
 
 - **Ofertas públicas o dirigidas.** Cada casa puede tener hasta 3 ofertas abiertas visibles para todos ("ofrezco X, pido Y") o enviar ofertas a una casa concreta. Se puede contraofertar.
 
+- **Caducidad** (bloque 10). Una oferta abierta se retira sola tras 3 resoluciones, también las dirigidas y las contraofertas. Lo ofrecido no se aparta: si al aceptarla quien la hizo ya no tiene lo que ofrece, el trato no se hace, la oferta se retira y se le avisa.
+
+- **Frase corta** (bloque 10). Cualquier oferta puede llevar una frase de 80 letras como mucho. Las contraofertas se ven en la misma tarjeta que la oferta de la que salen.
+
+- **Precio de referencia** (bloque 10). Junto a cada lado de una oferta se ve lo que vale en Oro con los precios de la Corona sin su 30%, sin etiquetas de buen o mal trato. «Precio justo» rellena lo que se pide con ese valor.
+
 - **Intercambio atómico.** Cuando alguien acepta, el servidor ejecuta los dos lados a la vez. Nadie tiene que fiarse de nadie en un cambio puntual.
 
 - **Visibilidad.** Todos ven las ofertas abiertas y los tratos cerrados (sin las cantidades de los tratos dirigidos).

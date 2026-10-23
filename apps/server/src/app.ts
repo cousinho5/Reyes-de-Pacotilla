@@ -29,6 +29,7 @@ import {
   type ObjectiveKey,
   dailyProduction,
   MAX_OPEN_PUBLIC_OFFERS,
+  TRADE,
   RESOURCES,
   totalOf,
   generateMap,
@@ -82,7 +83,7 @@ import { addBots, advance, botsPlayDay, deleteTestGame, testStart } from "./prue
 import { ransomStatements } from "./rescate";
 import { crownCost, crownMarket, crownPriceView, crownPurchaseStatements } from "./corona";
 import { hireStatements, leavingDay, loadMercenaries } from "./mercenarios";
-import { acceptOffer, bundle, offerView, type OfferRow } from "./offers";
+import { acceptOffer, bundle, offerExpiry, offerView, type OfferRow } from "./offers";
 import { ordersOpen } from "./scheduler";
 import {
   acceptAlliance,
@@ -1326,8 +1327,11 @@ app.post("/api/partidas/:id/ofertas", async (c) => {
   const m = await activeMembership(c);
   if (m instanceof Response) return m;
   const body = await c.req
-    .json<{ para?: number | null; da?: unknown; pide?: unknown; contraofertaDe?: number }>()
+    .json<{ para?: number | null; da?: unknown; pide?: unknown; contraofertaDe?: number; frase?: unknown }>()
     .catch(() => ({}) as never);
+  // Bloque 10: frase corta opcional, de 80 letras como mucho.
+  const note = typeof body.frase === "string" ? body.frase.replace(/\s+/g, " ").trim() : "";
+  if ([...note].length > TRADE.noteMax) return fail(c, 400, `La frase, de ${TRADE.noteMax} letras como mucho.`);
   const give = cleanBundle(body.da);
   const want = cleanBundle(body.pide);
   const check = checkOffer(give, want, resourcesOf(m.house));
@@ -1360,12 +1364,12 @@ app.post("/api/partidas/:id/ofertas", async (c) => {
 
   const statements = [
     c.env.DB.prepare(
-      `INSERT INTO offers (game_id, from_house_id, to_house_id, parent_offer_id,
+      `INSERT INTO offers (game_id, from_house_id, to_house_id, parent_offer_id, expires_after, note,
          give_pan, give_madera, give_piedra, give_hierro, give_oro,
          want_pan, want_madera, want_piedra, want_hierro, want_oro)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).bind(
-      m.game.id, m.house.id, to, parent?.id ?? null,
+      m.game.id, m.house.id, to, parent?.id ?? null, offerExpiry(m.game), note || null,
       give!.pan ?? 0, give!.madera ?? 0, give!.piedra ?? 0, give!.hierro ?? 0, give!.oro ?? 0,
       want!.pan ?? 0, want!.madera ?? 0, want!.piedra ?? 0, want!.hierro ?? 0, want!.oro ?? 0,
     ),

@@ -1,7 +1,7 @@
 // Ofertas de comercio en D1: tipos, vista para el cliente y aceptación atómica.
 // La usan las rutas de la API y los bots de las partidas de prueba.
 
-import { RESOURCES, totalOf, type Resources } from "@reyes/engine";
+import { RESOURCES, TRADE, totalOf, type Resources } from "@reyes/engine";
 import { randomCode } from "./auth";
 import { notifyHouses, type NotifyEnv } from "./notify";
 import { gameNow, type GameRow, type HouseRow } from "./state";
@@ -19,7 +19,24 @@ export interface OfferRow {
   accept_token: string | null;
   created_at: string;
   closed_at: string | null;
+  expires_after: number | null;
+  expired: number;
+  note: string | null;
 }
+
+/** Resolución tras la que se retira una oferta hecha ahora (bloque 10). */
+export function offerExpiry(game: GameRow): number {
+  return game.current_resolution + TRADE.offerNights;
+}
+
+/** Retira las ofertas abiertas que caducan con la resolución `n`. Va en el lote de la resolución. */
+export function expireOffersStatement(db: D1Database, game: GameRow, n: number, now: Date): D1PreparedStatement {
+  return db
+    .prepare("UPDATE offers SET status = 'cancelled', expired = 1, closed_at = ? WHERE game_id = ? AND status = 'open' AND expires_after <= ?")
+    .bind(now.toISOString(), game.id, n);
+}
+
+const RESOURCE_NAME: Record<keyof Resources, string> = { pan: "Pan", madera: "Madera", piedra: "Piedra", hierro: "Hierro", oro: "Oro" };
 
 export function bundle(o: OfferRow, side: "give" | "want"): Resources {
   const out = {} as Resources;
@@ -38,6 +55,9 @@ export function offerView(o: OfferRow) {
     aceptadaPor: o.accepted_by,
     contraofertaDe: o.parent_offer_id,
     creada: o.created_at,
+    caducaTras: o.expires_after,
+    caducada: o.expired === 1,
+    frase: o.note,
   };
 }
 
@@ -77,7 +97,28 @@ export async function acceptOffer(env: NotifyEnv, game: GameRow, offer: OfferRow
     ]);
   } catch (err) {
     if (err instanceof Error && /CHECK constraint failed/.test(err.message)) {
-      return "A alguna de las dos casas le faltan recursos: el trato no se ha hecho.";
+      // Bloque 10: si a quien la hizo ya no le llega, la oferta se retira sola y se le avisa.
+      const maker = await db
+        .prepare("SELECT pan, madera, piedra, hierro, oro FROM houses WHERE id = ?")
+        .bind(offer.from_house_id)
+        .first<Resources>();
+      const short = maker ? RESOURCES.filter((r) => maker[r] < give[r]) : [];
+      if (short.length === 0) return "A alguna de las dos casas le faltan recursos: el trato no se ha hecho.";
+      const withdrawn = await db
+        .prepare("UPDATE offers SET status = 'cancelled', closed_at = ? WHERE id = ? AND status = 'open'")
+        .bind(now, offer.id)
+        .run();
+      if (withdrawn.meta.changes > 0) {
+        const lacking = short.map((r) => `${give[r] - maker![r]} de ${RESOURCE_NAME[r]}`).join(" y ");
+        await notifyHouses(env, [offer.from_house_id], {
+          kind: "oferta",
+          title: "Oferta retirada",
+          body: `${house.name} quiso aceptar tu oferta, pero te faltaban ${lacking}. La hemos retirado.`,
+          url: `/partida/${game.id}`,
+          dedupe: `retirada:${offer.id}`,
+        });
+      }
+      return "Esa casa ya no tiene lo que ofrecía: la oferta se ha retirado.";
     }
     throw err;
   }

@@ -91,6 +91,11 @@ export interface OfferInfo {
   aceptadaPor: number | null;
   contraofertaDe: number | null;
   creada: string;
+  /** Bloque 10: resolución tras la que se retira si sigue abierta. */
+  caducaTras: number | null;
+  caducada: boolean;
+  /** Frase corta de quien la hace (80 letras como mucho). */
+  frase: string | null;
 }
 
 export interface TradeInfo {
@@ -370,7 +375,7 @@ export const api = {
   setHelp: (id: number, recurso: Resource) => call<{ ok: true }>("POST", `/partidas/${id}/ayuda`, { recurso }),
   saveOrders: (id: number, ordenes: OrderView[]) => call<{ ok: true }>("PUT", `/partidas/${id}/ordenes`, { ordenes }),
   newCode: () => call<{ codigoAcceso: string }>("POST", "/codigo-nuevo"),
-  createOffer: (id: number, body: { para: number | null; da: Partial<Resources>; pide: Partial<Resources>; contraofertaDe?: number }) =>
+  createOffer: (id: number, body: { para: number | null; da: Partial<Resources>; pide: Partial<Resources>; contraofertaDe?: number; frase?: string }) =>
     call<{ ok: true }>("POST", `/partidas/${id}/ofertas`, body),
   acceptOffer: (id: number, oferta: number) => call<{ ok: true }>("POST", `/partidas/${id}/ofertas/${oferta}/aceptar`),
   rejectOffer: (id: number, oferta: number) => call<{ ok: true }>("POST", `/partidas/${id}/ofertas/${oferta}/rechazar`),

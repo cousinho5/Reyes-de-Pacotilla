@@ -1240,6 +1240,36 @@ svg.ico {
   font-weight: 400;
   color: var(--ink-soft);
 }
+/* Bloque 10: hilo del trato. */
+.offer-thread {
+  margin: 0 0 0.4rem;
+  padding: 0 0 0.4rem 0.6rem;
+  list-style: none;
+  border-left: 3px solid var(--brass-lo);
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+}
+.offer-replies {
+  margin: 0.5rem 0 0 0.6rem;
+  padding-left: 0.6rem;
+  border-left: 3px solid var(--brass-lo);
+}
+.offer-note-text {
+  font-family: var(--font-serif);
+  font-style: italic;
+}
+.offer-note {
+  margin-top: 0.8rem;
+}
+.offer-who .offer-expiry {
+  margin-left: auto;
+  color: var(--ink-soft);
+}
+.offer-missing {
+  order: 9;
+  flex-basis: 100%;
+  color: #a8321f;
+}
 .offer .actions button {
   min-height: var(--touch);
 }
