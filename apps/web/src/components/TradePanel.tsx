@@ -179,6 +179,8 @@ export function TradePanel({ state, act }: Props) {
 
   return (
     <div className="trade">
+      {/* La Gran Subasta, mientras está abierta, arriba del todo: es un acontecimiento. */}
+      {state.subasta?.abierta && <AuctionPanel state={state} act={act} />}
       {draft ? (
         <OfferForm
           state={state}
@@ -277,7 +279,7 @@ export function TradePanel({ state, act }: Props) {
         )}
       </section>
 
-      <AuctionPanel state={state} act={act} />
+      {!state.subasta?.abierta && <AuctionPanel state={state} act={act} />}
 
       <CrownPanel state={state} act={act} />
 

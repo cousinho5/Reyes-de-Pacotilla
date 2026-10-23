@@ -2663,6 +2663,71 @@ label.check {
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
+/* Gran Subasta (bloque 10): la escena del subastador y una columna por lote. */
+.auction-scene {
+  position: relative;
+  margin: 0 -1rem 0.5rem;
+  border-top: 2px solid var(--wood-edge);
+  border-bottom: 2px solid var(--wood-edge);
+  line-height: 0;
+}
+.auction-scene canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 160 / 88;
+  image-rendering: pixelated;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.lot-cols {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.lot-cols li > button,
+.lot-cols li > div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  width: 100%;
+  height: 100%;
+  min-height: var(--touch);
+  padding: 0.4rem 0.25rem;
+  text-align: center;
+  font-size: 0.85rem;
+  line-height: 1.2;
+}
+.lot-cols li > button.on {
+  box-shadow: inset 0 0 0 2px var(--brass-lo);
+}
+.lot-cols small {
+  font-size: 0.78rem;
+}
+.lot-cols .my-bid {
+  color: var(--brass-lo);
+  font-weight: 700;
+}
+.auction-line[open] .auction-scene {
+  margin-top: 0.6rem;
+}
+/* La hoja cuelga de la tarjeta de la subasta: recupera el color claro de la madera. */
+.bid-sheet {
+  color: var(--chalk);
+}
+.bid-sheet h2 {
+  margin: 0 2.5rem 0.4rem 0;
+  color: var(--brass-hi);
+}
+.bid-sheet .muted,
+.bid-sheet .hint {
+  color: var(--chalk);
+  opacity: 0.8;
+}
 .scene-target {
   position: absolute;
   min-height: 0;

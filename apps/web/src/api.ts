@@ -257,12 +257,16 @@ export interface GameState {
 export interface AuctionInfo {
   semana: number;
   abierta: boolean;
+  /** Cuándo se anunciaron los lotes (la vela empieza a arder entonces). */
+  abre?: string | null;
   lotes: {
     lote: number;
     nombre: string;
     carta: { clave: string; nombre: string; texto: string } | null;
     recursos: Partial<Resources> | null;
     miPuja: number | null;
+    /** Sobres (pujas) del lote, sin cantidades ni de quién. */
+    sobres?: number;
     ganador: number | null;
     precio: number | null;
   }[];

@@ -27,10 +27,12 @@ pal({
   n: "#c4855a", F: "#ebb48a", s: "#f8d4b0", x: "#b8b0b4", X: "#e4dee0",
   // humo
   u: "#8a8494", U: "#b8b4c0",
+  // piedra y hierro de las marcas de los sacos
+  A: "#433c52", B: "#625a6e", C: "#857b8c", D: "#a99ea6",
   // color de la casa (verde de muestra)
   7: "#3f8a3a", 8: "#2a5f28", 9: "#7fcf62",
 })
-ramps("rRqQp", "hHjJi", "0cWN", "efgtT", "oKIY", "zZP", "nFs", "xX", "uU", "879")
+ramps("rRqQp", "hHjJi", "0cWN", "efgtT", "oKIY", "zZP", "nFs", "xX", "uU", "ABCD", "879")
 
 const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5]
 const bayer = (x, y) => (BAYER[(y & 3) * 4 + (x & 3)] + 0.5) / 16
@@ -133,7 +135,8 @@ function vela(c, n) {
   c.px(6, top - 1, "k")                                                                          // pabilo
 }
 for (let n = 0; n < ALTURAS; n++) sprite(`vela_${n}`, { w: 13, h: 33, outline: "k", pivot: "bottom" }, (c) => vela(c, n))
-// Llama: 4 fotogramas que tiemblan. Se pone encima del pabilo.
+// Llama: 4 fotogramas que tiemblan. Se pone encima del pabilo. (pxl check avisa de que se ilumina por la
+// derecha en dos fotogramas: es la propia llama, que da la luz; se deja así.)
 anim("llama", { w: 7, h: 9, fps: 6, pivot: "bottom" }, (c) => {}, ...[0, 1, 2, 1].map((f) => frame((c) => {
   const dx = f === 2 ? 1 : 0, alto = f === 1 ? 7 : 6
   c.ellipse(3 + dx * 0.5, 8 - alto / 2, 2, alto / 2, "K")
@@ -165,6 +168,60 @@ sprite("lote_saco", { w: 26, h: 22, outline: "k", pivot: "bottom" }, (c) => {
   }
   c.hline(1, 21, 23, "f")
 })
+// Un saco suelto con la marca de su recurso pintada delante (el juego los coloca de uno en uno o de dos
+// en dos según el lote). Las marcas son de 7x5 y van centradas en la panza del saco.
+function sacoSuelto(c) {
+  const x0 = 8, y0 = 12, rx = 7.5, ry = 7.5
+  for (let y = 0; y < 21; y++) for (let x = 0; x < 17; x++) {
+    const d = ((x + 0.5 - x0) / rx) ** 2 + ((y + 0.5 - y0) / (y < y0 ? ry * 0.9 : ry)) ** 2
+    if (d > 1) continue
+    const luz = 0.7 - (x - x0) / rx * 0.4 - (y - y0) / ry * 0.2
+    c.px(x, y, luz > 0.85 ? "T" : luz > 0.45 ? "t" : "g")
+    if ((y - x0) % 3 === 0 && luz < 0.9 && d < 0.8) c.px(x, y, luz > 0.45 ? "g" : "f")
+  }
+  const top = Math.round(y0 - ry * 0.9)
+  c.hline(x0 - 1, top, 3, "f"); c.px(x0 + 1, top + 1, "f")
+  c.hline(x0 - 1, top - 1, 3, "t"); c.hline(x0 - 2, top - 2, 5, "t"); c.px(x0 - 2, top - 2, "T"); c.px(x0 + 2, top - 2, "g")
+  c.px(x0 - 2, top - 3, "T"); c.px(x0, top - 3, "t"); c.px(x0 + 2, top - 3, "g")
+  c.hline(1, 20, 15, "f")
+}
+const MARCAS = {
+  pan: `
+    .kkkkk.
+    kJiJiJk
+    kJJJJJk
+    kjjjjjk
+    .kkkkk.`,
+  madera: `
+    kkkkkk.
+    kiJJJJk
+    kkkkkkk
+    kiJJJJk
+    kkkkkk.`,
+  piedra: `
+    .kkkk..
+    kDDCCk.
+    kDCCCBk
+    kCCBBBk
+    .kkkkk.`,
+  hierro: `
+    .kkkkk.
+    .kDDCk.
+    kCCCCBk
+    kBBBBAk
+    kkkkkkk`,
+}
+for (const [r, marca] of Object.entries(MARCAS)) {
+  sprite(`saco_${r}`, { w: 17, h: 21, outline: "k", pivot: "bottom" }, (c) => sacoSuelto(c), grid(5, 11, marca))
+}
+// Montoncito de Oro para los lotes de dos recursos.
+sprite("monton_oro", { w: 15, h: 9, outline: "k", pivot: "bottom" }, (c) => {
+  for (let y = 0; y < 9; y++) for (let x = 0; x < 15; x++) {
+    if (8 - y > 8 - Math.abs(x - 7) * 1.1) continue
+    c.px(x, y, (x + y * 2) % 5 === 0 ? "I" : (x * 3 + y) % 7 === 0 ? "o" : x < 6 ? "K" : (x + y) % 3 ? "K" : "o")
+  }
+  c.hline(5, 3, 3, "Y"); c.hline(9, 6, 3, "Y"); c.px(3, 6, "Y")
+})
 // Monedas de Oro en montón.
 sprite("lote_oro", { w: 24, h: 14, outline: "k", pivot: "bottom" }, (c) => {
   for (let y = 0; y < 14; y++) for (let x = 0; x < 24; x++) {
@@ -185,14 +242,16 @@ sprite("lote_carta", { w: 20, h: 22, outline: "k", pivot: "bottom" }, (c) => {
 })
 
 // ================================================================ el sobre de una puja
-// Sobre lacrado (9x6). El tuyo lleva el lacre del color de tu casa.
-function sobre(c, lacre) {
+// Sobre lacrado (9x6). El tuyo lleva el lacre del color de tu casa y un filo de oro, para verlo
+// aunque tu color sea el rojo del lacre.
+function sobre(c, lacre, tuyo = false) {
   c.rect(0, 0, 9, 6, "N"); c.hline(0, 5, 9, "c"); c.vline(8, 0, 6, "c")
+  if (tuyo) { c.rect(0, 0, 9, 1, "I"); c.vline(0, 0, 6, "I"); c.hline(0, 5, 9, "K"); c.vline(8, 0, 6, "K") }
   c.line(0, 0, 4, 3, "0"); c.line(8, 0, 4, 3, "0")
   c.ellipse(4, 3, 1.6, 1.4, lacre[0]); c.px(4, 3, lacre[1]); c.px(3, 2, lacre[2])
 }
 sprite("sobre", { w: 9, h: 6, outline: "k" }, (c) => sobre(c, ["R", "q", "Q"]))
-sprite("sobre_tuyo", { w: 9, h: 6, outline: "k" }, (c) => sobre(c, ["8", "7", "9"]))
+sprite("sobre_tuyo", { w: 9, h: 6, outline: "k" }, (c) => sobre(c, ["8", "7", "9"], true))
 
 // ================================================================ escenas de muestra
 const LOTES = [["lote_saco", 74], ["lote_carta", 107], ["lote_oro", 139]]
@@ -225,7 +284,8 @@ anim("subasta_historia", { w: W, h: H, fps: 3 }, ...Array.from({ length: 16 }, (
     montar(c, { altura: Math.max(0, 12 - i), cuentas, tuyo, apagada: i >= 12, golpe: i >= 14 })
   })))
 // Lámina de piezas: la vela en sus alturas, los lotes y los sobres.
-scene("subasta_piezas", { w: 200, h: 44, bg: "c" },
+scene("subasta_piezas", { w: 300, h: 44, bg: "c" },
   layer("piezas", ...Array.from({ length: ALTURAS }, (_, n) => stamp(`vela_${n}`, 8 + n * 9, 40)),
     stamp("lote_saco", 135, 40), stamp("lote_carta", 160, 40), stamp("lote_oro", 184, 40),
+    ...["pan", "madera", "piedra", "hierro"].map((r, i) => stamp(`saco_${r}`, 212 + i * 19, 40)), stamp("monton_oro", 290, 40),
     stamp("sobre", 125, 4), stamp("sobre_tuyo", 137, 4)))

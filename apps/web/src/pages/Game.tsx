@@ -307,6 +307,7 @@ export function Game({ id }: { id: number }) {
             setNight={setNight}
             editOrder={editOrder}
             onEditOpened={() => setEditOrder(null)}
+            onOpenTrade={() => setTab("comercio")}
           />
         )}
         {tab === "castillo" && <CastlePanel state={state} act={act} gameId={id} />}

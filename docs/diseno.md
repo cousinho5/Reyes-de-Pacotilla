@@ -385,6 +385,8 @@ El comercio es la mitad del juego, así que tiene que ser excelente:
 - **Gran Subasta del miércoles** (hecha en la versión 1).
   - **Lotes:** tres, anunciados el martes a las 22:00 y reproducibles a partir de la semilla de la partida. El primero es de recursos (30 de uno o 20 + 20 de dos), el segundo es una carta y el tercero es una cosa u otra.
   - **Pujas:** ciegas en Oro, una por lote y casa, cambiables hasta el cierre del miércoles (21:00). No se puede pujar más Oro del que se tiene.
+  - **Lo que se ve:** cuántos sobres (pujas) tiene cada lote, nunca la cantidad ni de quién son. Así se nota qué lote está disputado sin romper el secreto.
+  - **Escena:** mientras está abierta va arriba del todo en Comercio, con un aviso en el mapa: el subastador en su mesa, los tres lotes dibujados (sacos con la marca de su recurso, montón de Oro o carta) y la vela «a la candela», que se consume desde el anuncio hasta el cierre. Cada puja es un sobre lacrado; el tuyo lleva tu lacre y borde dorado. El martes a las 22:00 llega un aviso push («Se enciende la vela»). Al cerrar, la primera vez se cuenta el resultado: se apaga la vela, cae el mazo y salen los escudos de quien ganó cada lote.
   - **Adjudicación:** en la resolución del miércoles, antes de la campaña y lote a lote. Gana la puja más alta y, en empate, la más temprana. Si al ganador ya no le llega el Oro (por haber ganado otro lote), el lote pasa a la siguiente puja.
   - **El Oro de las pujas sale del juego.** En la simulación se pagan unos 450 de Oro por partida, que de otro modo se acumulaban sin uso.
   - **Logro:** cada lote ganado da +2 de Prestigio, hasta 3 veces.
