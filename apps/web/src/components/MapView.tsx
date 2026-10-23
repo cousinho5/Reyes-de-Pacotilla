@@ -200,11 +200,12 @@ export function MapView({ state, draft, setDraft, act, night, setNight, editOrde
             t.besiegedBy != null ? HOUSE_COLORS[state.casas.find((h) => h.id === t.besiegedBy)?.color ?? ""]?.hex ?? null : null,
           fogged: !t.visible,
           river: t.river ?? 0,
+          stage: t.type === "castillo" ? state.casas.find((h) => h.id === t.castleOf)?.etapa : undefined,
         };
       }),
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [JSON.stringify(tiles), JSON.stringify(state.casas.map((h) => [h.id, h.color])), last, [...battles].join()],
+    [JSON.stringify(tiles), JSON.stringify(state.casas.map((h) => [h.id, h.color, h.etapa])), last, [...battles].join()],
   );
   const img = useWorldMeta(world);
   const W = img.width;

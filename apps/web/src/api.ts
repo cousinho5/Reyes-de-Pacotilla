@@ -67,6 +67,8 @@ export interface HouseInfo {
   lema: string | null;
   escudo?: ShieldView;
   prestigio?: PrestigeBreakdown;
+  /** Etapa de su castillo, de 1 a 5 (bloque 2). */
+  etapa?: number;
   logros?: { clave: string; veces: number }[];
   objetivo?: (ObjectiveView & { cumplido: boolean }) | null;
   /** Capitán de la casa: su nombre y, si está preso, de quién y hasta qué resolución. */

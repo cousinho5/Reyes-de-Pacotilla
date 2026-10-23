@@ -49,6 +49,14 @@ describe("Pixel art", () => {
     expect(Object.values(FRAY_SPRITES).every((s) => s.grid.length === 32 && s.grid[0]!.length === 32)).toBe(true);
   });
 
+  it("el castillo del mapa crece con la etapa de la casa, y sin etapa es el de la 3", () => {
+    const draw = (stage?: number) =>
+      renderWorld({ cols: 1, rows: 1, margin: 0, cells: [{ x: 0, y: 0, type: "castillo", owner: "#B3291D", stage }] }).pixels.join("\n");
+    const stages = [1, 2, 3, 4, 5].map(draw);
+    expect(new Set(stages).size).toBe(5);
+    expect(draw()).toBe(stages[2]);
+  });
+
   it("el mapa entero sale igual con la misma partida, y con niebla no cambia el dibujo", () => {
     const types = ["campos", "bosque", "montana", "cantera", "puerto", "castillo", "fortaleza"] as const;
     const cells: WorldCell[] = [];

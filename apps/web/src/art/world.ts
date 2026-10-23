@@ -45,6 +45,8 @@ export interface WorldCell {
   fogged?: boolean;
   /** Ríos por los lados de la casilla (bloque 1): un bit por lado, como `Tile.river`. */
   river?: number;
+  /** Etapa del castillo de la casa (bloque 2), de 1 a 5; sin ella, la 3. */
+  stage?: number;
 }
 
 export interface WorldOptions {
@@ -556,7 +558,7 @@ export function renderWorld(opts: WorldOptions): WorldImage {
       return cellOf[k] === i && inside[k] === 1;
     };
     const border = (px: number, py: number) => (cv.inside(px, py) ? diffD[Math.round(py) * W + Math.round(px)]! : -1);
-    DRAW[c.type]({ cv, W, x0, y0, s, same, mine, border, onRoad, isWater, flag: flagOf(c) });
+    DRAW[c.type]({ cv, W, x0, y0, s, same, mine, border, onRoad, isWater, flag: flagOf(c), stage: c.stage ?? 3 });
   }
 
   // 5. Lo que cambia con la partida: empalizadas, batallas y tropas.
@@ -609,6 +611,8 @@ interface CellCtx {
   onRoad: (x: number, y: number) => boolean;
   isWater: (x: number, y: number) => boolean;
   flag: [string, string];
+  /** Etapa del castillo (bloque 2). */
+  stage: number;
 }
 
 /** Ancho del marco de mar y montañas (bloque 1), en píxeles de dibujo. */
@@ -1231,35 +1235,100 @@ const DRAW: Record<TileType, (ctx: CellCtx) => void> = {
   },
 
   castillo(ctx) {
-    const { cv, x0, y0, flag } = ctx;
-    cv.shadow(x0 + 36, y0 + 55, 30, 3.5);
+    const { cv, x0, y0, flag, stage } = ctx;
+    // Bloque 2: el castillo crece con la etapa de la casa (la 3 es el de siempre).
+    cv.shadow(x0 + 36, y0 + 55, stage >= 5 ? 34 : stage <= 1 ? 22 : 30, 3.5);
     const c = new Layer(ctx.W);
-    // Torre del homenaje, detrás.
-    masonry(c, x0 + 24, y0 + 10, 16, 20);
-    crenels(c, x0 + 24, y0 + 9, 16);
-    flagPole(c, x0 + 32, y0 - 6, 6, flag);
-    for (const x of [28, 35]) windowSlit(c, x0 + x, y0 + 15, 4);
-    windowSlit(c, x0 + 31, y0 + 22, 3);
-    // Muralla con camino de ronda.
-    masonry(c, x0 + 12, y0 + 30, 40, 22);
-    crenels(c, x0 + 12, y0 + 29, 40);
-    for (let x = x0 + 13; x < x0 + 51; x++) c.set(x, y0 + 32, "S");
-    // Torres de las esquinas con tejado cónico y bandera.
-    for (const tx of [4, 48]) {
-      masonry(c, x0 + tx, y0 + 22, 12, 32);
-      cone(c, x0 + tx + 5.5, y0 + 21, 8, 10);
-      flagPole(c, x0 + tx + 6, y0 + 2, 4, flag);
-      windowSlit(c, x0 + tx + 4, y0 + 28, 4);
-      windowSlit(c, x0 + tx + 6, y0 + 40, 4);
+    const tapestry = (x: number, y: number) => c.stamp([`${flag[0]}${flag[0]}${flag[0]}`, `${flag[0]}y${flag[0]}`, `${flag[0]}${flag[0]}${flag[1]}`, `.${flag[1]}.`], x, y);
+    if (stage <= 1) {
+      // Torre de piedra con cadalso de madera, dentro de una empalizada.
+      masonry(c, x0 + 26, y0 + 22, 12, 30);
+      c.rect(x0 + 24, y0 + 17, 16, 5, (x, y) => (y === y0 + 21 ? "h" : (x - x0) % 3 === 0 ? "H" : x < x0 + 32 ? "J" : "j"));
+      cone(c, x0 + 31.5, y0 + 16, 9, 6);
+      for (let x = x0 + 25; x <= x0 + 38; x++) c.set(x, y0 + 10, "r");
+      flagPole(c, x0 + 32, y0 - 2, 6, flag);
+      windowSlit(c, x0 + 31, y0 + 27, 4);
+      tapestry(x0 + 30, y0 + 34);
+      for (let x = x0 + 10; x <= x0 + 53; x += 2) {
+        if (Math.abs(x - x0 - 32) < 4) continue;
+        const h = 9 + Math.floor(noise(x, 3, 7) * 3);
+        for (let y = y0 + 53 - h; y <= y0 + 53; y++) {
+          c.set(x, y, y === y0 + 53 - h ? "J" : "j");
+          c.set(x + 1, y, "H");
+        }
+      }
+      for (let x = x0 + 10; x <= x0 + 54; x++) if (Math.abs(x - x0 - 32) >= 4) c.set(x, y0 + 48, "h");
+      gate(c, x0 + 32, y0 + 53, 8, 9);
+    } else if (stage === 2) {
+      // Torre de piedra, muralla baja y dos torrecillas.
+      masonry(c, x0 + 24, y0 + 16, 16, 24);
+      crenels(c, x0 + 24, y0 + 15, 16);
+      flagPole(c, x0 + 32, y0 + 0, 6, flag);
+      for (const x of [28, 35]) windowSlit(c, x0 + x, y0 + 21, 4);
+      masonry(c, x0 + 14, y0 + 36, 36, 16);
+      crenels(c, x0 + 14, y0 + 35, 36);
+      for (const tx of [8, 48]) {
+        masonry(c, x0 + tx, y0 + 30, 9, 22);
+        crenels(c, x0 + tx, y0 + 29, 9);
+        windowSlit(c, x0 + tx + 4, y0 + 36, 4);
+      }
+      gate(c, x0 + 32, y0 + 51, 10, 11);
+      tapestry(x0 + 31, y0 + 26);
+    } else {
+      // Torre del homenaje, detrás: almenada (3) o con tejado (4 y 5).
+      masonry(c, x0 + 24, y0 + 10, 16, 20);
+      if (stage >= 4) {
+        cone(c, x0 + 31.5, y0 + 9, 10, 10);
+        flagPole(c, x0 + 32, y0 - 12, 6, flag);
+      } else {
+        crenels(c, x0 + 24, y0 + 9, 16);
+        flagPole(c, x0 + 32, y0 - 6, 6, flag);
+      }
+      for (const x of [28, 35]) windowSlit(c, x0 + x, y0 + 15, 4);
+      windowSlit(c, x0 + 31, y0 + 22, 3);
+      // Muralla con camino de ronda.
+      masonry(c, x0 + 12, y0 + 30, 40, 22);
+      crenels(c, x0 + 12, y0 + 29, 40);
+      for (let x = x0 + 13; x < x0 + 51; x++) c.set(x, y0 + 32, "S");
+      // Torres de las esquinas con tejado cónico y bandera.
+      for (const tx of [4, 48]) {
+        masonry(c, x0 + tx, y0 + 22, 12, 32);
+        cone(c, x0 + tx + 5.5, y0 + 21, 8, 10);
+        flagPole(c, x0 + tx + 6, y0 + 2, 4, flag);
+        windowSlit(c, x0 + tx + 4, y0 + 28, 4);
+        windowSlit(c, x0 + tx + 6, y0 + 40, 4);
+      }
+      if (stage >= 4) {
+        // Puerta entre dos torrecillas y tapices de la casa en la muralla.
+        for (const tx of [22, 38]) {
+          masonry(c, x0 + tx, y0 + 36, 5, 16);
+          cone(c, x0 + tx + 2, y0 + 35, 4, 5);
+        }
+        tapestry(x0 + 16, y0 + 36);
+        tapestry(x0 + 45, y0 + 36);
+      }
+      // Puerta con rastrillo, escudo encima y antorchas.
+      gate(c, x0 + 32, y0 + 51, 12, 13);
+      tapestry(x0 + 31, y0 + 34);
+      if (stage < 4) {
+        c.set(x0 + 24, y0 + 42, "y");
+        c.set(x0 + 24, y0 + 43, "h");
+        c.set(x0 + 40, y0 + 42, "y");
+        c.set(x0 + 40, y0 + 43, "h");
+      }
     }
-    // Puerta con rastrillo, escudo encima y antorchas.
-    gate(c, x0 + 32, y0 + 51, 12, 13);
-    c.stamp([`${flag[0]}${flag[0]}${flag[0]}`, `${flag[0]}y${flag[0]}`, `.${flag[1]}.`], x0 + 31, y0 + 34);
-    c.set(x0 + 24, y0 + 42, "y");
-    c.set(x0 + 24, y0 + 43, "h");
-    c.set(x0 + 40, y0 + 42, "y");
-    c.set(x0 + 40, y0 + 43, "h");
+    if (stage >= 5) {
+      // Segunda muralla, más baja, por delante, con sus torres y su puerta.
+      masonry(c, x0 + 2, y0 + 50, 60, 9);
+      crenels(c, x0 + 2, y0 + 49, 60);
+      for (const tx of [0, 56]) {
+        masonry(c, x0 + tx, y0 + 44, 8, 16);
+        cone(c, x0 + tx + 3.5, y0 + 43, 5, 6);
+      }
+      gate(c, x0 + 32, y0 + 58, 10, 8);
+    }
     c.paint(cv);
+    if (stage >= 5) return;
     // Aldea al pie de las murallas.
     const v = new Layer(ctx.W);
     if (!ctx.onRoad(x0 + 2, y0 + 58)) {
