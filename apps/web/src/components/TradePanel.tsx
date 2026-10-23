@@ -3,7 +3,7 @@ import { AuctionPanel } from "./AuctionPanel";
 import { CrownPanel } from "./CrownPanel";
 import { DiplomacyPanel } from "./DiplomacyPanel";
 import { useState } from "react";
-import { RESOURCES, referenceValue, type Resources } from "@reyes/engine";
+import { RESOURCES, fairAmount, referenceValue, totalOf, type Resource, type Resources } from "@reyes/engine";
 import { api, type GameState, type OfferInfo } from "../api";
 import { HOUSE_COLORS, RESOURCE_LABEL, houseName } from "../ui";
 
@@ -25,8 +25,6 @@ function Bundle({ r }: { r: Partial<Resources> }) {
     </>
   );
 }
-
-const empty = (): Record<keyof Resources, number> => ({ pan: 0, madera: 0, piedra: 0, hierro: 0, oro: 0 });
 
 /** Valor en Oro de un lado con el precio de referencia (bloque 10): sin etiquetas. */
 function Worth({ r, prices }: { r: Partial<Resources>; prices?: Partial<Resources> }) {
@@ -88,10 +86,10 @@ export function TradePanel({ state, act }: Props) {
   const market = open.filter((o) => o.para === null && o.de !== me);
   const mine = open.filter((o) => o.de === me);
   const closed = offers.filter((o) => o.estado !== "open");
-  const [draft, setDraft] = useState<{ para: number | null; da: Record<keyof Resources, number>; pide: Record<keyof Resources, number>; contra?: OfferInfo } | null>(null);
+  const [draft, setDraft] = useState<Draft | null>(null);
   const active = state.partida.estado === "active";
 
-  const startCounter = (o: OfferInfo) => setDraft({ para: o.de, da: { ...o.pide }, pide: { ...o.da }, contra: o });
+  const startCounter = (o: OfferInfo) => setDraft({ para: o.de, da: toLines(o.pide), pide: toLines(o.da), contra: o });
   const accept = (o: OfferInfo) => act(() => api.acceptOffer(gameId, o.id), "Trato cerrado. Ambas partes creen haber ganado.");
 
   return (
@@ -105,8 +103,8 @@ export function TradePanel({ state, act }: Props) {
             act(async () => {
               await api.createOffer(gameId, {
                 para: draft.para,
-                da: draft.da,
-                pide: draft.pide,
+                da: toBundle(draft.da),
+                pide: toBundle(draft.pide),
                 contraofertaDe: draft.contra?.id,
               });
               setDraft(null);
@@ -115,7 +113,7 @@ export function TradePanel({ state, act }: Props) {
         />
       ) : (
         active && (
-          <button className="primary wide" onClick={() => setDraft({ para: null, da: empty(), pide: empty() })}>
+          <button className="primary wide" onClick={() => setDraft(newDraft(state.yo.recursos!))}>
             Nueva oferta
           </button>
         )
@@ -229,6 +227,35 @@ export function TradePanel({ state, act }: Props) {
   );
 }
 
+/** Una línea del formulario: un recurso y su cantidad (bloque 10). */
+interface Line {
+  r: Resource;
+  n: number;
+}
+
+interface Draft {
+  para: number | null;
+  da: Line[];
+  pide: Line[];
+  contra?: OfferInfo;
+}
+
+const toBundle = (lines: Line[]): Resources => {
+  const out: Resources = { pan: 0, madera: 0, piedra: 0, hierro: 0, oro: 0 };
+  for (const l of lines) out[l.r] += l.n;
+  return out;
+};
+
+const toLines = (b: Partial<Resources>): Line[] => RESOURCES.filter((r) => (b[r] ?? 0) > 0).map((r) => ({ r, n: b[r]! }));
+
+/** Oferta nueva: das de lo que más tienes y pides de lo que menos. */
+function newDraft(have: Resources): Draft {
+  const sorted = [...RESOURCES].sort((a, b) => have[b] - have[a]);
+  return { para: null, da: [{ r: sorted[0]!, n: 0 }], pide: [{ r: sorted[sorted.length - 1]!, n: 0 }] };
+}
+
+const STEPS = [1, 5, 10];
+
 function OfferForm({
   state,
   draft,
@@ -236,40 +263,104 @@ function OfferForm({
   onSubmit,
 }: {
   state: GameState;
-  draft: { para: number | null; da: Record<keyof Resources, number>; pide: Record<keyof Resources, number>; contra?: OfferInfo };
-  setDraft: (d: typeof draft | null) => void;
+  draft: Draft;
+  setDraft: (d: Draft | null) => void;
   onSubmit: () => void;
 }) {
   const have = state.yo.recursos!;
+  const prices = state.corona?.precios;
   const others = state.casas.filter((h) => h.id !== state.yo.casa);
-  const set = (side: "da" | "pide", r: keyof Resources, v: number) =>
-    setDraft({ ...draft, [side]: { ...draft[side], [r]: Math.max(0, Math.min(500, v)) } });
-  const total = (b: Record<string, number>) => Object.values(b).reduce((a, x) => a + x, 0);
-  const overlap = RESOURCES.some((r) => draft.da[r] > 0 && draft.pide[r] > 0);
-  const short = RESOURCES.some((r) => draft.da[r] > have[r]);
+  const give = toBundle(draft.da);
+  const want = toBundle(draft.pide);
+  const used = new Set([...draft.da, ...draft.pide].map((l) => l.r));
+  const short = RESOURCES.filter((r) => give[r] > have[r]);
+  const ready = totalOf(give) > 0 && totalOf(want) > 0 && short.length === 0;
+  const setLine = (side: "da" | "pide", i: number, l: Partial<Line>) =>
+    setDraft({ ...draft, [side]: draft[side].map((x, j) => (j === i ? { ...x, ...l, n: Math.max(0, Math.min(500, l.n ?? x.n)) } : x)) });
+  const addLine = (side: "da" | "pide") => {
+    const free = RESOURCES.find((r) => !used.has(r));
+    if (free) setDraft({ ...draft, [side]: [...draft[side], { r: free, n: 0 }] });
+  };
+  const dropLine = (side: "da" | "pide", i: number) => setDraft({ ...draft, [side]: draft[side].filter((_, j) => j !== i) });
+  // «Precio justo»: rellena lo que pides (una sola línea) con lo que vale lo que das.
+  const fair = prices && draft.pide.length === 1 && totalOf(give) > 0 ? fairAmount(give, prices, draft.pide[0]!.r) : 0;
 
-  const row = (side: "da" | "pide", r: keyof Resources) => (
-    <div className="stepper" key={`${side}-${r}`}>
-      <span className={`res res-${r}`}>
-        <ResourceIcon r={r} size={14} /> {RESOURCE_LABEL[r]}
-      </span>
-      <button aria-label={`Menos ${RESOURCE_LABEL[r]}`} onClick={() => set(side, r, draft[side][r] - 5)}>
-        −
-      </button>
-      <input
-        inputMode="numeric"
-        aria-label={`${side === "da" ? "Das" : "Pides"} ${RESOURCE_LABEL[r]}`}
-        value={draft[side][r]}
-        onChange={(e) => set(side, r, Number(e.target.value.replace(/\D/g, "")) || 0)}
-      />
-      <button aria-label={`Más ${RESOURCE_LABEL[r]}`} onClick={() => set(side, r, draft[side][r] + 5)}>
-        +
-      </button>
+  const side = (key: "da" | "pide") => (
+    <div className="offer-side">
+      <h3>
+        {key === "da" ? "Das" : "Pides"}
+        {prices && <small className="offer-worth"> ≈ {referenceValue(key === "da" ? give : want, prices)} de Oro</small>}
+      </h3>
+      {draft[key].map((l, i) => (
+        <div className="offer-line" key={i}>
+          <div className="res-pick" role="radiogroup" aria-label={`Recurso que ${key === "da" ? "das" : "pides"}`}>
+            {RESOURCES.map((r) => (
+              <button
+                key={r}
+                role="radio"
+                aria-checked={l.r === r}
+                aria-label={RESOURCE_LABEL[r]}
+                title={RESOURCE_LABEL[r]}
+                className={l.r === r ? "on" : ""}
+                disabled={l.r !== r && used.has(r)}
+                onClick={() => setLine(key, i, { r })}
+              >
+                <ResourceIcon r={r} size={20} />
+              </button>
+            ))}
+          </div>
+          <div className="offer-amount">
+            <button aria-label={`5 menos de ${RESOURCE_LABEL[l.r]}`} onClick={() => setLine(key, i, { n: l.n - 5 })}>
+              −5
+            </button>
+            <input
+              inputMode="numeric"
+              aria-label={`${key === "da" ? "Das" : "Pides"}: ${RESOURCE_LABEL[l.r]}`}
+              value={l.n}
+              onFocus={(e) => e.target.select()}
+              onChange={(e) => setLine(key, i, { n: Number(e.target.value.replace(/\D/g, "")) || 0 })}
+            />
+            {STEPS.map((k) => (
+              <button key={k} aria-label={`${k} más de ${RESOURCE_LABEL[l.r]}`} onClick={() => setLine(key, i, { n: l.n + k })}>
+                +{k}
+              </button>
+            ))}
+          </div>
+          <div className="offer-line-foot">
+            <small className="muted">
+              {RESOURCE_LABEL[l.r]}
+              {key === "da" && ` · tienes ${have[l.r]}`}
+            </small>
+            {draft[key].length > 1 && (
+              <button className="link" onClick={() => dropLine(key, i)}>
+                Quitar
+              </button>
+            )}
+          </div>
+        </div>
+      ))}
+      <div className="actions">
+        {used.size < RESOURCES.length && (
+          <button className="secondary" onClick={() => addLine(key)}>
+            + otro recurso
+          </button>
+        )}
+        {key === "pide" && prices && (
+          <button
+            className="secondary"
+            disabled={fair === 0}
+            title="Pide lo que vale lo que das, con los precios de la Corona sin su recargo"
+            onClick={() => setLine("pide", 0, { n: fair })}
+          >
+            Precio justo
+          </button>
+        )}
+      </div>
     </div>
   );
 
   return (
-    <section className="card">
+    <section className="card offer-form">
       <h2>{draft.contra ? "Contraoferta" : "Nueva oferta"}</h2>
       {!draft.contra && (
         <label>
@@ -285,17 +376,19 @@ function OfferForm({
         </label>
       )}
       {draft.contra && <p className="muted">Para {state.casas.find((h) => h.id === draft.para)?.nombre}.</p>}
-      <h3>Das</h3>
-      {RESOURCES.map((r) => row("da", r))}
-      <h3>Pides</h3>
-      {RESOURCES.map((r) => row("pide", r))}
-      {overlap && <p className="error">No tiene sentido dar y pedir el mismo recurso.</p>}
-      {short && <p className="error">No tienes todo lo que ofreces.</p>}
-      {total(draft.da) > 0 && total(draft.pide) > 0 && (total(draft.da) < 10 || total(draft.pide) < 10) && (
+      {side("da")}
+      {side("pide")}
+      {short.length > 0 && (
+        <p className="error">
+          No tienes todo lo que ofreces: te {short.length === 1 && give[short[0]!] - have[short[0]!] === 1 ? "falta" : "faltan"}{" "}
+          {short.map((r) => `${give[r] - have[r]} de ${RESOURCE_LABEL[r]}`).join(" y ")}.
+        </p>
+      )}
+      {totalOf(give) > 0 && totalOf(want) > 0 && (totalOf(give) < 10 || totalOf(want) < 10) && (
         <p className="muted">Con menos de 10 por lado, el trato no cuenta para el Prestigio de comercio.</p>
       )}
       <div className="actions">
-        <button className="primary" disabled={overlap || short || total(draft.da) === 0 || total(draft.pide) === 0} onClick={onSubmit}>
+        <button className="primary" disabled={!ready} onClick={onSubmit}>
           {draft.para == null ? "Publicar" : "Enviar"}
         </button>
         <button className="link" onClick={() => setDraft(null)}>
