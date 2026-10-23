@@ -20,7 +20,7 @@ import {
   type UnitKind,
 } from "@reyes/engine";
 import { api, type GameState, type HouseInfo } from "../api";
-import { buildingSprite, spriteImage, type SceneTarget } from "../art/castleScene";
+import { buildingSprite, lightAt, spriteImage, type SceneTarget } from "../art/castleScene";
 import { BUILDING_LABEL, RESOURCE_LABEL, UNIT_LABEL, UNIT_NOTE, UNIT_ONE, houseName } from "../ui";
 import { CardsPanel } from "./CardsPanel";
 import { CastleScene } from "./CastleScene";
@@ -52,6 +52,13 @@ function whenIn(days: number, state: GameState): string {
   const tz = state.partida.zonaHoraria;
   const day = new Intl.DateTimeFormat("es-ES", { weekday: "long", ...(tz ? { timeZone: tz } : {}) }).format(new Date(now + days * 864e5));
   return days < 7 ? `el ${day}` : `en ${days} días`;
+}
+
+/** La hora en la partida (con el reloj de las partidas de prueba). */
+function hourIn(state: GameState): number {
+  const now = state.prueba?.ahora ? Date.parse(state.prueba.ahora) : Date.now();
+  const tz = state.partida.zonaHoraria;
+  return Number(new Intl.DateTimeFormat("en-GB", { hour: "numeric", hourCycle: "h23", ...(tz ? { timeZone: tz } : {}) }).format(new Date(now)));
 }
 
 /** El nivel en cinco puntos. */
@@ -155,6 +162,10 @@ export function CastlePanel({ state, gameId, act }: Props) {
     (t) => t.owner === state.yo.casa && t.fortifiedUntil != null && t.fortifiedUntil > state.partida.resolucionActual,
   ).length;
 
+  const light = lightAt(hourIn(state));
+  const siege = (state.casillas ?? []).find((t) => t.castleOf === state.yo.casa)?.besiegedBy;
+  const besieger = siege != null ? ENAMEL[state.casas.find((h) => h.id === siege)?.color ?? ""] ?? null : null;
+
   const pick = (t: SceneTarget) => {
     const el = scene.current;
     if (el) {
@@ -170,7 +181,17 @@ export function CastlePanel({ state, gameId, act }: Props) {
   // Bloque 2: escena, lo del día, Edificios, Reclutar, Mercenarios, Capitán, Cartas, Objetivo y, plegados, los ajustes.
   return (
     <div>
-      <CastleScene ref={scene} stage={castleStage(levels)} levels={levels} color={color} shield={shield} selected={picked} onPick={pick} />
+      <CastleScene
+        ref={scene}
+        stage={castleStage(levels)}
+        levels={levels}
+        color={color}
+        shield={shield}
+        selected={picked}
+        onPick={pick}
+        light={light}
+        besieger={besieger}
+      />
 
       <p className="day-bar" aria-label="Lo que entra cada día">
         {RESOURCES.map((r) => (

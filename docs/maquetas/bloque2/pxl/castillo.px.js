@@ -589,6 +589,16 @@ const DIBUJO = { granja, aserradero, cantera, mina, mercado }
 for (const [nombre, [w, h]] of Object.entries(TAMANO))
   for (let n = 1; n <= 5; n++) sprite(`${nombre}_${n}`, { w, h, outline: "k", pivot: "bottom" }, ...DIBUJO[nombre](n))
 
+// Tienda de campaña de quien te sitia (el juego la tiñe con el color de esa casa).
+sprite("tienda", { w: 13, h: 11, outline: "k", pivot: "bottom" }, (c) => {
+  for (let y = 0; y < 8; y++) for (let x = 6 - y * 0.8; x <= 6 + y * 0.8; x++) {
+    const xx = Math.round(x)
+    c.px(xx, y + 3, xx < 6 ? (y < 2 ? "9" : "7") : xx === 6 ? "9" : "8")
+  }
+  for (let y = 0; y < 8; y += 3) c.hline(Math.round(6 - y * 0.8), y + 3, Math.round(y * 1.6) + 1, "W")
+  c.rect(5, 8, 3, 3, "k"); c.px(6, 7, "k")
+  c.vline(6, 0, 3, "h"); c.px(7, 0, "7"); c.px(8, 0, "9"); c.px(7, 1, "8")
+})
 // Lámina de revisión: cada edificio en sus 5 niveles, en filas.
 scene("edificios", { w: 5 * 68 + 4, h: 5 * 46 + 4, bg: "4" },
   layer("piezas", ...Object.keys(TAMANO).flatMap((nombre, f) =>
