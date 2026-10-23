@@ -6,6 +6,7 @@
 import { CARDS, type CardKey } from "./cards";
 import { gloryFromEvents } from "./combat";
 import { blazon } from "./heraldry";
+import { findMemories, type LoggedFact } from "./memory";
 import { seededRandom } from "./random";
 import { CAPTAIN, GLORY, PROCLAMATION } from "./rules";
 import { PHRASES, type PhraseKey } from "./texts/cronista";
@@ -37,6 +38,8 @@ export interface BulletinFact {
   data: Record<string, unknown>;
   /** Bloque 3: ya contado en la hoja volandera del miércoles (el domingo no lo repite en armas, sitios ni pactos). */
   told?: boolean;
+  /** Bloque 3: resolución en la que pasó (para la memoria del cronista). */
+  resolution?: number | null;
 }
 
 /** Bloque 3: los dos boletines de la semana. */
@@ -80,6 +83,12 @@ export interface BulletinInput {
   used: string[];
   /** Bloque 3: "miercoles" para la hoja volandera (titular, armas, sitios y pactos). Por defecto, el del domingo. */
   edition?: BulletinEdition;
+  /**
+   * Bloque 3: memoria del cronista. `past`, los hechos públicos de la partida
+   * antes de este boletín; `previousRanking`, la clasificación del domingo
+   * anterior (solo el domingo: remontadas y caídas).
+   */
+  memory?: { past: LoggedFact[]; previousRanking?: HouseId[] };
   /** Bloque 3: proclamas de la semana (solo en el del domingo), tal como las escribió cada casa. */
   proclamations?: { house: HouseId; text: string }[];
   /** Solo en el último boletín. */
@@ -102,6 +111,8 @@ export interface Bulletin {
   week: number;
   /** Bloque 3: "miercoles" en la hoja volandera; sin este campo, el del domingo. */
   edition?: BulletinEdition;
+  /** Bloque 3: la Crónica Definitiva (semana 0), que se lee en el mismo pergamino. */
+  chronicle?: boolean;
   headline: string;
   sections: BulletinSection[];
   margin: string[];
@@ -122,6 +133,7 @@ const MAX_NEUTRAL_BATTLES = 3;
 const MAX_CLASHES = 2;
 const MAX_SIEGES = 3;
 const MAX_CAPTAINS = 2;
+const MAX_MEMORIES = 2;
 /** Probabilidad de que un combate con carga, brecha, río o emboscada use su frase propia. */
 const SPECIAL_CHANCE = 0.6;
 
@@ -286,6 +298,23 @@ export function writeBulletin(input: BulletinInput): Bulletin {
     captainLines++;
   }
   if (sieges.length > 0) sections.push({ title: "Sitios y cautivos", lines: sieges });
+
+  // 3c. Bloque 3: la memoria del cronista (dos recuerdos como mucho).
+  if (input.memory) {
+    const memories = findMemories({
+      past: input.memory.past,
+      now: news,
+      ...(mid || !input.memory.previousRanking ? {} : { previousRanking: input.memory.previousRanking, ranking: ranking.map((h) => h.id) }),
+    }).slice(0, MAX_MEMORIES);
+    const lines = memories.map((m) => {
+      const vars: Record<string, string | number> = { ...m.numbers };
+      for (const [k, h] of Object.entries(m.houses)) vars[k] = name(h);
+      for (const [k, t] of Object.entries(m.tiles)) vars[k] = tile(t);
+      // Sin la cifra o la casa que pide una variante, se usa otra.
+      return say(m.key, vars, (t) => [...t.matchAll(/\{([^}]+)\}/g)].every((x) => x[1]! in vars));
+    });
+    if (lines.length > 0) sections.push({ title: "La memoria del cronista", lines });
+  }
 
   // 4. Economía: evento, subasta y comercio (solo el domingo).
   const economy: string[] = [];

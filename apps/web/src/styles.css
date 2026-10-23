@@ -2924,3 +2924,14 @@ button.wide {
   border-radius: 50%;
   border: 1px solid rgba(0, 0, 0, 0.4);
 }
+
+/* Bloque 3: la Crónica Definitiva, en un pergamino de gala con ribete dorado. */
+.parchment.chronicle {
+  box-shadow:
+    0 0 0 3px #b8892e,
+    0 0 0 6px #5a3c19,
+    0 10px 24px rgba(0, 0, 0, 0.45);
+}
+.parchment.chronicle h3 {
+  text-align: center;
+}

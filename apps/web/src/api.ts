@@ -244,6 +244,8 @@ export interface GameState {
   boletines?: { semana: number; edicion?: "domingo" | "miercoles"; titular: string }[];
   /** Bloque 3: la proclama de tu casa para el próximo domingo. */
   proclama?: { semana: number; texto: string | null; max: number } | null;
+  /** Bloque 3: al acabar, tu línea al pie de la Crónica Definitiva (null si ganaste o la partida sigue). */
+  feDeErratas?: { texto: string | null; max: number } | null;
   soborno?: { semana: number; coste: number; pagado: number | null; frases: string[] } | null;
   evento?: { semana: number; clave: string; nombre: string; texto: string; linea: string; aplicado: boolean } | null;
   cartas?: CardInfo[];
@@ -396,7 +398,11 @@ export const api = {
   pushUnsubscribe: (endpoint: string) => call<{ ok: true }>("POST", "/push/baja", { endpoint }),
   pushTest: () => call<{ ok: true }>("POST", "/push/prueba"),
   bulletin: (id: number, semana: number, edicion: "domingo" | "miercoles" = "domingo") =>
-    call<Bulletin & { publicado: string }>("GET", `/partidas/${id}/boletin/${semana}${edicion === "miercoles" ? "?edicion=miercoles" : ""}`),
+    call<Bulletin & { publicado: string; erratas?: { casa: number; texto: string }[] }>(
+      "GET",
+      `/partidas/${id}/boletin/${semana}${edicion === "miercoles" ? "?edicion=miercoles" : ""}`,
+    ),
+  errata: (id: number, texto: string) => call<{ ok: true; texto: string | null }>("PUT", `/partidas/${id}/fe-de-erratas`, { texto }),
   proclaim: (id: number, texto: string) => call<{ ok: true; texto: string | null }>("PUT", `/partidas/${id}/proclama`, { texto }),
   bribe: (id: number, plantilla: number) => call<{ ok: true }>("POST", `/partidas/${id}/soborno`, { plantilla }),
   bid: (id: number, lote: number, cantidad: number) => call<{ ok: true }>("PUT", `/partidas/${id}/subasta/${lote}`, { cantidad }),

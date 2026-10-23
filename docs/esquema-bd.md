@@ -539,7 +539,8 @@ CREATE TABLE bulletins (
 );
 
 -- Bloque 3: proclamas, una frase propia por casa y semana (hasta 140 letras),
--- firmada en el boletín del domingo. Se cambia hasta el cierre.
+-- firmada en el boletín del domingo. Se cambia hasta el cierre. Con week = 0,
+-- la fe de erratas al pie de la Crónica Definitiva.
 CREATE TABLE proclamations (
   game_id         INTEGER NOT NULL REFERENCES games(id) ON DELETE CASCADE,
   house_id        INTEGER NOT NULL REFERENCES houses(id) ON DELETE CASCADE,

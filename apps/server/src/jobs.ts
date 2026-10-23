@@ -48,7 +48,7 @@ import {
 } from "@reyes/engine";
 import { notifyHouses, type NotifyEnv } from "./notify";
 import { announceAuction, auctionStatements, cardsForResolution } from "./subasta";
-import { publishBulletin } from "./boletin";
+import { publishBulletin, publishChronicle } from "./boletin";
 import { loadMercenaries, mercenaryCount, mercenaryDawnStatements } from "./mercenarios";
 import { dueJobs, type GameClock } from "./scheduler";
 import { allianceNightStatements } from "./alianzas";
@@ -703,6 +703,13 @@ export async function finishGame(env: NotifyEnv, game: GameRow, now: Date): Prom
     if (finished) await publishBulletin(env, finished, game.weeks, true);
   } catch (err) {
     console.error(`Partida ${game.id}, último boletín:`, err);
+  }
+  // Bloque 3: la Crónica Definitiva, a favor del ganador.
+  try {
+    const finished = await loadGame(db, game.id);
+    if (finished) await publishChronicle(env, finished);
+  } catch (err) {
+    console.error(`Partida ${game.id}, Crónica Definitiva:`, err);
   }
 
   const winner = houses.find((h) => h.id === final[0]?.house);
