@@ -62,7 +62,6 @@ export function BulletinPanel({
           {p && <button onClick={() => show("proclama")}>{p.texto ? "Tu proclama ✓" : "Tu proclama"}</button>}
         </div>
       </section>
-      <ErrataCard state={state} act={act} />
       {reading && <BulletinReader state={state} onClose={() => setReading(false)} />}
       {open && (
         <div className="sheet-layer">
@@ -196,7 +195,7 @@ function ProclamationCard({ state, act }: { state: GameState; act: (fn: () => Pr
 }
 
 /** Bloque 3: al acabar la partida, quien no ganó puede dejar una línea al pie de la Crónica Definitiva. */
-function ErrataCard({ state, act }: { state: GameState; act: (fn: () => Promise<unknown>, ok?: string) => Promise<void> }) {
+export function ErrataCard({ state, act }: { state: GameState; act: (fn: () => Promise<unknown>, ok?: string) => Promise<void> }) {
   const f = state.feDeErratas;
   const [text, setText] = useState(f?.texto ?? "");
   useEffect(() => setText(f?.texto ?? ""), [f?.texto]);

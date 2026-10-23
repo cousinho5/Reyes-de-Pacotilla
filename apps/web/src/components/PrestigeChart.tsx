@@ -38,7 +38,7 @@ export function PrestigeChart({ state }: { state: GameState }) {
 
   return (
     <section className="card race">
-      <h2>La carrera</h2>
+      <h2>{state.partida.estado === "finished" ? "La carrera entera" : "La carrera"}</h2>
       <svg viewBox={`0 0 ${W} ${H}`} className="race-chart" role="img" aria-label="Prestigio de cada casa por semana">
         {[0, 1, 2, 3, 4].map((k) => (
           <g key={k}>

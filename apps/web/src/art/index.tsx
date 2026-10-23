@@ -9,6 +9,7 @@ import { shade } from "./tiles";
 import { renderWorld } from "./world";
 import { ICONS, type IconName } from "./icons";
 import { FRAY_ANIMS, FRAY_SPRITES, RESOURCE_SPRITES, type FrayAnim, type FrayMood } from "./sprites";
+import { corona, corona_brilla, podio } from "./podio";
 
 export { Pixels } from "./Pixels";
 export type { FrayAnim, FrayMood } from "./sprites";
@@ -93,7 +94,8 @@ const MOOD_LABEL: Record<FrayMood, string> = {
 
 /** La animación de cada cara cuando no se pide otra (bloque 3). */
 const MOOD_ANIM: Partial<Record<FrayMood, FrayAnim>> = { solemne: "parpadea", dormido: "cabecea", monedas: "tintinea" };
-const still = () => typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+/** Si se ha pedido reducir el movimiento (entonces nada se anima). */
+export const still = () => typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /**
  * Fray Abundio (bloque 3: 48x48 tras su pupitre). Se anima solo: parpadea, cabecea
@@ -127,4 +129,32 @@ export function FrayAbundio({ mood = "solemne", size = 72, anim }: { mood?: Fray
 export function Icon({ name, size = 24, color = "#d6a64b", title }: { name: IconName; size?: number; color?: string; title?: string }) {
   const palette = useMemo(() => ({ k: "#1c1410", m: color, l: shade(color, 0.45), d: shade(color, -0.35) }), [color]);
   return <Pixels grid={ICONS[name]} palette={palette} size={size} title={title} className="ico" />;
+}
+
+/**
+ * Bloque 11: la corona del primero. Con `shine`, brilla una vez (un destello
+ * que la cruza); con «reducir movimiento», quieta.
+ */
+export function Crown({ size = 32, shine = false }: { size?: number; shine?: boolean }) {
+  const [frame, setFrame] = useState<number | null>(null);
+  useEffect(() => {
+    if (!shine || still()) return;
+    let i = 0;
+    setFrame(0);
+    const t = setInterval(() => {
+      i++;
+      if (i >= corona_brilla.length) {
+        clearInterval(t);
+        setFrame(null);
+      } else setFrame(i);
+    }, 85);
+    return () => clearInterval(t);
+  }, [shine]);
+  const s = frame != null ? corona_brilla[frame]! : corona;
+  return <Pixels grid={s.grid} palette={s.palette} size={size} className="crown" />;
+}
+
+/** Bloque 11: el podio de madera (segundo, primero y tercero), a lo ancho que se pida. */
+export function Podium({ size = 288 }: { size?: number }) {
+  return <Pixels grid={podio.grid} palette={podio.palette} size={size} className="podium-art" />;
 }

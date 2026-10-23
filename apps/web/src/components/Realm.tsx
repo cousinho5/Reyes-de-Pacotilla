@@ -1,6 +1,8 @@
-import { BulletinPanel } from "./BulletinPanel";
-import type { GameState } from "../api";
-import { ShieldIcon } from "../art";
+import { useEffect, useState } from "react";
+import { BulletinPanel, ErrataCard } from "./BulletinPanel";
+import { api, type GameState } from "../api";
+import { Crown, ShieldIcon } from "../art";
+import { Parchment, type Shown } from "./Parchment";
 import { withArticle } from "../ui";
 import { Chronicle } from "./Chronicle";
 import { DiplomacyPanel } from "./DiplomacyPanel";
@@ -18,23 +20,69 @@ export function Realm({
   const final = state.partida.final;
   const winner = final?.winner != null ? state.casas.find((h) => h.id === final.winner) : null;
 
+  // Bloque 11: al acabar, la pestaña es «La coronación»: el ganador coronado,
+  // el podio final, la Crónica Definitiva (con la fe de erratas) y la carrera entera.
+  if (state.partida.estado === "finished") {
+    return (
+      <div>
+        <section className="card coronation">
+          <p className="coronation-kicker">La coronación</p>
+          {winner && (
+            <>
+              <span className="coronation-crown">
+                <Crown size={64} shine />
+              </span>
+              <ShieldIcon color={winner.color} escudo={winner.escudo} size={112} />
+              <h2>¡Larga vida a {withArticle(winner.nombre)}!</h2>
+              {winner.lema && <p className="house-motto">«{winner.lema}»</p>}
+              <p>Fin del interregno. Fray Abundio, que siempre creyó en {withArticle(winner.nombre)}, ya ha corregido sus crónicas.</p>
+            </>
+          )}
+        </section>
+        <Standings state={state} />
+        <DefinitiveChronicle state={state} />
+        <ErrataCard state={state} act={act} />
+        <PrestigeChart state={state} />
+        <BulletinPanel state={state} act={act} />
+        <Chronicle state={state} />
+      </div>
+    );
+  }
+
   return (
     <div>
-      {winner && (
-        <section className="card coronation">
-          <ShieldIcon color={winner.color} escudo={winner.escudo} size={72} />
-          <h2>¡Larga vida a {withArticle(winner.nombre)}!</h2>
-          <p>Fin del interregno. Fray Abundio, que siempre creyó en {withArticle(winner.nombre)}, ya ha corregido sus crónicas.</p>
-        </section>
-      )}
       <DiplomacyStrip state={state} />
       <Standings state={state} />
       <PrestigeChart state={state} />
       <BulletinPanel state={state} act={act} />
-
       <Chronicle state={state} />
       <DiplomacyPanel state={state} act={act} />
     </div>
+  );
+}
+
+/** La Crónica Definitiva (semana 0), entera, en su pergamino. */
+function DefinitiveChronicle({ state }: { state: GameState }) {
+  const [shown, setShown] = useState<Shown | null>(null);
+  const has = (state.boletines ?? []).some((b) => b.semana === 0);
+  useEffect(() => {
+    if (!has) return;
+    let alive = true;
+    api
+      .bulletin(state.partida.id, 0)
+      .then((b) => alive && setShown(b))
+      .catch(() => alive && setShown(null));
+    return () => {
+      alive = false;
+    };
+    // La fe de erratas cambia su pie: se vuelve a leer.
+  }, [state.partida.id, has, state.feDeErratas?.texto]);
+  if (!has) return null;
+  if (!shown) return <p className="hint">Fray Abundio pasa a limpio la Crónica Definitiva…</p>;
+  return (
+    <section className="bulletin-wrap">
+      <Parchment bulletin={shown} gameName={state.partida.nombre} houses={state.casas} />
+    </section>
   );
 }
 

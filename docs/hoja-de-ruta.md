@@ -16,11 +16,11 @@ Primero se definen todos los bloques; después se hacen uno a uno, en el orden d
 | 8.º | 2. Vista del castillo y construcciones | ✅ Hecho (falta probarlo en un móvil de verdad) | #72 a #74 | Escena del castillo en pixel art con su hora del día, 25 dibujos de edificios, castillo que crece en 5 etapas (también en el mapa), ficha al tocar, lista con dibujos, tiendas del asedio y obra al mejorar |
 | 9.º | 10. Diseño de la sección Comercio | ✅ Hecho (falta probarlo en un móvil de verdad) | #75 | Lo urgente arriba, oferta en dos líneas con «Precio justo», valor en Oro de la Corona, aceptar en gris, ofertas que caducan, Corona en Comercio e hilo del trato con frase |
 | 10.º | 3. Mejora del cronista | ✅ Hecho (falta probarlo en un móvil de verdad) | #76 a #80 | Fray Abundio: dos boletines por semana, repetición narrada, frases nuevas, memoria, proclamas y dibujo nuevo |
-| 11.º | 11. Diseño de la sección Reino | 🔨 En curso | #81 a #83 | Clasificación con podio y flechas arriba, gráfica de la carrera, boletín en tarjeta, crónica por noches, ficha de casa, tira de diplomacia y pantalla de coronación |
+| 11.º | 11. Diseño de la sección Reino | ✅ Hecho (falta probarlo en un móvil de verdad) | #81 a #84 | Clasificación con podio de madera y corona en pixel art, flechas desde la noche anterior, gráfica de la carrera, boletín en tarjeta, crónica por noches con filtros, ficha de casa desde cualquier pestaña, alianzas en Reino y pantalla de coronación |
 | 12.º | 13. Historia y cinemáticas | ⏳ Pendiente (decidido) | — | Cinco cinemáticas en pixel art: prólogo de la muerte de Aldric, coronación con mapa por semanas y títulos cómicos, viñetas de eventos, última semana y fantasma de Aldric; sin sonido de momento |
 | 13.º | 7. Mejorar pagina de inicio del juego | ⏳ Pendiente (decidido) | — | Portada con Aldricia viva en pixel art según la hora real, tarjeta de la partida más urgente con cuenta atrás y avisos, entrar con código en una hoja, invitación como bando real, vitrina de coronas e instalar |
 
-**Cómo vamos:** 10 de 13 bloques hechos; en curso, el 11 (Reino). La tabla se actualiza al empezar y al cerrar cada bloque, con sus PR.
+**Cómo vamos:** 11 de 13 bloques hechos; el siguiente, el 13 (Historia y cinemáticas). La tabla se actualiza al empezar y al cerrar cada bloque, con sus PR.
 
 **Por qué este orden:**
 
@@ -198,7 +198,7 @@ Decidido el 20 de octubre de 2026 y revisado el 23 (alianzas pendientes en «Par
 7. **Corona y mercenarios:** la Corona en Comercio, con el precio del día (ya no hay tope); los mercenarios en Castillo.
 8. **Contraofertas:** hilo en una tarjeta y frase corta.
 
-## Bloque 11: diseño de la sección Reino **(decidido, pendiente de hacer)**
+## Bloque 11: diseño de la sección Reino **(hecho, PR #81 a #84)**
 
 Decidido el 20 de octubre de 2026. Las decisiones y los pasos están en `docs/bloque11.md`; la maqueta, en el documento del bloque. No cambia reglas.
 
