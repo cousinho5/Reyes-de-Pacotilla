@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { api, type GameState } from "../api";
+import { FrayAbundio } from "../art";
 import { HOUSE_COLORS } from "../ui";
 import { markBulletinSeen } from "../bulletinSeen";
 import { Parchment, type Shown } from "./Parchment";
@@ -48,6 +49,7 @@ export function BulletinPanel({
       {list.length === 0 ? (
         <section className="card">
           <h2>Boletín del Reino</h2>
+          <FrayAbundio mood="solemne" anim="moja" size={64} />
           <p className="muted">
             Fray Abundio publica dos por semana: la hoja volandera del miércoles y el boletín del domingo, tras la resolución. Ya afila la
             pluma.

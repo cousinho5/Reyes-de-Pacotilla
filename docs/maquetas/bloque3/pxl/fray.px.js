@@ -12,7 +12,7 @@ pal({
   h: "#f1ede4", H: "#a9a398",                     // pelo blanco
   g: "#2b2a30", w: "#cfe6f2", e: "#1a1a1a",       // gafas, cristal, pupila
   M: "#6e2219", m: "#c75b4c",                     // boca
-  o: "#87613a", r: "#6b4a2b", R: "#4a3119",       // hábito
+  o: "#87613a", r: "#6b4a2b", R: "#4a3119", q: "#3b2614", // hábito y escapulario
   y: "#cfa65a",                                   // cordón
   f: "#fbfaf5", F: "#c4beb1",                     // pluma
   t: "#a87444", d: "#8a5a32", D: "#5e3a1e",       // pupitre
@@ -21,26 +21,50 @@ pal({
   b: "#73b8ec",                                   // gota de sudor
   v: "#6fa64e", V: "#3e6e2e",                     // hojas de la capitular
 })
-ramps("kRro", "ZSsO", "Hh", "Ddt", "Cc", "WY", "Vv")
+ramps("kqRro", "ZSsO", "Hh", "Ddt", "Cc", "WY", "Vv")
 
 const CX = 24
 
-// El cuerpo: hábito con la capucha caída y el cordón.
+// El cuerpo: hábito con capucha caída, escapulario, mangas anchas y una cruz
+// de madera. Se dibuja entero; el pupitre lo tapa después de cintura para abajo.
 function cuerpo(c, dy) {
-  for (let y = 27 + dy; y < 41; y++) {
-    const half = 10 + (y - 27 - dy) * 0.9
+  // Capucha caída por detrás de los hombros (asoma alrededor del cuello).
+  c.ellipse(CX - 0.5, 28 + dy, 13, 5, "R")
+  c.ellipse(CX - 0.5, 27 + dy, 11, 3.5, "o")
+  // Tronco: se ensancha hacia abajo; luz por la izquierda.
+  for (let y = 29 + dy; y < 46; y++) {
+    const half = 11 + (y - 29 - dy) * 0.6
     for (let x = Math.floor(CX - half); x <= Math.ceil(CX + half - 1); x++) {
       const dx = (x + 0.5 - CX) / half
-      c.px(x, y, dx < -0.6 ? "o" : dx > 0.5 ? "R" : "r")
+      c.px(x, y, dx < -0.7 ? "o" : dx > 0.55 ? "R" : "r")
     }
   }
-  // Capucha caída alrededor del cuello.
-  for (let x = CX - 9; x < CX + 9; x++) c.px(x, 28 + dy, Math.abs(x + 0.5 - CX) > 5 ? "o" : "R")
-  for (let x = CX - 8; x < CX + 8; x++) c.px(x, 29 + dy, Math.abs(x + 0.5 - CX) > 6 ? "R" : "o")
-  // Cordón con su nudo.
-  for (let y = 33 + dy; y < 40; y++) c.px(CX + 2 + ((y % 2) ? 0 : 1), y, "y")
-  // Pliegues.
-  for (const x of [CX - 6, CX + 5]) for (let y = 32 + dy; y < 41; y++) if ((x + y) % 3) c.px(x, y, "R")
+  // Cuello de la capucha, enrollado.
+  for (let x = CX - 7; x < CX + 7; x++) { c.px(x, 28 + dy, Math.abs(x + 0.5 - CX) > 4 ? "o" : "R"); c.px(x, 29 + dy, "R") }
+  c.hline(CX - 6, 28 + dy, 3, "q")
+  // Escapulario: la tira de tela de delante, más oscura, con su borde.
+  c.rect(CX - 4, 30 + dy, 8, 16, "q")
+  c.vline(CX - 5, 30 + dy, 16, "R"); c.vline(CX + 4, 30 + dy, 16, "R")
+  for (let y = 32 + dy; y < 46; y += 3) c.px(CX - 3, y, "R")
+  // Cruz de madera colgada del cuello.
+  c.vline(CX - 0, 31 + dy, 2, "y")
+  c.vline(CX - 1, 33 + dy, 5, "t"); c.vline(CX, 33 + dy, 5, "d"); c.hline(CX - 3, 34 + dy, 6, "t"); c.hline(CX - 3, 35 + dy, 6, "d")
+}
+// Una manga ancha del hombro (x0, y0) al puño (x1, y1), por delante del pupitre:
+// así se ve que el fraile apoya los brazos en el tablero.
+function manga(c, x0, y0, x1, y1) {
+  const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0))
+  for (let i = 0; i <= n; i++) {
+    const x = x0 + (x1 - x0) * i / n, y = y0 + (y1 - y0) * i / n
+    c.ellipse(x, y, 3.2, 2.6, "q")
+  }
+  for (let i = 0; i <= n; i++) {
+    const x = x0 + (x1 - x0) * i / n, y = y0 + (y1 - y0) * i / n
+    c.ellipse(x, y, 2.2, 1.7, "r")
+    c.px(Math.round(x - 1), Math.round(y - 1), "o")
+  }
+  // Puño vuelto.
+  c.ellipse(x1, y1, 2.2, 2.2, "o"); c.px(Math.round(x1), Math.round(y1), "R")
 }
 
 // La cabeza: calva con brillo, tonsura, orejas, gafas, nariz, boca. `o` son las opciones de la cara.
@@ -98,15 +122,21 @@ function cabeza(c, o) {
   if (o.sudor) { c.px(CX - 13, 7 + dy, "b"); c.px(CX - 13, 8 + dy, "b"); c.px(CX - 14, 8 + dy, "b") }
 }
 
-// El pupitre, el pergamino y el tintero.
+// El pupitre: tablero inclinado por delante del fraile, con su canto de luz y
+// la sombra que el tablero echa sobre el hábito; el pergamino encima.
 function pupitre(c, escrito) {
-  c.rect(0, 40, 48, 8, "d"); c.hline(0, 40, 48, "t"); c.hline(0, 47, 48, "D")
-  for (const x of [9, 30]) c.vline(x, 42, 5, "D")
+  c.hline(0, 38, 48, "R")                      // sombra del canto sobre el hábito
+  c.rect(0, 39, 48, 9, "d")
+  c.poly([0, 39, 48, 39, 48, 42, 0, 42], "t")  // tablero, más claro por arriba
+  c.hline(0, 39, 48, "c")                      // canto con luz
+  c.hline(0, 43, 48, "D")                      // borde del tablero
+  c.rect(0, 44, 48, 4, "d"); c.hline(0, 47, 48, "D")
+  for (const x of [6, 41]) { c.vline(x, 44, 4, "D"); c.vline(x + 1, 44, 4, "t") }
   // Pergamino, con renglones que crecen al escribir.
-  c.poly([11, 41, 31, 41, 32, 46, 10, 46], "c"); c.hline(10, 46, 23, "C")
-  for (let r = 0; r < 2; r++) c.hline(13, 42 + r * 2, Math.min(16, escrito - r * 16 > 0 ? escrito - r * 16 : 0), "i")
+  c.poly([12, 39, 32, 39, 33, 43, 11, 43], "c"); c.hline(11, 43, 23, "C"); c.vline(11, 40, 3, "C")
+  for (let r = 0; r < 2; r++) c.hline(14, 40 + r * 2, Math.min(16, escrito - r * 16 > 0 ? escrito - r * 16 : 0), "i")
 }
-function tintero(c) { c.rect(39, 35, 7, 5, "i"); c.rect(40, 34, 5, 1, "g"); c.px(40, 36, "w"); c.px(41, 36, "w") }
+function tintero(c) { c.rect(39, 34, 7, 5, "i"); c.rect(40, 33, 5, 1, "g"); c.px(40, 35, "w"); c.px(41, 35, "w") }
 
 // Las manos: la derecha (a la derecha de la imagen) lleva la pluma; `mano` es su punta.
 function manoPluma(c, x, y) {
@@ -134,12 +164,18 @@ function zetas(c, f) {
 
 // Fray Abundio entero. `o`: cara (ver cabeza), mano de la pluma, monedas, zetas.
 function fray(c, o) {
-  pupitre(c, o.escrito ?? 14)
   cuerpo(c, o.dy ?? 0)
-  tintero(c)
   cabeza(c, o)
-  if (o.monedas != null) { monedas(c, o.monedas); manoQuieta(c, 10, 36) } else manoQuieta(c, 12, 38)
-  manoPluma(c, o.manoX ?? 33, o.manoY ?? 40)
+  pupitre(c, o.escrito ?? 14)
+  tintero(c)
+  const dy = o.dy ?? 0
+  const [lx, ly] = o.monedas != null ? [10, 36] : [12, 38]
+  manga(c, CX - 10, 32 + dy, lx - 1, ly + 1)
+  if (o.monedas != null) monedas(c, o.monedas)
+  manoQuieta(c, lx, ly)
+  const mx = o.manoX ?? 33, my = o.manoY ?? 40
+  manga(c, CX + 9, 32 + dy, mx + 3, my - 2)
+  manoPluma(c, mx, my)
   if (o.zetas != null) zetas(c, o.zetas)
 }
 

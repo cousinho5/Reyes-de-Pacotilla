@@ -274,7 +274,12 @@ export function NightReplay({ geo, W, H, tiles, houses, events, me, seed, resolu
         createPortal(
           <>
             <div className="replay-caption" aria-live="polite">
-              <FrayAbundio mood={current?.kind === "fin" ? "dormido" : current?.kind === "combate" ? "escandalizado" : "solemne"} size={40} />
+              <FrayAbundio
+                mood={current?.kind === "fin" ? "dormido" : current?.kind === "combate" && p < 0.55 ? "escandalizado" : "solemne"}
+                // Bloque 3: mueve la boca mientras narra; al final, cabecea dormido.
+                anim={current?.kind === "fin" ? "cabecea" : current?.kind === "combate" && p < 0.55 ? null : "habla"}
+                size={48}
+              />
               <p>{caption}</p>
             </div>
             <div className="replay-bar">
