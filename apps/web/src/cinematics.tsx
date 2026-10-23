@@ -6,8 +6,11 @@ import type { ReactNode } from "react";
 import type { CinematicItem, GameState } from "./api";
 import { type Painter, hash } from "./art/cinema";
 import * as pregon from "./art/pregonero";
+import * as prologo from "./art/prologo";
 import type { FrayMood } from "./art/sprites";
+import { ShieldIcon } from "./art";
 import { cinematicTitle } from "./cinematicQueue";
+import { CinematicMap } from "./components/CinematicMap";
 
 export interface Scene {
   /** Segundos que dura antes de pasar sola a la siguiente. */
@@ -28,6 +31,111 @@ export interface Cinematic {
   clave: string;
   titulo: string;
   scenes: Scene[];
+}
+
+const NUMBER = ["cero", "una", "dos", "tres", "cuatro", "cinco", "seis", "siete", "ocho", "nueve", "diez"];
+/** Número en letra para las frases del cronista («Siete casas…»). */
+export const inWords = (n: number) => NUMBER[n] ?? String(n);
+const capital = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+// ---------------------------------------------------------------------------
+// Prólogo: la muerte del rey (punto 2 del bloque). Seis escenas, unos 45 segundos.
+
+function prologueCinematic(item: CinematicItem, state: GameState): Cinematic {
+  const n = state.casas.length;
+  const weeks = state.partida.semanas;
+  return {
+    clave: item.clave,
+    titulo: cinematicTitle(item),
+    scenes: [
+      {
+        dur: 6,
+        text: "Hubo una vez un rey.",
+        fray: "solemne",
+        label: "El mapa de Aldricia en sepia, con el título del juego",
+        draw: prologo.mapBackdrop,
+        overlay: (
+          <>
+            <CinematicMap state={state} mode="titulo" dur={6} />
+            <div className="cine-title">
+              <div className="big">
+                Reyes de
+                <br />
+                Pacotilla
+              </div>
+              <div className="sub">Aldricia, el Reino Más o Menos Unido</div>
+            </div>
+          </>
+        ),
+      },
+      {
+        dur: 7,
+        text: "El buen rey Aldric gobernó Aldricia cuarenta años, casi siempre desde la mesa.",
+        fray: "solemne",
+        label: "El rey Aldric come en el banquete, sentado en su trono",
+        draw: prologo.banquet,
+      },
+      {
+        dur: 7.5,
+        text: "Hasta que un ave, ya asada, le plantó cara.",
+        foot: "Nota del cronista: fue un combate singular. Quien hable de huesos será desterrado.",
+        fray: "escandalizado",
+        label: "El rey muerde el muslo, tose, se ahoga y cae tras la mesa; la corona rueda por el suelo",
+        draw: prologo.bird,
+        overlay: (
+          <>
+            <div className="cine-sfx one">¡Ghhk!</div>
+            <div className="cine-sfx two">¡PLOF!</div>
+            <div className="cine-flash" />
+          </>
+        ),
+      },
+      {
+        dur: 8.5,
+        text: "Su testamento cabía en una línea. Las llaves del tesoro, en ningún sitio.",
+        foot: "El cronista no acusa a nadie. Tampoco a las ratas.",
+        fray: "solemne",
+        label: "El testamento del rey junto al trono vacío; una rata se lleva una llave",
+        draw: prologo.testament,
+        overlay: (
+          <div className="cine-scroll">
+            <span className="seal" />
+            <h3>Testamento de Aldric I</h3>
+            <div className="will">«Que gobierne el más capaz.»</div>
+            <div className="sig">Aldric, rey (por la gracia de Dios y del pollo)</div>
+            <div className="pd">P. D.: ¿Alguien ha visto las llaves del tesoro?</div>
+          </div>
+        ),
+      },
+      {
+        dur: 8.5,
+        text: `${capital(inWords(n))} casas se creyeron las más capaces.`,
+        foot: `Las ${inWords(n)} se equivocaban, salvo una. El cronista aún no sabe cuál.`,
+        fray: "adulador",
+        label: `Los escudos de las ${n} casas de la partida`,
+        draw: prologo.suitorsBackdrop,
+        overlay: (
+          <div className={`cine-suitors${n > 6 ? " many" : ""}`}>
+            {state.casas.map((h, i) => (
+              <div key={h.id} className="pre" style={{ "--i": i } as React.CSSProperties}>
+                <ShieldIcon color={h.color} escudo={h.escudo} size={40} />
+                <b>{h.nombre}</b>
+                {h.lema && <em>«{h.lema}»</em>}
+              </div>
+            ))}
+          </div>
+        ),
+      },
+      {
+        dur: 9.5,
+        text: `Empieza el interregno. ${capital(inWords(weeks))} semanas, un trono vacío y ninguna llave.`,
+        fray: "monedas",
+        label: "El mapa de la partida: los castillos se encienden y se acerca el tuyo",
+        draw: prologo.mapBackdrop,
+        overlay: <CinematicMap state={state} mode="revelar" dur={9.5} />,
+      },
+    ],
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -61,7 +169,15 @@ function drawCrier(p: Painter, t: number, asleep = false) {
 }
 
 const SCANDAL = new Set(["plaga_ratas", "tormenta_costa", "derrumbe", "bandidos", "tributo_rey", "paga_atrasada"]);
-const PLEASED = new Set(["cosecha_gloriosa", "fiebre_oro", "fiesta_san_aldric", "carnaval", "limosna_real", "indulgencia_real", "levas_reales"]);
+const PLEASED = new Set([
+  "cosecha_gloriosa",
+  "fiebre_oro",
+  "fiesta_san_aldric",
+  "carnaval",
+  "limosna_real",
+  "indulgencia_real",
+  "levas_reales",
+]);
 
 function eventCinematic(item: CinematicItem): Cinematic {
   const d = item.datos as { clave: string; nombre: string; texto: string; linea: string };
@@ -97,10 +213,12 @@ function eventCinematic(item: CinematicItem): Cinematic {
 }
 
 /** La cinemática de un elemento de la lista, o null si este cliente aún no sabe dibujarla. */
-export function buildCinematic(item: CinematicItem, _state: GameState): Cinematic | null {
+export function buildCinematic(item: CinematicItem, state: GameState): Cinematic | null {
   switch (item.tipo) {
     case "evento":
       return item.datos ? eventCinematic(item) : null;
+    case "prologo":
+      return prologueCinematic(item, state);
     default:
       return null;
   }

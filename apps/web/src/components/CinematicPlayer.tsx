@@ -3,15 +3,29 @@
 // Fray Abundio. Se toca la escena para pasar a la siguiente, «Saltar» la cierra
 // y con «reducir movimiento» cada escena es una viñeta quieta.
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { FrayAbundio } from "../art";
 import { CINE_H, CINE_W, clamp, painter } from "../art/cinema";
 import type { Cinematic } from "../cinematics";
 
 const still = () => typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-export function CinematicPlayer({ cinematic, onClose }: { cinematic: Cinematic; onClose: () => void }) {
+/**
+ * `epilogue`, si la hay, sale al acabar o al saltar en lugar de cerrar (la hoja
+ * de la ambición secreta tras el prólogo); recibe con qué cerrar.
+ */
+export function CinematicPlayer({
+  cinematic,
+  onClose: close,
+  epilogue,
+}: {
+  cinematic: Cinematic;
+  onClose: () => void;
+  epilogue?: (close: () => void) => ReactNode;
+}) {
   const [index, setIndex] = useState(0);
+  const [ended, setEnded] = useState(false);
+  const onClose = epilogue && !ended ? () => setEnded(true) : close;
   const canvas = useRef<HTMLCanvasElement>(null);
   const bar = useRef<HTMLElement>(null);
   const dialog = useRef<HTMLDivElement>(null);
@@ -48,7 +62,7 @@ export function CinematicPlayer({ cinematic, onClose }: { cinematic: Cinematic; 
     };
     raf = requestAnimationFrame(frame);
     return () => cancelAnimationFrame(raf);
-  }, [scene, last, reduced]);
+  }, [scene, last, reduced, ended]);
 
   useEffect(() => {
     dialog.current?.focus();
@@ -63,6 +77,12 @@ export function CinematicPlayer({ cinematic, onClose }: { cinematic: Cinematic; 
 
   const advance = () => (last ? onClose() : setIndex(index + 1));
 
+  if (ended && epilogue)
+    return (
+      <div className="cinematic" role="dialog" aria-modal="true" aria-label={cinematic.titulo} ref={dialog} tabIndex={-1}>
+        {epilogue(close)}
+      </div>
+    );
   return (
     <div className="cinematic" role="dialog" aria-modal="true" aria-label={cinematic.titulo} ref={dialog} tabIndex={-1}>
       <div className="cine-player">

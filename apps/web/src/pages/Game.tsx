@@ -120,9 +120,12 @@ export function Game({ id }: { id: number }) {
   // calcula de nuevo al acabar la cola (por si llegó otra mientras tanto).
   const [cineDone, setCineDone] = useState(0);
   const cineQueue = useMemo(
-    () => (state && fresh && state.partida.estado !== "lobby" ? autoQueue(state.cinematicas ?? [], canPlay, seenHere(id)) : null),
+    () =>
+      state && fresh && state.partida.estado !== "lobby"
+        ? autoQueue(state.cinematicas ?? [], canPlay, seenHere(id), state.yo.cinematicas === "esenciales")
+        : null,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [fresh, JSON.stringify(state?.cinematicas ?? null), cineDone, id],
+    [fresh, JSON.stringify(state?.cinematicas ?? null), cineDone, id, state?.yo.cinematicas],
   );
   const cinePlaying = !!cineQueue && cineQueue.play.length > 0;
 
@@ -377,7 +380,15 @@ export function Game({ id }: { id: number }) {
 
       {cineQueue && (cineQueue.play.length > 0 || cineQueue.skip.length > 0) && (
         <Suspense fallback={null}>
-          <CinematicQueue key={cineDone} state={state} play={cineQueue.play} skip={cineQueue.skip} onDone={() => setCineDone((n) => n + 1)} />
+          <CinematicQueue
+            key={cineDone}
+            state={state}
+            play={cineQueue.play}
+            skip={cineQueue.skip}
+            onDone={() => setCineDone((n) => n + 1)}
+            act={act}
+            onCastle={() => setTab("castillo")}
+          />
         </Suspense>
       )}
 

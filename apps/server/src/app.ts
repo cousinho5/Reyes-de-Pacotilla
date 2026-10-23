@@ -714,6 +714,7 @@ app.get("/api/partidas/:id", async (c) => {
         plantilla: house.autopilot_template ?? "equilibrada",
       },
       avisoCierre: house.close_warning !== 0,
+      cinematicas: house.cinematics === "esenciales" ? "esenciales" : "todas",
     },
     casas: houses
       .map((h) => ({
@@ -1049,6 +1050,16 @@ app.post("/api/partidas/:id/aviso-cierre", async (c) => {
   const body = await c.req.json<{ activo?: boolean }>().catch(() => ({}) as never);
   if (typeof body.activo !== "boolean") return fail(c, 400, "Falta si quieres el aviso o no.");
   await c.env.DB.prepare("UPDATE houses SET close_warning = ? WHERE id = ?").bind(body.activo ? 1 : 0, m.house.id).run();
+  return c.json({ ok: true });
+});
+
+/** Bloque 13: qué cinemáticas salen solas al entrar. */
+app.post("/api/partidas/:id/ajuste-cinematicas", async (c) => {
+  const m = await membership(c);
+  if (m instanceof Response) return m;
+  const body = await c.req.json<{ cuales?: string }>().catch(() => ({}) as never);
+  if (body.cuales !== "todas" && body.cuales !== "esenciales") return fail(c, 400, "Elige «todas» o «esenciales».");
+  await c.env.DB.prepare("UPDATE houses SET cinematics = ? WHERE id = ?").bind(body.cuales, m.house.id).run();
   return c.json({ ok: true });
 });
 
