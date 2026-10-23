@@ -253,6 +253,11 @@ const fourth = await pablo("POST", `/api/partidas/${gameId}/ofertas`, { para: nu
 check("como mucho 3 ofertas públicas abiertas", fourth.status === 409, fourth);
 const sameRes = await pablo("POST", `/api/partidas/${gameId}/ofertas`, { para: null, da: { oro: 1 }, pide: { oro: 2 } });
 check("no se puede dar y pedir el mismo recurso", sameRes.status === 400, sameRes);
+// Bloque 10: frase corta de 80 letras como mucho.
+const larga = await players[0].call("POST", `/api/partidas/${gameId}/ofertas`, { para: null, da: { pan: 1 }, pide: { oro: 1 }, frase: "a".repeat(81) });
+await players[0].call("POST", `/api/partidas/${gameId}/ofertas`, { para: null, da: { pan: 1 }, pide: { oro: 1 }, frase: "  Busco   Oro para la muralla. " });
+const conFrase = (await pablo("GET", `/api/partidas/${gameId}`)).data.ofertas.find((o) => o.de === martaId && o.estado === "open" && o.frase);
+check("frase corta en la oferta (más de 80 letras no)", larga.status === 400 && conFrase?.frase === "Busco Oro para la muralla.", { larga, conFrase });
 
 // --- Bloque 8: alianzas ---
 const martaCall = players[0].call;
@@ -319,8 +324,21 @@ await pablo("POST", `/api/partidas/${prueba.data.id}/prueba/jugar-como`, { casa:
 const firmaBot = await pablo("POST", `/api/partidas/${prueba.data.id}/alianzas/${pacto.data.id}/aceptar`);
 const rompeBot = await pablo("POST", `/api/partidas/${prueba.data.id}/alianzas/${pacto.data.id}/romper`);
 await pablo("POST", `/api/partidas/${prueba.data.id}/prueba/jugar-como`, { casa: yoPrueba });
-for (let i = 0; i < 3; i++) await pablo("POST", `/api/partidas/${prueba.data.id}/prueba/avanzar`, { hasta: "resolucion" });
+// Bloque 10: una oferta que nadie quiere caduca a las tres resoluciones.
+await pablo("POST", `/api/partidas/${prueba.data.id}/ofertas`, { para: null, da: { pan: 1 }, pide: { oro: 300 } });
+const caro = (await pablo("GET", `/api/partidas/${prueba.data.id}`)).data.ofertas.find((o) => o.de === yoPrueba && o.estado === "open");
+const vivas = [];
+for (let i = 0; i < 3; i++) {
+  await pablo("POST", `/api/partidas/${prueba.data.id}/prueba/avanzar`, { hasta: "resolucion" });
+  vivas.push((await pablo("GET", `/api/partidas/${prueba.data.id}`)).data.ofertas.find((o) => o.id === caro.id)?.estado);
+}
 const trasAviso = (await pablo("GET", `/api/partidas/${prueba.data.id}`)).data;
+const caducada = trasAviso.ofertas.find((o) => o.id === caro.id);
+check(
+  "una oferta caduca tras tres resoluciones",
+  caro.caducaTras === 3 && vivas[0] === "open" && vivas[1] === "open" && caducada?.estado === "cancelled" && caducada.caducada === true,
+  { caro, vivas, caducada },
+);
 check(
   "en la prueba: firmada, rota y, tras tres resoluciones, deja de existir",
   firmaBot.status === 200 && rompeBot.status === 200 && trasAviso.partida.resolucionActual === 3 &&

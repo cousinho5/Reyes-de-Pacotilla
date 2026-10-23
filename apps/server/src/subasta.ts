@@ -68,7 +68,6 @@ export function openAuctionWeek(game: GameRow): number | null {
   return info.kind === "miercoles" ? info.week : null;
 }
 
-/** Tarea del martes: guardar los lotes de la semana y avisar. */
 /** Tarea del martes: el evento de la semana y los lotes de la Gran Subasta. */
 export async function announceAuction(env: NotifyEnv, game: GameRow, week: number): Promise<void> {
   const db = env.DB;
@@ -104,8 +103,8 @@ export async function announceAuction(env: NotifyEnv, game: GameRow, week: numbe
   const houses = await loadHouses(db, game.id);
   await notifyHouses(env, houses.map((h) => h.id), {
     kind: "subasta",
-    title: `Evento: ${EVENTS[event.key].nombre}`,
-    body: `${eventText(event)} Gran Subasta: ${lots.map(lotLabel).join(", ")}. Pujas hasta mañana a las 21:00.`,
+    title: "Se enciende la vela de la Gran Subasta",
+    body: `Lotes: ${lots.map(lotLabel).join(", ")}. Pujas hasta mañana a las 21:00. Evento de la semana: ${EVENTS[event.key].nombre}. ${eventText(event)}`,
     url: `/partida/${game.id}`,
     dedupe: `subasta:${game.id}:${week}`,
   });
@@ -289,10 +288,21 @@ export async function auctionView(db: D1Database, game: GameRow, houseId: number
     .prepare(`SELECT b.lot_id, b.amount FROM bids b JOIN auction_lots l ON l.id = b.lot_id WHERE l.game_id = ? AND l.week = ? AND b.house_id = ?`)
     .bind(game.id, week, houseId)
     .all<{ lot_id: number; amount: number }>();
+  // Bloque 10: cuántos sobres (pujas) tiene cada lote, sin cantidades ni de quién.
+  const { results: counts } = await db
+    .prepare(`SELECT b.lot_id, COUNT(*) AS n FROM bids b JOIN auction_lots l ON l.id = b.lot_id WHERE l.game_id = ? AND l.week = ? GROUP BY b.lot_id`)
+    .bind(game.id, week)
+    .all<{ lot_id: number; n: number }>();
+  const announced = await db
+    .prepare("SELECT announced_at FROM game_events WHERE game_id = ? AND week = ?")
+    .bind(game.id, week)
+    .first<{ announced_at: string }>();
   const open = openAuctionWeek(game) === week;
   return {
     semana: week,
     abierta: open,
+    /** Cuándo se anunciaron los lotes: la vela empieza a arder entonces. */
+    abre: announced?.announced_at ?? null,
     lotes: rows.map((r) => {
       const lot = lotOf(r);
       return {
@@ -301,6 +311,7 @@ export async function auctionView(db: D1Database, game: GameRow, houseId: number
         carta: lot.kind === "card" ? { clave: lot.card, nombre: CARDS[lot.card].nombre, texto: CARDS[lot.card].texto } : null,
         recursos: lot.kind === "resources" ? lot.resources : null,
         miPuja: mine.find((m) => m.lot_id === r.id)?.amount ?? null,
+        sobres: counts.find((x) => x.lot_id === r.id)?.n ?? 0,
         ganador: open ? null : r.winner_house_id,
         precio: open ? null : r.price,
       };

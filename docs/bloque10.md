@@ -34,6 +34,19 @@ La pestaña es una columna de seis tarjetas de texto: Nueva oferta, Gran Subasta
 | 7. Corona y mercenarios | La Corona en Comercio (precio del día y lo que queda del tope semanal); los mercenarios en Castillo, junto a Reclutar. Sin atajo para comprar a la Corona desde las fichas de los edificios |
 | 8. Contraofertas | La oferta y sus contraofertas van en la misma tarjeta, una debajo de otra. Cada contraoferta puede llevar una frase corta (80 letras como mucho) |
 
+## Revisión del 23 de octubre
+
+Dudas resueltas con Pablo antes de empezar:
+
+- **Corona (punto 7):** ya no tiene tope semanal (se quitó el 22 de octubre), así que solo se enseña el precio del día. Los mercenarios ya estaban en Castillo, debajo de Reclutar.
+- **Alianzas:** las propuestas que te hacen van en «Para ti», con Aceptar y Rechazar; el resto del panel, plegado al final de Comercio hasta que el bloque 11 lo lleve a Reino.
+- **Valor en Oro:** en los dos lados, debajo de lo que se da y de lo que se pide.
+- **Si a quien hizo la oferta ya no le llega:** al intentar aceptarla, la oferta se retira sola y se le avisa («te faltaban 5 de Madera»).
+- **Volver a publicar:** botón en Recientes para repetir una oferta tuya caducada o retirada.
+- **Frase corta (punto 8):** en cualquier oferta, no solo en las contraofertas.
+- **Caducidad (punto 5):** también para las dirigidas y las contraofertas, sin notificación; en Recientes sale «caducada».
+- **Cantidades:** −5, +1, +5 y +10, y el número también se puede escribir.
+
 ## Pasos
 
 Van después de los bloques 5 (usan los precios de la Corona) y 6.
@@ -46,3 +59,11 @@ Van después de los bloques 5 (usan los precios de la Corona) y 6.
 6. **Corona y mercenarios** (punto 7): la Corona en Comercio y los mercenarios en Castillo, junto a Reclutar.
 7. **Hilo del trato** (punto 8): las contraofertas ya guardan su oferta madre (`parent_offer_id`); la tarjeta junta la cadena. La frase corta es una columna nueva, de 80 letras como mucho.
 8. **Comprobar en un móvil** de 390x844: hacer, contraofertar y aceptar un trato.
+
+## Hecho
+
+- **PR 1** (pasos 1 y 3): Para ti, Mercado y Tus ofertas arriba; la Gran Subasta en una línea si no está abierta (el resultado, plegado); Recientes, Alianzas y Tratos del reino plegados, y las propuestas de alianza recibidas en Para ti (`DiplomacyPanel` con `part="propuestas"`). El valor en Oro de cada lado va debajo de lo que se da y lo que se pide (`referenceValue` de `crown.ts`, con `referenceUnit` y `fairAmount` para «Precio justo»). La API ya enviaba solo los precios de la Corona. Los mercenarios ya estaban en Castillo, debajo de Reclutar.
+- **PR 2** (paso 2): formulario con dos lados, Das y Pides. Cada línea elige su recurso con cinco botones (los que ya están en otra línea salen apagados, así que no se puede dar y pedir lo mismo) y la cantidad con −5, +1, +5 y +10, o escribiéndola. «+ otro recurso» añade una línea y «Quitar» la quita. «Precio justo» rellena lo que se pide (si es un solo recurso) con `fairAmount`. Cada lado enseña lo que vale en Oro y, si falta algo, «te faltan 5 de Hierro». Una oferta nueva empieza dando de lo que más tienes y pidiendo de lo que menos.
+- **PR 3** (pasos 4 y 5): Aceptar en gris con «Te faltan 5 de Hierro» (`missingFor`) y «Solo las que puedo aceptar» en Mercado. Migración 0018: `offers.expires_after` (resolución actual + `TRADE.offerNights` al crearla, con `offerExpiry`), `offers.expired` y `offers.note`. `runResolution` retira las caducadas en su lote (`expireOffersStatement`); los bots de `pruebas.ts` ponen la caducidad al publicar. La tarjeta dice «Se retira en 2 noches» y Recientes «caducada», con «Volver a publicar». Si al aceptar a quien ofrece ya no le llega, `acceptOffer` retira la oferta y le avisa. El simulador no cambia: allí las ofertas se cierran el mismo día.
+- **PR 4** (pasos 7 y 8): la frase corta (`frase` en la API, 80 letras, `TRADE.noteMax`) en cualquier oferta. El hilo del trato va encima de la última oferta (`threadOf`); las contraofertas a tus ofertas públicas cuelgan de ellas en «Tus ofertas» en vez de salir en Para ti. Comprobado en 390x844: hacer, contraofertar dos veces, aceptar y volver a publicar; prueba de humo con caducidad y frase (64 comprobaciones).
+- **Gran Subasta** (extra, fuera de los pasos): escena dibujada en pxl (`docs/maquetas/bloque10/pxl/subasta.px.js` → `apps/web/src/art/subasta.ts`), montada en `art/auctionScene.ts` (`renderAuctionScene`, `lotAt`) y pintada en `components/AuctionScene.tsx`. `AuctionPanel.tsx`: abierta, arriba del todo en Comercio con la vela que se consume (desde `abre` hasta el cierre), los sobres por lote (`sobres` de `auctionView`) y una fila de tres columnas con el nombre de cada lote; tocar un lote abre la hoja para pujar. Cerrada, una línea plegada con el resultado contado la primera vez (`localStorage`). En el mapa, «Gran Subasta abierta ›» en la línea de avisos lleva a Comercio. El push del martes empieza por la subasta.

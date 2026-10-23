@@ -56,3 +56,29 @@ export function crownAffordable(realm: Resources, r: Resource, bought: number, g
     n++;
   }
 }
+
+/**
+ * Precio de referencia (bloque 10): lo que vale en Oro una unidad de `r` con
+ * los precios de la Corona sin su recargo. `prices`: el precio de la próxima
+ * unidad de cada recurso, como lo da `crownPrices` (el Oro vale 1).
+ */
+export function referenceUnit(prices: Partial<Resources>, r: Resource): number {
+  return r === "oro" ? 1 : (prices[r] ?? 0) / CROWN.markup;
+}
+
+/** Lo que vale en Oro un lote con el precio de referencia, redondeado. */
+export function referenceValue(bundle: Partial<Resources>, prices: Partial<Resources>): number {
+  const total = RESOURCES.reduce((a, r) => a + (bundle[r] ?? 0) * referenceUnit(prices, r), 0);
+  return Math.round(Math.round(total * 1e6) / 1e6);
+}
+
+/**
+ * «Precio justo»: cuántas unidades de `r` valen lo mismo que `bundle`, con el
+ * precio de referencia. Como poco 1; 0 si `r` no tiene precio.
+ */
+export function fairAmount(bundle: Partial<Resources>, prices: Partial<Resources>, r: Resource): number {
+  const unit = referenceUnit(prices, r);
+  if (unit <= 0) return 0;
+  const total = RESOURCES.reduce((a, k) => a + (bundle[k] ?? 0) * referenceUnit(prices, k), 0);
+  return Math.max(1, Math.round(Math.round((total / unit) * 1e6) / 1e6));
+}

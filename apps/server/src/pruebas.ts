@@ -65,7 +65,7 @@ import { COLORS, pickShield } from "./heraldry";
 import { clockOf, orderOf, runGameJobs, ORDER_COLUMNS, type OrderRow } from "./jobs";
 import { acceptAlliance, breakAlliance, cooling, declineAlliance, proposeAlliance } from "./alianzas";
 import type { NotifyEnv } from "./notify";
-import { acceptOffer, bundle, type OfferRow } from "./offers";
+import { acceptOffer, bundle, offerExpiry, type OfferRow } from "./offers";
 import { lotOf, openAuctionWeek, useCardStatements, type CardRow, type LotRow } from "./subasta";
 import {
   computeAllPrestige,
@@ -546,12 +546,12 @@ async function botsPlayDayInner(env: NotifyEnv, game: GameRow): Promise<void> {
         const w = offer.want;
         await db
           .prepare(
-            `INSERT INTO offers (game_id, from_house_id, to_house_id, give_pan, give_madera, give_piedra, give_hierro, give_oro,
+            `INSERT INTO offers (game_id, from_house_id, to_house_id, expires_after, give_pan, give_madera, give_piedra, give_hierro, give_oro,
                want_pan, want_madera, want_piedra, want_hierro, want_oro, created_at)
-             VALUES (?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+             VALUES (?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           )
           .bind(
-            game.id, h.id,
+            game.id, h.id, offerExpiry(game),
             g.pan ?? 0, g.madera ?? 0, g.piedra ?? 0, g.hierro ?? 0, g.oro ?? 0,
             w.pan ?? 0, w.madera ?? 0, w.piedra ?? 0, w.hierro ?? 0, w.oro ?? 0,
             gameNow(game).toISOString(),

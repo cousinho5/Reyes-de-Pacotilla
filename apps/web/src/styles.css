@@ -1234,7 +1234,98 @@ svg.ico {
 .offer-terms .res {
   margin-right: 0.4rem;
 }
+.offer-worth {
+  display: block;
+  font-family: var(--font-text);
+  font-weight: 400;
+  color: var(--ink-soft);
+}
+/* Bloque 10: hilo del trato. */
+.offer-thread {
+  margin: 0 0 0.4rem;
+  padding: 0 0 0.4rem 0.6rem;
+  list-style: none;
+  border-left: 3px solid var(--brass-lo);
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+}
+.offer-replies {
+  margin: 0.5rem 0 0 0.6rem;
+  padding-left: 0.6rem;
+  border-left: 3px solid var(--brass-lo);
+}
+.offer-note-text {
+  font-family: var(--font-serif);
+  font-style: italic;
+}
+.offer-note {
+  margin-top: 0.8rem;
+}
+.offer-who .offer-expiry {
+  margin-left: auto;
+  color: var(--ink-soft);
+}
+.offer-missing {
+  order: 9;
+  flex-basis: 100%;
+  color: #a8321f;
+}
 .offer .actions button {
+  min-height: var(--touch);
+}
+/* Bloque 10: formulario de oferta en dos lados, Das y Pides. */
+.offer-side {
+  margin-top: 0.8rem;
+}
+.offer-side h3 {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.offer-side h3 .offer-worth {
+  display: inline;
+  font-size: 0.85rem;
+}
+.offer-line {
+  padding: 0.5rem 0;
+  border-bottom: 1px dashed var(--line, rgba(0, 0, 0, 0.15));
+}
+.res-pick,
+.offer-amount {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.3rem;
+}
+.offer-amount {
+  margin-top: 0.35rem;
+}
+.res-pick button,
+.offer-amount button {
+  min-height: var(--touch);
+  padding: 0;
+}
+.res-pick button.on {
+  background: var(--brass, #e8c35a);
+  box-shadow: inset 0 0 0 2px var(--ink, #2a1c10);
+}
+.res-pick button:disabled {
+  opacity: 0.3;
+}
+.offer-amount input {
+  margin: 0;
+  min-height: var(--touch);
+  padding: 0.25rem;
+  text-align: center;
+  font-family: var(--font-pixel);
+  font-weight: 600;
+}
+.offer-line-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 1.6rem;
+}
+.offer-line-foot button.link {
   min-height: var(--touch);
 }
 .stepper {
@@ -2572,6 +2663,71 @@ label.check {
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
+/* Gran Subasta (bloque 10): la escena del subastador y una columna por lote. */
+.auction-scene {
+  position: relative;
+  margin: 0 -1rem 0.5rem;
+  border-top: 2px solid var(--wood-edge);
+  border-bottom: 2px solid var(--wood-edge);
+  line-height: 0;
+}
+.auction-scene canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 160 / 88;
+  image-rendering: pixelated;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.lot-cols {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.lot-cols li > button,
+.lot-cols li > div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  width: 100%;
+  height: 100%;
+  min-height: var(--touch);
+  padding: 0.4rem 0.25rem;
+  text-align: center;
+  font-size: 0.85rem;
+  line-height: 1.2;
+}
+.lot-cols li > button.on {
+  box-shadow: inset 0 0 0 2px var(--brass-lo);
+}
+.lot-cols small {
+  font-size: 0.78rem;
+}
+.lot-cols .my-bid {
+  color: var(--brass-lo);
+  font-weight: 700;
+}
+.auction-line[open] .auction-scene {
+  margin-top: 0.6rem;
+}
+/* La hoja cuelga de la tarjeta de la subasta: recupera el color claro de la madera. */
+.bid-sheet {
+  color: var(--chalk);
+}
+.bid-sheet h2 {
+  margin: 0 2.5rem 0.4rem 0;
+  color: var(--brass-hi);
+}
+.bid-sheet .muted,
+.bid-sheet .hint {
+  color: var(--chalk);
+  opacity: 0.8;
+}
 .scene-target {
   position: absolute;
   min-height: 0;
@@ -2704,17 +2860,21 @@ button.wide {
   color: #a8321f;
   font-weight: 700;
 }
-.house-settings summary {
+.house-settings summary,
+.fold summary {
   cursor: pointer;
   list-style: none;
 }
-.house-settings summary::-webkit-details-marker {
+.house-settings summary::-webkit-details-marker,
+.fold summary::-webkit-details-marker {
   display: none;
 }
-.house-settings summary h2 {
+.house-settings summary h2,
+.fold summary h2 {
   display: inline;
 }
-.house-settings summary::after {
+.house-settings summary::after,
+.fold summary::after {
   content: "";
   display: inline-block;
   width: 0.45em;
@@ -2725,7 +2885,8 @@ button.wide {
   transform: rotate(-45deg);
   transition: transform 0.15s;
 }
-.house-settings[open] summary::after {
+.house-settings[open] summary::after,
+.fold[open] summary::after {
   transform: rotate(45deg) translate(-0.15em, -0.15em);
 }
 .house-settings section {

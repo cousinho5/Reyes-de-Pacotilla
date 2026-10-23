@@ -249,6 +249,14 @@ export const CROWN = {
   demandDays: 7,
 };
 
+/** Comercio (bloque 10). */
+export const TRADE = {
+  /** Resoluciones que dura abierta una oferta: se retira sola tras la tercera. */
+  offerNights: 3,
+  /** Letras de la frase corta de una oferta. */
+  noteMax: 80,
+};
+
 /** Mercenarios de alquiler (bloque 5, `mercenaries.ts`). No comen Pan: lo pone la Corona. */
 export const MERCENARIES = {
   /** Alquiler: Oro por tropa y días que se quedan. */

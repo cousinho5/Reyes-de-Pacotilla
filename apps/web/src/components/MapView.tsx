@@ -24,6 +24,8 @@ interface Props {
   /** Noche de la cola que se está planeando (0 = la próxima resolución). */
   night: number;
   setNight: (n: number) => void;
+  /** Bloque 10: abrir Comercio (el aviso de la Gran Subasta abierta). */
+  onOpenTrade?: () => void;
 }
 
 /** "orden": el destino propone el verbo (bloque 12); "capitan": el Capitán va solo, sin tropas, a otra casilla tuya (bloque 4). */
@@ -79,7 +81,7 @@ function markSeen(game: number, n: number) {
   }
 }
 
-export function MapView({ state, draft, setDraft, act, night, setNight, editOrder, onEditOpened }: Props) {
+export function MapView({ state, draft, setDraft, act, night, setNight, editOrder, onEditOpened, onOpenTrade }: Props) {
   const now = state.casillas ?? [];
   const next = nextResolution(state);
   const nightsOpen = state.partida.estado === "active" && state.partida.ordenesAbiertas ? queueNights(state) : 1;
@@ -1097,7 +1099,13 @@ export function MapView({ state, draft, setDraft, act, night, setNight, editOrde
                   {replayable ? " · Ver la noche" : battles.size === 0 ? (showLast ? " · Ocultar flechas" : " · Ver flechas") : ""}
                 </button>
               )}
-              {threatIds.length === 0 && bannerIds.length === 0 && !(k === 0 && (battles.size > 0 || lastMoves.length > 0)) && (
+              {state.subasta?.abierta && onOpenTrade && (
+                <button className="alert-chip" onClick={onOpenTrade}>
+                  <Icon name="corona" size={16} color="#f1cf7d" />
+                  Gran Subasta abierta ›
+                </button>
+              )}
+              {threatIds.length === 0 && bannerIds.length === 0 && !state.subasta?.abierta && !(k === 0 && (battles.size > 0 || lastMoves.length > 0)) && (
                 <span className="alert-quiet">Sin avisos. Toca una casilla tuya y arrastra para mover.</span>
               )}
             </div>

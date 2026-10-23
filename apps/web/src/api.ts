@@ -91,6 +91,11 @@ export interface OfferInfo {
   aceptadaPor: number | null;
   contraofertaDe: number | null;
   creada: string;
+  /** Bloque 10: resolución tras la que se retira si sigue abierta. */
+  caducaTras: number | null;
+  caducada: boolean;
+  /** Frase corta de quien la hace (80 letras como mucho). */
+  frase: string | null;
 }
 
 export interface TradeInfo {
@@ -252,12 +257,16 @@ export interface GameState {
 export interface AuctionInfo {
   semana: number;
   abierta: boolean;
+  /** Cuándo se anunciaron los lotes (la vela empieza a arder entonces). */
+  abre?: string | null;
   lotes: {
     lote: number;
     nombre: string;
     carta: { clave: string; nombre: string; texto: string } | null;
     recursos: Partial<Resources> | null;
     miPuja: number | null;
+    /** Sobres (pujas) del lote, sin cantidades ni de quién. */
+    sobres?: number;
     ganador: number | null;
     precio: number | null;
   }[];
@@ -370,7 +379,7 @@ export const api = {
   setHelp: (id: number, recurso: Resource) => call<{ ok: true }>("POST", `/partidas/${id}/ayuda`, { recurso }),
   saveOrders: (id: number, ordenes: OrderView[]) => call<{ ok: true }>("PUT", `/partidas/${id}/ordenes`, { ordenes }),
   newCode: () => call<{ codigoAcceso: string }>("POST", "/codigo-nuevo"),
-  createOffer: (id: number, body: { para: number | null; da: Partial<Resources>; pide: Partial<Resources>; contraofertaDe?: number }) =>
+  createOffer: (id: number, body: { para: number | null; da: Partial<Resources>; pide: Partial<Resources>; contraofertaDe?: number; frase?: string }) =>
     call<{ ok: true }>("POST", `/partidas/${id}/ofertas`, body),
   acceptOffer: (id: number, oferta: number) => call<{ ok: true }>("POST", `/partidas/${id}/ofertas/${oferta}/aceptar`),
   rejectOffer: (id: number, oferta: number) => call<{ ok: true }>("POST", `/partidas/${id}/ofertas/${oferta}/rechazar`),

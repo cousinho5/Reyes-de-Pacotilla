@@ -1,4 +1,5 @@
-// Alianzas (bloque 8): pantalla sencilla. Propuestas recibidas y enviadas, tus
+// Alianzas (bloque 8): pantalla sencilla, plegada al final de Comercio; las
+// propuestas recibidas van en «Para ti» (bloque 10) hasta que el bloque 11 las lleve a Reino. Propuestas recibidas y enviadas, tus
 // alianzas (con las noches de aviso que quedan) y proponer una nueva con el
 // nombre solemne que pone Fray Abundio. La bonita llega con los bloques 9 a 12.
 
@@ -10,9 +11,14 @@ import { formatShort, houseName, withArticle } from "../ui";
 interface Props {
   state: GameState;
   act: (fn: () => Promise<unknown>, ok?: string) => Promise<void>;
+  /**
+   * Bloque 10: "propuestas" da solo las propuestas recibidas, como filas de la
+   * lista «Para ti» de Comercio; sin él, el resto del panel, plegado.
+   */
+  part?: "propuestas";
 }
 
-export function DiplomacyPanel({ state, act }: Props) {
+export function DiplomacyPanel({ state, act, part }: Props) {
   const info = state.alianzas;
   const me = state.yo.casa;
   const gameId = state.partida.id;
@@ -30,7 +36,7 @@ export function DiplomacyPanel({ state, act }: Props) {
     }
   };
   useEffect(() => {
-    if (active && info?.activas && name == null) void reroll();
+    if (active && info?.activas && name == null && part !== "propuestas") void reroll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, info?.activas]);
 
@@ -47,39 +53,40 @@ export function DiplomacyPanel({ state, act }: Props) {
   const left = (n: number | null) => (n == null ? null : n - state.partida.resolucionActual);
   const nights = (n: number) => `${n} ${n === 1 ? "noche" : "noches"}`;
 
+  if (part === "propuestas") {
+    return (
+      <>
+        {received.map((p) => (
+          <li key={p.id} className="alliance-row">
+            <ShieldIcon color={house(p.de)?.color ?? ""} escudo={house(p.de)?.escudo} size={26} />
+            <span className="grow">
+              <strong>{houseName(state.casas, p.de)}</strong> te propone la <em>{p.nombre}</em>.{" "}
+              <small className="muted">Caduca tras la resolución {p.caducaTras}.</small>
+            </span>
+            {active && (
+              <span className="actions">
+                <button className="primary" onClick={() => act(() => api.acceptAlliance(gameId, p.id), `Firmada la ${p.nombre}.`)}>
+                  Aceptar
+                </button>
+                <button onClick={() => act(() => api.declineAlliance(gameId, p.id), "Propuesta rechazada.")}>Rechazar</button>
+              </span>
+            )}
+          </li>
+        ))}
+      </>
+    );
+  }
+
   return (
-    <section className="card diplomacy">
-      <h2>Alianzas</h2>
+    <details className="card fold diplomacy">
+      <summary>
+        <h2>Alianzas{mine.length > 0 ? ` (${mine.length})` : ""}</h2>
+      </summary>
       <p className="muted">
         Con una alianza hay paso libre por las casillas del aliado (nunca su castillo), visión compartida y no os podéis atacar. Si atacáis
         juntos la misma casilla, hay una sola batalla. Romperla no cuesta nada, pero dura {nights(info.nochesDeAviso)} más y quien rompe
         no firma otra en {info.diasSinFirmar} días.
       </p>
-
-      {received.length > 0 && (
-        <>
-          <h3>Te proponen</h3>
-          <ul className="list">
-            {received.map((p) => (
-              <li key={p.id} className="alliance-row">
-                <ShieldIcon color={house(p.de)?.color ?? ""} escudo={house(p.de)?.escudo} size={26} />
-                <span className="grow">
-                  <strong>{houseName(state.casas, p.de)}</strong> te propone la <em>{p.nombre}</em>.{" "}
-                  <small className="muted">Caduca tras la resolución {p.caducaTras}.</small>
-                </span>
-                {active && (
-                  <span className="actions">
-                    <button className="primary" onClick={() => act(() => api.acceptAlliance(gameId, p.id), `Firmada la ${p.nombre}.`)}>
-                      Aceptar
-                    </button>
-                    <button onClick={() => act(() => api.declineAlliance(gameId, p.id), "Propuesta rechazada.")}>Rechazar</button>
-                  </span>
-                )}
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
 
       {mine.length > 0 && (
         <>
@@ -205,6 +212,6 @@ export function DiplomacyPanel({ state, act }: Props) {
           </ul>
         </>
       )}
-    </section>
+    </details>
   );
 }

@@ -52,6 +52,7 @@ import { publishBulletin } from "./boletin";
 import { loadMercenaries, mercenaryCount, mercenaryDawnStatements } from "./mercenarios";
 import { dueJobs, type GameClock } from "./scheduler";
 import { allianceNightStatements } from "./alianzas";
+import { expireOffersStatement } from "./offers";
 import {
   computeAllPrestige,
   loadBuildings,
@@ -513,6 +514,8 @@ export async function runResolution(env: NotifyEnv, game: GameRow, n: number, no
     }
   }
   statements.push(...extraStatements);
+  // Bloque 10: las ofertas que llevan abiertas tres resoluciones se retiran.
+  statements.push(expireOffersStatement(db, game, n, now));
 
   if (kind === "domingo") {
     // Foto de Prestigio y ayuda al último para la semana siguiente.
