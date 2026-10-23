@@ -1235,3 +1235,23 @@ Las cinemáticas del bloque 13 (`apps/web/src/cinematics.tsx`). Las viñetas de 
 
 1. Última semana del interregno. Quien quiera la corona, que se dé prisa.
 2. Quedan {n} noches. El cronista ya afila la pluma.
+
+## 23. Portada
+
+La portada del bloque 7 (`apps/web/src/home.ts`). Fray Abundio cambia de frase cada pocos segundos en su bocadillo.
+
+### 23.1 Bienvenida a quien no ha entrado
+
+1. El trono de Aldricia sigue vacío. Se buscan candidatos con ambición y sin alergia al pollo.
+2. Seis semanas, un trono y ninguna llave. El cronista ya ha afilado la pluma.
+3. Aquí se forjan reyes de verdad. Bueno, de pacotilla, pero reyes.
+4. El difunto Aldric insiste en que con él el reino iba mejor. El cronista no lo recuerda así.
+
+De noche se añaden:
+
+5. A estas horas solo velan los fantasmas y los que no han dado sus órdenes.
+6. El cronista duerme con un ojo abierto. El otro también, por si acaso.
+
+### 23.4 La hoja para entrar con el código
+
+1. Fray Abundio no lo apunta, por discreción y porque se le olvidaría.

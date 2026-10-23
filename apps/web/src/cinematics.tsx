@@ -59,7 +59,7 @@ const capital = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 // ---------------------------------------------------------------------------
 // Prólogo: la muerte del rey (punto 2 del bloque). Seis escenas, unos 45 segundos.
 
-function prologueCinematic(item: CinematicItem, state: GameState): Cinematic {
+function prologueCinematic(item: CinematicItem, state: CinematicMapData): Cinematic {
   const n = state.casas.length;
   const weeks = state.partida.semanas;
   return {
@@ -497,6 +497,11 @@ export function coronationCinematic(clave: string, titulo: string, data: Coronat
       },
     ],
   };
+}
+
+/** Bloque 7: el prólogo de la portada, con las siete casas de la partida de muestra. */
+export function samplePrologue(state: CinematicMapData): Cinematic {
+  return prologueCinematic({ clave: "prologo-muestra", tipo: "prologo", semana: 1, orden: 0, vista: true, sola: false }, state);
 }
 
 export function buildCinematic(item: CinematicItem, state: GameState): Cinematic | null {
