@@ -1,114 +1,166 @@
-import { useEffect, useState } from "react";
-import { api, type Me } from "../api";
+// Bloque 7: la portada. Arriba, Aldricia viva según la hora del móvil; debajo,
+// según quién llega: la bienvenida con los tres pasos (sin entrar) o las
+// partidas (con sesión). El código se escribe en una hoja, sin salir de aquí.
+// Abre al momento con lo último que se vio y, sin conexión, lo dice.
+
+import { useEffect, useMemo, useState } from "react";
+import { api, savedMe, type Me } from "../api";
 import { navigate } from "../App";
-import { FrayAbundio, ShieldIcon } from "../art";
-import { StaticWorld } from "../components/WorldCanvas";
+import { CodeSheet } from "../components/CodeSheet";
+import { FrayCard, Hero, Steps, useSky } from "../components/HomeParts";
+import { InstallCard, MainGame, Showcase, SmallGame } from "../components/HomeGames";
+import { CROWN_LINES, agoText, greeting, insideLines, mainGame, sortGames, toDeviceClock, welcomeLines, type HomeHour } from "../home";
 
-// Un trocito de Aldricia para la portada.
-const HERO = {
-  cols: 5,
-  rows: 2,
-  margin: 10,
-  seed: 3,
-  cells: (
-    [
-      ["bosque", "campos", "castillo", "montana", "montana"],
-      ["campos", "bosque", "fortaleza", "cantera", "puerto"],
-    ] as const
-  ).flatMap((row, y) =>
-    row.map((type, x) => ({
-      x,
-      y,
-      type,
-      owner: type === "castillo" ? "#B3291D" : type === "fortaleza" ? "#1B3C80" : null,
-      troops: type === "castillo" ? 9 : type === "fortaleza" ? 6 : null,
-      battle: x === 2 && y === 1,
-    })),
-  ),
-};
-
-export function Home() {
-  const [me, setMe] = useState<Me | null>(null);
+/** Pegar un enlace o un código de invitación. */
+function InviteField({ autoFocus }: { autoFocus?: boolean }) {
   const [invite, setInvite] = useState("");
-
-  useEffect(() => {
-    api.me().then(setMe).catch(() => setMe({ usuario: null, partidas: [] }));
-  }, []);
-
-  const estado = (e: string) => (e === "lobby" ? "En la sala de espera" : e === "active" ? "En juego" : "Terminada");
-
   return (
-    <main className="page">
-      <header className="hero">
-        <div className="hero-art board" aria-hidden>
-          <StaticWorld opts={HERO} />
-        </div>
-        <h1>Reyes de Pacotilla</h1>
-        <p className="subtitle">Aldricia, el Reino Más o Menos Unido</p>
-      </header>
+    <form
+      className="home-invite"
+      onSubmit={(e) => {
+        e.preventDefault();
+        const code = invite.trim().split("/").filter(Boolean).pop();
+        if (code) navigate(`/unirse/${code}`);
+      }}
+    >
+      <label htmlFor="home-invite">¿Tienes una invitación?</label>
+      <span>
+        <input id="home-invite" placeholder="Código o enlace" value={invite} autoFocus={autoFocus} onChange={(e) => setInvite(e.target.value)} />
+        <button type="submit" disabled={!invite.trim()}>
+          Ir
+        </button>
+      </span>
+    </form>
+  );
+}
 
-      {me?.usuario ? (
-        <section className="card">
-          <h2>Bienvenido, {me.usuario.nombre}</h2>
-          {me.partidas.length === 0 && <p>Aún no estás en ninguna partida. Pide un enlace de invitación.</p>}
-          <ul className="list">
-            {me.partidas.map((p) => (
-              <li key={p.id}>
-                <button className="row-button game-row" onClick={() => navigate(`/partida/${p.id}`)}>
-                  <ShieldIcon color={p.color} escudo={p.escudo} size={32} />
-                  <span>
-                    <strong>{p.nombre}</strong>
-                    <br />
-                    <small>
-                      {p.casa} · {estado(p.estado)}
-                      {p.prueba && " · prueba"}
-                    </small>
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-          <button
-            className="link"
-            onClick={async () => {
-              await api.logout();
-              setMe({ usuario: null, partidas: [] });
-            }}
-          >
-            Salir
+function Outside({ hour, crown, onCode }: { hour: HomeHour; crown: string | null; onCode: () => void }) {
+  const [invite, setInvite] = useState(false);
+  const lines = useMemo(() => withCrown(crown, welcomeLines(hour)), [crown, hour]);
+  return (
+    <>
+      <FrayCard lines={lines} mood="adulador" />
+      <div className="home-actions">
+        <button className="primary big" onClick={onCode}>
+          Entrar con mi código
+        </button>
+        {invite ? (
+          <InviteField autoFocus />
+        ) : (
+          <button className="ghost" onClick={() => setInvite(true)}>
+            Tengo una invitación
           </button>
-        </section>
-      ) : (
-        me && (
-          <section className="card welcome">
-            <FrayAbundio mood="adulador" size={72} />
-            <p>El trono está vacío y Fray Abundio ya afila la pluma.</p>
-            <button className="primary" onClick={() => navigate("/entrar")}>
-              Entrar con mi código
-            </button>
-          </section>
-        )
-      )}
+        )}
+      </div>
+      <Steps />
+      <footer className="home-foot">Reyes de Pacotilla · un juego para amigos con paciencia y poca vergüenza</footer>
+    </>
+  );
+}
 
-      <section className="card">
-        <h2>¿Tienes una invitación?</h2>
-        <form
-          className="inline"
-          onSubmit={(e) => {
-            e.preventDefault();
-            const code = invite.trim().split("/").pop();
-            if (code) navigate(`/unirse/${code}`);
+/** Lo que dice Fray Abundio de la corona, delante de lo de siempre. */
+const withCrown = (crown: string | null, lines: string[]) => (crown ? [crown, ...lines] : lines);
+
+/** La hora para las cuentas atrás, al minuto. */
+function useNow() {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 30_000);
+    return () => clearInterval(id);
+  }, []);
+  return now;
+}
+
+function Inside({ me, hour, crown, onLogout }: { me: Me; hour: HomeHour; crown: string | null; onLogout: () => void }) {
+  const now = useNow();
+  const sorted = useMemo(() => sortGames(me.partidas, now), [me.partidas, now]);
+  const main = mainGame(sorted);
+  const rest = sorted.filter((g) => g !== main);
+  const lines = useMemo(() => withCrown(crown, insideLines(main, now)), [crown, main, now]);
+  return (
+    <>
+      <h2 className="home-hello">
+        {greeting(hour)}, {me.usuario!.nombre}
+      </h2>
+      {me.guardadoA != null && (
+        <p className="home-offline" role="status">
+          Sin conexión: es lo que viste {agoText(me.guardadoA, now)}.
+        </p>
+      )}
+      <FrayCard lines={lines} mood={main?.resumen?.faltanOrdenes ? "escandalizado" : "solemne"} />
+      {main && <MainGame g={main} now={now} />}
+      {rest.length > 0 && (
+        <>
+          <h4 className="home-sep">Tus otras partidas</h4>
+          {rest.map((g) => (
+            <SmallGame key={g.id} g={g} now={now} />
+          ))}
+        </>
+      )}
+      <Showcase games={me.partidas} />
+      <InstallCard />
+      <InviteField />
+      <button className="link home-logout" onClick={onLogout}>
+        Salir
+      </button>
+    </>
+  );
+}
+
+const deviceClock = (m: Me): Me => ({ ...m, partidas: m.partidas.map((g) => toDeviceClock(g, new Date())) });
+
+export function Home({ askCode = false }: { askCode?: boolean }) {
+  // Lo último que se vio sale al momento; la red lo pone al día en cuanto llega.
+  const [me, setMe] = useState<Me | null>(() => {
+    const saved = savedMe();
+    return saved ? deviceClock(saved) : null;
+  });
+  const [code, setCode] = useState(askCode);
+  const [crown, setCrown] = useState<string | null>(null);
+  const sky = useSky();
+  const hour = sky.hour;
+  const onCrown = () => setCrown((c) => CROWN_LINES[(CROWN_LINES.indexOf(c ?? "") + 1) % CROWN_LINES.length]!);
+
+  const load = () =>
+    api
+      .me()
+      .then((m) => setMe(deviceClock(m)))
+      .catch(() => setMe((m) => m ?? { usuario: null, partidas: [] }));
+  useEffect(() => void load(), []);
+
+  const inside = !!me?.usuario;
+  return (
+    <main className="home">
+      <Hero sky={sky} small={inside} onCrown={onCrown} />
+      <div className="home-body">
+        {me &&
+          (inside ? (
+            <Inside
+              me={me}
+              hour={hour}
+              crown={crown}
+              onLogout={async () => {
+                await api.logout();
+                setMe({ usuario: null, partidas: [] });
+              }}
+            />
+          ) : (
+            <Outside hour={hour} crown={crown} onCode={() => setCode(true)} />
+          ))}
+      </div>
+      {code && (
+        <CodeSheet
+          onClose={() => {
+            setCode(false);
+            if (window.location.pathname === "/entrar") window.history.replaceState(null, "", "/");
           }}
-        >
-          <input
-            aria-label="Código o enlace de invitación"
-            placeholder="Código o enlace"
-            value={invite}
-            onChange={(e) => setInvite(e.target.value)}
-          />
-          <button type="submit">Ir</button>
-        </form>
-      </section>
+          onDone={() => {
+            setCode(false);
+            if (window.location.pathname === "/entrar") window.history.replaceState(null, "", "/");
+            void load();
+          }}
+        />
+      )}
     </main>
   );
 }

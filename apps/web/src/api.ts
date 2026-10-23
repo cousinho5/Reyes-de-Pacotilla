@@ -25,7 +25,49 @@ async function call<T>(method: string, path: string, body?: unknown): Promise<T>
 
 export interface Me {
   usuario: { id: number; nombre: string } | null;
-  partidas: { id: number; nombre: string; estado: string; prueba?: boolean; casa: string; color: string; escudo?: ShieldView }[];
+  partidas: MyGame[];
+  /** Solo en el cliente: sin conexión, cuándo se guardó lo que se enseña (ms). */
+  guardadoA?: number;
+}
+
+/** Bloque 7: lo que la portada cuenta de una partida empezada (dentro de la niebla de tu casa). */
+export interface HomeSummary {
+  noche: number | null;
+  totalNoches: number;
+  semana: number;
+  cierre: string | null;
+  ordenesAbiertas: boolean;
+  faltanOrdenes: boolean;
+  ataques: { casilla: string; resultado: "resistio" | "perdida" | "conquista" | "fallo" }[];
+  boletin: { semana: number; edicion: "domingo" | "miercoles" } | null;
+  ofertas: number;
+  clasificacion: { casa: number; total: number }[];
+  puesto: number | null;
+  puestoAntes: number | null;
+  mapa: { columnas: number; filas: number; casillas: [number, number, number, number][] } | null;
+  final: { ganador: number | null; puesto: number | null; fecha: string | null } | null;
+  /** Solo en las partidas de prueba: su hora simulada. */
+  ahora?: string;
+}
+
+export interface MyGame {
+  id: number;
+  nombre: string;
+  estado: "lobby" | "active" | "finished";
+  prueba?: boolean;
+  casa: string;
+  color: string;
+  escudo?: ShieldView;
+  /** Lo que sigue llega desde el bloque 7 (las respuestas guardadas de antes no lo traen). */
+  casaId?: number;
+  semanas?: number;
+  inicio?: string | null;
+  esCreador?: boolean;
+  codigoInvitacion?: string | null;
+  casas?: HouseInfo[];
+  resumen?: HomeSummary | null;
+  /** Tu título en la última partida acabada (para la vitrina). */
+  titulo?: string | null;
 }
 
 export interface ShieldView {
@@ -49,8 +91,11 @@ export interface HouseForm {
 }
 
 export interface Invitation {
-  partida: { id: number; nombre: string; estado: string; semanas: number };
-  casas: { nombre: string; color: string; escudo?: ShieldView }[];
+  partida: { id: number; nombre: string; estado: string; semanas: number; inicio?: string | null };
+  /** Bloque 7: quién creó la partida y cuántas casas caben. */
+  anfitrion?: string | null;
+  plazas?: number;
+  casas: { nombre: string; color: string; lema?: string | null; escudo?: ShieldView }[];
   coloresLibres: string[];
   yaDentro: boolean;
 }
@@ -399,6 +444,10 @@ function forgetSaved() {
     /* sin almacenamiento */
   }
 }
+/** Lo último que se vio en la portada (sin la hora en que se guardó), o null. */
+export function savedMe(): Me | null {
+  return readSaved<Me>("yo")?.data ?? null;
+}
 /** Sin red (no un error del servidor): fetch falla con TypeError. */
 export const isOffline = (err: unknown) => !(err instanceof ApiError);
 
@@ -410,7 +459,7 @@ export const api = {
       return me;
     } catch (err) {
       const saved = isOffline(err) ? readSaved<Me>("yo") : null;
-      if (saved) return saved.data;
+      if (saved) return { ...saved.data, guardadoA: saved.at };
       throw err;
     }
   },

@@ -1235,3 +1235,62 @@ Las cinemáticas del bloque 13 (`apps/web/src/cinematics.tsx`). Las viñetas de 
 
 1. Última semana del interregno. Quien quiera la corona, que se dé prisa.
 2. Quedan {n} noches. El cronista ya afila la pluma.
+
+## 23. Portada
+
+La portada del bloque 7 (`apps/web/src/home.ts`). Fray Abundio cambia de frase cada pocos segundos en su bocadillo. La tarjeta de instalar usa la 11.11.
+
+### 23.1 Bienvenida a quien no ha entrado
+
+1. El trono de Aldricia sigue vacío. Se buscan candidatos con ambición y sin alergia al pollo.
+2. Seis semanas, un trono y ninguna llave. El cronista ya ha afilado la pluma.
+3. Aquí se forjan reyes de verdad. Bueno, de pacotilla, pero reyes.
+4. El difunto Aldric insiste en que con él el reino iba mejor. El cronista no lo recuerda así.
+
+De noche se añaden:
+
+5. A estas horas solo velan los fantasmas y los que no han dado sus órdenes.
+6. El cronista duerme con un ojo abierto. El otro también, por si acaso.
+
+### 23.2 Con partidas
+
+Según la partida de arriba (la más urgente). Si toca más de una, se turnan en este orden.
+
+- Te faltan órdenes:
+  1. Las órdenes de esta noche siguen en blanco. El cronista no sabe escribir sobre nada, aunque lo intenta.
+  2. Quedan {tiempo} para el cierre y vuestras tropas miran al cielo esperando instrucciones.
+- Anoche perdiste una casilla: Anoche perdisteis {casilla}. El cronista no dirá que lo vio venir, pero lo vio venir.
+- Anoche conquistaste una: Anoche conquistasteis {casilla}. El cronista ya busca adjetivos a la altura.
+- Anoche resististe: Anoche atacaron vuestras tierras y no pasaron. El cronista lo apunta como hazaña.
+- Vas primero: {casa} va en cabeza con {n} de Prestigio. El cronista ya ensaya la reverencia, por si acaso.
+- Vas detrás: {casa} va {puesto}.º, a {n} de Prestigio del primero. El cronista lo considera un triunfo moral.
+- Vas último: {casa} cierra la clasificación. Desde abajo, dicen, se ve mejor el cielo.
+- Sin nada que contar: Noche tranquila en Aldricia. Sospechosamente tranquila.
+- En la sala de espera: La corte de «{partida}» aún se está reuniendo. El cronista guarda sitio, y pan.
+- Acabada y ganaste: {casa} lleva la corona de «{partida}». El cronista lo dijo desde el principio, en voz muy baja.
+- Acabada: «{partida}» ya tiene rey. El cronista recomienda ver la coronación, aunque duela.
+- Sin partidas: Aún no estás en ninguna partida. Pide un enlace de invitación: el cronista no se presenta solo.
+
+### 23.3 Invitación
+
+1. Una invitación a la corte. El cronista recomienda aceptar: la comida es buena, salvo el pollo.
+2. Se busca casa con ambición, escudo propio y pocos escrúpulos. Lo del escudo es obligatorio.
+
+Si la partida ya ha empezado: Llegáis tarde: la corte ya está repartiéndose el reino. El cronista os guarda sitio en la próxima.
+
+Si ya tienes casa en ella: Ya tenéis casa en esta corte. El cronista no apunta a nadie dos veces, por ahorrar tinta.
+
+Si la invitación no existe: Esa invitación no aparece en ningún archivo. El cronista sospecha de las ratas.
+
+### 23.4 La hoja para entrar con el código
+
+1. Fray Abundio no lo apunta, por discreción y porque se le olvidaría.
+
+### 23.5 La corona del título
+
+Al tocarla, la corona se pone derecha un momento y vuelve a torcerse.
+
+1. No la toquéis, que se tuerce sola. Como todo en Aldricia.
+2. La corona está torcida a propósito. El cronista lo sabe porque lo dice él.
+3. Ponerla derecha no os hace más reyes. Pero queda bonito.
+4. El difunto Aldric también la enderezaba. Mirad cómo acabó.

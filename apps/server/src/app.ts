@@ -86,6 +86,7 @@ import { auctionView, handView, openAuctionWeek, spiedHouses, useCardStatements,
 import { addBots, advance, botsPlayDay, deleteTestGame, testStart } from "./pruebas";
 import { ransomStatements } from "./rescate";
 import { coronationView, publicCoronation, shareKeyOf } from "./coronacion";
+import { loadHomeSummary } from "./portada";
 import { cinematicsView, isCinematicKey } from "./cinematicas";
 import { prestigeHistory, relations } from "./reino";
 import { crownCost, crownMarket, crownPriceView, crownPurchaseStatements } from "./corona";
@@ -185,33 +186,53 @@ app.post("/api/salir", (c) => {
 app.get("/api/yo", async (c) => {
   const s = c.get("session");
   if (!s) return c.json({ usuario: null, partidas: [] });
-  const user = await c.env.DB.prepare("SELECT id, display_name FROM users WHERE id = ?")
+  const db = c.env.DB;
+  const user = await db.prepare("SELECT id, display_name FROM users WHERE id = ?")
     .bind(s.userId)
     .first<{ id: number; display_name: string }>();
-  const { results } = await c.env.DB.prepare(
-    `SELECT g.id, g.name, g.status, g.is_test, h.name AS casa, h.color, h.shield_shape, h.shield_division, h.color2, h.symbol, h.metal
+  const { results } = await db.prepare(
+    `SELECT g.*, h.id AS house_id, h.name AS casa, h.color, h.shield_shape, h.shield_division, h.color2, h.symbol, h.metal
      FROM houses h JOIN games g ON g.id = h.game_id WHERE h.user_id = ? ORDER BY g.id DESC`,
   )
     .bind(s.userId)
     .all<
-      Pick<HouseRow, "color" | "shield_shape" | "shield_division" | "color2" | "symbol" | "metal"> & {
-        id: number;
-        name: string;
-        status: string;
-        is_test: number;
-        casa: string;
-      }
+      GameRow &
+        Pick<HouseRow, "color" | "shield_shape" | "shield_division" | "color2" | "symbol" | "metal"> & { house_id: number; casa: string }
     >();
+  // Bloque 7: lo que la portada cuenta de cada partida, dentro de la niebla de esa casa.
+  const games = await Promise.all(
+    results.map(async (g) => {
+      const houses = await loadHouses(db, g.id);
+      const casas = houses.map((h) => ({ id: h.id, nombre: h.name, color: h.color, lema: h.motto, escudo: shieldView(h) }));
+      if (g.status === "lobby") {
+        return { g, casas, resumen: null };
+      }
+      return { g, casas, resumen: await loadHomeSummary(db, g, g.house_id) };
+    }),
+  );
+  // El título de la última partida acabada (de verdad, no de prueba), para la vitrina.
+  const last = games.find((x) => x.g.status === "finished" && x.g.is_test !== 1);
+  const lastTitle = last
+    ? ((await coronationView(db, last.g))?.titulos.find((t) => t.casa === last.g.house_id)?.nombre ?? null)
+    : null;
   return c.json({
     usuario: user ? { id: user.id, nombre: user.display_name } : null,
-    partidas: results.map((g) => ({
+    partidas: games.map(({ g, casas, resumen }) => ({
       id: g.id,
       nombre: g.name,
       estado: g.status,
       prueba: g.is_test === 1,
       casa: g.casa,
+      casaId: g.house_id,
       color: g.color,
       escudo: shieldView(g),
+      semanas: g.weeks,
+      inicio: g.start_date,
+      esCreador: g.created_by === s.userId,
+      codigoInvitacion: g.status === "lobby" && g.created_by === s.userId ? g.invite_code : null,
+      casas,
+      resumen,
+      titulo: last && g.id === last.g.id ? lastTitle : null,
     })),
   });
 });
@@ -329,15 +350,20 @@ app.get("/api/coronacion/:clave", async (c) => {
 });
 
 app.get("/api/invitacion/:codigo", async (c) => {
-  const game = await c.env.DB.prepare("SELECT id, name, status, weeks FROM games WHERE invite_code = ?")
+  // Bloque 7: el bando dice quién invita y cuándo empieza (si ya hay fecha).
+  const game = await c.env.DB.prepare(
+    "SELECT g.id, g.name, g.status, g.weeks, g.start_date, u.display_name AS host FROM games g LEFT JOIN users u ON u.id = g.created_by WHERE g.invite_code = ?",
+  )
     .bind(normalizeCode(c.req.param("codigo")))
-    .first<{ id: number; name: string; status: string; weeks: number }>();
+    .first<{ id: number; name: string; status: string; weeks: number; start_date: string | null; host: string | null }>();
   if (!game) return fail(c, 404, "Esa invitación no existe.");
   const houses = await loadHouses(c.env.DB, game.id);
   const s = c.get("session");
   return c.json({
-    partida: { id: game.id, nombre: game.name, estado: game.status, semanas: game.weeks },
-    casas: houses.map((h) => ({ nombre: h.name, color: h.color, escudo: shieldView(h) })),
+    partida: { id: game.id, nombre: game.name, estado: game.status, semanas: game.weeks, inicio: game.start_date },
+    anfitrion: game.host,
+    plazas: 8,
+    casas: houses.map((h) => ({ nombre: h.name, color: h.color, lema: h.motto, escudo: shieldView(h) })),
     coloresLibres: COLORS.filter((col) => !houses.some((h) => h.color === col)),
     yaDentro: s ? houses.some((h) => h.user_id === s.userId) : false,
   });

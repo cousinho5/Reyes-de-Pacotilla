@@ -5,7 +5,6 @@ import { Home } from "./pages/Home";
 // Bloque 6: las páginas que se usan poco, en su propio trozo de JS.
 const Create = lazy(() => import("./pages/Create").then((m) => ({ default: m.Create })));
 const Join = lazy(() => import("./pages/Join").then((m) => ({ default: m.Join })));
-const Login = lazy(() => import("./pages/Login").then((m) => ({ default: m.Login })));
 const Coronation = lazy(() => import("./pages/Coronation").then((m) => ({ default: m.Coronation })));
 
 /** Enrutador mínimo: /, /entrar, /crear, /unirse/:codigo, /partida/:id, /coronacion/:clave */
@@ -34,7 +33,8 @@ export function App() {
     <Coronation clave={decodeURIComponent(crowned[1]!)} />
   ) : join ? (
     <Join code={decodeURIComponent(join[1]!)} />
-  ) : path === "/entrar" ? <Login /> : path === "/crear" ? <Create /> : null;
+  ) : path === "/crear" ? <Create /> : null;
   if (page) return <Suspense fallback={<main className="page">Cargando…</main>}>{page}</Suspense>;
-  return <Home />;
+  // Bloque 7: /entrar es la portada con la hoja del código abierta (los enlaces de antes siguen valiendo).
+  return <Home key={path} askCode={path === "/entrar"} />;
 }

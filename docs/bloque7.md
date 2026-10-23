@@ -34,7 +34,7 @@ La portada es correcta pero plana: un trocito de mapa quieto, el título y dos t
 | 4. Si ya has entrado | Tarjeta grande con la partida más urgente (la que te pide órdenes o cierra antes) y el resto debajo, más pequeñas |
 | 5. Qué cuenta cada partida | Cuenta atrás hasta el cierre de órdenes, si te faltan órdenes, ataques de anoche y cómo acabaron, boletín nuevo, ofertas de comercio, puesto y Prestigio, y un mini mapa de tu reino. Todo dentro de la niebla de tu casa |
 | 6. Fray Abundio | Frases nuevas en el banco (sección 11.12, Portada) según si has entrado, la hora y cómo va tu partida, rotando cada pocos segundos |
-| 7. Quien llega por primera vez | Presentación corta: lema, «para 4 a 8 amigos · 6 semanas · 5 minutos al día», tres pasos ilustrados y «Ver el prólogo» (bloque 13) |
+| 7. Quien llega por primera vez | Presentación corta: lema, «para 4 a 8 amigos · 6 semanas · 5 minutos al día», tres pasos ilustrados (el prólogo del bloque 13 sale solo al empezar cada partida, no en la portada) |
 | 8. Entrar con tu código | Hoja que sube desde abajo con seis casillas, sin salir de la portada |
 | 9. Invitación | Bando real con quién invita, nombre de la partida, cuándo empieza, casas apuntadas con escudo y lema, y sitios libres |
 | 10. Vitrina de coronas | Sí: coronas ganadas, partidas jugadas y el título de la última |
@@ -55,7 +55,7 @@ Se mueven solos el humo de las chimeneas, una carreta con burro que sube, un ald
 
 ## Las tres pantallas
 
-- **Sin entrar:** Fray Abundio da la bienvenida; «Entrar con mi código» (abre la hoja) y «Tengo una invitación»; «Ver el prólogo (45 s)»; la presentación «Un trono vacío y demasiados aspirantes» con sus tres pasos.
+- **Sin entrar:** Fray Abundio da la bienvenida; «Entrar con mi código» (abre la hoja) y «Tengo una invitación»; la presentación «Un trono vacío y demasiados aspirantes» con sus tres pasos.
 - **Con partidas:** saludo según la hora («Buenas tardes, Cimentia») y Fray con una frase sobre cómo vas. La tarjeta de la partida más urgente con el sello «Te toca», la cuenta atrás («Órdenes: cierran en 3 h 12 min»), los avisos, la clasificación en escudos, el mini mapa y «Entrar en mi castillo». Debajo, las demás partidas (una por empezar, una terminada con «Ver la coronación»), la vitrina de coronas, la tarjeta de instalar, el campo para pegar una invitación y Salir.
 - **Invitación:** el bando real que se desenrolla, «Ya en la corte» con los escudos y los sitios libres, «Crear mi casa», entrar con código para quien ya juega y un desplegable «¿Qué es Reyes de Pacotilla?».
 
@@ -71,3 +71,34 @@ Van después de los bloques 3 (banco de frases), 6 (rendimiento en móvil), 11 (
 6. **Fray Abundio.** Añadir la sección 11.12 (Portada) a `docs/banco-de-frases.md` con frases para sin entrar, con partidas (según cómo vas) e invitación.
 7. **Vitrina e instalar.** Contar coronas y partidas jugadas; tarjeta de instalar con la frase del banco 11.11.
 8. **Comprobar** en un móvil de 390x844 con Playwright las tres pantallas y las cuatro horas, medir el rendimiento con las reglas del bloque 6 y comprobar que con «reducir movimiento» la escena queda quieta.
+
+## Dudas resueltas (23 de octubre)
+
+Pablo contestó en el documento «Bloque 7: preguntas y propuestas»:
+
+- **Todo lo propuesto, sí:** el orden por urgencia, solo los ataques de tu casa, el boletín «nuevo» con `bulletinSeen`, el mini mapa del reino entero, la sección 23 del banco, el texto de la sala de espera, qué cuenta como corona, la hoja de instalar del iPhone, la etiqueta de las partidas de prueba, `/entrar` con la hoja, los cuatro puntos que no encajaban (también: con «reducir movimiento», sin paralaje ni corona que cae) y las ideas A (los avisos abren su pestaña), C («Invitar a más»), D (la portada abre sin conexión con «visto hace 2 h») y E (la cuenta atrás en vivo, roja en la última hora).
+- **El prólogo, solo al empezar cada partida:** fuera «Ver el prólogo» de la portada y la partida de muestra.
+- **La hora del móvil, con fundido:** en los últimos minutos de cada franja (`HOUR_FADE_MINUTES`, 10) la escena de la siguiente se va poniendo encima.
+- **Idea B (número en el icono de la app): no.**
+- **Idea F (la corona del título se endereza al tocarla y Fray Abundio dice algo): «Me gusta mucho».** Frases en la sección 23.5 del banco.
+
+## Hecho
+
+- **PR 1 (#88): la escena y la portada sin entrar.** Los dibujos de `pxl/portada.px.js` pasados con `pxl-a-juego.mjs` a `apps/web/src/art/portada.ts` (los planos y lo que se mueve) y `art/portadaIconos.ts` (corona, brillo, carreta y bandera, que la página usa sin esperar a la escena). La escena es `components/Panorama.tsx` con el dibujo de `art/panorama.ts` (`drawLayer`, `tint`, `HOURS`): un lienzo por plano, paralaje al deslizar, 14 imágenes por segundo, parada si la pestaña no se ve o la escena sale de la pantalla y quieta con «reducir movimiento»; va en su propio trozo de JS y mientras llega se ve el cielo de la hora en CSS. La hora sale del reloj del móvil (`hourAt` de `apps/web/src/home.ts`; `?hora=noche` la fija para las capturas). `pages/Home.tsx` con el título y la corona que cae, Fray Abundio con las frases de la sección 23 del banco, «Entrar con mi código» en la hoja `components/CodeSheet.tsx` (`/entrar` abre la portada con la hoja; `Login.tsx` ya no existe), «Tengo una invitación» y los tres pasos. (Llevaba también «Ver el prólogo» con una partida de muestra; se quitó en el PR 3, ver las dudas resueltas.)
+- **PR 2 (también en #88): con partidas.** `/api/yo` da en cada partida empezada un `resumen` (`apps/server/src/portada.ts`): `loadHomeSummary` lee filas amplias y `homeSummary`, pura y con sus pruebas de niebla (`apps/server/test/portada.test.ts`), se queda con la noche, el cierre, si faltan órdenes, los combates de la última noche de esa casa (`combatResult`), el último boletín, las ofertas que puede aceptar, la clasificación por la foto de Prestigio de la última noche y la anterior, de quién es cada casilla para el mini mapa (sin tropas) y el final. En las pruebas manda `ahora` y el cliente pasa el cierre a la hora del móvil (`toDeviceClock`). Además, `casas`, `inicio`, el código de invitación si la creaste y `titulo` (el de la última partida acabada, para la vitrina). En el cliente, `sortGames`/`mainGame`/`insideLines`/`showcase` de `apps/web/src/home.ts` y las tarjetas de `components/HomeGames.tsx` (`MainGame`, `SmallGame`, `Showcase`, `InstallCard`): cuenta atrás que baja sola y se pone roja en la última hora, avisos que abren su pestaña (`?pestana=ordenes|comercio|reino` en `Game.tsx`), escudos de la clasificación, mini mapa, «Invitar a más» con el menú de compartir y la tarjeta de instalar (en el iPhone, los pasos a mano; «Ahora no» la quita 30 días). El boletín «nuevo» se sabe con `bulletinSeen` del móvil. (Llevaba también el número en el icono de la app; se quitó en el PR 3.)
+- **PR 3 (también en #88): invitación, tus respuestas y medidas.** La invitación (`pages/Join.tsx`) es el bando real: quién invita, el nombre de la partida, sus semanas y cuándo empieza (`startText`), el sello de lacre con la inicial, Fray Abundio (23.3), «Ya en la corte · N de 8» con escudos, lemas y sitios libres, «Crear mi casa» que abre el formulario, «Ya tengo casa…» con la hoja del código y el desplegable «¿Qué es Reyes de Pacotilla?»; `/api/invitacion/:codigo` da `anfitrion`, `inicio`, `plazas` y el lema de cada casa. Las piezas que comparte con la portada están en `components/HomeParts.tsx` (`Hero`, `FrayCard`, `Steps`, `useSky`). La corona del título es un botón de 48 px: se pone derecha con un saltito, vuelve a torcerse y Fray Abundio dice una frase de la 23.5 (`CROWN_LINES`). El cielo se funde con la franja siguiente en sus últimos 10 minutos (`skyAt` de `home.ts`; una segunda escena encima que va subiendo de opacidad). La portada abre al momento con lo último que se vio (`savedMe` de `api.ts`) y, sin conexión, dice «Sin conexión: es lo que viste hace 2 h» (`agoText`). Fuera el prólogo de muestra y el número del icono. `npm run medir-movil` mide también la portada (sin entrar, con sesión y con «reducir movimiento») y antes cierra las cinemáticas y el boletín que salen solos.
+
+### Medidas (23 de octubre de 2026)
+
+`npm run medir-movil`, en el móvil simulado de 390x844:
+
+| Portada | Móvil normal | Móvil flojo y 4G lenta |
+| --- | --- | --- |
+| Descarga sin entrar / con sesión | 298 KB / 323 KB | 298 KB / 323 KB |
+| Se ve la página sin entrar | 0,14 s | 1,51 s |
+| Se ve la escena sin entrar / con sesión | 0,17 s / 0,20 s | 1,81 s / 1,88 s |
+| Pantalla congelada (la más larga) | 0,00 s | 0,11 s |
+| Fluidez con la escena en marcha | 60 imágenes/s | 60 imágenes/s |
+| Con «reducir movimiento», quieta | sí | sí |
+
+En la portada no queda nada que se toque por debajo de 48 px.
