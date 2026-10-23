@@ -102,6 +102,22 @@ function paint(img: CastleSceneImage, s: Sprite, x0: number, y0: number, extra: 
   });
 }
 
+/** Un dibujo suelto, teñido con el color de la casa (las miniaturas de la lista de edificios). */
+export function spriteImage(s: Sprite, color: string): { rgba: Uint8ClampedArray; w: number; h: number } {
+  const w = Math.max(...s.grid.map((r) => r.length));
+  const h = s.grid.length;
+  const colors = new Map<string, [number, number, number]>();
+  for (const [k, v] of Object.entries({ ...s.palette, ...housePalette(color) })) colors.set(k, rgb(v));
+  const rgba = new Uint8ClampedArray(w * h * 4);
+  s.grid.forEach((row, y) => {
+    for (let x = 0; x < row.length; x++) {
+      const c = colors.get(row[x]!);
+      if (c) rgba.set([c[0], c[1], c[2], 255], (y * w + x) * 4);
+    }
+  });
+  return { rgba, w, h };
+}
+
 /** Monta la escena entera. Determinista: la misma entrada da la misma imagen. */
 export function renderCastleScene(input: CastleSceneInput): CastleSceneImage {
   const img: CastleSceneImage = {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { api, type GameState } from "../api";
 import { canVibrate, setVibrationOn, vibrate, vibrationOn } from "../haptics";
 import { currentSubscription, disablePush, enablePush, isIOS, pushSupport } from "../push";
@@ -8,19 +8,10 @@ interface Props {
   act: (fn: () => Promise<unknown>, ok?: string) => Promise<void>;
 }
 
-/** Objetivo secreto, ausencias y avisos (pestaña Castillo). */
-export function HouseSettings({ state, act }: Props) {
+/** Objetivo secreto (pestaña Castillo). */
+export function SecretObjective({ state, act }: Props) {
   const gameId = state.partida.id;
   const obj = state.yo.objetivo;
-  const aus = state.yo.ausencia;
-  const [pushOn, setPushOn] = useState<boolean | null>(null);
-  const support = pushSupport();
-  const [buzz, setBuzz] = useState(vibrationOn);
-
-  useEffect(() => {
-    currentSubscription().then((s) => setPushOn(!!s));
-  }, []);
-
   return (
     <>
       {obj && (
@@ -60,10 +51,35 @@ export function HouseSettings({ state, act }: Props) {
           )}
         </section>
       )}
+    </>
+  );
+}
+
+/**
+ * Ajustes de la casa (bloque 2): plegados al final de la pestaña Castillo.
+ * Ausencias, avisos y, en `children`, lo que pides a la Corona si vas último.
+ */
+export function HouseSettings({ state, act, children }: Props & { children?: ReactNode }) {
+  const gameId = state.partida.id;
+  const aus = state.yo.ausencia;
+  const [pushOn, setPushOn] = useState<boolean | null>(null);
+  const support = pushSupport();
+  const [buzz, setBuzz] = useState(vibrationOn);
+
+  useEffect(() => {
+    currentSubscription().then((s) => setPushOn(!!s));
+  }, []);
+
+  return (
+    <details className="card house-settings">
+      <summary>
+        <h2>Ajustes de la casa</h2>
+      </summary>
+      {children}
 
       {aus && state.partida.estado === "active" && (
-        <section className="card">
-          <h2>Si te ausentas</h2>
+        <section>
+          <h3>Si te ausentas</h3>
           <p className="muted">
             Tras 3 días sin entrar, o si activas las vacaciones, el piloto automático juega por ti una vez al día y tus tierras
             reciben +25% de defensa. Nunca ataca ni acepta tratos.
@@ -92,8 +108,8 @@ export function HouseSettings({ state, act }: Props) {
         </section>
       )}
 
-      <section className="card">
-        <h2>Avisos</h2>
+      <section>
+        <h3>Avisos</h3>
         {support === "ios-no-instalada" ? (
           <p>
             En iPhone los avisos solo llegan con el juego instalado: toca <strong>Compartir</strong> y luego{" "}
@@ -165,6 +181,6 @@ export function HouseSettings({ state, act }: Props) {
           </label>
         )}
       </section>
-    </>
+    </details>
   );
 }
