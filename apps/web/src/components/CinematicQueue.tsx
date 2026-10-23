@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { api, type CinematicItem, type GameState } from "../api";
 import { buildCinematic } from "../cinematics";
 import { markSeenHere } from "../cinematicQueue";
+import { unreadBulletins } from "../bulletinSeen";
 import { AmbitionSheet, ambitionPending } from "./AmbitionSheet";
 import { CinematicPlayer } from "./CinematicPlayer";
 
@@ -68,5 +69,8 @@ export function CinematicQueue({
           />
         )
       : undefined;
-  return <CinematicPlayer key={item!.clave} cinematic={cinematic} onClose={close} epilogue={epilogue} />;
+  // El fantasma sale antes del boletín que lo trae: al acabar, se abre el boletín.
+  const doneLabel =
+    item!.tipo === "fantasma" && index + 1 >= play.length && unreadBulletins(state).length > 0 ? "Leer el boletín" : undefined;
+  return <CinematicPlayer key={item!.clave} cinematic={cinematic} onClose={close} epilogue={epilogue} doneLabel={doneLabel} />;
 }

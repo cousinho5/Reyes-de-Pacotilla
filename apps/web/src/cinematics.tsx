@@ -8,6 +8,7 @@ import { type Painter, hash } from "./art/cinema";
 import * as pregon from "./art/pregonero";
 import * as prologo from "./art/prologo";
 import * as coro from "./art/coronacionScene";
+import * as escenas from "./art/eventosScene";
 import type { FrayMood } from "./art/sprites";
 import { ShieldIcon, shieldArt } from "./art";
 import { cinematicTitle } from "./cinematicQueue";
@@ -34,6 +35,21 @@ export interface Cinematic {
   titulo: string;
   scenes: Scene[];
 }
+
+/** El banco de frases de las cinemáticas (sección 22 del banco). */
+const GHOST_SAYS = [
+  "¡En mis tiempos esto no pasaba!",
+  "¡Más pan!",
+  "¿Quién ha tocado mi trono?",
+  "¡Qué semana más vulgar!",
+  "¿Alguien ha visto mis llaves?",
+  "¡Yo habría ganado comiendo!",
+];
+const GHOST_FRAY = [
+  "El cronista lo anota. Con letra pequeña.",
+  "Su Majestad ya no vota, pero opina.",
+  "El cronista estaba allí y no lo recuerda así.",
+];
 
 const NUMBER = ["cero", "una", "dos", "tres", "cuatro", "cinco", "seis", "siete", "ocho", "nueve", "diez"];
 /** Número en letra para las frases del cronista («Siete casas…»). */
@@ -181,10 +197,23 @@ const PLEASED = new Set([
   "levas_reales",
 ]);
 
+/** Lo que se ve en cada viñeta propia, para los lectores de pantalla. */
+const OWN_LABEL: Record<string, string> = {
+  plaga_ratas: "Las ratas se llevan el pan de los estantes del granero real",
+  fiesta_san_aldric: "La plaza en fiesta: banderines, baile y la estatua dorada de San Aldric",
+  tormenta_costa: "Tormenta en el puerto: lluvia, rayos y el barco amarrado",
+  bandidos: "Unos bandidos salen de los matorrales y paran una carreta en el camino",
+  llaves_rey: "El fantasma de Aldric busca sus llaves mientras una rata se lleva una",
+  torneo_real: "Dos caballeros cargan en la liza y uno pierde el yelmo",
+  paz_del_rey: "Dos soldados bajan las lanzas y pasa una paloma",
+  carnaval: "La plaza de noche con farolillos, caretas y el cabezudo del rey",
+};
+
 function eventCinematic(item: CinematicItem): Cinematic {
   const d = item.datos as { clave: string; nombre: string; texto: string; linea: string };
   const quiet = d.clave === "semana_tranquila";
   const mood: FrayMood = quiet ? "dormido" : SCANDAL.has(d.clave) ? "escandalizado" : PLEASED.has(d.clave) ? "adulador" : "solemne";
+  const own = escenas.EVENT_SCENES[d.clave];
   return {
     clave: item.clave,
     titulo: cinematicTitle(item),
@@ -193,8 +222,8 @@ function eventCinematic(item: CinematicItem): Cinematic {
         dur: 7.5,
         text: d.linea,
         fray: mood,
-        label: `El pregonero lee el bando: ${d.nombre}`,
-        draw: (p, t) => drawCrier(p, t, quiet),
+        label: own ? `${OWN_LABEL[d.clave]}. ${d.nombre}` : `El pregonero lee el bando: ${d.nombre}`,
+        draw: own ?? ((p, t) => drawCrier(p, t, quiet)),
         overlay: (
           <>
             <div className="cine-bando">
@@ -209,6 +238,91 @@ function eventCinematic(item: CinematicItem): Cinematic {
             )}
           </>
         ),
+      },
+    ],
+  };
+}
+
+// ---------------------------------------------------------------------------
+// La última semana: el reloj de arena, la clasificación y las noches que quedan.
+
+function lastWeekCinematic(item: CinematicItem, state: GameState): Cinematic {
+  const weeks = state.partida.semanas;
+  // La clasificación del domingo que abrió la última semana (si no hay foto, la de ahora).
+  const sunday = state.historia?.semanas.find((w) => w.semana === weeks - 1)?.totales;
+  const rows = state.casas
+    .map((h) => ({ h, total: sunday?.[h.id] ?? h.prestigio?.total ?? 0 }))
+    .sort((a, b) => b.total - a.total || a.h.id - b.h.id)
+    .slice(0, 3);
+  const nights = state.partida.diasResolucion?.length ?? 2;
+  const dur = 7.5;
+  return {
+    clave: item.clave,
+    titulo: cinematicTitle(item),
+    scenes: [
+      {
+        dur,
+        text: "Última semana del interregno. Quien quiera la corona, que se dé prisa.",
+        foot: `Quedan ${nights === 1 ? "una noche" : `${inWords(nights)} noches`}. El cronista ya afila la pluma.`,
+        fray: "solemne",
+        label: "El reloj de arena se vacía delante del trono",
+        draw: (p, t) => escenas.lastWeek(p, t, dur),
+        overlay: (
+          <div className="cine-last">
+            <small>
+              Semana {weeks} de {weeks}
+            </small>
+            <b>La última semana</b>
+            <span className="nights">{nights === 1 ? "Queda 1 noche" : `Quedan ${nights} noches`}</span>
+            <ol>
+              {rows.map(({ h, total }) => (
+                <li key={h.id}>
+                  <ShieldIcon color={h.color} escudo={h.escudo} size={20} />
+                  <span>{h.nombre}</span>
+                  <em>{total}</em>
+                </li>
+              ))}
+            </ol>
+          </div>
+        ),
+      },
+    ],
+  };
+}
+
+// ---------------------------------------------------------------------------
+// El fantasma de Aldric en el boletín del domingo: flota, opina y Fray Abundio
+// lo corrige. Si el boletín recordaba la muerte del rey, es el aniversario: la
+// escena del ave en pequeño, en un cuadro del pasillo.
+
+function ghostCinematic(item: CinematicItem): Cinematic {
+  const d = item.datos as { como: "fantasma" | "muerte"; linea: string };
+  if (d.como === "muerte")
+    return {
+      clave: item.clave,
+      titulo: cinematicTitle(item),
+      scenes: [
+        {
+          dur: 6.5,
+          text: d.linea,
+          fray: "solemne",
+          label: "Un cuadro del pasillo recuerda el banquete en que el rey se atragantó con el ave",
+          draw: escenas.anniversary,
+        },
+      ],
+    };
+  return {
+    clave: item.clave,
+    titulo: cinematicTitle(item),
+    scenes: [
+      {
+        dur: 5,
+        text: d.linea,
+        foot: GHOST_FRAY[item.semana % GHOST_FRAY.length],
+        fray: "escandalizado",
+        label: "El fantasma de Aldric flota por el pasillo, delante de su retrato, y opina",
+        draw: escenas.ghost,
+        overlay: <div className="cine-bubble">{GHOST_SAYS[item.semana % GHOST_SAYS.length]}</div>,
       },
     ],
   };
@@ -393,6 +507,10 @@ export function buildCinematic(item: CinematicItem, state: GameState): Cinematic
       return item.datos ? eventCinematic(item) : null;
     case "prologo":
       return prologueCinematic(item, state);
+    case "ultima":
+      return lastWeekCinematic(item, state);
+    case "fantasma":
+      return item.datos ? ghostCinematic(item) : null;
     default:
       return null;
   }

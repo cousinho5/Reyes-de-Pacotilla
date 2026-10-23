@@ -4201,3 +4201,104 @@ button.wide {
 .coronation-list strong {
   color: var(--seal);
 }
+
+/* Bloque 13: la última semana (reloj de arena y clasificación) y el bocadillo del fantasma. */
+.cine-last {
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  top: 4%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  color: #f4e6c0;
+  text-align: center;
+  animation: cine-fade-in 0.8s ease-out both;
+}
+.cine-last small {
+  font: 800 0.68rem var(--font-text);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: #e8b83a;
+}
+.cine-last b {
+  font: 800 clamp(20px, 7cqw, 26px) / 1.1 var(--font-serif);
+}
+.cine-last .nights {
+  font: 600 clamp(13px, 4.2cqw, 15px) var(--font-serif);
+  font-style: italic;
+  color: #fbe39a;
+}
+.cine-last ol {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  width: 100%;
+  display: grid;
+  gap: 3px;
+}
+.cine-last li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 8px;
+  background: rgba(20, 12, 8, 0.7);
+  border: 1px solid rgba(232, 184, 58, 0.45);
+  border-radius: 4px;
+  font: 700 clamp(13px, 4cqw, 15px) var(--font-serif);
+  animation: cine-fade-in 0.6s ease-out both;
+}
+.cine-last li:nth-child(2) {
+  animation-delay: 0.4s;
+}
+.cine-last li:nth-child(3) {
+  animation-delay: 0.8s;
+}
+.cine-last li span {
+  flex: 1;
+  text-align: left;
+}
+.cine-last li em {
+  font-style: normal;
+  color: #fbe39a;
+}
+.cine-bubble {
+  position: absolute;
+  left: 46%;
+  right: 6%;
+  top: 22%;
+  padding: 8px 10px;
+  background: #f4fcff;
+  color: #1a2a3a;
+  border: 2px solid #3d6e8e;
+  border-radius: 10px;
+  font: 700 clamp(14px, 4.4cqw, 17px) / 1.2 var(--font-serif);
+  animation: cine-fade-in 0.5s 1.9s ease-out both;
+}
+.cine-bubble::after {
+  content: "";
+  position: absolute;
+  left: 14px;
+  bottom: -9px;
+  border: 8px solid transparent;
+  border-top-color: #3d6e8e;
+  border-bottom: 0;
+}
+@keyframes cine-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cine-last,
+  .cine-last li,
+  .cine-bubble {
+    animation: none;
+  }
+}

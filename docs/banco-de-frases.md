@@ -1211,3 +1211,27 @@ Un título por casa en la coronación (bloque 13), el del dato en que más desta
 
 1. {n} tropas en su castillo al final. El mundo exterior es peligroso y {casa} lo sabía.
 2. {n} tropas guardando la puerta de casa. Nadie entró en el castillo de {casa}; casi nadie salió.
+
+## 22. Cinemáticas
+
+Las cinemáticas del bloque 13 (`apps/web/src/cinematics.tsx`). Las viñetas de los eventos usan la frase del evento (sección 10); el fantasma y el aniversario, la frase del difunto rey del boletín (sección 6). Esto es lo que se añade encima.
+
+### 22.1 El fantasma de Aldric: lo que dice en el bocadillo
+
+1. ¡En mis tiempos esto no pasaba!
+2. ¡Más pan!
+3. ¿Quién ha tocado mi trono?
+4. ¡Qué semana más vulgar!
+5. ¿Alguien ha visto mis llaves?
+6. ¡Yo habría ganado comiendo!
+
+### 22.2 El fantasma de Aldric: la nota de Fray Abundio
+
+1. El cronista lo anota. Con letra pequeña.
+2. Su Majestad ya no vota, pero opina.
+3. El cronista estaba allí y no lo recuerda así.
+
+### 22.3 La última semana
+
+1. Última semana del interregno. Quien quiera la corona, que se dé prisa.
+2. Quedan {n} noches. El cronista ya afila la pluma.
