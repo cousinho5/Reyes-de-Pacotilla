@@ -30,12 +30,25 @@ La pestaña mide unas 14 pantallas de móvil: el boletín entero, la tarjeta de 
 | 8. Final de la partida | La pestaña se convierte en «La coronación»: podio grande con el ganador coronado, la Crónica Definitiva del bloque 3 y la gráfica de toda la partida |
 | 9. Movimiento | Detalles ligeros: las cifras suben al llegar una noche nueva, las flechas aparecen una a una y la corona brilla un momento. Nada se mueve con «reducir movimiento» (`prefers-reduced-motion`) |
 
+## Dudas resueltas (23 de octubre de 2026)
+
+| Duda | Respuesta de Pablo |
+| --- | --- |
+| La foto de Prestigio solo se guardaba el domingo | Se guarda cada noche (misma tabla `prestige_snapshots`); las flechas comparan con la de la noche anterior a la última |
+| Proclama y fe de erratas (bloque 3) | «Tu proclama» en la tarjeta del boletín, junto a Sobornar, en una hoja desde abajo; la fe de erratas, en «La coronación» |
+| «Leer el boletín» | Abre la misma ventana de pergamino del boletín emergente, con «Boletines anteriores» dentro; fuera las pestañas de semanas |
+| Diplomacia | El panel de alianzas sale de Comercio y pasa entero a Reino (plegado, al final); la tira, arriba, solo si hay algo pendiente; en Comercio, una línea que lleva a Reino |
+| «Relación contigo» | Alianza (en vigor, en aviso o propuesta), batallas entre las dos casas (ganadas y perdidas), tratos cerrados y capitanes presos. Todo público |
+| Gráfica | Un punto por domingo y uno más «Hoy» (o «Final»); al tocar una semana, las cifras de cada casa |
+| Podio y corona | En pixel art con pxl: podio de madera y corona de 16x16 que brilla |
+| Ideas nuevas | «Te pisan los talones: X, a N» bajo la frase del podio; tocar un escudo en Mapa o Comercio abre también la ficha de casa |
+
 ## Pasos
 
 Van después de los bloques 3 (boletín, Crónica Definitiva y Fray nuevo), 6 (hojas inferiores) y 8 (panel de diplomacia).
 
 1. **Orden de la pestaña** (punto 1) en `apps/web/src/components/Realm.tsx`.
-2. **Clasificación nueva** (punto 2): podio, flechas y barras. El movimiento sale de comparar con la foto de la noche anterior en `prestige_snapshots`, que ya guarda `jobs.ts` en cada resolución.
+2. **Clasificación nueva** (punto 2): podio, flechas y barras. El movimiento sale de comparar con la foto de la noche anterior en `prestige_snapshots`, que `jobs.ts` guarda desde este bloque en cada resolución (antes, solo el domingo).
 3. **Gráfica** (punto 3): Prestigio por semana desde `prestige_snapshots`, en SVG con los colores de cada casa (`ENAMEL`). El total de cada casa ya es público en la clasificación, así que no sale nada de la niebla.
 4. **Tarjeta del boletín** (punto 4) con `FRAY_SPRITES`, y lista de boletines anteriores dentro del boletín.
 5. **Crónica por noches** (punto 5) con filtros, y la crónica completa por semanas.

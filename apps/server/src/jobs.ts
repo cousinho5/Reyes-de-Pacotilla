@@ -523,16 +523,18 @@ export async function runResolution(env: NotifyEnv, game: GameRow, n: number, no
   // Bloque 10: las ofertas que llevan abiertas tres resoluciones se retiran.
   statements.push(expireOffersStatement(db, game, n, now));
 
+  // Foto de Prestigio de cada noche: el domingo, para el boletín y la ayuda al
+  // último; las demás, para las flechas y la gráfica de Reino (bloque 11).
+  const prestige = await computeAllPrestige(db, game.id, houses, finalTiles, now);
+  for (const [houseId, p] of prestige) {
+    statements.push(
+      db.prepare(
+        "INSERT INTO prestige_snapshots (game_id, house_id, resolution_no, total, breakdown) VALUES (?, ?, ?, ?, ?)",
+      ).bind(game.id, houseId, n, p.total, JSON.stringify(p)),
+    );
+  }
   if (kind === "domingo") {
-    // Foto de Prestigio y ayuda al último para la semana siguiente.
-    const prestige = await computeAllPrestige(db, game.id, houses, finalTiles, now);
-    for (const [houseId, p] of prestige) {
-      statements.push(
-        db.prepare(
-          "INSERT INTO prestige_snapshots (game_id, house_id, resolution_no, total, breakdown) VALUES (?, ?, ?, ?, ?)",
-        ).bind(game.id, houseId, n, p.total, JSON.stringify(p)),
-      );
-    }
+    // Ayuda al último para la semana siguiente.
     const last = lastPlace([...prestige].map(([house, p]) => ({ house, total: p.total })));
     statements.push(db.prepare("UPDATE houses SET help_until_resolution = NULL WHERE game_id = ?").bind(game.id));
     // La ayuda dura una semana: tantas resoluciones como días con resolución.

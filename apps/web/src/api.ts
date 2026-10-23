@@ -242,6 +242,12 @@ export interface GameState {
   corona?: { precios: Record<CrownGood, number> } | null;
   /** Bloque 3: `edicion` es "domingo" o "miercoles" (la hoja volandera). */
   boletines?: { semana: number; edicion?: "domingo" | "miercoles"; titular: string }[];
+  /** Bloque 11: Prestigio de cada casa (por id) cada domingo, la noche anterior y al final. */
+  historia?: {
+    semanas: { semana: number; totales: Record<number, number> }[];
+    anterior: { resolucion: number; totales: Record<number, number> } | null;
+    final: Record<number, number> | null;
+  };
   /** Bloque 3: la proclama de tu casa para el próximo domingo. */
   proclama?: { semana: number; texto: string | null; max: number } | null;
   /** Bloque 3: al acabar, tu línea al pie de la Crónica Definitiva (null si ganaste o la partida sigue). */
