@@ -7,7 +7,7 @@ import { CARDS, type CardKey } from "./cards";
 import { gloryFromEvents } from "./combat";
 import { blazon } from "./heraldry";
 import { seededRandom } from "./random";
-import { CAPTAIN, GLORY } from "./rules";
+import { CAPTAIN, GLORY, PROCLAMATION } from "./rules";
 import { PHRASES, type PhraseKey } from "./texts/cronista";
 import type { CampaignEvent, HouseId, Resource, TileId, TileType } from "./types";
 
@@ -35,7 +35,28 @@ export interface BulletinHouse {
 export interface BulletinFact {
   type: string;
   data: Record<string, unknown>;
+  /** Bloque 3: ya contado en la hoja volandera del miércoles (el domingo no lo repite en armas, sitios ni pactos). */
+  told?: boolean;
 }
+
+/** Bloque 3: los dos boletines de la semana. */
+export type BulletinEdition = "domingo" | "miercoles";
+
+/** Hechos que cuenta la hoja volandera del miércoles: el domingo ya no los repite. */
+export const MIDWEEK_TYPES: readonly string[] = [
+  "combate",
+  "rebote",
+  "choque_frontal",
+  "repliegue",
+  "asedio",
+  "asedio_roto",
+  "capitan_preso",
+  "capitan_libre",
+  "alianza",
+  "alianza_rota",
+  "alianza_fin",
+  "expulsion",
+];
 
 export interface BulletinInput {
   seed: string;
@@ -57,6 +78,10 @@ export interface BulletinInput {
   bribes: { house: HouseId; template: number; amount: number }[];
   /** Frases ya usadas en la partida ("categoria.indice"). */
   used: string[];
+  /** Bloque 3: "miercoles" para la hoja volandera (titular, armas, sitios y pactos). Por defecto, el del domingo. */
+  edition?: BulletinEdition;
+  /** Bloque 3: proclamas de la semana (solo en el del domingo), tal como las escribió cada casa. */
+  proclamations?: { house: HouseId; text: string }[];
   /** Solo en el último boletín. */
   final?: {
     objectives: { house: HouseId; text: string; met: boolean }[];
@@ -69,10 +94,14 @@ export interface BulletinInput {
 export interface BulletinSection {
   title: string;
   lines: string[];
+  /** Bloque 3: líneas que no se tocan (las proclamas). */
+  verbatim?: boolean;
 }
 
 export interface Bulletin {
   week: number;
+  /** Bloque 3: "miercoles" en la hoja volandera; sin este campo, el del domingo. */
+  edition?: BulletinEdition;
   headline: string;
   sections: BulletinSection[];
   margin: string[];
@@ -97,7 +126,8 @@ const MAX_CAPTAINS = 2;
 const SPECIAL_CHANCE = 0.6;
 
 export function writeBulletin(input: BulletinInput): Bulletin {
-  const rand = seededRandom(`${input.seed}:boletin:${input.week}`);
+  const mid = input.edition === "miercoles";
+  const rand = seededRandom(`${input.seed}:boletin:${input.week}${mid ? ":miercoles" : ""}`);
   const used = new Set(input.used);
   const usedNow: string[] = [];
   const byId = new Map(input.houses.map((h) => [h.id, h]));
@@ -123,10 +153,15 @@ export function writeBulletin(input: BulletinInput): Bulletin {
   const leader = ranking[0] ?? null;
   const last = ranking.length > 1 ? ranking[ranking.length - 1]! : null;
   const sections: BulletinSection[] = [];
-  const isFinal = !!input.final;
+  const isFinal = !mid && !!input.final;
+  // Lo que no se contó ya el miércoles (armas, sitios y pactos).
+  const news = input.facts.filter((f) => !f.told);
+
+  // 0. La hoja volandera abre con su entradilla.
+  if (mid) sections.push({ title: "Hoja volandera", lines: [say("volandera.entrada", {})] });
 
   // 1. El líder: elogio, o cambio de bando si es nuevo.
-  if (leader) {
+  if (leader && !mid) {
     const changed = input.previousLeader != null && input.previousLeader !== leader.id;
     sections.push({
       title: changed ? "Nuevo favorito" : "El favorito del cronista",
@@ -135,7 +170,7 @@ export function writeBulletin(input: BulletinInput): Bulletin {
   }
 
   // 2. Primer boletín: presentación de las casas.
-  if (input.week === 1) {
+  if (input.week === 1 && !mid) {
     const lines = input.houses.map((h) =>
       say(
         "casas.presentacion",
@@ -150,7 +185,7 @@ export function writeBulletin(input: BulletinInput): Bulletin {
 
   // 3. Batallas.
   const battles: string[] = [];
-  const combats = input.facts.filter((f) => f.type === "combate");
+  const combats = news.filter((f) => f.type === "combate");
   const lostTile = new Set<HouseId>();
   const houseCombats = combats.filter((f) => f.data.previousOwner != null || attackersOf(f).some((a) => a != null));
   let houseLines = 0;
@@ -176,18 +211,18 @@ export function writeBulletin(input: BulletinInput): Bulletin {
     battles.push(say(phrase.key, phrase.vars, phrase.filter));
     houseLines++;
   }
-  for (const f of input.facts.filter((x) => x.type === "rebote").slice(0, 2)) {
+  for (const f of news.filter((x) => x.type === "rebote").slice(0, 2)) {
     const hs = f.data.houses as HouseId[];
     battles.push(say("combate.rebote", { a: name(hs[0]), b: name(hs[1]), casilla: tile(f.data.tile) }));
   }
   // Bloque 3: choques frontales y cruces en el camino.
-  for (const f of input.facts.filter((x) => x.type === "choque_frontal" && x.data.winner != null).slice(0, MAX_CLASHES)) {
+  for (const f of news.filter((x) => x.type === "choque_frontal" && x.data.winner != null).slice(0, MAX_CLASHES)) {
     const sides = f.data.sides as { house: HouseId }[];
     const vars = { a: name(sides[0]?.house), b: name(sides[1]?.house), ganador: name(f.data.winner) };
     battles.push(f.data.via != null ? say("combate.cruce", { ...vars, casilla: tile(f.data.via) }) : say("combate.choque", vars));
   }
   // Tropas que se quedan sin casa a la que volver (los repliegues normales no se cuentan).
-  for (const f of input.facts.filter((x) => x.type === "repliegue" && x.data.arrived === false && Number(x.data.troops) >= 2).slice(0, 1)) {
+  for (const f of news.filter((x) => x.type === "repliegue" && x.data.arrived === false && Number(x.data.troops) >= 2).slice(0, 1)) {
     battles.push(
       say("combate.repliegue_perdido", { jugador: name(f.data.house), casilla: tile(f.data.from), destino: tile(f.data.to), n: Number(f.data.troops) }),
     );
@@ -195,7 +230,7 @@ export function writeBulletin(input: BulletinInput): Bulletin {
   if (neutralSkipped > 0) {
     battles.push(`Y ${neutralSkipped} ${neutralSkipped === 1 ? "casilla neutral cambia" : "casillas neutrales cambian"} de manos, que el cronista no da abasto.`);
   }
-  if (battles.length === 0) battles.push(say("reino.tranquila", {}));
+  if (battles.length === 0) battles.push(say(mid ? "volandera.tranquila" : "reino.tranquila", {}));
   sections.push({ title: combats.length > 0 ? "Crónica de las armas" : "La paz del reino", lines: battles });
 
   // 3b. Bloque 3: asedios y Capitanes.
@@ -203,14 +238,14 @@ export function writeBulletin(input: BulletinInput): Bulletin {
   const besieged = (t: unknown) => name(input.tileOwners?.get(t as TileId) ?? null);
   // Solo cuentan los asedios a otra casa: los de una guarnición neutral no son noticia.
   const againstHouse = (f: BulletinFact) => input.tileOwners?.get(f.data.tile as TileId) != null;
-  const siegeFacts = input.facts.filter((x) => x.type === "asedio" && againstHouse(x));
+  const siegeFacts = news.filter((x) => x.type === "asedio" && againstHouse(x));
   const lastNights = new Map<TileId, number>();
   for (const f of siegeFacts) lastNights.set(f.data.tile as TileId, Number(f.data.nights));
   for (const f of siegeFacts.filter((x) => Number(x.data.nights) === 1).slice(0, 2)) {
     sieges.push(say("asedio.empieza", { sitiador: name(f.data.house), sitiado: besieged(f.data.tile), casilla: tile(f.data.tile) }));
   }
   // El asedio más largo que sigue en pie (de 3 noches o más).
-  const broken = input.facts.filter((x) => x.type === "asedio_roto" && againstHouse(x));
+  const broken = news.filter((x) => x.type === "asedio_roto" && againstHouse(x));
   const brokenTiles = new Set(broken.map((f) => f.data.tile as TileId));
   const longest = [...lastNights.entries()]
     .filter(([t, n]) => n >= 3 && !brokenTiles.has(t))
@@ -229,7 +264,7 @@ export function writeBulletin(input: BulletinInput): Bulletin {
   }
   const captured = new Map<HouseId, HouseId>();
   let captainLines = 0;
-  for (const f of input.facts.filter((x) => x.type === "capitan_preso" || x.type === "capitan_libre")) {
+  for (const f of news.filter((x) => x.type === "capitan_preso" || x.type === "capitan_libre")) {
     const house = f.data.house as HouseId;
     if (f.type === "capitan_preso") captured.set(house, f.data.by as HouseId);
     if (captainLines >= MAX_CAPTAINS) continue;
@@ -252,116 +287,126 @@ export function writeBulletin(input: BulletinInput): Bulletin {
   }
   if (sieges.length > 0) sections.push({ title: "Sitios y cautivos", lines: sieges });
 
-  // 4. Economía: evento, subasta y comercio.
+  // 4. Economía: evento, subasta y comercio (solo el domingo).
   const economy: string[] = [];
-  for (const f of input.facts.filter((x) => x.type === "evento")) {
-    economy.push(`${f.data.nombre}. ${f.data.linea}`);
-  }
-  for (const f of input.facts.filter((x) => x.type === "subasta" && x.data.winner != null)) {
-    const lot = String(f.data.lot);
-    // "la carta Tregua es suyo" no: con lotes en femenino se evita esa variante.
-    const feminine = /^la\s/.test(lot);
-    economy.push(
-      say("economia.subasta", { jugador: name(f.data.winner), lote: lot, oro: Number(f.data.price) }, (t) => !feminine || !t.includes("es suyo")),
-    );
-  }
-  if (input.trades.length > 0) {
-    const count = new Map<HouseId, number>();
-    for (const t of input.trades) {
-      count.set(t.a, (count.get(t.a) ?? 0) + 1);
-      count.set(t.b, (count.get(t.b) ?? 0) + 1);
+  if (!mid) {
+    for (const f of input.facts.filter((x) => x.type === "evento")) {
+      economy.push(`${f.data.nombre}. ${f.data.linea}`);
     }
-    const top = [...count.entries()].sort((a, b) => b[1] - a[1] || a[0] - b[0])[0]!;
-    const n = input.trades.length;
-    economy.push(
-      say("economia.comercio", { n, jugador: name(top[0]) }, (t) =>
-        // Que el adjetivo cuadre con la cifra.
-        !t.includes("casas distintas") && (n > 3 ? !t.includes("floja") : !t.includes("hierven")),
-      ),
-    );
-  }
-  // Bloque 5: lo que más vendió la Corona, sin decir a quién (las compras son secretas).
-  const crownTop = Object.entries(input.crown ?? {})
-    .filter(([, n]) => (n ?? 0) > 0)
-    .sort((a, b) => b[1]! - a[1]! || a[0].localeCompare(b[0]))[0];
-  if (crownTop) {
-    economy.push(say("economia.corona", { n: crownTop[1]!, recurso: RESOURCE_NAMES[crownTop[0] as Resource] }));
+    for (const f of input.facts.filter((x) => x.type === "subasta" && x.data.winner != null)) {
+      const lot = String(f.data.lot);
+      // "la carta Tregua es suyo" no: con lotes en femenino se evita esa variante.
+      const feminine = /^la\s/.test(lot);
+      economy.push(
+        say("economia.subasta", { jugador: name(f.data.winner), lote: lot, oro: Number(f.data.price) }, (t) => !feminine || !t.includes("es suyo")),
+      );
+    }
+    if (input.trades.length > 0) {
+      const count = new Map<HouseId, number>();
+      for (const t of input.trades) {
+        count.set(t.a, (count.get(t.a) ?? 0) + 1);
+        count.set(t.b, (count.get(t.b) ?? 0) + 1);
+      }
+      const top = [...count.entries()].sort((a, b) => b[1] - a[1] || a[0] - b[0])[0]!;
+      const n = input.trades.length;
+      economy.push(
+        say("economia.comercio", { n, jugador: name(top[0]) }, (t) =>
+          // Que el adjetivo cuadre con la cifra.
+          !t.includes("casas distintas") && (n > 3 ? !t.includes("floja") : !t.includes("hierven")),
+        ),
+      );
+    }
+    // Bloque 5: lo que más vendió la Corona, sin decir a quién (las compras son secretas).
+    const crownTop = Object.entries(input.crown ?? {})
+      .filter(([, n]) => (n ?? 0) > 0)
+      .sort((a, b) => b[1]! - a[1]! || a[0].localeCompare(b[0]))[0];
+    if (crownTop) {
+      economy.push(say("economia.corona", { n: crownTop[1]!, recurso: RESOURCE_NAMES[crownTop[0] as Resource] }));
+    }
   }
   if (economy.length > 0) sections.push({ title: "Mercados y augurios", lines: economy });
 
   // 4a. Bloque 3: la Corona (ayuda al último, Treguas y Paz del Rey).
   const crownLines: string[] = [];
-  for (const f of input.facts.filter((x) => x.type === "ayuda_ultimo").slice(-1)) {
-    crownLines.push(say("corona.ayuda", { jugador: name(f.data.house) }));
-  }
-  for (const f of input.facts.filter((x) => x.type === "tregua").slice(0, 1)) {
-    const owner = input.tileOwners?.get(f.data.tile as TileId);
-    crownLines.push(say("corona.tregua", { jugador: name(owner), casilla: tile(f.data.tile) }, (t) => owner != null || !t.includes("{jugador}")));
-  }
-  for (const f of input.facts.filter((x) => x.type === "paz").slice(0, 1)) {
-    crownLines.push(say("corona.paz", { casilla: tile(f.data.tile) }));
+  if (!mid) {
+    for (const f of input.facts.filter((x) => x.type === "ayuda_ultimo").slice(-1)) {
+      crownLines.push(say("corona.ayuda", { jugador: name(f.data.house) }));
+    }
+    for (const f of input.facts.filter((x) => x.type === "tregua").slice(0, 1)) {
+      const owner = input.tileOwners?.get(f.data.tile as TileId);
+      crownLines.push(say("corona.tregua", { jugador: name(owner), casilla: tile(f.data.tile) }, (t) => owner != null || !t.includes("{jugador}")));
+    }
+    for (const f of input.facts.filter((x) => x.type === "paz").slice(0, 1)) {
+      crownLines.push(say("corona.paz", { casilla: tile(f.data.tile) }));
+    }
   }
   if (crownLines.length > 0) sections.push({ title: "Por orden de la Corona", lines: crownLines });
 
   // 4b. Bloque 8: alianzas firmadas, rotas y terminadas, y tropas que vuelven a casa.
   const pacts: string[] = [];
   const pactName = (d: Record<string, unknown>) => String(d.name ?? "alianza sin nombre");
-  for (const f of input.facts.filter((x) => x.type === "alianza")) {
+  for (const f of news.filter((x) => x.type === "alianza")) {
     pacts.push(say("diplomacia.pacto", { pacto: pactName(f.data), a: name(f.data.a), b: name(f.data.b) }));
   }
-  const breaks = input.facts.filter((x) => x.type === "alianza_rota");
+  const breaks = news.filter((x) => x.type === "alianza_rota");
   for (const f of breaks) {
     pacts.push(say("diplomacia.ruptura", { pacto: pactName(f.data), traidor: name(f.data.by) }));
   }
-  for (const f of input.facts.filter((x) => x.type === "alianza_fin")) {
+  for (const f of news.filter((x) => x.type === "alianza_fin")) {
     pacts.push(say("diplomacia.fin", { pacto: pactName(f.data), a: name(f.data.a), b: name(f.data.b) }));
   }
-  for (const f of input.facts.filter((x) => x.type === "expulsion").slice(0, 2)) {
+  for (const f of news.filter((x) => x.type === "expulsion").slice(0, 2)) {
     pacts.push(say("diplomacia.expulsion", { jugador: name(f.data.house), n: Number(f.data.troops), casilla: tile(f.data.from) }));
   }
   if (pacts.length > 0) sections.push({ title: "Pactos y traiciones", lines: pacts });
 
-  // 5. Obras y logros.
+  // 5. Obras y logros (solo el domingo, con toda la semana).
   const works: string[] = [];
-  for (const f of input.facts.filter((x) => x.type === "logro")) {
-    works.push(say("reino.logro", { jugador: name(f.data.house), logro: ACHIEVEMENT_NAME[String(f.data.logro)] ?? String(f.data.logro) }));
-  }
-  const upgrades = input.facts
-    .filter((x) => x.type === "mejora")
-    .sort((a, b) => Number(b.data.nivel) - Number(a.data.nivel))
-    .slice(0, 2);
-  for (const f of upgrades) {
-    const kind = String(f.data.edificio);
-    const line = say("reino.construccion", { jugador: name(f.data.house), edificio: "{edificio}", nivel: Number(f.data.nivel) });
-    works.push(withBuilding(line, kind));
-  }
-  // Bloque 3: ruinas exploradas y Gloria.
-  for (const f of input.facts.filter((x) => x.type === "ruinas").slice(0, 2)) {
-    works.push(say("reino.ruinas", { jugador: name(f.data.house), casilla: tile(f.data.tile), premio: prizeText(f.data.prize) }));
-  }
-  if (GLORY.enabled) {
-    const events = input.facts.filter((x) => x.type === "combate" || x.type === "choque_frontal").map((x) => ({ ...x.data, type: x.type }) as unknown as CampaignEvent);
-    const top = [...gloryFromEvents(events).entries()].sort((a, b) => b[1] - a[1] || a[0] - b[0])[0];
-    if (top && top[1] >= 2) works.push(say("gloria.semana", { jugador: name(top[0]), gloria: top[1] }));
-    const honor = events.find(
-      (e) => e.type === "combate" && e.conquered && honorable(e as unknown as CombatData),
-    ) as unknown as CombatData | undefined;
-    if (honor) works.push(say("gloria.honor", { jugador: name(honor.previousOwner), ganador: name(honor.winner), casilla: tile(honor.tile) }));
+  if (!mid) {
+    for (const f of input.facts.filter((x) => x.type === "logro")) {
+      works.push(say("reino.logro", { jugador: name(f.data.house), logro: ACHIEVEMENT_NAME[String(f.data.logro)] ?? String(f.data.logro) }));
+    }
+    const upgrades = input.facts
+      .filter((x) => x.type === "mejora")
+      .sort((a, b) => Number(b.data.nivel) - Number(a.data.nivel))
+      .slice(0, 2);
+    for (const f of upgrades) {
+      const kind = String(f.data.edificio);
+      const line = say("reino.construccion", { jugador: name(f.data.house), edificio: "{edificio}", nivel: Number(f.data.nivel) });
+      works.push(withBuilding(line, kind));
+    }
+    // Bloque 3: ruinas exploradas y Gloria.
+    for (const f of input.facts.filter((x) => x.type === "ruinas").slice(0, 2)) {
+      works.push(say("reino.ruinas", { jugador: name(f.data.house), casilla: tile(f.data.tile), premio: prizeText(f.data.prize) }));
+    }
+    if (GLORY.enabled) {
+      const events = input.facts.filter((x) => x.type === "combate" || x.type === "choque_frontal").map((x) => ({ ...x.data, type: x.type }) as unknown as CampaignEvent);
+      const top = [...gloryFromEvents(events).entries()].sort((a, b) => b[1] - a[1] || a[0] - b[0])[0];
+      if (top && top[1] >= 2) works.push(say("gloria.semana", { jugador: name(top[0]), gloria: top[1] }));
+      const honor = events.find(
+        (e) => e.type === "combate" && e.conquered && honorable(e as unknown as CombatData),
+      ) as unknown as CombatData | undefined;
+      if (honor) works.push(say("gloria.honor", { jugador: name(honor.previousOwner), ganador: name(honor.winner), casilla: tile(honor.tile) }));
+    }
   }
   if (works.length > 0) sections.push({ title: "Obras y honores", lines: works });
 
   // 6. Las casas: el lema contra la realidad y el último.
   const houses: string[] = [];
-  const contradicted = input.houses.find((h) => h.motto && lostTile.has(h.id));
-  if (contradicted) houses.push(say("casas.lema", { jugador: name(contradicted.id), lema: contradicted.motto! }));
-  if (last && !isFinal) houses.push(say("clasificacion.ultimo", { "último": name(last.id), pv: last.prestige }));
+  if (!mid) {
+    const contradicted = input.houses.find((h) => h.motto && lostTile.has(h.id));
+    if (contradicted) houses.push(say("casas.lema", { jugador: name(contradicted.id), lema: contradicted.motto! }));
+    if (last && !isFinal) houses.push(say("clasificacion.ultimo", { "último": name(last.id), pv: last.prestige }));
+  }
   if (houses.length > 0) sections.push({ title: "Noticias de las casas", lines: houses });
 
   // 7. El difunto rey: la versión oficial de su muerte (una vez por partida) o su fantasma.
   const king: string[] = [];
   // Entre la semana 2 y la penúltima (con "semanas" en plural).
   const deathWeek = 2 + Math.floor(seededRandom(`${input.seed}:muerte`)() * Math.max(1, input.totalWeeks - 2));
-  if (input.week === deathWeek) king.push(say("rey.muerte", { semanas: input.week }));
+  if (mid) {
+    // La hoja volandera no habla del difunto rey.
+  } else if (input.week === deathWeek) king.push(say("rey.muerte", { semanas: input.week }));
   else if (rand() < 0.5 && leader) {
     const someone = input.houses[Math.floor(rand() * input.houses.length)]!;
     king.push(say("rey.fantasma", { "líder": name(leader.id), jugador: name(someone.id) }));
@@ -387,16 +432,33 @@ export function writeBulletin(input: BulletinInput): Bulletin {
     sections.push({ title: "Se levantan los velos", lines });
   }
 
+  // 8 bis. Bloque 3: proclamas de las casas, firmadas y sin tocar (solo el domingo).
+  const proclaimed = mid ? [] : (input.proclamations ?? []).filter((p) => byId.has(p.house) && p.text.trim() !== "");
+  if (proclaimed.length > 0) {
+    const lines = [say("proclamas.entrada", {})];
+    // Tras la primera que nombra a otra casa con «@», el cronista se desmarca (una vez).
+    let noted = false;
+    for (const p of proclaimed) {
+      lines.push(`«${p.text.trim()}» (firma ${name(p.house)})`);
+      const others = input.houses.filter((h) => h.id !== p.house);
+      if (!noted && proclamationMentions(p.text, others).length > 0) {
+        lines.push(say("proclamas.nota", {}));
+        noted = true;
+      }
+    }
+    sections.push({ title: "Proclamas", lines, verbatim: true });
+  }
+
   // 9. Frases compradas y pie de patrocinio.
-  const bought = input.bribes
+  const bought = mid ? [] : input.bribes
     .filter((b) => byId.has(b.house))
     .map((b) => fill(PHRASES["soborno.frase"][b.template % PHRASES["soborno.frase"].length]!, { jugador: name(b.house) }));
   if (bought.length > 0) sections.push({ title: "Comunicados de la corte", lines: bought });
-  const sponsors = input.bribes.filter((b) => byId.has(b.house)).map((b) => say("soborno.pie", { jugador: name(b.house), oro: b.amount }));
+  const sponsors = (mid ? [] : input.bribes).filter((b) => byId.has(b.house)).map((b) => say("soborno.pie", { jugador: name(b.house), oro: b.amount }));
 
   // 10. Notas al margen: una o dos.
   const margin = [say("margen", {})];
-  if (rand() < 0.5) margin.push(say("margen", {}));
+  if (!mid && rand() < 0.5) margin.push(say("margen", {}));
 
   const houseConquests = combats.filter((f) => f.data.conquered && f.data.previousOwner != null).length;
   const fallenCastle = combats.find((f) => castleFalls(f.data as unknown as CombatData, input.tileTypes?.get(f.data.tile as TileId)));
@@ -404,7 +466,7 @@ export function writeBulletin(input: BulletinInput): Bulletin {
     ? `FIN DEL INTERREGNO: ${capitalize(name(leader?.id))} SE CORONA`
     : fallenCastle
       ? `CAE EL CASTILLO DE ${name(fallenCastle.data.previousOwner)}`
-    : input.previousLeader != null && leader && input.previousLeader !== leader.id
+    : !mid && input.previousLeader != null && leader && input.previousLeader !== leader.id
       ? `NUEVO FAVORITO: ${name(leader.id).toUpperCase()}`
       : houseConquests > 0
         ? `${houseConquests} ${houseConquests === 1 ? "CASILLA CAMBIA" : "CASILLAS CAMBIAN"} DE BANDERA`
@@ -414,24 +476,28 @@ export function writeBulletin(input: BulletinInput): Bulletin {
           ? "LAS MURALLAS AGUANTAN"
           : combats.length > 0
             ? "EL REINO SE EXPANDE"
-            : "SEMANA TRANQUILA EN ALDRICIA";
+            : mid
+              ? "MITAD DE SEMANA TRANQUILA"
+              : "SEMANA TRANQUILA EN ALDRICIA";
 
   // Escandalizado con casillas robadas, adulador con favorito nuevo (o al coronarlo),
   // dormido si no pasa nada y solemne en el resto.
-  const newLeader = input.previousLeader != null && leader != null && input.previousLeader !== leader.id;
+  const newLeader = !mid && input.previousLeader != null && leader != null && input.previousLeader !== leader.id;
   const mood: BulletinMood = isFinal || newLeader
     ? "adulador"
     : houseConquests > 0 || breaks.length > 0 || fallenCastle
       ? "escandalizado"
-      : combats.length === 0 && input.trades.length === 0
+      : combats.length === 0 && (mid || input.trades.length === 0)
         ? "dormido"
         : "solemne";
 
   return {
     week: input.week,
+    ...(mid ? { edition: "miercoles" as const } : {}),
     headline: headline.toUpperCase(),
     mood,
-    sections: sections.map((s) => ({ ...s, lines: s.lines.map(capitalize) })),
+    // Las proclamas salen tal cual las escribió cada casa.
+    sections: sections.map((s) => (s.verbatim ? s : { ...s, lines: s.lines.map(capitalize) })),
     margin,
     sponsors: sponsors.map(capitalize),
     leader: leader?.id ?? null,
@@ -439,9 +505,21 @@ export function writeBulletin(input: BulletinInput): Bulletin {
   };
 }
 
+/**
+ * Bloque 3: comprueba una proclama. Quita los espacios de los lados y los
+ * saltos de línea; vacía significa retirarla. Cuenta letras, no bytes.
+ */
+export function checkProclamation(raw: string): { ok: true; text: string } | { ok: false; error: string } {
+  const text = raw.replace(/\s+/g, " ").trim();
+  if ([...text].length > PROCLAMATION.maxLetters) return { ok: false, error: `Como mucho ${PROCLAMATION.maxLetters} letras.` };
+  if (/https?:|www\.|\b[\w-]+\.(com|es|net|org|io|me|ly|gl)\b/i.test(text)) return { ok: false, error: "Sin enlaces: el cronista solo publica palabras." };
+  return { ok: true, text };
+}
+
 /** Texto plano del boletín (para compartir por WhatsApp). */
 export function bulletinText(b: Bulletin, gameName: string): string {
-  const parts = [`*${b.headline}*`, `_Boletín del Reino · ${gameName} · semana ${b.week}_`, ""];
+  const kind = b.edition === "miercoles" ? "Hoja volandera" : "Boletín del Reino";
+  const parts = [`*${b.headline}*`, `_${kind} · ${gameName} · semana ${b.week}_`, ""];
   for (const s of b.sections) {
     parts.push(`*${s.title}*`);
     for (const l of s.lines) parts.push(`• ${l}`);
@@ -478,7 +556,8 @@ function castleFalls(d: CombatData, type: TileType | undefined): boolean {
 /** Derrota con honor: quien defendía perdió contra el doble de fuerza o más (la regla de gloryFromEvents). */
 function honorable(d: CombatData): boolean {
   const def = d.sides.find((s) => s.role === "defensa");
-  if (!def || def.house == null) return false;
+  // Sin tropas en la casilla no hay resistencia que cantar.
+  if (!def || def.house == null || def.troops === 0) return false;
   const winners = [d.winner, ...(d.sides.find((s) => s.house === d.winner)?.joint ?? [])];
   const top = d.sides.filter((s) => s.role === "ataque" && winners.includes(s.house)).reduce((a, s) => a + s.strength, 0);
   return def.strength * 2 <= top;
@@ -623,6 +702,16 @@ function withBuilding(line: string, kind: string): string {
 /** Mayúscula inicial, saltando los signos de apertura ("¡cerrar…" → "¡Cerrar…"). */
 function capitalize(s: string): string {
   return s.replace(/^([¡¿«"'(\s]*)(\p{L})/u, (_, lead: string, c: string) => lead + c.toUpperCase());
+}
+
+/**
+ * Bloque 3: casas que nombra una proclama. Se nombran como en WhatsApp, con
+ * «@» y el nombre tal cual («@Casa del Nabo»); da igual mayúsculas o tildes.
+ */
+export function proclamationMentions<T extends { name: string }>(text: string, houses: T[]): T[] {
+  const plain = (t: string) => t.toLocaleLowerCase("es").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const body = plain(text);
+  return houses.filter((h) => body.includes(`@${plain(h.name)}`));
 }
 
 function lowerFirst(s: string): string {

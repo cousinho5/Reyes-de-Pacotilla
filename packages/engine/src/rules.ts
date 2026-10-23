@@ -416,6 +416,14 @@ export const PRESTIGE = {
 /** Soborno al cronista. */
 export const BRIBE_COST = 10;
 
+/**
+ * Proclamas (bloque 3): una frase propia por casa y semana, firmada en el
+ * boletín del domingo. Sin enlaces, para que no sea un tablón de anuncios.
+ */
+export const PROCLAMATION = {
+  maxLetters: 140,
+};
+
 /** Inicio de partida: tropas en el castillo y recursos de cada tipo. */
 export const STARTING_TROOPS = 6;
 export const STARTING_RESOURCES = 10;

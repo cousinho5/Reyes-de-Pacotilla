@@ -73,7 +73,8 @@ Esquema de Reyes de Pacotilla para Cloudflare D1, que usa SQL de SQLite. Corresp
 | `game_events` | El evento de cada semana, con sus parámetros y cuándo se anunció y se aplicó. |
 | `achievements` | Logros por casa, con contador para el de la subasta (máximo 3). |
 | `bribes` | Sobornos al cronista: uno por casa y semana como máximo. |
-| `bulletins` | Boletines publicados. La Crónica Definitiva se guarda como la semana 0. |
+| `bulletins` | Boletines publicados: el del domingo y la hoja volandera del miércoles (`edition`). La Crónica Definitiva se guarda como la semana 0. |
+| `proclamations` | Proclamas: una frase por casa y semana en el boletín del domingo (bloque 3). |
 | `phrase_usage` | Frases del banco ya usadas en la partida, para no repetirlas. |
 | `notifications` | Avisos enviados, con una clave que evita mandar el mismo dos veces. |
 
@@ -526,13 +527,26 @@ CREATE TABLE bribes (
   PRIMARY KEY (game_id, house_id, week)
 );
 
--- Boletines publicados (y la Crónica Definitiva, con week = 0).
+-- Boletines publicados (y la Crónica Definitiva, con week = 0). Bloque 3: dos por
+-- semana, el del domingo y la hoja volandera del miércoles (migración 0019).
 CREATE TABLE bulletins (
   game_id         INTEGER NOT NULL REFERENCES games(id) ON DELETE CASCADE,
   week            INTEGER NOT NULL,
+  edition         TEXT    NOT NULL DEFAULT 'domingo' CHECK (edition IN ('domingo', 'miercoles')),
   content         TEXT    NOT NULL,                  -- JSON: líneas ya rellenadas, notas al margen
   published_at    TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
-  PRIMARY KEY (game_id, week)
+  PRIMARY KEY (game_id, week, edition)
+);
+
+-- Bloque 3: proclamas, una frase propia por casa y semana (hasta 140 letras),
+-- firmada en el boletín del domingo. Se cambia hasta el cierre.
+CREATE TABLE proclamations (
+  game_id         INTEGER NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+  house_id        INTEGER NOT NULL REFERENCES houses(id) ON DELETE CASCADE,
+  week            INTEGER NOT NULL,
+  text            TEXT    NOT NULL CHECK (length(text) BETWEEN 1 AND 140),
+  updated_at      TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  PRIMARY KEY (game_id, house_id, week)
 );
 
 -- Frases del banco ya usadas en la partida, para no repetirlas.

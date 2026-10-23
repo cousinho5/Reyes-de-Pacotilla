@@ -125,16 +125,17 @@ export async function runGameJobs(env: NotifyEnv, game: GameRow, now: Date): Pro
       console.error(`Partida ${game.id}, tarea ${job.key}:`, err);
     }
   }
-  // Tras la resolución del domingo, el boletín de la semana (el último sale con el final).
+  // Tras la resolución del domingo, el boletín de la semana (el último sale con el final),
+  // y tras la del miércoles, la hoja volandera (bloque 3).
   const after = await loadGame(env.DB, game.id);
   const done = after && after.current_resolution >= 1 ? resolutionInfo(after.current_resolution, rhythmOf(after).days) : null;
-  if (after && after.status === "active" && done?.kind === "domingo") {
+  if (after && after.status === "active" && (done?.kind === "domingo" || done?.kind === "miercoles")) {
     const week = done.week;
-    if (week < after.weeks) {
+    if (done.kind === "miercoles" || week < after.weeks) {
       try {
-        await publishBulletin(env, after, week);
+        await publishBulletin(env, after, week, false, done.kind);
       } catch (err) {
-        console.error(`Partida ${game.id}, boletín ${week}:`, err);
+        console.error(`Partida ${game.id}, boletín ${week} (${done.kind}):`, err);
       }
     }
   }

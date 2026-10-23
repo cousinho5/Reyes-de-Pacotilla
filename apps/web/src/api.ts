@@ -240,7 +240,10 @@ export interface GameState {
   mercenarios?: { precio: number; dias: number; grupos: { unidades: number; seVan: string }[] } | null;
   /** Bloque 5: Oro que cuesta la próxima unidad de cada recurso en la Corona. */
   corona?: { precios: Record<CrownGood, number> } | null;
-  boletines?: { semana: number; titular: string }[];
+  /** Bloque 3: `edicion` es "domingo" o "miercoles" (la hoja volandera). */
+  boletines?: { semana: number; edicion?: "domingo" | "miercoles"; titular: string }[];
+  /** Bloque 3: la proclama de tu casa para el próximo domingo. */
+  proclama?: { semana: number; texto: string | null; max: number } | null;
   soborno?: { semana: number; coste: number; pagado: number | null; frases: string[] } | null;
   evento?: { semana: number; clave: string; nombre: string; texto: string; linea: string; aplicado: boolean } | null;
   cartas?: CardInfo[];
@@ -392,7 +395,9 @@ export const api = {
   pushSubscribe: (sub: PushSubscriptionJSON) => call<{ ok: true }>("POST", "/push/suscribir", sub),
   pushUnsubscribe: (endpoint: string) => call<{ ok: true }>("POST", "/push/baja", { endpoint }),
   pushTest: () => call<{ ok: true }>("POST", "/push/prueba"),
-  bulletin: (id: number, semana: number) => call<Bulletin & { publicado: string }>("GET", `/partidas/${id}/boletin/${semana}`),
+  bulletin: (id: number, semana: number, edicion: "domingo" | "miercoles" = "domingo") =>
+    call<Bulletin & { publicado: string }>("GET", `/partidas/${id}/boletin/${semana}${edicion === "miercoles" ? "?edicion=miercoles" : ""}`),
+  proclaim: (id: number, texto: string) => call<{ ok: true; texto: string | null }>("PUT", `/partidas/${id}/proclama`, { texto }),
   bribe: (id: number, plantilla: number) => call<{ ok: true }>("POST", `/partidas/${id}/soborno`, { plantilla }),
   bid: (id: number, lote: number, cantidad: number) => call<{ ok: true }>("PUT", `/partidas/${id}/subasta/${lote}`, { cantidad }),
   hireMercenaries: (id: number, cantidad: number) =>

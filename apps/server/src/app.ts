@@ -47,6 +47,7 @@ import {
   type EventKey,
   BRIBE_COST,
   PHRASES,
+  checkProclamation,
   resolutionInfo,
   type WeekEvent,
   EVENTS,
@@ -77,7 +78,7 @@ import {
 import { notifyHouses, vapidFrom, type NotifyEnv } from "./notify";
 import { COLORS, shieldOf, shieldView } from "./heraldry";
 import { clockOf, runGameJobs } from "./jobs";
-import { bribeView, type StoredBulletin } from "./boletin";
+import { bribeView, proclamationView, type StoredBulletin } from "./boletin";
 import { auctionView, handView, openAuctionWeek, spiedHouses, useCardStatements, type CardRow } from "./subasta";
 import { addBots, advance, botsPlayDay, deleteTestGame, testStart } from "./pruebas";
 import { ransomStatements } from "./rescate";
@@ -743,13 +744,21 @@ app.get("/api/partidas/:id", async (c) => {
     corona: game.status === "active" && ECONOMY_TWEAKS.crown ? { precios: crownPriceView(await crownMarket(db, game, houses)) } : null,
     evento: game.status === "active" ? await eventView(db, game) : null,
     boletines: (
-      await db.prepare("SELECT week, json_extract(content, '$.headline') AS headline FROM bulletins WHERE game_id = ? ORDER BY week DESC")
+      await db
+        .prepare(
+          "SELECT week, edition, json_extract(content, '$.headline') AS headline FROM bulletins WHERE game_id = ? ORDER BY week DESC, CASE edition WHEN 'domingo' THEN 0 ELSE 1 END",
+        )
         .bind(game.id)
-        .all<{ week: number; headline: string }>()
-    ).results.map((b) => ({ semana: b.week, titular: b.headline })),
+        .all<{ week: number; edition: string; headline: string }>()
+    ).results.map((b) => ({ semana: b.week, edicion: b.edition, titular: b.headline })),
     soborno:
       game.status === "active"
         ? await bribeView(db, game, house.id, house.name, resolutionInfo(Math.min(game.current_resolution + 1, totalResolutions(game.weeks, rhythmOf(game).days)), rhythmOf(game).days).week)
+        : null,
+    // Bloque 3: la proclama de esta casa para el próximo domingo.
+    proclama:
+      game.status === "active"
+        ? await proclamationView(db, game, house.id, resolutionInfo(Math.min(game.current_resolution + 1, totalResolutions(game.weeks, rhythmOf(game).days)), rhythmOf(game).days).week)
         : null,
     cartas: await handView(db, game.id, house.id),
     vigiladas: spied,
@@ -1461,12 +1470,39 @@ async function eventView(db: D1Database, game: GameRow) {
 app.get("/api/partidas/:id/boletin/:semana", async (c) => {
   const m = await membership(c);
   if (m instanceof Response) return m;
-  const row = await c.env.DB.prepare("SELECT content, published_at FROM bulletins WHERE game_id = ? AND week = ?")
-    .bind(m.game.id, Number(c.req.param("semana")))
+  // Bloque 3: ?edicion=miercoles para la hoja volandera; sin ella, el del domingo.
+  const edition = c.req.query("edicion") === "miercoles" ? "miercoles" : "domingo";
+  const row = await c.env.DB.prepare("SELECT content, published_at FROM bulletins WHERE game_id = ? AND week = ? AND edition = ?")
+    .bind(m.game.id, Number(c.req.param("semana")), edition)
     .first<{ content: string; published_at: string }>();
   if (!row) return fail(c, 404, "Ese boletín aún no se ha escrito.");
   const content = JSON.parse(row.content) as StoredBulletin;
   return c.json({ ...content, lastEventId: undefined, publicado: row.published_at });
+});
+
+/** Bloque 3: escribir, cambiar o retirar (texto vacío) la proclama de la semana. */
+app.put("/api/partidas/:id/proclama", async (c) => {
+  const m = await activeMembership(c);
+  if (m instanceof Response) return m;
+  const clock = clockOf(m.game)!;
+  if (!ordersOpen(gameNow(m.game), clock)) return fail(c, 409, "El cronista ya ha cerrado el boletín de esta semana.");
+  const { texto } = await c.req.json<{ texto?: unknown }>().catch(() => ({ texto: undefined }));
+  if (typeof texto !== "string") return fail(c, 400, "Falta el texto de la proclama.");
+  const checked = checkProclamation(texto);
+  if (!checked.ok) return fail(c, 400, checked.error);
+  const week = resolutionInfo(m.game.current_resolution + 1, rhythmOf(m.game).days).week;
+  const db = c.env.DB;
+  if (checked.text === "") {
+    await db.prepare("DELETE FROM proclamations WHERE game_id = ? AND house_id = ? AND week = ?").bind(m.game.id, m.house.id, week).run();
+  } else {
+    await db
+      .prepare(
+        "INSERT INTO proclamations (game_id, house_id, week, text, updated_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT (game_id, house_id, week) DO UPDATE SET text = excluded.text, updated_at = excluded.updated_at",
+      )
+      .bind(m.game.id, m.house.id, week, checked.text, gameNow(m.game).toISOString())
+      .run();
+  }
+  return c.json({ ok: true, texto: checked.text || null });
 });
 
 /** Sobornar al cronista: una frase halagadora sobre uno mismo en el boletín del domingo. */

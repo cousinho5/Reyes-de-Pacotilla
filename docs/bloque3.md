@@ -40,7 +40,7 @@ Fray Abundio pasa a hablar dos veces por semana, a narrar la noche, a contar tod
 | Duda | Respuesta |
 | --- | --- |
 | Boletín del miércoles | «Hoja volandera» corta: titular, armas, pactos y memoria. El domingo, el boletín completo con clasificación, sobornos y proclamas |
-| Proclamas | Gratis, firmadas, solo en el boletín del domingo y editables hasta el cierre. Pueden nombrar a otras casas; sin enlaces |
+| Proclamas | Gratis, firmadas, solo en el boletín del domingo y editables hasta el cierre. Pueden nombrar a otras casas; sin enlaces. Idea de Pablo: se nombra con «@», como en WhatsApp, eligiendo la casa de una lista |
 | Memoria | Solo dentro de cada partida (nada entre partidas) |
 | Repetición | Cuando el paso es de tu casa, Fray Abundio te habla de «vuestra merced». Solo en los combates |
 | Crónica Definitiva | Pergamino de 8 a 12 momentos clave con letra capitular en pixel art, para compartir por WhatsApp como texto. Cada casa que pierde puede añadir una línea de «fe de erratas» al pie |
@@ -54,12 +54,12 @@ Las frases nuevas (borrador para revisar) están en el documento aparte del proy
 
 ## Pasos
 
-1. **Frases nuevas** en `docs/banco-de-frases.md` y en `texts/cronista.ts`. Se escriben y se revisan antes de meterlas.
-2. **Boletín del miércoles:** `jobs.ts` publica también el miércoles, con los hechos desde el último boletín.
+1. ✅ **Frases nuevas** (PR 1, #76) en `docs/banco-de-frases.md` y en `texts/cronista.ts`. Se escriben y se revisan antes de meterlas.
+2. ✅ **Boletín del miércoles** (PR 2): `jobs.ts` publica también el miércoles, con los hechos desde el último boletín.
 3. **Repetición narrada** en `NightReplay.tsx`, con frases elegidas por la semilla para que no cambien al volver a verla.
 4. **Memoria del cronista** en el motor (`bulletin.ts`), a partir del registro de la partida.
 5. **Crónica Definitiva** al acabar la partida.
-6. **Proclamas:** tabla nueva (migración), un campo en Reino y su sitio en el boletín.
+6. ✅ **Proclamas** (PR 2): tabla nueva (migración), un campo en Reino y su sitio en el boletín.
 7. **Boletín emergente** y **casas en su color** en el cliente.
 8. **Fray Abundio nuevo** en `apps/web/src/art/sprites.ts`, con sus animaciones (respetando «reducir movimiento»).
 9. **Mensajes y notificaciones** con frases variadas.

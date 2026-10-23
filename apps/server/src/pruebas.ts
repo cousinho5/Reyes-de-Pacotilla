@@ -670,6 +670,7 @@ export async function deleteTestGame(env: NotifyEnv, game: GameRow): Promise<voi
     db.prepare("DELETE FROM cards WHERE game_id = ?").bind(game.id),
     db.prepare("DELETE FROM game_events WHERE game_id = ?").bind(game.id),
     db.prepare("DELETE FROM bribes WHERE game_id = ?").bind(game.id),
+    db.prepare("DELETE FROM proclamations WHERE game_id = ?").bind(game.id),
     db.prepare("DELETE FROM bulletins WHERE game_id = ?").bind(game.id),
     db.prepare("DELETE FROM phrase_usage WHERE game_id = ?").bind(game.id),
     db.prepare("DELETE FROM prestige_snapshots WHERE game_id = ?").bind(game.id),

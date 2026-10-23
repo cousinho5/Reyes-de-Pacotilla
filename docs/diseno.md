@@ -650,7 +650,7 @@ Hecho en la versión 1: en la pestaña Reino, cualquier día de la semana hasta 
 
 ### 17.6 bis El boletín semanal (hecho en la versión 1)
 
-Se publica cada domingo tras la resolución (`packages/engine/src/bulletin.ts`), con los hechos públicos desde el boletín anterior. Se lee en pergamino en la pestaña Reino y llega un aviso al móvil. Tiene botón para compartirlo en WhatsApp como texto. El orden:
+Se publica cada domingo tras la resolución (`packages/engine/src/bulletin.ts`), con los hechos públicos desde el boletín anterior. Desde el bloque 3 hay también una **hoja volandera** tras la resolución del miércoles: entradilla, titular, armas, sitios y cautivos, y pactos, con los hechos desde el domingo; el boletín del domingo no repite lo que ya contó ella, pero el resto (mercados, Corona, obras, Gloria) sigue siendo de toda la semana. Se lee en pergamino en la pestaña Reino y llega un aviso al móvil. Tiene botón para compartirlo en WhatsApp como texto. El orden:
 
 1. **Titular:** cambio de favorito, casillas que cambian de bandera, murallas que aguantan o semana tranquila.
 2. **El favorito:** elogio al líder o, si es nuevo, cambio de bando.
@@ -662,6 +662,7 @@ Se publica cada domingo tras la resolución (`packages/engine/src/bulletin.ts`),
 6. **Obras y honores:** logros, mejoras de nivel 3 o más y, desde el bloque 3, ruinas exploradas, la casa con más Gloria (2 o más) y la derrota con honor. Las deserciones por hambre no salen: delatarían los recursos de la casa.
 7. **Noticias de las casas:** el lema contra la realidad y el último.
 8. **Del difunto rey:** la versión oficial de su muerte, una vez por partida, o su fantasma.
+8 bis. **Proclamas** (bloque 3): una frase propia por casa y semana, de hasta 140 letras y sin enlaces, firmada y sin tocar. Se escribe en Reino y se puede cambiar hasta el cierre. Para nombrar a otra casa se escribe «@» y se elige de la lista, como en WhatsApp («@Casa del Nabo»); entonces el cronista se desmarca con una nota.
 9. **Comunicados de la corte:** las frases compradas, con el pie de patrocinio.
 10. **Notas al margen:** una o dos.
 
