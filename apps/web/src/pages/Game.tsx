@@ -392,7 +392,7 @@ export function Game({ id }: { id: number }) {
             ["castillo", "Castillo", 0],
             ["ordenes", "Órdenes", draft.length],
             ["comercio", "Comercio", offersForMe],
-            ["reino", "Reino", proposalsForMe],
+            ["reino", p.estado === "finished" ? "Coronación" : "Reino", proposalsForMe],
           ] as [Tab, string, number][]
         ).map(([key, label, count]) => (
           <button key={key} className={tab === key ? "active" : ""} onClick={() => setTab(key)} aria-current={tab === key}>

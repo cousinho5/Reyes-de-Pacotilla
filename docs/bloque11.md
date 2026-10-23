@@ -1,6 +1,6 @@
 # Bloque 11: diseño de la sección Reino
 
-Decidido el 20 de octubre de 2026 · copia del documento «Reyes de Pacotilla: bloque 11, diseño de la sección Reino» (claude.ai), que tiene además la maqueta de la pestaña y de la ficha de casa. No cambia reglas.
+Decidido el 20 de octubre de 2026 y hecho el 23 de octubre de 2026 (PR #81 a #84) · copia del documento «Reyes de Pacotilla: bloque 11, diseño de la sección Reino» (claude.ai), que tiene además la maqueta de la pestaña y de la ficha de casa. No cambia reglas.
 
 Este bloque decide cómo se ordena y cómo se ve la pestaña Reino. Ya está decidido en otros bloques: el boletín en ventana al abrir el juego, las proclamas, la memoria del cronista, la Crónica Definitiva y el Fray Abundio nuevo de 48x48 (bloque 3); el panel de diplomacia (bloque 8); botones de 48x48 y hojas que suben desde abajo (bloque 6).
 
@@ -57,3 +57,14 @@ Van después de los bloques 3 (boletín, Crónica Definitiva y Fray nuevo), 6 (h
 8. **«La coronación»** (punto 8) al acabar la partida.
 9. **Movimiento** (punto 9), apagado con `prefers-reduced-motion`.
 10. **Comprobar en un móvil** de 390x844 con una partida de prueba de 7 casas.
+
+## Hecho
+
+| PR | Qué |
+| --- | --- |
+| #81 | Foto de Prestigio cada noche, `historia` en la API, clasificación con podio, flechas y barras, y gráfica de la carrera |
+| #82 | Tarjeta del boletín (soborno y proclama en hojas), «Leer el boletín» con los anteriores, crónica por noches con filtros y `GET /cronica/:semana` |
+| #83 | Ficha de casa desde Reino, Mapa y Comercio; `cifras` y `relacion` en la API; alianzas de Comercio a Reino con su tira; «Te pisan los talones» |
+| #84 | Podio de madera y corona de 16x16 en pxl (`docs/maquetas/bloque11/pxl/podio.px.js` → `apps/web/src/art/podio.ts`), cifras que suben, flechas una a una y corona que brilla al llegar una noche nueva (nada con «reducir movimiento»), y «La coronación» al acabar: ganador coronado, podio final, Crónica Definitiva con la fe de erratas y la carrera entera |
+
+Comprobado en un móvil simulado de 390x844 con partidas de prueba de 7 casas (en juego y acabada); capturas en la carpeta `bloque11/` del proyecto. Falta probarlo en un móvil de verdad.
