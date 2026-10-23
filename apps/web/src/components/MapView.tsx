@@ -30,6 +30,8 @@ interface Props {
   /** Bloque 11: casilla en la que centrar el mapa al abrirlo («Ver en el mapa» de la ficha de casa). */
   focusTile?: number | null;
   onFocused?: () => void;
+  /** Bloque 13: hay una cinemática encima; la repetición de la noche espera a que acabe. */
+  paused?: boolean;
 }
 
 /** "orden": el destino propone el verbo (bloque 12); "capitan": el Capitán va solo, sin tropas, a otra casilla tuya (bloque 4). */
@@ -85,7 +87,7 @@ function markSeen(game: number, n: number) {
   }
 }
 
-export function MapView({ state, draft, setDraft, act, night, setNight, editOrder, onEditOpened, onOpenTrade, focusTile, onFocused }: Props) {
+export function MapView({ state, draft, setDraft, act, night, setNight, editOrder, onEditOpened, onOpenTrade, focusTile, onFocused, paused }: Props) {
   const openHouse = useOpenHouse();
   const now = state.casillas ?? [];
   const next = nextResolution(state);
@@ -172,13 +174,13 @@ export function MapView({ state, draft, setDraft, act, night, setNight, editOrde
     window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - header - 8, behavior: "smooth" });
   };
   useEffect(() => {
-    if (!replayable || seenNight(state.partida.id) >= last) return;
+    if (paused || !replayable || seenNight(state.partida.id) >= last) return;
     if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
     setNight(0);
     setReplay(true);
     showBoard();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [replayable, last, state.partida.id]);
+  }, [replayable, last, state.partida.id, paused]);
   const endReplay = () => {
     markSeen(state.partida.id, last);
     setReplay(false);

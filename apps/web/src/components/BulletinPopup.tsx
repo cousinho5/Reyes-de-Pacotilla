@@ -12,9 +12,9 @@ export function BulletinPopup({ state, onClose }: { state: GameState; onClose: (
   const [index, setIndex] = useState(0);
   const [bulletin, setBulletin] = useState<Shown | null>(null);
   // La repetición de la noche va antes: la ventana espera a que acabe.
-  const [replaying, setReplaying] = useState(() => !!document.querySelector(".replay"));
+  const [replaying, setReplaying] = useState(() => !!document.querySelector(".replay, .cinematic"));
   useEffect(() => {
-    const t = setInterval(() => setReplaying(!!document.querySelector(".replay")), 800);
+    const t = setInterval(() => setReplaying(!!document.querySelector(".replay, .cinematic")), 800);
     return () => clearInterval(t);
   }, []);
 

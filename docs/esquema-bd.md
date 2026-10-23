@@ -76,6 +76,7 @@ Esquema de Reyes de Pacotilla para Cloudflare D1, que usa SQL de SQLite. Corresp
 | `bulletins` | Boletines publicados: el del domingo y la hoja volandera del miércoles (`edition`). La Crónica Definitiva se guarda como la semana 0. |
 | `proclamations` | Proclamas: una frase por casa y semana en el boletín del domingo (bloque 3). |
 | `phrase_usage` | Frases del banco ya usadas en la partida, para no repetirlas. |
+| `cinematics_seen` | Cinemáticas que ha visto cada casa (bloque 13, migración 0020), para que salgan una sola vez en cualquier dispositivo. `watched = 0` si se pasó por alto porque había demasiadas a la vez. |
 | `notifications` | Avisos enviados, con una clave que evita mandar el mismo dos veces. |
 
 ## 3. Cómo funcionan las operaciones clave

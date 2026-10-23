@@ -85,6 +85,7 @@ import { bribeView, errataView, proclamationView, type StoredBulletin } from "./
 import { auctionView, handView, openAuctionWeek, spiedHouses, useCardStatements, type CardRow } from "./subasta";
 import { addBots, advance, botsPlayDay, deleteTestGame, testStart } from "./pruebas";
 import { ransomStatements } from "./rescate";
+import { cinematicsView, isCinematicKey } from "./cinematicas";
 import { prestigeHistory, relations } from "./reino";
 import { crownCost, crownMarket, crownPriceView, crownPurchaseStatements } from "./corona";
 import { hireStatements, leavingDay, loadMercenaries } from "./mercenarios";
@@ -776,6 +777,8 @@ app.get("/api/partidas/:id", async (c) => {
         : null,
     corona: game.status === "active" && ECONOMY_TWEAKS.crown ? { precios: crownPriceView(await crownMarket(db, game, houses)) } : null,
     evento: game.status === "active" ? await eventView(db, game) : null,
+    // Bloque 13: las cinemáticas que hay para esta casa y cuáles ha visto.
+    cinematicas: await cinematicsView(db, game, house.id, now),
     boletines: (
       await db
         .prepare(
@@ -1486,6 +1489,22 @@ app.post("/api/partidas/:id/ofertas/:oid/retirar", async (c) => {
   if (offer.from_house_id !== m.house.id) return fail(c, 403, "Solo puedes retirar tus ofertas.");
   await c.env.DB.prepare("UPDATE offers SET status = 'cancelled', closed_at = ? WHERE id = ? AND status = 'open'")
     .bind(gameNow(m.game).toISOString(), offer.id)
+    .run();
+  return c.json({ ok: true });
+});
+
+// Bloque 13: marca una cinemática como vista. Con `vista: false` se pasó por
+// alto (había demasiadas a la vez): ya no sale sola, pero sigue como nueva.
+app.post("/api/partidas/:id/cinematicas", async (c) => {
+  const m = await membership(c);
+  if (m instanceof Response) return m;
+  const { clave, vista } = await c.req.json<{ clave?: string; vista?: boolean }>().catch(() => ({ clave: undefined, vista: undefined }));
+  if (typeof clave !== "string" || !isCinematicKey(clave)) return fail(c, 400, "Esa cinemática no existe.");
+  const watched = vista === false ? 0 : 1;
+  await c.env.DB.prepare(
+    "INSERT INTO cinematics_seen (house_id, key, watched) VALUES (?, ?, ?) ON CONFLICT (house_id, key) DO UPDATE SET watched = MAX(watched, excluded.watched)",
+  )
+    .bind(m.house.id, clave, watched)
     .run();
   return c.json({ ok: true });
 });

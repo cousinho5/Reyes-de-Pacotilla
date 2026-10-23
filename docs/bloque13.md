@@ -58,6 +58,8 @@ Todas salen una sola vez, se saltan con un toque y con «reducir movimiento» (`
 
 Van después de los bloques 3 (Fray nuevo, banco de frases y Crónica Definitiva), 6 (rendimiento en móvil) y 11 (pantalla «La coronación»).
 
+**Hecho (PR 1):** el reproductor (`components/CinematicPlayer.tsx`, lienzo y ayudas de dibujo en `art/cinema.ts`), las cinemáticas como datos en `apps/web/src/cinematics.tsx`, la cola de las que salen solas en `cinematicQueue.ts` (como mucho 2 seguidas, más el prólogo y la coronación; las demás quedan como nuevas) y `components/CinematicQueue.tsx`, la migración 0020 (`cinematics_seen`) con la lista del servidor en `apps/server/src/cinematicas.ts` (`cinematicas` en el estado y `POST /cinematicas`), la lista de Reino (`CinematicList.tsx`) y el pregonero con el bando de cada evento (`art/pregonero.ts`, desde `pxl/pregonero.px.js`). El boletín apunta en `king` si salió el fantasma o la muerte del rey. La repetición de la noche y el boletín emergente esperan a que acabe la cinemática.
+
 1. **Reproductor de cinemáticas** en el cliente: escenas con capas, texto y duración; tocar para avanzar, «Saltar», viñetas quietas con «reducir movimiento».
 2. **Qué has visto:** una migración nueva guarda qué cinemáticas ha visto cada casa, para que salgan una sola vez en cualquier dispositivo y en orden si hay varias pendientes.
 3. **Dibujos nuevos**, diseñados en pxl y pasados a `apps/web/src/art` con `scripts/pxl-a-juego.mjs`, al nivel del Fray de 48x48: rey Aldric con fotogramas (masticar, toser, caer), fantasma, corona, trono, llave, banquete y salón del trono.

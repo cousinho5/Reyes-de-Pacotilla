@@ -95,22 +95,28 @@ sprite("aldeana", { base: "aldeano", swap: { A: "U", a: "u", T: "t" } })
 anim("aldeano_asiente", { w: 20, h: 37, fps: 2, pivot: "bottom" }, frame(stamp("aldeano", 10, 36)), frame(stamp("aldeano", 10, 37)))
 
 // ------------------------------------------------------------- escena
+// El fondo (cielo, casas y adoquines) es un dibujo aparte, "plaza", para que el
+// juego lo pinte una vez y ponga encima al pregonero y a los aldeanos.
+function casas(c) {
+  casa(c, -4, 52, 30, "c", false)
+  casa(c, 48, 64, 44, "C", true)
+  casa(c, 112, 52, 24, "c", false)
+  // puerta en arco de la casa del medio
+  c.rect(54, 118, 14, 22, "b"); c.ellipse(61, 118, 7, 5, "b"); c.rect(55, 119, 12, 21, "B"); c.vline(61, 115, 25, "b"); c.px(64, 129, "Y")
+}
+function adoquines(c) {
+  for (let y = 140; y < 176; y++) for (let x = 0; x < 160; x++) {
+    const r = Math.floor((y - 140) / 5), o = (r % 2) * 4
+    const junta = (y - 140) % 5 === 4 || (x + o) % 8 === 7
+    c.px(x, y, junta ? "j" : hash(Math.floor((x + o) / 8), r, 3) > 0.5 ? "g" : "G")
+  }
+}
+sprite("plaza", { w: 160, h: 176 }, grad(0, 0, 160, 40, "sSQ"), casas, adoquines)
+
 scene("pregonero_plaza", { w: 160, h: 176, world: { scale: 22, ground: 160, light: [-0.6, -1] } },
   layer("cielo", grad(0, 0, 160, 40, "sSQ")),
-  layer("casas", (c) => {
-    casa(c, -4, 52, 30, "c", false)
-    casa(c, 48, 64, 44, "C", true)
-    casa(c, 112, 52, 24, "c", false)
-    // puerta en arco de la casa del medio
-    c.rect(54, 118, 14, 22, "b"); c.ellipse(61, 118, 7, 5, "b"); c.rect(55, 119, 12, 21, "B"); c.vline(61, 115, 25, "b"); c.px(64, 129, "Y")
-  }),
-  layer("suelo", (c) => {
-    for (let y = 140; y < 176; y++) for (let x = 0; x < 160; x++) {
-      const r = Math.floor((y - 140) / 5), o = (r % 2) * 4
-      const junta = (y - 140) % 5 === 4 || (x + o) % 8 === 7
-      c.px(x, y, junta ? "j" : hash(Math.floor((x + o) / 8), r, 3) > 0.5 ? "g" : "G")
-    }
-  }),
+  layer("casas", casas),
+  layer("suelo", adoquines),
   layer("sombras", { shade: true },
     ellipse(80, 160, 15, 2, "k"), ellipse(25, 158, 8, 1.5, "k"), ellipse(135, 160, 8, 1.5, "k")),
   layer("gente", { sort: "y" },

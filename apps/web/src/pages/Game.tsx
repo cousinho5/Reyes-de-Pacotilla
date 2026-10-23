@@ -1,4 +1,4 @@
-import { Suspense, lazy, useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { RESOURCES } from "@reyes/engine";
 import { api, ApiError, isOffline, saveGame, savedGame, type GameState, type HouseForm, type OrderView } from "../api";
 import { OpenHouse } from "../houseSheet";
@@ -11,6 +11,7 @@ import { RESOURCE_LABEL, formatDay, formatShort, timeLeft } from "../ui";
 import { nextResolution, nightOf, pruneQueue } from "../plan";
 import { vibrate } from "../haptics";
 import { unreadBulletins } from "../bulletinSeen";
+import { autoQueue, canPlay, seenHere } from "../cinematicQueue";
 
 type Tab = "mapa" | "castillo" | "ordenes" | "comercio" | "reino";
 
@@ -26,6 +27,8 @@ const Realm = lazy(() => loadRealm().then((m) => ({ default: m.Realm })));
 const HouseSheet = lazy(() => import("../components/HouseSheet").then((m) => ({ default: m.HouseSheet })));
 // Bloque 3: la ventana del boletín recién publicado, solo cuando hay uno sin leer.
 const BulletinPopup = lazy(() => import("../components/BulletinPopup").then((m) => ({ default: m.BulletinPopup })));
+// Bloque 13: las cinemáticas que salen solas (con sus dibujos), solo si hay alguna.
+const CinematicQueue = lazy(() => import("../components/CinematicQueue").then((m) => ({ default: m.CinematicQueue })));
 const OFFLINE_TOAST = "Sin conexión: podrás dar órdenes cuando vuelva la red.";
 
 /**
@@ -112,6 +115,16 @@ export function Game({ id }: { id: number }) {
     }, undo ? 5000 : 3500);
     return () => window.clearTimeout(t);
   }, [toast, undo]);
+
+  // Bloque 13: cinemáticas pendientes, con lo que ha llegado del servidor. Se
+  // calcula de nuevo al acabar la cola (por si llegó otra mientras tanto).
+  const [cineDone, setCineDone] = useState(0);
+  const cineQueue = useMemo(
+    () => (state && fresh && state.partida.estado !== "lobby" ? autoQueue(state.cinematicas ?? [], canPlay, seenHere(id)) : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [fresh, JSON.stringify(state?.cinematicas ?? null), cineDone, id],
+  );
+  const cinePlaying = !!cineQueue && cineQueue.play.length > 0;
 
   /** Ejecuta una acción y recarga; los errores se muestran como aviso. */
   const act = useCallback(
@@ -320,6 +333,7 @@ export function Game({ id }: { id: number }) {
             onOpenTrade={() => setTab("comercio")}
             focusTile={mapFocus}
             onFocused={() => setMapFocus(null)}
+            paused={cinePlaying}
           />
         )}
         {tab === "castillo" && <CastlePanel state={state} act={act} gameId={id} />}
@@ -361,7 +375,13 @@ export function Game({ id }: { id: number }) {
         </Suspense>
       )}
 
-      {tab !== "reino" && unreadBulletins(state).length > 0 && (
+      {cineQueue && (cineQueue.play.length > 0 || cineQueue.skip.length > 0) && (
+        <Suspense fallback={null}>
+          <CinematicQueue key={cineDone} state={state} play={cineQueue.play} skip={cineQueue.skip} onDone={() => setCineDone((n) => n + 1)} />
+        </Suspense>
+      )}
+
+      {!cinePlaying && tab !== "reino" && unreadBulletins(state).length > 0 && (
         <Suspense fallback={null}>
           <BulletinPopup key={popupClosed} state={state} onClose={() => setPopupClosed((n) => n + 1)} />
         </Suspense>

@@ -190,6 +190,18 @@ export interface EventView {
   privado?: boolean;
 }
 
+/** Bloque 13: una cinemática de la partida (los datos son públicos). */
+export interface CinematicItem {
+  clave: string;
+  tipo: "prologo" | "evento" | "fantasma" | "ultima" | "coronacion";
+  semana: number;
+  orden: number;
+  vista: boolean;
+  sinVer?: boolean;
+  sola: boolean;
+  datos?: Record<string, unknown>;
+}
+
 export interface GameState {
   partida: {
     id: number;
@@ -260,6 +272,8 @@ export interface GameState {
   feDeErratas?: { texto: string | null; max: number } | null;
   soborno?: { semana: number; coste: number; pagado: number | null; frases: string[] } | null;
   evento?: { semana: number; clave: string; nombre: string; texto: string; linea: string; aplicado: boolean } | null;
+  /** Bloque 13: las cinemáticas que hay para esta casa, en orden, y cuáles ha visto. */
+  cinematicas?: CinematicItem[];
   cartas?: CardInfo[];
   /** Casas que vigilas con la carta Espía. */
   vigiladas?: number[];
@@ -401,6 +415,7 @@ export const api = {
   acceptOffer: (id: number, oferta: number) => call<{ ok: true }>("POST", `/partidas/${id}/ofertas/${oferta}/aceptar`),
   rejectOffer: (id: number, oferta: number) => call<{ ok: true }>("POST", `/partidas/${id}/ofertas/${oferta}/rechazar`),
   cancelOffer: (id: number, oferta: number) => call<{ ok: true }>("POST", `/partidas/${id}/ofertas/${oferta}/retirar`),
+  seeCinematic: (id: number, clave: string, vista = true) => call<{ ok: true }>("POST", `/partidas/${id}/cinematicas`, { clave, vista }),
   chooseObjective: (id: number, clave: string) => call<{ ok: true }>("POST", `/partidas/${id}/objetivo`, { clave }),
   setAbsence: (id: number, body: { vacaciones?: boolean; plantilla?: string }) =>
     call<{ ok: true }>("POST", `/partidas/${id}/ausencia`, body),

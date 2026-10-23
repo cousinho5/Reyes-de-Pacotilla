@@ -680,6 +680,7 @@ export async function deleteTestGame(env: NotifyEnv, game: GameRow): Promise<voi
     db.prepare("UPDATE houses SET captain_tile = NULL WHERE game_id = ?").bind(game.id),
     db.prepare("DELETE FROM tiles WHERE game_id = ?").bind(game.id),
     db.prepare(`DELETE FROM buildings WHERE house_id IN ${inHouses}`),
+    db.prepare(`DELETE FROM cinematics_seen WHERE house_id IN ${inHouses}`),
     db.prepare("DELETE FROM houses WHERE game_id = ?").bind(game.id),
     db.prepare("DELETE FROM games WHERE id = ?").bind(game.id),
     ...botUsers.map((u) => db.prepare("DELETE FROM users WHERE id = ?").bind(u)),

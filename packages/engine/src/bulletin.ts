@@ -122,6 +122,11 @@ export interface Bulletin {
   mood?: BulletinMood;
   /** Frases usadas en este boletín, para no repetirlas. */
   used: string[];
+  /**
+   * Bloque 13: si sale el difunto rey, cómo (su fantasma opina o se recuerda su
+   * muerte) y con qué frase, para la cinemática del fantasma.
+   */
+  king?: { kind: "fantasma" | "muerte"; line: string };
 }
 
 /** Las cinco caras del cronista (diseño, sección 17). */
@@ -431,14 +436,18 @@ export function writeBulletin(input: BulletinInput): Bulletin {
 
   // 7. El difunto rey: la versión oficial de su muerte (una vez por partida) o su fantasma.
   const king: string[] = [];
+  let kingKind: "fantasma" | "muerte" | null = null;
   // Entre la semana 2 y la penúltima (con "semanas" en plural).
   const deathWeek = 2 + Math.floor(seededRandom(`${input.seed}:muerte`)() * Math.max(1, input.totalWeeks - 2));
   if (mid) {
     // La hoja volandera no habla del difunto rey.
-  } else if (input.week === deathWeek) king.push(say("rey.muerte", { semanas: input.week }));
-  else if (rand() < 0.5 && leader) {
+  } else if (input.week === deathWeek) {
+    king.push(say("rey.muerte", { semanas: input.week }));
+    kingKind = "muerte";
+  } else if (rand() < 0.5 && leader) {
     const someone = input.houses[Math.floor(rand() * input.houses.length)]!;
     king.push(say("rey.fantasma", { "líder": name(leader.id), jugador: name(someone.id) }));
+    kingKind = "fantasma";
   }
   if (king.length > 0) sections.push({ title: "Del difunto rey", lines: king });
 
@@ -531,6 +540,7 @@ export function writeBulletin(input: BulletinInput): Bulletin {
     sponsors: sponsors.map(capitalize),
     leader: leader?.id ?? null,
     used: usedNow,
+    ...(kingKind && king[0] ? { king: { kind: kingKind, line: capitalize(king[0]) } } : {}),
   };
 }
 
