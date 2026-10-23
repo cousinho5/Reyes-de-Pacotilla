@@ -17,7 +17,7 @@
 //   npm run simular -- --json simulacion.json   # además, todos los datos en JSON
 
 import { writeFileSync } from "node:fs";
-import { ALLIANCE, ALLIANCE_BOTS, BATTLE_TWEAKS, BOT_TWEAKS, CROWN, ECONOMY_TWEAKS, FEATURES, MERCENARIES, OBJECTIVE_TARGETS, MAP_GEN, RIVERS, FORTIFY_COST, FORTIFY_UPKEEP, PRESTIGE, SIEGE, UNITS, UPGRADE_COST } from "../packages/engine/src";
+import { TITLES, ALLIANCE, ALLIANCE_BOTS, BATTLE_TWEAKS, BOT_TWEAKS, CROWN, ECONOMY_TWEAKS, FEATURES, MERCENARIES, OBJECTIVE_TARGETS, MAP_GEN, RIVERS, FORTIFY_COST, FORTIFY_UPKEEP, PRESTIGE, SIEGE, UNITS, UPGRADE_COST } from "../packages/engine/src";
 import {
   CLASSIC_STRATEGIES,
   OBJECTIVES,
@@ -380,6 +380,17 @@ if (ALLIANCE.enabled) {
   );
   console.log("\n«puesto medio»: 0 = primero, 1 = último.");
 }
+
+// Bloque 13: cuántas veces sale cada título de fin de partida y con qué puesto medio.
+table(
+  "Bloque 13: títulos de fin de partida",
+  ["título", "partidas con él", "puesto medio", "lo lleva el ganador"],
+  TITLES.map((t) => {
+    const g = houses.filter((h) => h.title === t.key);
+    return [t.name, pct(g.length / results.length), f1(avg(g.map(norm))), pct(g.filter((h) => h.rank === 1).length / results.length)];
+  }),
+);
+console.log("\n«puesto medio»: 0 = primero, 1 = último.");
 
 const json = args.get("json");
 if (json) {

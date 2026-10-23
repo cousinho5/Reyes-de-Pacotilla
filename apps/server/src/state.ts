@@ -42,6 +42,8 @@ export interface GameRow {
   played_house_id: number | null;
   /** Días con resolución, "0,1,2,3,4,5,6" (0 = lunes). Las partidas antiguas, "2,6". */
   resolution_days: string;
+  /** Bloque 13: clave del enlace público de la coronación (al acabar). */
+  share_key?: string | null;
 }
 
 /** Días con resolución de la partida y cuánto dura fortificar con ese ritmo. */

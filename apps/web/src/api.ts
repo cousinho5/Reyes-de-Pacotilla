@@ -191,6 +191,22 @@ export interface EventView {
 }
 
 /** Bloque 13: una cinemática de la partida (los datos son públicos). */
+/** Bloque 13: lo que cuenta la cinemática de la coronación. */
+export interface CoronationInfo {
+  ganador: number | null;
+  clasificacion: { casa: number; total: number }[];
+  titulos: { casa: number; clave: string; nombre: string; n: number; linea: string; rey: boolean }[];
+  semanas: { semana: number; duenos: [number, number][] }[];
+}
+
+/** Bloque 13: lo que da el enlace público de la coronación (sin nada privado). */
+export interface PublicCoronation {
+  partida: Pick<GameState["partida"], "id" | "nombre" | "estado" | "semanas" | "columnas" | "filas" | "costa">;
+  casas: HouseInfo[];
+  casillas: NonNullable<GameState["casillas"]>;
+  coronacion: CoronationInfo;
+}
+
 export interface CinematicItem {
   clave: string;
   tipo: "prologo" | "evento" | "fantasma" | "ultima" | "coronacion";
@@ -276,6 +292,10 @@ export interface GameState {
   evento?: { semana: number; clave: string; nombre: string; texto: string; linea: string; aplicado: boolean } | null;
   /** Bloque 13: las cinemáticas que hay para esta casa, en orden, y cuáles ha visto. */
   cinematicas?: CinematicItem[];
+  /** Bloque 13: la coronación, solo con la partida acabada. */
+  coronacion?: CoronationInfo | null;
+  /** Bloque 13: clave del enlace público de la coronación. */
+  compartir?: string | null;
   cartas?: CardInfo[];
   /** Casas que vigilas con la carta Espía. */
   vigiladas?: number[];
@@ -422,6 +442,8 @@ export const api = {
   setAbsence: (id: number, body: { vacaciones?: boolean; plantilla?: string }) =>
     call<{ ok: true }>("POST", `/partidas/${id}/ausencia`, body),
   setCloseWarning: (id: number, activo: boolean) => call<{ ok: true }>("POST", `/partidas/${id}/aviso-cierre`, { activo }),
+  /** Bloque 13: la coronación pública de una partida acabada, con la clave del enlace. */
+  publicCoronation: (clave: string) => call<PublicCoronation>("GET", `/coronacion/${encodeURIComponent(clave)}`),
   setCinematics: (id: number, cuales: "todas" | "esenciales") => call<{ ok: true }>("POST", `/partidas/${id}/ajuste-cinematicas`, { cuales }),
   pushKey: () => call<{ clave: string | null }>("GET", "/push/clave"),
   pushSubscribe: (sub: PushSubscriptionJSON) => call<{ ok: true }>("POST", "/push/suscribir", sub),

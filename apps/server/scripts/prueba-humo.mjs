@@ -361,6 +361,28 @@ check(
   conEnlace.status === 400 && proclama.status === 200 && conProclama?.texto === "Que tiemblen los vecinos" && conProclama.semana === 1,
   { conEnlace, proclama, conProclama },
 );
+// Bloque 13: al acabar, la coronación con un título distinto por casa y el enlace público sin cuenta.
+for (let i = 0; i < 40; i++) {
+  const r = await pablo("POST", `/api/partidas/${prueba.data.id}/prueba/avanzar`, { hasta: "resolucion" });
+  if (r.data.estado !== "active") break;
+}
+const acabada = (await pablo("GET", `/api/partidas/${prueba.data.id}`)).data;
+const titulos = acabada.coronacion?.titulos ?? [];
+check(
+  "al acabar: coronación con un título distinto por casa, el mapa por semanas y su enlace",
+  acabada.partida.estado === "finished" && titulos.length === acabada.casas.length && new Set(titulos.map((t) => t.clave)).size === titulos.length &&
+    titulos.filter((t) => t.rey).length === 1 && acabada.coronacion.semanas.length === 2 && typeof acabada.compartir === "string" && acabada.compartir.length >= 16,
+  acabada.coronacion,
+);
+const anonimo = client("Anónimo");
+const publica = await anonimo("GET", `/api/coronacion/${acabada.compartir}`);
+const falsa = await anonimo("GET", "/api/coronacion/estaclavenoexisteenningunsitio");
+check(
+  "la coronación se ve sin cuenta con su clave, sin nada privado; con otra clave, no",
+  publica.status === 200 && publica.data.coronacion.titulos.length === titulos.length && publica.data.casillas.every((t) => !("troops" in t)) &&
+    !("yo" in publica.data) && !/"recursos"|"ordenes"|"ofertas"/.test(JSON.stringify(publica.data)) && falsa.status === 404,
+  { publica: publica.status, falsa },
+);
 const borrada = await pablo("DELETE", `/api/partidas/${prueba.data.id}`);
 check("borrar la partida de prueba entera", borrada.status === 200, borrada);
 

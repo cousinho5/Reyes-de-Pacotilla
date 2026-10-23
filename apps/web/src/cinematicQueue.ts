@@ -23,7 +23,7 @@ export function autoQueue(
 }
 
 /** Las que este cliente sabe dibujar (cinematics.tsx). */
-export const canPlay = (item: CinematicItem) => item.tipo === "prologo" || (item.tipo === "evento" && !!item.datos);
+export const canPlay = (item: CinematicItem) => item.tipo === "prologo" || item.tipo === "coronacion" || (item.tipo === "evento" && !!item.datos);
 
 const KIND_NAME: Record<CinematicItem["tipo"], string> = {
   prologo: "Prólogo: la muerte del rey",

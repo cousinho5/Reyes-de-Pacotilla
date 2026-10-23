@@ -77,6 +77,7 @@ Esquema de Reyes de Pacotilla para Cloudflare D1, que usa SQL de SQLite. Corresp
 | `proclamations` | Proclamas: una frase por casa y semana en el boletín del domingo (bloque 3). |
 | `phrase_usage` | Frases del banco ya usadas en la partida, para no repetirlas. |
 | `cinematics_seen` | Cinemáticas que ha visto cada casa (bloque 13, migración 0020), para que salgan una sola vez en cualquier dispositivo. `watched = 0` si se pasó por alto porque había demasiadas a la vez. |
+| `territory_snapshots` | De quién es cada casilla al cerrar cada semana (bloque 13, migración 0022), para el mapa por semanas de la coronación. `owners` es una lista JSON de `[casilla, casa]`. |
 | `notifications` | Avisos enviados, con una clave que evita mandar el mismo dos veces. |
 
 ## 3. Cómo funcionan las operaciones clave
@@ -123,6 +124,7 @@ Los objetivos secretos usan las columnas que ya existían (`objective_options`, 
 
 Para probar el juego sin reunir a 4 personas:
 
+- `games.share_key`: clave del enlace público de la coronación (bloque 13, migración 0022). Se crea al acabar la partida, o la primera vez que se pide en las ya acabadas.
 - `games.is_test`: marca una partida de prueba. El cron horario no la toca.
 - `games.test_bots`: cuántos bots se añaden al empezar (de 3 a 7).
 - `games.sim_now`: el reloj simulado de la partida. Solo avanza con los botones de la mesa de pruebas. Todo lo que depende de la hora (órdenes abiertas, Prestigio de comercio, ofertas recientes) usa esta hora en vez de la real.

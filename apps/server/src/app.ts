@@ -85,6 +85,7 @@ import { bribeView, errataView, proclamationView, type StoredBulletin } from "./
 import { auctionView, handView, openAuctionWeek, spiedHouses, useCardStatements, type CardRow } from "./subasta";
 import { addBots, advance, botsPlayDay, deleteTestGame, testStart } from "./pruebas";
 import { ransomStatements } from "./rescate";
+import { coronationView, publicCoronation, shareKeyOf } from "./coronacion";
 import { cinematicsView, isCinematicKey } from "./cinematicas";
 import { prestigeHistory, relations } from "./reino";
 import { crownCost, crownMarket, crownPriceView, crownPurchaseStatements } from "./corona";
@@ -318,6 +319,13 @@ app.post("/api/partidas", async (c) => {
     .bind(nombre, semanas, randomCode(12), invite, userId, prueba ? 1 : 0, prueba ? bots : null, DAILY_DAYS.join(","))
     .first<{ id: number }>();
   return c.json({ id: game!.id, codigoInvitacion: invite, codigoAcceso });
+});
+
+/** Bloque 13: la coronación de una partida acabada, para el enlace público (sin cuenta). */
+app.get("/api/coronacion/:clave", async (c) => {
+  const view = await publicCoronation(c.env.DB, c.req.param("clave"));
+  if (!view) return fail(c, 404, "Esa coronación no existe o la partida aún no ha acabado.");
+  return c.json(view);
 });
 
 app.get("/api/invitacion/:codigo", async (c) => {
@@ -780,6 +788,9 @@ app.get("/api/partidas/:id", async (c) => {
     evento: game.status === "active" ? await eventView(db, game) : null,
     // Bloque 13: las cinemáticas que hay para esta casa y cuáles ha visto.
     cinematicas: await cinematicsView(db, game, house.id, now),
+    // Bloque 13: la coronación (solo con la partida acabada) y la clave del enlace para compartirla.
+    coronacion: await coronationView(db, game),
+    compartir: await shareKeyOf(db, game),
     boletines: (
       await db
         .prepare(

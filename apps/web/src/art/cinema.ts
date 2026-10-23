@@ -53,7 +53,7 @@ export const hash = (i: number, k: number) => {
 export interface Painter {
   g: CanvasRenderingContext2D;
   /** Un dibujo con su esquina de arriba a la izquierda en (x, y). */
-  img(s: Sprite, x: number, y: number, opts?: { alpha?: number; flip?: boolean }): void;
+  img(s: Sprite, x: number, y: number, opts?: { alpha?: number; flip?: boolean; scale?: number }): void;
   /** Girado `ang` radianes alrededor de (px, py), medidos dentro del dibujo. */
   rot(s: Sprite, x: number, y: number, ang: number, px: number, py: number, alpha?: number): void;
   /** Un punto (o rectángulo) de color. */
@@ -78,11 +78,12 @@ export function painter(g: CanvasRenderingContext2D): Painter {
       if (!opts) return g.drawImage(c, round(x), round(y));
       g.save();
       if (opts.alpha != null) g.globalAlpha = opts.alpha;
+      const k = opts.scale ?? 1;
       if (opts.flip) {
-        g.translate(round(x) + c.width, round(y));
+        g.translate(round(x) + c.width * k, round(y));
         g.scale(-1, 1);
-        g.drawImage(c, 0, 0);
-      } else g.drawImage(c, round(x), round(y));
+        g.drawImage(c, 0, 0, c.width * k, c.height * k);
+      } else g.drawImage(c, round(x), round(y), c.width * k, c.height * k);
       g.restore();
     },
     rot(s, x, y, ang, px, py, alpha = 1) {
