@@ -26,6 +26,15 @@ export const UPGRADE_COST: Record<2 | 3 | 4 | 5, Partial<Resources>> = {
 };
 
 /**
+ * Bloque 2: etapas del castillo, solo de adorno. La etapa sale de la suma de los
+ * niveles de los cinco edificios: se empieza con 7 y el máximo es 25, pero con
+ * bots se acaba con 15 de mediana en 6 semanas (13 en 4), así que las etapas
+ * altas piden menos de lo que daría repartir 7-25 a partes iguales.
+ * Etapa 1 con 7-8, 2 con 9-10, 3 con 11-13, 4 con 14-16 y 5 con 17 o más.
+ */
+export const CASTLE_STAGES = { from: [9, 11, 14, 17] as readonly number[] };
+
+/**
  * Tipos de tropa (diseño v3, fase 3). La Mesnada es la tropa de siempre.
  * - Jinetes: rápidos y fuertes al cargar en llano, flojos en el bosque.
  * - Catapultas: no luchan, pero rompen fortificaciones y fortalezas.

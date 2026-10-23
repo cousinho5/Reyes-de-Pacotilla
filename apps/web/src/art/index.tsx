@@ -35,12 +35,11 @@ interface ShieldProps {
   className?: string;
 }
 
-/** El escudo de una casa. Sin datos de escudo (partidas antiguas) pinta uno pleno con león. */
-export function ShieldIcon({ color, escudo, size = 32, title, className }: ShieldProps) {
+/** Rejilla y colores del escudo de una casa. Sin datos de escudo (partidas antiguas), uno pleno con león. */
+export function shieldArt(color: string, escudo?: ShieldView | null): { grid: string[]; palette: Record<string, string>; symbol: ShieldSymbol } {
   const shape = (escudo?.forma ?? "espanol") as ShieldShape;
   const division = (escudo?.color2 ? (escudo.division ?? "pleno") : "pleno") as ShieldDivision;
   const symbol = (escudo?.simbolo ?? "leon") as ShieldSymbol;
-  const grid = useMemo(() => shieldGrid(shape, division, symbol), [shape, division, symbol]);
   const metal = METAL[(escudo?.metal ?? "oro") as keyof typeof METAL] ?? METAL.oro;
   const a = ENAMEL[color] ?? "#666666";
   const b = ENAMEL[escudo?.color2 ?? ""] ?? a;
@@ -56,12 +55,18 @@ export function ShieldIcon({ color, escudo, size = 32, title, className }: Shiel
     n: metal[1],
     x: "#1a1410",
   };
+  return { grid: shieldGrid(shape, division, symbol), palette, symbol };
+}
+
+/** El escudo de una casa. Sin datos de escudo (partidas antiguas) pinta uno pleno con león. */
+export function ShieldIcon({ color, escudo, size = 32, title, className }: ShieldProps) {
+  const art = useMemo(() => shieldArt(color, escudo), [color, JSON.stringify(escudo ?? null)]);
   return (
     <Pixels
-      grid={grid}
-      palette={palette}
+      grid={art.grid}
+      palette={art.palette}
       size={size}
-      title={title ?? `Escudo con ${SYMBOL_NAME[symbol] ?? symbol}`}
+      title={title ?? `Escudo con ${SYMBOL_NAME[art.symbol] ?? art.symbol}`}
       className={`shield ${className ?? ""}`}
     />
   );

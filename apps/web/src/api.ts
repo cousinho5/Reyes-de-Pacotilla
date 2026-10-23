@@ -190,6 +190,8 @@ export interface GameState {
     filas: number | null;
     /** Lados con costa (bloque 1); null en los mapas de antes. */
     costa?: "oeste-este" | "norte-sur" | null;
+    /** Zona horaria de la partida (bloque 2: el día en que tendrás lo que falta, la hora del cielo). */
+    zonaHoraria?: string;
     resolucionActual: number;
     totalResoluciones: number;
     /** Días con resolución (0 = lunes ... 6 = domingo). */
