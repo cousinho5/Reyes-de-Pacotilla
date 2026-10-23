@@ -436,12 +436,12 @@ export function writeBulletin(input: BulletinInput): Bulletin {
   const proclaimed = mid ? [] : (input.proclamations ?? []).filter((p) => byId.has(p.house) && p.text.trim() !== "");
   if (proclaimed.length > 0) {
     const lines = [say("proclamas.entrada", {})];
-    // Tras la primera que nombra a otra casa, el cronista se desmarca (una vez).
+    // Tras la primera que nombra a otra casa con «@», el cronista se desmarca (una vez).
     let noted = false;
     for (const p of proclaimed) {
       lines.push(`«${p.text.trim()}» (firma ${name(p.house)})`);
       const others = input.houses.filter((h) => h.id !== p.house);
-      if (!noted && others.some((h) => mentions(p.text, h.name))) {
+      if (!noted && proclamationMentions(p.text, others).length > 0) {
         lines.push(say("proclamas.nota", {}));
         noted = true;
       }
@@ -704,11 +704,14 @@ function capitalize(s: string): string {
   return s.replace(/^([¡¿«"'(\s]*)(\p{L})/u, (_, lead: string, c: string) => lead + c.toUpperCase());
 }
 
-/** La proclama nombra a la casa (sin artículo ni mayúsculas: «los Pocapena», «Nabo»…). */
-function mentions(text: string, houseName: string): boolean {
-  const plain = (t: string) => t.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-  const core = plain(houseName).replace(/^(casa( de)?( la| las| los| el| del)?|los|las|el|la)\s+/, "").trim();
-  return core.length >= 3 && plain(text).includes(core);
+/**
+ * Bloque 3: casas que nombra una proclama. Se nombran como en WhatsApp, con
+ * «@» y el nombre tal cual («@Casa del Nabo»); da igual mayúsculas o tildes.
+ */
+export function proclamationMentions<T extends { name: string }>(text: string, houses: T[]): T[] {
+  const plain = (t: string) => t.toLocaleLowerCase("es").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const body = plain(text);
+  return houses.filter((h) => body.includes(`@${plain(h.name)}`));
 }
 
 function lowerFirst(s: string): string {

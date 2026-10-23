@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { bulletinText, type Bulletin } from "@reyes/engine";
 import { api, type GameState } from "../api";
 import { FrayAbundio } from "../art";
+import { HOUSE_COLORS } from "../ui";
 
 type Edition = "domingo" | "miercoles";
 const keyOf = (b: { semana: number; edicion?: Edition }) => `${b.semana}:${b.edicion ?? "domingo"}`;
@@ -166,8 +167,26 @@ function BribeCard({ state, act }: { state: GameState; act: (fn: () => Promise<u
 function ProclamationCard({ state, act }: { state: GameState; act: (fn: () => Promise<unknown>, ok?: string) => Promise<void> }) {
   const p = state.proclama;
   const [text, setText] = useState(p?.texto ?? "");
+  const [caret, setCaret] = useState(0);
+  const box = useRef<HTMLTextAreaElement>(null);
   useEffect(() => setText(p?.texto ?? ""), [p?.texto, p?.semana]);
   if (!p) return null;
+  // Como en WhatsApp: al escribir «@» salen las demás casas para nombrarlas.
+  const typed = /@([^@\n]{0,30})$/.exec(text.slice(0, caret));
+  const plain = (t: string) => t.toLocaleLowerCase("es").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const others = state.casas.filter((h) => h.id !== state.yo.casa);
+  const options = typed ? others.filter((h) => plain(h.nombre).startsWith(plain(typed[1]!))) : [];
+  const mention = (nombre: string) => {
+    const start = caret - typed![0].length;
+    const next = `${text.slice(0, start)}@${nombre} ${text.slice(caret)}`;
+    setText(next);
+    const at = start + nombre.length + 2;
+    setCaret(at);
+    requestAnimationFrame(() => {
+      box.current?.focus();
+      box.current?.setSelectionRange(at, at);
+    });
+  };
   const letters = [...text].length;
   const closed = state.partida.ordenesAbiertas === false;
   const changed = text.trim() !== (p.texto ?? "");
@@ -176,11 +195,32 @@ function ProclamationCard({ state, act }: { state: GameState; act: (fn: () => Pr
       <h2>Tu proclama</h2>
       <p className="muted">
         Una frase de tu casa, firmada, en el boletín del domingo. Fray Abundio la publica tal cual. Puedes cambiarla hasta el cierre.
+        Escribe «@» para nombrar a otra casa.
       </p>
       <label>
         Proclama
-        <textarea value={text} maxLength={p.max * 2} rows={3} onChange={(e) => setText(e.target.value)} placeholder="Que tiemblen los Pocapena…" />
+        <textarea
+          ref={box}
+          value={text}
+          maxLength={p.max * 2}
+          rows={3}
+          onChange={(e) => (setText(e.target.value), setCaret(e.target.selectionStart))}
+          onSelect={(e) => setCaret(e.currentTarget.selectionStart)}
+          placeholder="Que tiemblen los de @…"
+        />
       </label>
+      {options.length > 0 && (
+        <ul className="mention-list" role="listbox" aria-label="Nombrar a una casa">
+          {options.map((h) => (
+            <li key={h.id}>
+              <button type="button" role="option" aria-selected={false} onClick={() => mention(h.nombre)}>
+                <span className="mention-dot" style={{ background: HOUSE_COLORS[h.color]?.hex ?? "#666" }} aria-hidden="true" />
+                {h.nombre}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
       <p className={letters > p.max ? "error" : "muted"} aria-live="polite">
         {letters} de {p.max} letras
       </p>

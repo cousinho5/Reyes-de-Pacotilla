@@ -1,6 +1,6 @@
 // Bloque 3, PR 1: frases nuevas de Fray Abundio y lo que cuenta el boletín con ellas.
 import { describe, expect, it } from "vitest";
-import { PHRASES, checkProclamation, resolveCampaign, writeBulletin, type BulletinInput, type PhraseKey, type Tile, type TileType } from "../src";
+import { PHRASES, checkProclamation, proclamationMentions, resolveCampaign, writeBulletin, type BulletinInput, type PhraseKey, type Tile, type TileType } from "../src";
 
 const houses = [
   { id: 1, name: "Casa del Nabo", motto: null, color: "azur", symbol: "nabo", prestige: 20 },
@@ -246,16 +246,25 @@ describe("proclamas (bloque 3, PR 2)", () => {
     const b = writeBulletin({
       ...base,
       proclamations: [
-        { house: 1, text: "que tiemblen los pocapena" },
+        { house: 1, text: "que tiemblen @los pocapena" },
+        { house: 2, text: "Los Pocapena no temen a nadie." },
         { house: 3, text: "Cacareamos fuerte." },
       ],
     });
     const s = b.sections.find((x) => x.title === "Proclamas")!;
     expect(s.verbatim).toBe(true);
     expect(PHRASES["proclamas.entrada"]).toContain(s.lines[0]);
-    expect(s.lines[1]).toBe("«que tiemblen los pocapena» (firma la Casa del Nabo)");
+    expect(s.lines[1]).toBe("«que tiemblen @los pocapena» (firma la Casa del Nabo)");
     expect(PHRASES["proclamas.nota"]).toContain(s.lines[2]);
-    expect(s.lines[3]).toBe("«Cacareamos fuerte.» (firma Gallina Bélica)");
+    // Sin «@» no cuenta como mención (ni nombrarse a sí misma).
+    expect(s.lines[3]).toBe("«Los Pocapena no temen a nadie.» (firma los Pocapena)");
+    expect(s.lines[4]).toBe("«Cacareamos fuerte.» (firma Gallina Bélica)");
+  });
+
+  it("las menciones van con «@» y el nombre, sin importar mayúsculas ni tildes", () => {
+    const hs = [{ name: "Gallina Bélica" }, { name: "Casa del Nabo" }];
+    expect(proclamationMentions("Ojo, @gallina belica y @Casa del Nabo", hs)).toEqual(hs);
+    expect(proclamationMentions("La gallina bélica no está nombrada", hs)).toEqual([]);
   });
 
   it("no salen en la hoja volandera", () => {

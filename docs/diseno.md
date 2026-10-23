@@ -662,7 +662,7 @@ Se publica cada domingo tras la resolución (`packages/engine/src/bulletin.ts`),
 6. **Obras y honores:** logros, mejoras de nivel 3 o más y, desde el bloque 3, ruinas exploradas, la casa con más Gloria (2 o más) y la derrota con honor. Las deserciones por hambre no salen: delatarían los recursos de la casa.
 7. **Noticias de las casas:** el lema contra la realidad y el último.
 8. **Del difunto rey:** la versión oficial de su muerte, una vez por partida, o su fantasma.
-8 bis. **Proclamas** (bloque 3): una frase propia por casa y semana, de hasta 140 letras y sin enlaces, firmada y sin tocar. Se escribe en Reino y se puede cambiar hasta el cierre. Si nombra a otra casa, el cronista se desmarca con una nota.
+8 bis. **Proclamas** (bloque 3): una frase propia por casa y semana, de hasta 140 letras y sin enlaces, firmada y sin tocar. Se escribe en Reino y se puede cambiar hasta el cierre. Para nombrar a otra casa se escribe «@» y se elige de la lista, como en WhatsApp («@Casa del Nabo»); entonces el cronista se desmarca con una nota.
 9. **Comunicados de la corte:** las frases compradas, con el pie de patrocinio.
 10. **Notas al margen:** una o dos.
 
