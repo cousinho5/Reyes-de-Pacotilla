@@ -54,6 +54,23 @@ Todas salen una sola vez, se saltan con un toque y con «reducir movimiento» (`
 - **Un solo reproductor:** cada cinemática es una lista de escenas con su texto, su pie de Fray Abundio y su duración. Añadir una es añadir datos y dibujos.
 - **Fray Abundio narra** con frases del banco: las cifras exactas y el humor en los adjetivos.
 
+## Dudas resueltas (23 de octubre de 2026)
+
+Pablo aceptó todas las propuestas:
+
+1. **Dibujos:** se parte de la maqueta, pasada a pxl con más detalle en el rey (contento, alza el muslo, muerde, mastica, tose, se ahoga), el fantasma y la corona; GIF para aprobar antes del prólogo.
+2. **Prólogo y objetivo secreto:** tras el mapa, una hoja «Tu ambición secreta» con las dos opciones y luego «Entrar en mi castillo» (si ya lo eligió, entra directo).
+3. **Sala de espera:** sin prólogo; el reproductor admite casas inventadas para el «Ver el prólogo» de la portada (bloque 7).
+4. **Muchas pendientes:** en orden y como mucho 2 seguidas, más el prólogo y la coronación; las demás quedan como «Nueva» en la lista de Reino.
+5. **Fantasma y boletín:** el fantasma primero y al tocar se abre el boletín.
+6. **Viñetas propias (8):** Plaga de Ratas, Fiesta de San Aldric, Tormenta en la Costa, Bandidos del Camino, El Rey Ha Perdido las Llaves, Torneo Real, Paz del Rey y Carnaval. El resto, el pregonero; en la Semana Tranquila se duerme.
+7. **Títulos:** los 16 propuestos (Azote de Fronteras, La Gallina que Cruzó el Vado, Muralla con Patas, Asediador con Paciencia de Santo, Mercader de Lengua Larga, Arquitecto sin Freno, Tesorero de las Llaves Perdidas, General de Mil Bocas, Coleccionista de Subastas, Caído con Honor, Traidor de la Corona, Aliado de Hierro, Mecenas del Cronista, Saqueador de Ruinas, Rey de la Remontada y Guardián del Castillo Propio), uno distinto por casa, el del dato en que más destaca, con su cifra; el ganador además «Futuro Rey, según el cronista». Se comprueba su reparto con el simulador.
+8. **Compartir la coronación:** enlace sin cuenta con clave imposible de adivinar, solo con la partida acabada; nunca lo privado.
+9. **Partidas en marcha:** el prólogo sale solo en la semana 1; el mapa por semanas se salta las semanas sin foto.
+10. **Ajuste:** «Cinemáticas: todas / solo prólogo y coronación» en los ajustes de la casa.
+
+Ideas extra aceptadas: el aniversario de la muerte del rey trae la escena del ave en pequeño; la notificación del final dice «¡Hay rey en Aldricia! Entrad a ver la coronación»; el mapa de la coronación se pinta sobre el mapa real del juego; y un botón en el banco de pruebas lanza cualquier cinemática.
+
 ## Pasos
 
 Van después de los bloques 3 (Fray nuevo, banco de frases y Crónica Definitiva), 6 (rendimiento en móvil) y 11 (pantalla «La coronación»).
