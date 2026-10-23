@@ -29,22 +29,17 @@ const ORDER: SceneTarget[] = ["aserradero", "cantera", "castillo", "mina", "gran
 
 const CASTLES: Sprite[] = [art.castillo_1, art.castillo_2, art.castillo_3, art.castillo_4, art.castillo_5];
 
-/** Dibujo de cada edificio por nivel (1-5). Mientras falten, se usa el más cercano. */
-const BUILDING_ART: Record<BuildingKind, (Sprite | undefined)[]> = {
-  granja: [undefined, undefined, undefined, art.granja_3],
-  aserradero: [undefined, undefined, undefined, art.aserradero_3],
-  cantera: [undefined, undefined, undefined, art.cantera_3],
-  mina: [undefined, undefined, undefined, art.mina_3],
-  mercado: [undefined, undefined, undefined, art.mercado_3],
+/** Dibujo de cada edificio por nivel (1-5). */
+const BUILDING_ART: Record<BuildingKind, Sprite[]> = {
+  granja: [art.granja_1, art.granja_2, art.granja_3, art.granja_4, art.granja_5],
+  aserradero: [art.aserradero_1, art.aserradero_2, art.aserradero_3, art.aserradero_4, art.aserradero_5],
+  cantera: [art.cantera_1, art.cantera_2, art.cantera_3, art.cantera_4, art.cantera_5],
+  mina: [art.mina_1, art.mina_2, art.mina_3, art.mina_4, art.mina_5],
+  mercado: [art.mercado_1, art.mercado_2, art.mercado_3, art.mercado_4, art.mercado_5],
 };
 
 export function buildingSprite(kind: BuildingKind, level: number): Sprite {
-  const list = BUILDING_ART[kind];
-  for (let d = 0; d < 5; d++) {
-    const s = list[level - d] ?? list[level + d];
-    if (s) return s;
-  }
-  throw new Error(`sin dibujo para ${kind}`);
+  return BUILDING_ART[kind][Math.min(5, Math.max(1, level)) - 1]!;
 }
 
 export function castleSprite(stage: number): Sprite {

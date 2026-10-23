@@ -16,6 +16,14 @@ describe("Escena del castillo (bloque 2)", () => {
     }
   });
 
+  it("cada nivel de un edificio se ve distinto y ocupa el mismo lienzo", () => {
+    for (const b of BUILDINGS) {
+      const dibujos = [1, 2, 3, 4, 5].map((l) => buildingSprite(b, l));
+      expect(new Set(dibujos.map((s) => s.grid.join("\n"))).size, b).toBe(5);
+      expect(new Set(dibujos.map((s) => `${s.grid[0]!.length}x${s.grid.length}`)).size, b).toBe(1);
+    }
+  });
+
   it("es determinista y tiñe con el color de la casa", () => {
     const a = renderCastleScene({ stage: 3, levels: START, color: "#b3291d" });
     const b = renderCastleScene({ stage: 3, levels: START, color: "#b3291d" });

@@ -305,40 +305,133 @@ function persona(c, x, y, ropa = "Z", gorro = null) {
   c.px(x, y - 5, gorro ?? "h"); c.px(x, y - 4, "t"); c.rect(x - 1, y - 3, 3, 2, ropa); c.px(x - 1, y - 2, OSCURO[ropa] ?? ropa); c.px(x, y - 1, ropa); c.px(x - 1, y, "h"); c.px(x + 1, y, "h")
 }
 
-// Granja, nivel 3: granero de piedra con tejado de teja, almiar, campos, ovejas y gallinas.
-sprite("granja_3", { w: 64, h: 40, outline: "k", pivot: "bottom" },
-  layer("campos", { outline: false }, (c) => {
-    campo(c, 3, 23, 25, 14, -0.15); campo(c, 33, 27, 27, 10, 0.15)
-  }),
-  (c) => {
-    for (let yy = 0; yy < 15; yy++) for (let xx = 0; xx < 22; xx++) {
-      const fila = Math.floor(yy / 3), junta = yy % 3 === 2 || (xx + (fila % 2) * 2) % 5 === 0
-      c.px(20 + xx, 10 + yy, tono(PIEDRA, (xx < 11 ? 0.86 : 0.66) - (junta ? 0.16 : 0) + (rnd(xx >> 2, fila) - 0.5) * 0.1, xx, yy))
-    }
-    tejado(c, 18, 11, 26, 10)
-    c.rect(27, 15, 8, 10, "j"); c.vline(31, 15, 10, "h"); c.line(27, 15, 34, 24, "H"); c.line(34, 15, 27, 24, "H"); c.hline(26, 14, 10, "h")
-    c.rect(30, 4, 2, 2, "A"); c.hline(29, 6, 4, "G")
-    c.ellipse(53, 25, 6, 5, "x"); c.ellipse(52, 23, 5, 4, "X"); c.ellipse(51, 22, 3, 2, "y"); c.vline(53, 16, 5, "h")
-    for (let i = 0; i < 6; i++) c.px(48 + i * 2, 29, "w")
-    c.vline(11, 22, 9, "h"); c.hline(8, 24, 7, "H"); c.rect(10, 21, 3, 3, "0"); c.hline(9, 20, 5, "w"); c.px(11, 19, "w"); c.px(11, 22, "k")
-    oveja(c, 2, 34); oveja(c, 56, 34); gallina(c, 40, 36); gallina(c, 44, 37)
-  })
-// Aserradero, nivel 3: nave de tablas con la sierra movida por una rueda de agua, troncos apilados.
-sprite("aserradero_3", { w: 52, h: 38, outline: "k", pivot: "bottom" }, (c) => {
-  for (let yy = 0; yy < 18; yy++) for (let xx = 0; xx < 26; xx++) {
-    const tabla = xx % 3 === 2
-    c.px(15 + xx, 16 + yy, tabla ? "H" : tono(MADERA, (xx < 13 ? 0.74 : 0.55) - yy / 18 * 0.1, xx, yy))
+// Cada edificio crece en 5 niveles sobre el mismo lienzo, para que la escena no se mueva: el 1 es
+// una chapuza honrada, el 3 el de muestra y el 5 una obra que presume con la bandera de la casa.
+const PAJA = "wxXy"
+// Pared de tablas verticales, más clara del lado del sol.
+function tablas(c, x, y, w, h) {
+  for (let yy = 0; yy < h; yy++) for (let xx = 0; xx < w; xx++)
+    c.px(x + xx, y + yy, xx % 3 === 2 ? "H" : tono(MADERA, (xx < w / 2 ? 0.74 : 0.55) - yy / h * 0.1, xx, yy))
+}
+// Pared de sillares, como la del granero.
+function sillares(c, x, y, w, h) {
+  for (let yy = 0; yy < h; yy++) for (let xx = 0; xx < w; xx++) {
+    const fila = Math.floor(yy / 3), junta = yy % 3 === 2 || (xx + (fila % 2) * 2) % 5 === 0
+    c.px(x + xx, y + yy, tono(PIEDRA, (xx < w / 2 ? 0.86 : 0.66) - (junta ? 0.16 : 0) + (rnd(xx >> 2, fila) - 0.5) * 0.1, xx, yy))
   }
-  c.rect(25, 23, 7, 11, "h"); c.vline(28, 23, 11, "H"); c.hline(24, 22, 9, "H")
-  tejado(c, 12, 16, 32, 10, MADERA)
-  c.rect(19, 19, 3, 3, "K"); c.px(19, 19, "I")
-  c.ellipse(9, 26, 8, 8, "j", true); c.ellipse(9, 26, 7, 7, "H", true); c.ellipse(9, 26, 3, 3, "H", true)
-  for (let k = 0; k < 10; k++) { const a = k * Math.PI / 5; c.line(Math.round(9 + Math.cos(a) * 3), Math.round(26 + Math.sin(a) * 3), Math.round(9 + Math.cos(a) * 8), Math.round(26 + Math.sin(a) * 8), k % 2 ? "J" : "j") }
-  c.px(9, 26, "i")
-  for (const [tx, ty] of [[41, 31], [41, 28], [43, 25]]) { c.rect(tx, ty, 8, 3, "j"); c.hline(tx, ty, 8, "J"); c.hline(tx, ty + 2, 8, "H"); c.ellipse(tx + 8, ty + 1, 1, 1, "i") }
-  c.vline(38, 30, 4, "J"); c.rect(37, 29, 3, 2, "E")
-})
-// Cantera, nivel 3: tres bancadas cortadas en la ladera, andamio, pluma y bloques listos.
+}
+// Banderín de la casa en un mástil corto (8 px).
+function banderin(c, x, y) {
+  c.vline(x, y, 9, "h"); c.px(x, y - 1, "K")
+  for (let xx = 1; xx <= 6; xx++) for (let yy = 0; yy < 4; yy++) {
+    if (xx === 6 && (yy === 1 || yy === 2)) continue
+    c.px(x + xx, y + yy, yy === 0 ? "9" : yy === 3 ? "8" : "7")
+  }
+}
+function puertaTablas(c, x, y, w, h) { c.rect(x, y, w, h, "h"); c.vline(x + Math.floor(w / 2), y, h, "H"); c.hline(x - 1, y - 1, w + 2, "H") }
+function humo(c, x, y) { for (const [dx, dy, k] of [[0, 0, "n"], [1, -1, "n"], [0, -2, "d"], [1, -3, "d"], [2, -4, "n"], [1, -5, "d"]]) c.px(x + dx, y + dy, k) }
+function vaca(c, x, y) { c.rect(x, y, 6, 3, "W"); c.px(x + 1, y, "k"); c.px(x + 2, y + 1, "k"); c.px(x + 4, y, "k"); c.rect(x + 6, y - 1, 2, 2, "W"); c.px(x + 7, y, "t"); c.px(x + 1, y + 3, "k"); c.px(x + 5, y + 3, "k") }
+function espantapajaros(c, x, y) { c.vline(x, y + 2, 9, "h"); c.hline(x - 3, y + 4, 7, "H"); c.rect(x - 1, y + 3, 3, 3, "0"); c.hline(x - 2, y + 1, 5, "w"); c.px(x, y, "w"); c.px(x, y + 3, "k") }
+// Molino de viento: torre de piedra con caperuza y cuatro aspas (de lienzo, o de la casa).
+function molino(c, x, base, deCasa = false) {
+  for (let yy = 0; yy < 16; yy++) { const half = 3 + yy * 0.18; for (let xx = Math.round(x - half); xx <= Math.round(x + half); xx++) c.px(xx, base - 16 + yy, tono(PIEDRA, (xx < x ? 0.85 : 0.6) - (yy % 3 === 2 ? 0.12 : 0), xx, yy)) }
+  for (let yy = 0; yy < 4; yy++) for (let xx = -3 + yy; xx <= 3 - yy; xx++) c.px(x + xx, base - 17 - yy, xx < 0 ? "Q" : "q")
+  c.rect(x, base - 5, 2, 5, "h")
+  const cx = x, cy = base - 16
+  for (const [dx, dy] of [[1, -1], [-1, -1], [1, 1], [-1, 1]]) {
+    for (let i = 2; i <= 9; i++) { c.px(cx + dx * i, cy + dy * i, "h"); if (i > 3) { c.px(cx + dx * i + dx, cy + dy * i, deCasa ? (dy < 0 ? "9" : "7") : "W"); c.px(cx + dx * i, cy + dy * i - dy, deCasa ? "8" : "0") } }
+  }
+  c.px(cx, cy, "K")
+}
+
+// ---------------------------------------------------------------- granja (64x40)
+function granja(n) {
+  return [
+    layer("campos", { outline: false }, (c) => {
+      if (n === 1) campo(c, 32, 28, 18, 9)
+      else if (n === 2) { campo(c, 3, 25, 22, 12, -0.15); campo(c, 35, 29, 20, 8, 0.15) }
+      else { campo(c, 3, 23, 25, 14, -0.15); campo(c, 33, 27, 27, 10, 0.15) }
+      if (n === 5) for (let x = 0; x < 64; x += 3) { c.vline(x, 37, 3, "J"); if (x < 62) { c.hline(x, 38, 3, "j") } }
+    }),
+    (c) => {
+      if (n <= 2) {
+        // Choza (1) o casita (2) de tablas con tejado de paja.
+        const x = n === 1 ? 14 : 20, w = n === 1 ? 14 : 20, h = n === 1 ? 10 : 13
+        tablas(c, x, 37 - h, w, h)
+        tejado(c, x - 2, 37 - h, w + 4, n === 1 ? 8 : 10, PAJA)
+        puertaTablas(c, x + Math.floor(w / 2) - 2, 37 - 7, 4, 7)
+        if (n === 2) { c.rect(x + 3, 37 - h + 3, 3, 3, "K"); c.px(x + 3, 37 - h + 3, "I"); c.ellipse(53, 30, 4, 3, "x"); c.ellipse(52, 29, 3, 2, "X"); c.vline(53, 25, 3, "h") }
+        espantapajaros(c, n === 1 ? 41 : 11, n === 1 ? 20 : 19)
+        gallina(c, n === 1 ? 6 : 40, 36); if (n === 2) { gallina(c, 44, 37); oveja(c, 56, 34) }
+        return
+      }
+      if (n >= 4) molino(c, 8, 26, n === 5)
+      sillares(c, 20, 10, 22, 15)
+      tejado(c, 18, 11, 26, 10)
+      c.rect(27, 15, 8, 10, "j"); c.vline(31, 15, 10, "h"); c.line(27, 15, 34, 24, "H"); c.line(34, 15, 27, 24, "H"); c.hline(26, 14, 10, "h")
+      c.rect(30, 4, 2, 2, "A"); c.hline(29, 6, 4, "G")
+      c.ellipse(53, 25, 6, 5, "x"); c.ellipse(52, 23, 5, 4, "X"); c.ellipse(51, 22, 3, 2, "y"); c.vline(53, 16, 5, "h")
+      for (let i = 0; i < 6; i++) c.px(48 + i * 2, 29, "w")
+      if (n === 3) { c.vline(11, 22, 9, "h"); c.hline(8, 24, 7, "H"); c.rect(10, 21, 3, 3, "0"); c.hline(9, 20, 5, "w"); c.px(11, 19, "w"); c.px(11, 22, "k") }
+      if (n === 5) { vaca(c, 14, 31); c.rect(2, 30, 4, 3, "C"); c.hline(1, 29, 6, "E"); c.px(3, 31, "z") }
+      oveja(c, 2, 34); oveja(c, 56, 34); gallina(c, 40, 36); gallina(c, 44, 37)
+    },
+  ]
+}
+
+// ---------------------------------------------------------------- aserradero (52x38)
+function rueda(c, x, y, r) {
+  c.ellipse(x, y, r, r, "j", true); c.ellipse(x, y, r - 1, r - 1, "H", true); c.ellipse(x, y, 3, 3, "H", true)
+  for (let k = 0; k < 10; k++) { const a = k * Math.PI / 5; c.line(Math.round(x + Math.cos(a) * 3), Math.round(y + Math.sin(a) * 3), Math.round(x + Math.cos(a) * r), Math.round(y + Math.sin(a) * r), k % 2 ? "J" : "j") }
+  c.px(x, y, "i")
+}
+function troncos(c, pila) { for (const [tx, ty] of pila) { c.rect(tx, ty, 8, 3, "j"); c.hline(tx, ty, 8, "J"); c.hline(tx, ty + 2, 8, "H"); c.ellipse(tx + 8, ty + 1, 1, 1, "i") } }
+function caballete(c, x, y) { c.line(x, y, x + 2, y - 4, "h"); c.line(x + 4, y, x + 2, y - 4, "h"); c.line(x + 7, y, x + 9, y - 4, "h"); c.line(x + 11, y, x + 9, y - 4, "h"); c.rect(x - 1, y - 6, 13, 2, "J"); c.hline(x - 1, y - 6, 13, "i"); c.vline(x + 5, y - 9, 4, "E") }
+function aserradero(n) {
+  return [(c) => {
+    if (n === 1) {
+      // Cobertizo de cuatro palos con techo de tablas, caballete con tronco, tocón con hacha.
+      for (const x of [16, 33]) c.vline(x, 22, 13, "h")
+      for (let x = 14; x < 37; x++) for (let y = 0; y < 3; y++) c.px(x, 20 + y + Math.round((x - 14) * 0.08), y === 0 ? "i" : x % 3 ? "J" : "j")
+      caballete(c, 19, 35)
+      troncos(c, [[38, 32], [38, 29], [40, 26]])
+      c.rect(8, 32, 4, 3, "J"); c.hline(8, 32, 4, "i"); c.line(10, 31, 12, 28, "h"); c.rect(12, 27, 2, 2, "E")
+      persona(c, 35, 35, "3", "J")
+      return
+    }
+    if (n === 2) {
+      tablas(c, 17, 22, 18, 13)
+      tejado(c, 14, 22, 24, 8, MADERA)
+      puertaTablas(c, 23, 28, 6, 7)
+      caballete(c, 3, 35)
+      troncos(c, [[38, 32], [38, 29], [40, 26], [42, 23]])
+      persona(c, 16, 37, "q")
+      return
+    }
+    // De la 3 en adelante: nave de tablas con la sierra movida por la rueda de agua.
+    const alto = n === 5 ? 22 : 18, y0 = 34 - alto
+    tablas(c, 15, y0, 26, alto)
+    c.rect(25, 23, 7, 11, "h"); c.vline(28, 23, 11, "H"); c.hline(24, 22, 9, "H")
+    if (n === 5) { c.hline(15, y0 + 5, 26, "h"); c.rect(19, y0 + 1, 3, 3, "K"); c.rect(34, y0 + 1, 3, 3, "K"); c.px(19, y0 + 1, "I") }
+    tejado(c, 12, y0, 32, 10, MADERA)
+    c.rect(19, 19 + (n === 5 ? 3 : 0), 3, 3, "K"); c.px(19, 19 + (n === 5 ? 3 : 0), "I")
+    rueda(c, 9, 26, n >= 4 ? 9 : 8)
+    if (n >= 4) {
+      // Tejadillo con tablas ya cortadas, apiladas por largos.
+      for (const x of [42, 50]) c.vline(x, 22, 13, "h")
+      for (let x = 40; x < 52; x++) c.px(x, 21 + Math.round((x - 40) * 0.15), "j"), c.px(x, 20 + Math.round((x - 40) * 0.15), "J")
+      for (let i = 0; i < 4; i++) { c.hline(43, 33 - i * 2, 7, i % 2 ? "i" : "J"); c.hline(43, 34 - i * 2, 7, "j") }
+      troncos(c, [[30, 35]])
+    } else {
+      troncos(c, [[41, 31], [41, 28], [43, 25]])
+    }
+    c.vline(38, 30, 4, "J"); c.rect(37, 29, 3, 2, "E")
+    if (n === 5) { banderin(c, 46, 10); persona(c, 36, 37, "3", "J") }
+  }]
+}
+
+// ---------------------------------------------------------------- cantera (52x34)
+// Bancadas cortadas en la ladera: tantas como el nivel pide, cada una más estrecha.
 function bancadas(c, cx, top, n, ancho, alto = 8) {
   for (let i = 0; i < n; i++) {
     const half = ancho / 2 - i * 6, y0 = top + i * alto
@@ -355,34 +448,84 @@ function bancadas(c, cx, top, n, ancho, alto = 8) {
     if (i > 0) c.hline(Math.round(cx - half) + 1, y0 + 2, Math.round(half * 2) - 1, "s")
   }
 }
-sprite("cantera_3", { w: 52, h: 34, outline: "k", pivot: "bottom" },
-  layer("roca", { outline: false }, (c) => { bancadas(c, 26, 5, 3, 48, 9) }),
-  (c) => {
-    for (const [bx, by, bw] of [[29, 28, 6], [36, 29, 5], [32, 25, 5]]) { c.rect(bx, by, bw, 4, "E"); c.hline(bx, by, bw, "G"); c.vline(bx + bw - 1, by, 4, "C") }
-    for (const [bx, by, bw] of [[6, 29, 6], [12, 29, 5], [8, 26, 6]]) { c.rect(bx, by, bw, 3, "E"); c.hline(bx, by, bw, "G"); c.vline(bx + bw - 1, by, 3, "C") }
-    c.ellipse(17, 27, 4, 4, "j"); c.ellipse(17, 27, 3, 3, "H"); c.line(14, 27, 20, 27, "J"); c.line(17, 24, 17, 30, "J"); c.vline(17, 27, 5, "j")
-    c.vline(44, 3, 22, "H"); c.vline(45, 3, 22, "h"); c.line(44, 3, 30, 7, "j"); c.vline(31, 8, 7, "0"); c.rect(30, 15, 3, 2, "E")
-    persona(c, 22, 31, "q"); persona(c, 12, 22, "Z")
-  })
-// Mina, nivel 3: boca entibada en la ladera, castillete con polea, vía y vagoneta con mineral.
-sprite("mina_3", { w: 52, h: 40, outline: "k", pivot: "bottom" },
-  layer("ladera", { outline: false }, (c) => {
-    for (let y = 10; y < 40; y++) for (let x = 18; x < 52; x++) if (y > 42 - (x - 18) * 1.25) c.px(x, y, tono(ROCA, 0.42 + (rnd(x >> 1, y >> 1) - 0.5) * 0.3, x, y))
-    for (let x = 14; x < 50; x++) { c.px(x, 38, "f"); c.px(x, 39, "e") }
-  }),
-  (c) => {
-    c.rect(28, 21, 12, 16, "k"); c.rect(29, 22, 10, 3, "A")
-    c.rect(26, 19, 2, 18, "J"); c.vline(27, 19, 18, "j"); c.rect(40, 19, 2, 18, "j"); c.rect(25, 17, 18, 3, "j"); c.hline(25, 17, 18, "J")
-    c.px(34, 25, "K"); c.px(34, 24, "I")
-    c.line(4, 37, 12, 6, "j"); c.line(20, 37, 12, 6, "H"); c.hline(7, 27, 11, "H"); c.hline(9, 18, 7, "H"); c.line(6, 27, 15, 18, "h")
-    c.ellipse(12, 6, 3, 3, "H", true); c.px(12, 6, "i"); c.vline(14, 8, 18, "0")
-    c.hline(16, 37, 26, "B"); for (let x = 17; x < 42; x += 3) c.px(x, 38, "H")
-    c.rect(29, 31, 10, 5, "C"); c.hline(29, 31, 10, "D"); c.vline(38, 31, 5, "B")
-    c.ellipse(33, 30, 3, 1, "S"); c.px(32, 29, "v"); c.px(35, 29, "K")
-    c.px(30, 36, "A"); c.px(37, 36, "A")
-    persona(c, 46, 37, "S", "K")
-  })
-// Mercado, nivel 3: plaza empedrada con tres puestos de toldo a rayas, mercancía y gente.
+function bloques(c, lista, claro = false) { for (const [bx, by, bw] of lista) { c.rect(bx, by, bw, 4, claro ? "F" : "E"); c.hline(bx, by, bw, "G"); c.vline(bx + bw - 1, by, 4, claro ? "D" : "C") } }
+function pluma(c, x, top, largo) { c.vline(x, top, 30 - top - 5 + 3, "H"); c.vline(x + 1, top, 30 - top - 5 + 3, "h"); c.line(x, top, x - largo, top + 4, "j"); c.vline(x - largo + 1, top + 5, 7, "0"); c.rect(x - largo, top + 12, 3, 2, "E") }
+function cantera(n) {
+  const roca = { 1: [26, 18, 1, 30, 13], 2: [26, 11, 2, 40, 10], 3: [26, 5, 3, 48, 9], 4: [26, 3, 4, 50, 7], 5: [26, 3, 4, 50, 7] }[n]
+  return [
+    layer("roca", { outline: false }, (c) => {
+      const [cx, top, k, ancho, alto] = roca
+      bancadas(c, cx, top, k, ancho, alto)
+      // Al pie, el cascajo claro de la piedra recién cortada.
+      for (let y = top + k * alto; y < 34; y++) for (let x = Math.round(cx - ancho / 2 + 2); x <= Math.round(cx + ancho / 2 - 2); x++)
+        if (rnd(x, y) > 0.15) c.px(x, y, tono(ROCA, 0.62 + (rnd(x >> 1, y) - 0.5) * 0.3, x, y))
+    }),
+    (c) => {
+      if (n === 1) { bloques(c, [[30, 28, 5]]); c.line(22, 26, 24, 23, "h"); c.px(25, 23, "C"); persona(c, 21, 31, "q"); return }
+      if (n === 2) { bloques(c, [[29, 28, 6], [36, 29, 5]]); c.rect(10, 29, 5, 3, "j"); c.hline(10, 29, 5, "J"); c.px(9, 32, "h"); c.line(15, 30, 18, 32, "h"); persona(c, 22, 31, "q"); persona(c, 40, 22, "Z"); return }
+      bloques(c, [[29, 28, 6], [36, 29, 5], [32, 25, 5]], n === 5)
+      for (const [bx, by, bw] of n === 3 ? [[6, 29, 6], [12, 29, 5], [8, 26, 6]] : []) { c.rect(bx, by, bw, 3, "E"); c.hline(bx, by, bw, "G"); c.vline(bx + bw - 1, by, 3, "C") }
+      if (n === 3) { c.ellipse(17, 27, 4, 4, "j"); c.ellipse(17, 27, 3, 3, "H"); c.line(14, 27, 20, 27, "J"); c.line(17, 24, 17, 30, "J"); c.vline(17, 27, 5, "j") }
+      else {
+        // Grúa de rueda: dos hombres dentro la hacen girar.
+        c.ellipse(15, 24, 6, 6, "j"); c.ellipse(15, 24, 5, 5, "H"); for (let k = 0; k < 4; k++) { const a = k * Math.PI / 4; c.line(Math.round(15 - Math.cos(a) * 5), Math.round(24 - Math.sin(a) * 5), Math.round(15 + Math.cos(a) * 5), Math.round(24 + Math.sin(a) * 5), "J") }
+        c.vline(15, 24, 9, "j"); c.line(15, 18, 30, 6, "J"); c.line(15, 19, 30, 7, "j"); c.vline(30, 8, 9, "0"); c.rect(29, 17, 3, 2, "F")
+      }
+      pluma(c, 44, 3, 14)
+      if (n === 5) {
+        // Caseta del cantero, de piedra labrada, y el banderín en la pluma.
+        sillares(c, 41, 25, 10, 8); tejado(c, 40, 25, 12, 5); c.rect(44, 29, 3, 4, "h")
+        banderin(c, 46, 11)
+        bloques(c, [[20, 29, 5]], true)
+      }
+      persona(c, 22, 31, "q"); persona(c, 12, 22, "Z")
+      if (n >= 4) persona(c, n === 5 ? 34 : 38, 33, "3", "0")
+    },
+  ]
+}
+
+// ---------------------------------------------------------------- mina (52x40)
+function castillete(c) {
+  c.line(4, 37, 12, 6, "j"); c.line(20, 37, 12, 6, "H"); c.hline(7, 27, 11, "H"); c.hline(9, 18, 7, "H"); c.line(6, 27, 15, 18, "h")
+  c.ellipse(12, 6, 3, 3, "H", true); c.px(12, 6, "i"); c.vline(14, 8, 18, "0")
+}
+function vagoneta(c, x, oro = false) { c.rect(x, 31, 10, 5, "C"); c.hline(x, 31, 10, "D"); c.vline(x + 9, 31, 5, "B"); c.ellipse(x + 4, 30, 3, 1, "S"); c.px(x + 3, 29, oro ? "I" : "v"); c.px(x + 6, 29, "K"); if (oro) c.px(x + 5, 30, "K"); c.px(x + 1, 36, "A"); c.px(x + 8, 36, "A") }
+function mina(n) {
+  return [
+    layer("ladera", { outline: false }, (c) => {
+      for (let y = 10; y < 40; y++) for (let x = 18; x < 52; x++) if (y > 42 - (x - 18) * 1.25) c.px(x, y, tono(ROCA, 0.42 + (rnd(x >> 1, y >> 1) - 0.5) * 0.3, x, y))
+      for (let x = 14; x < 50; x++) { c.px(x, 38, "f"); c.px(x, 39, "e") }
+      if (n >= 2) for (let y = 0; y < 6; y++) for (let x = 2 + y; x < (n >= 4 ? 18 : 12) - y; x++) c.px(x, 37 - y, tono(ROCA, 0.3 + rnd(x, y) * 0.4, x, y))
+    }),
+    (c) => {
+      if (n === 1) {
+        // Un agujero en la ladera con dos palos y un dintel; cubo y pico a la puerta.
+        c.rect(30, 27, 8, 10, "k"); c.rect(31, 28, 6, 2, "A")
+        c.vline(29, 26, 11, "J"); c.vline(38, 26, 11, "j"); c.hline(28, 25, 12, "j")
+        c.rect(24, 34, 3, 3, "C"); c.hline(24, 33, 3, "B"); c.line(19, 36, 22, 32, "h"); c.px(22, 31, "D")
+        persona(c, 42, 37, "S", "K")
+        return
+      }
+      c.rect(28, 21, 12, 16, "k"); c.rect(29, 22, 10, 3, "A")
+      c.rect(26, 19, 2, 18, "J"); c.vline(27, 19, 18, "j"); c.rect(40, 19, 2, 18, "j"); c.rect(25, 17, 18, 3, "j"); c.hline(25, 17, 18, "J")
+      c.px(34, 25, "K"); c.px(34, 24, "I")
+      if (n >= 3) castillete(c)
+      c.hline(16, 37, 26, "B"); for (let x = 17; x < 42; x += 3) c.px(x, 38, "H")
+      vagoneta(c, 29, n === 5)
+      if (n >= 4) {
+        // Caseta de la máquina, con su chimenea, y una segunda vagoneta.
+        tablas(c, 43, 27, 9, 10); tejado(c, 42, 27, 11, 5); c.rect(46, 31, 3, 6, "h")
+        c.rect(49, 18, 2, 6, "C"); c.hline(49, 18, 2, "E")
+        if (n === 5) humo(c, 49, 16)
+        vagoneta(c, 17)
+      }
+      if (n === 5) banderin(c, 33, 8)
+      persona(c, n >= 4 ? 24 : 46, 37, "S", "K")
+    },
+  ]
+}
+
+// ---------------------------------------------------------------- mercado (58x32)
 function puesto(c, x, y, k1, k2, mercancia) {
   c.vline(x, y + 1, 11, "h"); c.vline(x + 13, y + 1, 11, "h")
   for (let i = 0; i < 16; i++) { const k = Math.floor(i / 2) % 2 ? k2 : k1; c.px(x - 1 + i, y, k); c.px(x - 1 + i, y + 1, k); c.px(x - 1 + i, y + 2, OSCURO[k] ?? k) }
@@ -390,22 +533,67 @@ function puesto(c, x, y, k1, k2, mercancia) {
   c.rect(x, y + 7, 14, 5, "j"); c.hline(x, y + 7, 14, "J"); c.hline(x, y + 11, 14, "H"); c.vline(x + 7, y + 8, 3, "H")
   mercancia(c, x, y + 6)
 }
-sprite("mercado_3", { w: 58, h: 32, outline: "k", pivot: "bottom" },
-  layer("plaza", { outline: false }, (c) => {
-    for (let y = 18; y < 32; y++) for (let x = 0; x < 58; x++) {
-      const dx = (x - 29) / 29, dy = (y - 25) / 7
-      if (dx * dx + dy * dy > 1) continue
-      const fila = Math.floor(y / 2), junta = y % 2 === 0 || (x + fila) % 3 === 0
-      c.px(x, y, junta ? "f" : tono(TIERRA, 0.55 + (rnd(x >> 1, fila) - 0.5) * 0.3, x, y))
-    }
-  }),
-  (c) => {
-    puesto(c, 2, 9, "R", "W", (c, x, y) => { for (let i = 0; i < 4; i++) { c.ellipse(x + 3 + i * 3, y, 1, 1, "x"); c.px(x + 3 + i * 3, y - 1, "y") } })
-    puesto(c, 22, 4, "Z", "W", (c, x, y) => { c.rect(x + 2, y, 9, 1, "K"); c.rect(x + 3, y - 1, 7, 1, "I") })
-    puesto(c, 42, 10, "3", "W", (c, x, y) => { c.rect(x + 2, y - 1, 4, 2, "E"); c.rect(x + 7, y - 1, 4, 2, "C") })
-    persona(c, 20, 29, "q"); persona(c, 38, 30, "Z", "J"); persona(c, 12, 30, "3", "0")
-    c.ellipse(48, 28, 2, 2, "0"); c.px(47, 26, "h"); c.ellipse(29, 29, 2, 2, "W")
-  })
+const TRIGO = (c, x, y) => { for (let i = 0; i < 4; i++) { c.ellipse(x + 3 + i * 3, y, 1, 1, "x"); c.px(x + 3 + i * 3, y - 1, "y") } }
+const ORO = (c, x, y) => { c.rect(x + 2, y, 9, 1, "K"); c.rect(x + 3, y - 1, 7, 1, "I") }
+const PIEDRAS = (c, x, y) => { c.rect(x + 2, y - 1, 4, 2, "E"); c.rect(x + 7, y - 1, 4, 2, "C") }
+function fuente(c, x, y) { c.ellipse(x, y, 5, 2, "D", true); c.ellipse(x, y, 4, 1, "Z", true); c.px(x - 1, y, "P"); c.vline(x, y - 5, 5, "E"); c.px(x, y - 6, "O"); c.px(x - 1, y - 5, "P"); c.px(x + 1, y - 5, "P") }
+function mercado(n) {
+  const plaza = { 1: [16, 6], 2: [22, 6], 3: [29, 7], 4: [29, 7], 5: [29, 8] }[n]
+  return [
+    layer("plaza", { outline: false }, (c) => {
+      const [rx, ry] = plaza
+      for (let y = 32 - ry * 2; y < 32; y++) for (let x = 0; x < 58; x++) {
+        const dx = (x - 29) / rx, dy = (y - (32 - ry)) / ry
+        if (dx * dx + dy * dy > 1) continue
+        const fila = Math.floor(y / 2), junta = y % 2 === 0 || (x + fila) % 3 === 0
+        c.px(x, y, junta ? "f" : tono(TIERRA, 0.55 + (rnd(x >> 1, fila) - 0.5) * 0.3, x, y))
+      }
+    }),
+    (c) => {
+      if (n === 1) {
+        // Un carro con toldo y un vendedor que pregona el pan a quien pase.
+        c.rect(20, 19, 16, 6, "j"); c.hline(20, 19, 16, "J"); c.hline(20, 24, 16, "H"); TRIGO(c, 21, 18)
+        for (let i = 0; i < 18; i++) c.px(19 + i, 13 + Math.round(Math.abs(i - 8.5) * 0.2), i % 4 < 2 ? "R" : "W")
+        c.vline(20, 14, 5, "h"); c.vline(35, 14, 5, "h")
+        c.ellipse(23, 26, 2, 2, "h", true); c.ellipse(33, 26, 2, 2, "h", true); c.line(36, 23, 42, 25, "h")
+        persona(c, 16, 28, "q"); persona(c, 40, 30, "3", "0")
+        return
+      }
+      if (n === 5) {
+        // Lonja de piedra con soportales y tejado de teja, y la bandera de la casa encima.
+        sillares(c, 10, 5, 38, 11)
+        for (let a = 0; a < 4; a++) { const ax = 13 + a * 9; c.rect(ax, 9, 5, 7, "A"); c.px(ax, 9, "C"); c.px(ax + 4, 9, "C"); c.rect(ax + 1, 13, 3, 3, a % 2 ? "K" : "q") }
+        tejado(c, 8, 5, 42, 5)
+        puesto(c, 1, 13, "7", "W", TRIGO); puesto(c, 43, 14, "7", "W", PIEDRAS)
+        fuente(c, 29, 25)
+        persona(c, 20, 29, "q"); persona(c, 38, 30, "Z", "J"); persona(c, 12, 30, "3", "0"); persona(c, 24, 26, "7", "h")
+        c.ellipse(48, 29, 2, 2, "0"); c.px(47, 27, "h")
+        return
+      }
+      if (n === 2) {
+        puesto(c, 9, 7, "R", "W", TRIGO); puesto(c, 33, 9, "3", "W", PIEDRAS)
+        persona(c, 27, 29, "q"); persona(c, 18, 30, "3", "0")
+        return
+      }
+      puesto(c, 2, 9, "R", "W", TRIGO); puesto(c, 22, 4, "Z", "W", ORO); puesto(c, 42, 10, "3", "W", PIEDRAS)
+      if (n === 4) { fuente(c, 29, 26); persona(c, 36, 28, "7", "h") }
+      persona(c, 20, 29, "q"); persona(c, 38, 30, "Z", "J"); persona(c, 12, 30, "3", "0")
+      c.ellipse(48, 28, 2, 2, "0"); c.px(47, 26, "h")
+      if (n === 3) c.ellipse(29, 29, 2, 2, "W")
+    },
+  ]
+}
+
+const TAMANO = { granja: [64, 40], aserradero: [52, 38], cantera: [52, 34], mina: [52, 40], mercado: [58, 32] }
+const DIBUJO = { granja, aserradero, cantera, mina, mercado }
+for (const [nombre, [w, h]] of Object.entries(TAMANO))
+  for (let n = 1; n <= 5; n++) sprite(`${nombre}_${n}`, { w, h, outline: "k", pivot: "bottom" }, ...DIBUJO[nombre](n))
+
+// Lámina de revisión: cada edificio en sus 5 niveles, en filas.
+scene("edificios", { w: 5 * 68 + 4, h: 5 * 46 + 4, bg: "4" },
+  layer("piezas", ...Object.keys(TAMANO).flatMap((nombre, f) =>
+    [1, 2, 3, 4, 5].map((n) => stamp(`${nombre}_${n}`, 2 + (n - 1) * 68 + 34, 2 + (f + 1) * 46 - 2)))),
+)
 
 // ================================================================ el fondo
 // Nube cúmulo: montones redondos, la cara del sol cálida, la de abajo fría y plana.
@@ -559,18 +747,22 @@ const SITIOS = {
   granja: [33, 133],
   mercado: [150, 131],
 }
-function escena(nombre, etapa) {
+function escena(nombre, etapa, nv = { granja: 3, aserradero: 3, cantera: 3, mina: 3, mercado: 3 }) {
   const [sx, sy] = SITIOS.castillo
+  const pieza = (b) => stamp(`${b}_${nv[b]}`, ...SITIOS[b])
   scene(nombre, { w: W, h: H, bg: "n" },
     layer("fondo", stamp("fondo", 0, 0)),
-    layer("lejos", stamp("aserradero_3", ...SITIOS.aserradero), stamp("cantera_3", ...SITIOS.cantera)),
+    layer("lejos", pieza("aserradero"), pieza("cantera")),
     layer("castillo", stamp(`castillo_${etapa}`, sx, sy),
       stamp("escudo_muestra", sx - (CW + 2) / 2 + 1 + CX - 8, sy - CH - 2 + 1 + CB - ESCUDO_EN[etapa] - (etapa === 2 ? 20 : 0))),
-    layer("cerca", stamp("mina_3", ...SITIOS.mina), stamp("granja_3", ...SITIOS.granja), stamp("mercado_3", ...SITIOS.mercado)),
+    layer("cerca", pieza("mina"), pieza("granja"), pieza("mercado")),
   )
 }
 escena("escena", 3)
 for (let e = 1; e <= 5; e++) escena(`escena_${e}`, e)
+// Cómo empieza una partida (granja y aserradero a 2, el resto a 1) y cómo puede acabar.
+escena("escena_inicio", 1, { granja: 2, aserradero: 2, cantera: 1, mina: 1, mercado: 1 })
+escena("escena_final", 5, { granja: 5, aserradero: 5, cantera: 5, mina: 5, mercado: 5 })
 
 // Lámina de revisión: las 5 etapas en fila sobre la hierba, cada una con el color de otra casa.
 const COLORES = [
