@@ -5,6 +5,7 @@ import { Crown, ShieldIcon } from "../art";
 import { Parchment, type Shown } from "./Parchment";
 import { withArticle } from "../ui";
 import { Chronicle } from "./Chronicle";
+import { CinematicList } from "./CinematicList";
 import { DiplomacyPanel } from "./DiplomacyPanel";
 import { PrestigeChart } from "./PrestigeChart";
 import { Standings } from "./Standings";
@@ -45,6 +46,7 @@ export function Realm({
         <PrestigeChart state={state} />
         <BulletinPanel state={state} act={act} />
         <Chronicle state={state} />
+        <CinematicList state={state} />
       </div>
     );
   }
@@ -56,6 +58,7 @@ export function Realm({
       <PrestigeChart state={state} />
       <BulletinPanel state={state} act={act} />
       <Chronicle state={state} />
+      <CinematicList state={state} />
       <DiplomacyPanel state={state} act={act} />
     </div>
   );
