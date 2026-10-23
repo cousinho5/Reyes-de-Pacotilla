@@ -19,8 +19,9 @@ pal({
   c: "#efe2bf", C: "#d4c094", i: "#3a2c5a",       // pergamino y tinta
   Y: "#f3c94a", W: "#b8862a",                     // monedas
   b: "#73b8ec",                                   // gota de sudor
+  v: "#6fa64e", V: "#3e6e2e",                     // hojas de la capitular
 })
-ramps("kRro", "ZSsO", "Hh", "Ddt", "Cc", "WY")
+ramps("kRro", "ZSsO", "Hh", "Ddt", "Cc", "WY", "Vv")
 
 const CX = 24
 
@@ -170,3 +171,21 @@ anim("cabecea", { ...OPT, fps: 3 },
   frame((c) => fray(c, { ...CARAS.dormido, dy: 1, zetas: 2 })))
 anim("tintinea", { ...OPT, fps: 8 },
   ...[0, 1, 2, 1, 0, 0].map((alto) => frame((c) => fray(c, { ...CARAS.monedas, monedas: alto }))))
+
+// Letra capitular de la Crónica Definitiva: marco de oro con fondo de gules y
+// una enredadera. La letra la pone el juego encima, con su tipo de letra.
+sprite("capitular", { w: 26, h: 26 }, (c) => {
+  c.rect(0, 0, 26, 26, "W"); c.rect(1, 1, 24, 24, "Y"); c.rect(2, 2, 22, 22, "W")
+  c.rect(3, 3, 20, 20, "M")
+  // Fondo de rombos, como en los libros iluminados.
+  for (let y = 3; y < 23; y++) for (let x = 3; x < 23; x++) if ((x + y) % 4 === 0 && (x - y + 40) % 4 === 0) c.px(x, y, "m")
+  // Enredadera que sube por la izquierda y baja por la derecha.
+  for (let y = 4; y < 22; y++) {
+    const lx = 4 + Math.round((Math.sin(y * 0.9) + 1) * 0.6), rx = 21 - Math.round((Math.sin(y * 0.9 + 1.5) + 1) * 0.6)
+    c.px(lx, y, "V"); c.px(rx, y, "V")
+    if (y % 4 === 1) { c.px(lx + 1, y, "v"); c.px(lx + 1, y - 1, "v"); c.px(rx - 1, y + 2, "v"); c.px(rx - 1, y + 1, "v") }
+  }
+  for (const [x, y] of [[7, 4], [18, 21], [5, 21], [20, 4]]) { c.px(x, y, "y"); c.px(x + 1, y, "Y"); c.px(x, y + 1, "Y") }
+  // Esquinas con un punto de oro.
+  for (const [x, y] of [[1, 1], [23, 1], [1, 23], [23, 23]]) { c.rect(x, y, 2, 2, "y"); c.px(x, y, "O") }
+})

@@ -5,7 +5,8 @@
 import { useState } from "react";
 import { bulletinText, houseInSentence, type Bulletin } from "@reyes/engine";
 import type { GameState, HouseInfo } from "../api";
-import { FrayAbundio, ShieldIcon } from "../art";
+import { FrayAbundio, Pixels, ShieldIcon } from "../art";
+import { capitular } from "../art/cronista";
 import { splitByHouses, withSquares } from "../houseText";
 import { HOUSE_COLORS } from "../ui";
 
@@ -48,15 +49,27 @@ export function Parchment({ bulletin: b, gameName, houses }: { bulletin: Shown; 
           ))}
         </aside>
       )}
-      {b.sections.map((s) => (
+      {b.sections.map((s, k) => (
         <section key={s.title}>
           <h3>{s.title}</h3>
-          {s.lines.map((l, i) => (
-            // Las proclamas, entre comillas, como citas; la entradilla y la nota del cronista, como el resto.
-            <p key={i} className={s.verbatim && l.startsWith("«") ? "proclama" : undefined}>
-              {line(l)}
-            </p>
-          ))}
+          {s.lines.map((l, i) =>
+            // La Crónica Definitiva empieza con letra capitular.
+            b.chronicle && k === 0 && i === 0 ? (
+              <p key={i} className="with-drop-cap">
+                <span className="drop-cap" aria-hidden>
+                  <Pixels grid={capitular.grid} palette={capitular.palette} size={52} />
+                  <b>{l.slice(0, 1)}</b>
+                </span>
+                <span className="sr-only">{l.slice(0, 1)}</span>
+                {line(l.slice(1))}
+              </p>
+            ) : (
+              // Las proclamas, entre comillas, como citas; la entradilla y la nota del cronista, como el resto.
+              <p key={i} className={s.verbatim && l.startsWith("«") ? "proclama" : undefined}>
+                {line(l)}
+              </p>
+            ),
+          )}
         </section>
       ))}
       {erratas.length > 0 && (

@@ -3015,3 +3015,35 @@ button.wide {
 .bulletin-popup .parchment header {
   padding-right: 2.8rem;
 }
+
+/* Bloque 3: letra capitular de la Crónica Definitiva (marco en pixel art y la letra encima). */
+.parchment .drop-cap {
+  position: relative;
+  float: left;
+  width: 52px;
+  height: 52px;
+  margin: 0.25rem 0.55rem 0 0;
+}
+.parchment .drop-cap b {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #f3c94a;
+  font-size: 2.1rem;
+  line-height: 1;
+  text-shadow: 2px 2px 0 #3a1410;
+}
+.parchment .with-drop-cap::after {
+  content: "";
+  display: block;
+  clear: both;
+}
+.parchment section:first-of-type p.with-drop-cap::first-letter {
+  float: none;
+  font-size: inherit;
+  line-height: inherit;
+  padding: 0;
+  color: inherit;
+  font-weight: inherit;
+}
