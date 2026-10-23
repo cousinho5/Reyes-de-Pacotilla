@@ -2,7 +2,8 @@ import { useState } from "react";
 import { BulletinPanel } from "./BulletinPanel";
 import type { GameState } from "../api";
 import { ShieldIcon } from "../art";
-import { describeEvent, withArticle } from "../ui";
+import { withArticle } from "../ui";
+import { Chronicle } from "./Chronicle";
 import { PrestigeChart } from "./PrestigeChart";
 import { Standings } from "./Standings";
 
@@ -15,10 +16,6 @@ export function Realm({
   act: (fn: () => Promise<unknown>, ok?: string) => Promise<void>;
 }) {
   const [open, setOpen] = useState<number | null>(null);
-  const events = (state.eventos ?? [])
-    .map((e) => ({ e, text: describeEvent(e, state.casas, state.casillas ?? []) }))
-    .filter((x) => x.text && x.e.tipo !== "movimiento");
-
   const final = state.partida.final;
   const winner = final?.winner != null ? state.casas.find((h) => h.id === final.winner) : null;
   const chosen = open != null ? state.casas.find((h) => h.id === open) : null;
@@ -51,21 +48,7 @@ export function Realm({
       <PrestigeChart state={state} />
       <BulletinPanel state={state} act={act} />
 
-      <section className="card chronicle">
-        <h2>Crónica del reino</h2>
-        {events.length === 0 ? (
-          <p className="muted">Aún no ha pasado nada digno de mención. Fray Abundio bosteza.</p>
-        ) : (
-          <ul className="list">
-            {events.map(({ e, text }) => (
-              <li key={e.id}>
-                {e.resolucion != null && <small className="muted">Resolución {e.resolucion} · </small>}
-                {text}
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      <Chronicle state={state} />
     </div>
   );
 }

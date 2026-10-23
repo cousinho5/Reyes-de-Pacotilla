@@ -1368,6 +1368,104 @@ svg.ico {
   margin: 0.3rem 0 0;
 }
 
+/* Bloque 11: tarjeta del boletín, crónica por noches y boletines anteriores. */
+.bulletin-card-head {
+  display: flex;
+  gap: 0.7rem;
+  align-items: center;
+}
+.bulletin-card-headline {
+  margin: 0.1rem 0 0;
+  font-family: var(--font-serif);
+  font-weight: 700;
+  font-size: 1.15rem;
+  line-height: 1.2;
+  text-transform: uppercase;
+  color: #6b1d12;
+}
+.bulletin-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.7rem;
+}
+.bulletin-card-actions button {
+  flex: 1 1 auto;
+}
+.bulletin-archive {
+  margin: 0.8rem 0 0;
+  padding: 0.6rem 0.8rem;
+  border-radius: 4px;
+  background: rgba(244, 231, 200, 0.95);
+  color: var(--ink);
+}
+.bulletin-archive h3 {
+  margin: 0 0 0.3rem;
+  font-size: 1rem;
+}
+.bulletin-archive ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.bulletin-archive li + li {
+  border-top: 1px dashed var(--vellum-line);
+}
+.bulletin-archive button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  min-height: var(--touch);
+  padding: 0.35rem 0;
+  text-align: left;
+}
+.bulletin-archive small {
+  color: var(--ink-soft);
+  font-family: var(--font-serif);
+}
+.popup-loading {
+  color: #f4e7c8;
+  text-align: center;
+}
+.chip-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.3rem 0 0.6rem;
+}
+.chip-filters button {
+  min-height: 40px;
+  padding: 0.2rem 0.8rem;
+  border-radius: 999px;
+  font-family: var(--font-text);
+}
+.chip-filters button.chosen {
+  background: var(--brass);
+  color: var(--ink);
+}
+.chronicle-week {
+  margin: -0.3rem 0 0.2rem;
+  font-family: var(--font-text);
+}
+.night-group {
+  border-top: 1px dashed var(--vellum-line);
+}
+.night-group summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: var(--touch);
+  cursor: pointer;
+  font-family: var(--font-text);
+}
+.night-group .list {
+  margin-top: 0;
+}
+.chronicle-weeks {
+  margin-top: 0.8rem;
+}
+
 .chronicle {
   font-family: var(--font-serif);
 }
