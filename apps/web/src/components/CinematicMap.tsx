@@ -2,7 +2,9 @@
 // del mundo que la pestaña Mapa (en segundo plano y guardado), sin tropas ni
 // niebla: de quién es cada casilla ya es público. «titulo» lo recorre en sepia;
 // «revelar» le devuelve el color, enciende los castillos uno a uno y acerca el
-// tuyo. Se mueve con su propio reloj desde que aparece; quieto, en su final.
+// tuyo. «semanas» (la coronación) pinta de quién era cada casilla al cerrar cada
+// semana, una tras otra. Se mueve con su propio reloj desde que aparece; quieto,
+// en su final.
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { GameState } from "../api";
@@ -13,8 +15,23 @@ import { WorldCanvas, useWorldMeta } from "./WorldCanvas";
 
 const still = () => typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-export function CinematicMap({ state, mode, dur }: { state: GameState; mode: "titulo" | "revelar"; dur: number }) {
+/** Lo que el mapa lee de la partida (la página pública de la coronación da lo mismo). */
+export type CinematicMapData = Pick<GameState, "partida" | "casas" | "casillas"> & { yo: { casa: number } };
+export type MapWeek = { semana: number; duenos: [number, number][] };
+
+export function CinematicMap({
+  state,
+  mode,
+  dur,
+  weeks = [],
+}: {
+  state: CinematicMapData;
+  mode: "titulo" | "revelar" | "semanas";
+  dur: number;
+  weeks?: MapWeek[];
+}) {
   const tiles = state.casillas ?? [];
+  const byWeek = mode === "semanas";
   const colorOf = (house: number | null | undefined) => {
     const h = house != null ? state.casas.find((c) => c.id === house) : undefined;
     return h ? (HOUSE_COLORS[h.color]?.hex ?? null) : null;
@@ -29,13 +46,13 @@ export function CinematicMap({ state, mode, dur }: { state: GameState; mode: "ti
         x: t.x,
         y: t.y,
         type: t.type,
-        owner: colorOf(t.owner),
+        owner: byWeek ? null : colorOf(t.owner),
         river: t.river ?? 0,
         stage: t.type === "castillo" ? state.casas.find((h) => h.id === t.castleOf)?.etapa : undefined,
       })),
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [state.partida.id, JSON.stringify(tiles.map((t) => [t.id, t.owner, t.type]))],
+    [state.partida.id, byWeek, JSON.stringify(tiles.map((t) => [t.id, t.owner, t.type]))],
   );
   const meta = useWorldMeta(opts);
   const geo = useMemo(() => geoOf(meta), [meta]);
@@ -53,6 +70,8 @@ export function CinematicMap({ state, mode, dur }: { state: GameState; mode: "ti
   const world = useRef<HTMLDivElement>(null);
   const veil = useRef<HTMLCanvasElement>(null);
   const label = useRef<HTMLSpanElement>(null);
+  const weekLabel = useRef<HTMLSpanElement>(null);
+  const cells = useMemo(() => new Map(tiles.map((t) => [t.id, t])), [tiles]);
   const [size, setSize] = useState<[number, number] | null>(null);
   useEffect(() => {
     const el = box.current;
@@ -81,7 +100,35 @@ export function CinematicMap({ state, mode, dur }: { state: GameState; mode: "ti
     const frame = (t: number) => {
       let sc: number, fx: number, fy: number, sepia: number;
       g.clearRect(0, 0, MW, MH);
-      if (mode === "titulo") {
+      if (byWeek) {
+        sc = cover;
+        fx = MW / 2;
+        fy = MH / 2;
+        sepia = 0;
+        // Cada semana se queda lo mismo; la última, hasta el final.
+        const per = Math.max(0.6, (dur - 1.5) / Math.max(1, weeks.length));
+        const k = Math.min(weeks.length - 1, Math.floor(t / per));
+        const fade = clamp((t - k * per) / 0.35);
+        const paint = (w: MapWeek | undefined, a: number) => {
+          if (!w || a <= 0) return;
+          g.globalAlpha = a * 0.55;
+          for (const [id, house] of w.duenos) {
+            const c = cells.get(id);
+            const color = colorOf(house);
+            if (!c || !color) continue;
+            const pts = geo.outline(c.x, c.y, 0);
+            g.fillStyle = color;
+            g.beginPath();
+            pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y)));
+            g.closePath();
+            g.fill();
+          }
+          g.globalAlpha = 1;
+        };
+        if (k > 0 && fade < 1) paint(weeks[k - 1], 1 - fade);
+        paint(weeks[k], k === 0 ? fade : Math.max(fade, 0));
+        if (weekLabel.current && weeks[k]) weekLabel.current.textContent = `Semana ${weeks[k]!.semana}`;
+      } else if (mode === "titulo") {
         const k = t / dur;
         sc = cover * lerp(1.25, 1.4, k);
         fx = lerp(0.55, 0.42, k) * MW;
@@ -143,7 +190,8 @@ export function CinematicMap({ state, mode, dur }: { state: GameState; mode: "ti
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [size, meta, mode, dur, castles, mine]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [size, meta, mode, dur, castles, mine, weeks, cells]);
 
   return (
     <div className="cine-map" ref={box}>
@@ -151,6 +199,11 @@ export function CinematicMap({ state, mode, dur }: { state: GameState; mode: "ti
         <WorldCanvas opts={opts} />
         <canvas ref={veil} className="cine-map-veil" />
       </div>
+      {byWeek && weeks.length > 0 && (
+        <span className="cine-week" ref={weekLabel}>
+          Semana {weeks[0]!.semana}
+        </span>
+      )}
       {mode === "revelar" && mine && (
         <span className="cine-yours" ref={label}>
           Tu castillo

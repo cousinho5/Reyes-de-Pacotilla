@@ -1125,3 +1125,113 @@ Boletín corto de mitad de semana, con los hechos desde el domingo.
 4. Nada que contar a mitad de semana, salvo que el cronista ha dormido muy bien.
 5. Silencio en Aldricia desde el domingo. Sospechoso.
 6. Mitad de semana sin batallas. Los herreros están preocupados.
+
+---
+
+## 21. Títulos de fin de partida
+
+Un título por casa en la coronación (bloque 13), el del dato en que más destaca, con su cifra exacta. El ganador lleva además «Futuro Rey, según el cronista». Se ríen de lo que pasó, nunca de una persona.
+
+### 21.1 Azote de Fronteras
+
+1. Con {n} casillas tomadas a otras casas, {casa} ha obligado a redibujar el mapa tantas veces que el cartógrafo pide aumento.
+2. {n} casillas arrebatadas a otras casas. Los mojones de las fronteras de {casa} ya no se clavan: se llevan en carro.
+
+### 21.2 La Gallina que Cruzó el Vado
+
+1. {n} victorias cruzando ríos sin puente. Nadie sabe por qué cruzó {casa} el río; el cronista sospecha que para ganar.
+2. Sin puente y con los pies mojados, {casa} ganó {n} veces al otro lado del río. Los patos lo consideran uno de los suyos.
+
+### 21.3 Muralla con Patas
+
+1. {n} ataques rechazados. Las tierras de {casa} no tienen murallas: tienen una muralla que camina.
+2. Quien atacó a {casa} se fue por donde vino, y así {n} veces. El cronista ha dejado de apostar en contra.
+
+### 21.4 Asediador con Paciencia de Santo
+
+1. {n} noches de asedio a castillos. Las tiendas de {casa} llevaban tanto tiempo plantadas que ya tenían huerto.
+2. {n} noches esperando ante unos muros. A {casa} se le podría canonizar, si los muros opinaran lo mismo.
+
+### 21.5 Mercader de Lengua Larga
+
+1. {n} tratos cerrados. Con {casa} nadie sale de una conversación con lo mismo que entró.
+2. {n} tratos, y en todos {casa} juró que salía perdiendo. El cronista lo anota con una ceja levantada.
+
+### 21.6 Arquitecto sin Freno
+
+1. {n} niveles entre sus cinco edificios. En el castillo de {casa} no se duerme: se oye el martillo.
+2. {n} niveles de obra. Si {casa} hubiera puesto la misma piedra en murallas, aún estarían subiendo.
+
+### 21.7 Tesorero de las Llaves Perdidas
+
+1. {n} de Oro guardado al final. Las llaves del tesoro del rey no aparecieron, pero el tesoro de {casa} sí.
+2. Con {n} de Oro en el arcón, {casa} es lo más parecido a las llaves perdidas que ha visto el reino.
+
+### 21.8 General de Mil Bocas
+
+1. {n} tropas al final. El ejército de {casa} es enorme y, sobre todo, come mucho Pan.
+2. {n} soldados bajo la bandera de {casa}. Los panaderos del reino le hacen reverencias.
+
+### 21.9 Coleccionista de Subastas
+
+1. {n} lotes de la Gran Subasta. El subastador ya saludaba a {casa} por su nombre.
+2. Con {n} lotes ganados, {casa} pujaba por todo. Al subastador se le escapó un «¿otra vez?».
+
+### 21.10 Caído con Honor
+
+1. {n} casillas perdidas ante otras casas, todas con la cabeza alta. No fue rendición de {casa}: fue ceder terreno con elegancia.
+2. {n} casillas cambiaron de bandera a costa de {casa}. El cronista lo llama generosidad territorial.
+
+### 21.11 Traidor de la Corona
+
+1. {n} alianzas rotas. Firmar con {casa} era como firmar en el agua: bonito mientras duró.
+2. {n} pactos deshechos por {casa}. El cronista lo llama visión de estado; sus aliados, otras cosas.
+
+### 21.12 Aliado de Hierro
+
+1. {n} noches de alianza sin romperla. La palabra de {casa} valía más que el Oro, que ya es decir.
+2. {n} noches junto a sus aliados y ni una traición. El cronista anota a {casa} en mayúsculas, por rareza.
+
+### 21.13 Mecenas del Cronista
+
+1. {n} de Oro en sobornos al cronista. Sin {casa}, Fray Abundio no habría podido comprar tanta tinta (ni tanto vino).
+2. {n} de Oro para el cronista, que lo agradece con toda la objetividad que el Oro permite. Larga vida a {casa}.
+
+### 21.14 Saqueador de Ruinas
+
+1. {n} ruinas saqueadas. Por donde pasaba {casa}, las ruinas quedaban todavía más arruinadas.
+2. {n} ruinas visitadas y vaciadas. Los fantasmas de las ruinas presentaron queja contra {casa}.
+
+### 21.15 Rey de la Remontada
+
+1. {n} puestos remontados desde su peor domingo. Quien dio por perdida la causa de {casa} se precipitó.
+2. Subió {n} puestos en la clasificación cuando nadie miraba. Lo de {casa} no es correr: es llegar.
+
+### 21.16 Guardián del Castillo Propio
+
+1. {n} tropas en su castillo al final. El mundo exterior es peligroso y {casa} lo sabía.
+2. {n} tropas guardando la puerta de casa. Nadie entró en el castillo de {casa}; casi nadie salió.
+
+## 22. Cinemáticas
+
+Las cinemáticas del bloque 13 (`apps/web/src/cinematics.tsx`). Las viñetas de los eventos usan la frase del evento (sección 10); el fantasma y el aniversario, la frase del difunto rey del boletín (sección 6). Esto es lo que se añade encima.
+
+### 22.1 El fantasma de Aldric: lo que dice en el bocadillo
+
+1. ¡En mis tiempos esto no pasaba!
+2. ¡Más pan!
+3. ¿Quién ha tocado mi trono?
+4. ¡Qué semana más vulgar!
+5. ¿Alguien ha visto mis llaves?
+6. ¡Yo habría ganado comiendo!
+
+### 22.2 El fantasma de Aldric: la nota de Fray Abundio
+
+1. El cronista lo anota. Con letra pequeña.
+2. Su Majestad ya no vota, pero opina.
+3. El cronista estaba allí y no lo recuerda así.
+
+### 22.3 La última semana
+
+1. Última semana del interregno. Quien quiera la corona, que se dé prisa.
+2. Quedan {n} noches. El cronista ya afila la pluma.

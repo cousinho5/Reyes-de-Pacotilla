@@ -38,6 +38,7 @@ import {
   type WeekEvent,
 } from "./events";
 import { checkCard, type CardKey, type CardParams } from "./cards";
+import { combatTitleStats, comebacks, endTitles, type TitleCombat, type TitleKey } from "./titles";
 import { BUILDINGS, RESOURCES, type Alliance, type Captain, type BuildingKind, type HouseId, type Order, type Resource, type Resources, type Tile } from "./types";
 import {
   PERSONALITIES,
@@ -167,6 +168,8 @@ export interface SimHouseResult {
   captainAttacks: number;
   /** Bloque 8: alianzas firmadas, rotas por esta casa, y con quién terminó aliada. */
   alliances: { signed: number; broke: number; atEnd: HouseId[] };
+  /** Bloque 13: el título de fin de partida que le toca. */
+  title: TitleKey;
 }
 
 export interface SimGameResult {
@@ -313,6 +316,9 @@ interface HouseState {
   brokeDay: number | null;
   signed: number;
   broke: number;
+  /** Bloque 13, para los títulos: ruinas saqueadas y noches en una alianza en vigor. */
+  ruins: number;
+  allianceNights: number;
 }
 
 export function simulateGame(opts: SimOptions): SimGameResult {
@@ -402,10 +408,13 @@ function runGame(opts: SimOptions): SimGameResult {
       brokeDay: null,
       signed: 0,
       broke: 0,
+      ruins: 0,
+      allianceNights: 0,
     };
   });
   const byId = new Map(houses.map((h) => [h.id, h]));
   const trades: { a: HouseId; b: HouseId; day: number; valid: boolean }[] = [];
+  const titleCombats: TitleCombat[] = [];
   const absent = houses.filter((h) => h.strategy === "ausente").map((h) => h.id);
   const neutralTotal = tiles.filter((t) => t.owner == null && t.type !== "lago").length;
   const totalResolutions = opts.weeks * RHYTHM.days.length;
@@ -916,6 +925,7 @@ function runGame(opts: SimOptions): SimGameResult {
       if (c.prize.kind === "carta") h.hand.push(c.prize.card);
       else h.res[c.prize.resource] += c.prize.amount;
       battle.ruinsClaimed++;
+      h.ruins++;
       if (day < 7) battle.ruinsWeekOne++;
       battle.ruinsDays += day + 1;
     }
@@ -943,6 +953,8 @@ function runGame(opts: SimOptions): SimGameResult {
     proposals = proposals.filter((x) => x.until > resolution);
     for (const [hid, g] of gloryFromEvents(result.events)) byId.get(hid)!.glory += g;
     for (const e of result.events) if (e.type === "capitan_preso") captainsCaptured++;
+    for (const e of result.events) if (e.type === "combate") titleCombats.push(e);
+    for (const al of alliances) if (al.status === "active") for (const id of [al.a, al.b]) byId.get(id)!.allianceNights++;
     // Miércoles: efectos al momento del evento de la semana (repartos, bandidos).
     if (weekday === 2 && weekEvents[week0 - 1]) {
       const outcome = applyEventNow(
@@ -1085,6 +1097,39 @@ function runGame(opts: SimOptions): SimGameResult {
     };
   });
   final.sort((a, b) => b.prestige.total - a.prestige.total || b.tiles - a.tiles || b.h.res.oro - a.h.res.oro);
+  // Bloque 13: los títulos de fin de partida, con las mismas cuentas que el servidor.
+  const fromCombats = combatTitleStats(titleCombats);
+  const sundays = Math.max(0, ...houses.map((h) => h.prestigeBySunday.length));
+  const weekly = Array.from({ length: sundays }, (_, w) =>
+    [...houses].sort((a, b) => (b.prestigeBySunday[w] ?? 0) - (a.prestigeBySunday[w] ?? 0) || a.id - b.id).map((h) => h.id),
+  );
+  const climbs = comebacks(weekly, final.map((f) => f.h.id));
+  const titles = endTitles(
+    final.map((f) => ({
+      house: f.h.id,
+      conquests: 0,
+      riverWins: 0,
+      defenses: 0,
+      tilesLost: 0,
+      ...fromCombats.get(f.h.id),
+      siegeNights: f.h.siegeNights,
+      trades: trades.filter((t) => t.a === f.h.id || t.b === f.h.id).length,
+      buildingLevels: Object.values(f.h.levels).reduce((a, l) => a + l, 0),
+      gold: f.h.res.oro,
+      troops: f.troops,
+      auctions: f.h.auctionsWon,
+      betrayals: f.h.broke,
+      allianceNights: f.h.allianceNights,
+      bribes: 0,
+      ruins: f.h.ruins,
+      comeback: climbs.get(f.h.id) ?? 0,
+      castleTroops: tiles.find((t) => t.castleOf === f.h.id && t.owner === f.h.id)?.troops ?? 0,
+    })),
+    final[0]!.h.id,
+    opts.seed,
+    new Map(),
+  );
+  const titleOf = new Map(titles.map((t) => [t.house, t.key]));
 
   return {
     seed: opts.seed,
@@ -1153,6 +1198,7 @@ function runGame(opts: SimOptions): SimGameResult {
         broke: f.h.broke,
         atEnd: alliances.filter((al) => al.status === "active" && (al.a === f.h.id || al.b === f.h.id)).map((al) => (al.a === f.h.id ? al.b : al.a)),
       },
+      title: titleOf.get(f.h.id)!,
     })),
   };
 }

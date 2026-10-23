@@ -51,6 +51,7 @@ import {
 import { notifyHouses, type NotifyEnv } from "./notify";
 import { announceAuction, auctionStatements, cardsForResolution } from "./subasta";
 import { publishBulletin, publishChronicle } from "./boletin";
+import { newShareKey } from "./coronacion";
 import { loadMercenaries, mercenaryCount, mercenaryDawnStatements } from "./mercenarios";
 import { dueJobs, type GameClock } from "./scheduler";
 import { allianceNightStatements } from "./alianzas";
@@ -534,6 +535,14 @@ export async function runResolution(env: NotifyEnv, game: GameRow, n: number, no
     );
   }
   if (kind === "domingo") {
+    // Bloque 13: de quién es cada casilla al cerrar la semana, para la coronación.
+    statements.push(
+      db.prepare("INSERT OR REPLACE INTO territory_snapshots (game_id, week, owners) VALUES (?, ?, ?)").bind(
+        game.id,
+        week,
+        JSON.stringify(finalTiles.filter((t) => t.owner != null).map((t) => [t.id, t.owner])),
+      ),
+    );
     // Ayuda al último para la semana siguiente.
     const last = lastPlace([...prestige].map(([house, p]) => ({ house, total: p.total })));
     statements.push(db.prepare("UPDATE houses SET help_until_resolution = NULL WHERE game_id = ?").bind(game.id));
@@ -662,7 +671,8 @@ export async function finishGame(env: NotifyEnv, game: GameRow, now: Date): Prom
 
   const statements: D1PreparedStatement[] = [
     db.prepare("INSERT INTO job_runs (game_id, job_key) VALUES (?, 'fin')").bind(game.id),
-    db.prepare("UPDATE games SET status = 'finished', finished_at = ? WHERE id = ?").bind(now.toISOString(), game.id),
+    // Bloque 13: la clave del enlace público de la coronación.
+    db.prepare("UPDATE games SET status = 'finished', finished_at = ?, share_key = ? WHERE id = ?").bind(now.toISOString(), newShareKey(), game.id),
     db.prepare("UPDATE offers SET status = 'cancelled', closed_at = ? WHERE game_id = ? AND status = 'open'").bind(
       now.toISOString(),
       game.id,
@@ -733,8 +743,8 @@ export async function finishGame(env: NotifyEnv, game: GameRow, now: Date): Prom
   const winner = houses.find((h) => h.id === final[0]?.house);
   await notifyHouses(env, houses.map((h) => h.id), {
     kind: "fin",
-    title: "Fin del interregno",
-    body: winner ? `¡Larga vida a ${winner.name}! Consulta la clasificación final.` : "La partida ha terminado.",
+    title: "¡Hay rey en Aldricia!",
+    body: winner ? `Entrad a ver la coronación. ¡Larga vida a ${winner.name}!` : "Entrad a ver la coronación.",
     url: `/partida/${game.id}`,
     dedupe: `fin:${game.id}`,
   });

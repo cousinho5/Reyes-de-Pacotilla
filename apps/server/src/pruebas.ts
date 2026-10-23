@@ -674,6 +674,7 @@ export async function deleteTestGame(env: NotifyEnv, game: GameRow): Promise<voi
     db.prepare("DELETE FROM bulletins WHERE game_id = ?").bind(game.id),
     db.prepare("DELETE FROM phrase_usage WHERE game_id = ?").bind(game.id),
     db.prepare("DELETE FROM prestige_snapshots WHERE game_id = ?").bind(game.id),
+    db.prepare("DELETE FROM territory_snapshots WHERE game_id = ?").bind(game.id),
     db.prepare("DELETE FROM notifications WHERE game_id = ?").bind(game.id),
     db.prepare("DELETE FROM job_runs WHERE game_id = ?").bind(game.id),
     // El Capitán apunta a una casilla (0009): se suelta antes de borrar las casillas.

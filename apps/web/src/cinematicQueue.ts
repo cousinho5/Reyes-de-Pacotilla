@@ -23,7 +23,8 @@ export function autoQueue(
 }
 
 /** Las que este cliente sabe dibujar (cinematics.tsx). */
-export const canPlay = (item: CinematicItem) => item.tipo === "prologo" || (item.tipo === "evento" && !!item.datos);
+export const canPlay = (item: CinematicItem) =>
+  item.tipo === "prologo" || item.tipo === "coronacion" || item.tipo === "ultima" || !!item.datos;
 
 const KIND_NAME: Record<CinematicItem["tipo"], string> = {
   prologo: "Prólogo: la muerte del rey",
@@ -37,6 +38,7 @@ const KIND_NAME: Record<CinematicItem["tipo"], string> = {
 export function cinematicTitle(item: CinematicItem): string {
   const name = typeof item.datos?.nombre === "string" ? item.datos.nombre : null;
   if (item.tipo === "evento" && name) return `Semana ${item.semana}: ${name}`;
+  if (item.tipo === "fantasma" && item.datos?.como === "muerte") return `Aniversario de la muerte del rey (semana ${item.semana})`;
   if (item.tipo === "fantasma") return `${KIND_NAME.fantasma} (semana ${item.semana})`;
   return KIND_NAME[item.tipo];
 }

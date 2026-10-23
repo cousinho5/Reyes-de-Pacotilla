@@ -12,16 +12,19 @@ const still = () => typeof matchMedia === "function" && matchMedia("(prefers-red
 
 /**
  * `epilogue`, si la hay, sale al acabar o al saltar en lugar de cerrar (la hoja
- * de la ambición secreta tras el prólogo); recibe con qué cerrar.
+ * de la ambición secreta tras el prólogo); recibe con qué cerrar. `doneLabel`
+ * cambia el «Continuar» del final (el fantasma: «Leer el boletín»).
  */
 export function CinematicPlayer({
   cinematic,
   onClose: close,
   epilogue,
+  doneLabel = "Continuar",
 }: {
   cinematic: Cinematic;
   onClose: () => void;
   epilogue?: (close: () => void) => ReactNode;
+  doneLabel?: string;
 }) {
   const [index, setIndex] = useState(0);
   const [ended, setEnded] = useState(false);
@@ -128,7 +131,7 @@ export function CinematicPlayer({
             <span className="cine-dots" />
           )}
           <button className={last ? "cine-done" : undefined} onClick={advance} aria-label={last ? undefined : "Escena siguiente"}>
-            {last ? "Continuar" : "›"}
+            {last ? doneLabel : "›"}
           </button>
         </div>
       </div>

@@ -3961,6 +3961,162 @@ button.wide {
   color: var(--dust);
   text-decoration: underline;
 }
+/* Bloque 13: la coronación. Semana del mapa, hojas de objetivos y títulos, podio y vítor. */
+.cine-week {
+  position: absolute;
+  left: 50%;
+  top: 6%;
+  transform: translateX(-50%);
+  padding: 4px 12px;
+  border-radius: 3px;
+  background: rgba(20, 12, 8, 0.82);
+  color: var(--brass-hi);
+  font: 800 15px var(--font-serif);
+  box-shadow: 0 0 0 1px var(--brass-lo);
+}
+.cine-sheet {
+  position: absolute;
+  inset: 4% 4% 3%;
+  overflow: hidden;
+}
+.cine-sheet-in {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cine-sheet {
+    overflow-y: auto;
+    pointer-events: auto;
+  }
+}
+.cine-sheet h4 {
+  margin: 0 0 2px;
+  text-align: center;
+  font: 800 12px var(--font-text);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--brass-hi);
+}
+.cine-sheet .row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: 3px;
+  background: linear-gradient(180deg, #f4e6c0, #e2cc96);
+  color: var(--ink);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+  animation: cine-rise 0.5s calc(0.4s + var(--i) * 0.7s) ease-out both;
+}
+.cine-sheet .row > div {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.cine-sheet b {
+  font: 800 12px/1.1 var(--font-text);
+}
+.cine-sheet span,
+.cine-sheet small {
+  font: 400 11.5px/1.2 var(--font-serif);
+  color: var(--ink-soft);
+}
+.cine-sheet strong {
+  font: 800 14px/1.1 var(--font-serif);
+  color: var(--seal);
+}
+.cine-sheet em {
+  font: italic 400 11px/1.1 var(--font-serif);
+  color: var(--brass-lo);
+}
+.cine-sheet.titles .row {
+  animation-delay: calc(0.4s + var(--i) * 1s);
+}
+.cine-sheet.many .row {
+  padding: 2px 6px;
+}
+.cine-sheet.many small {
+  display: none;
+}
+.cine-sheet .stamp {
+  flex: none;
+  padding: 2px 6px;
+  border: 2px solid currentColor;
+  border-radius: 3px;
+  font: 800 10px/1.1 var(--font-text);
+  font-style: normal;
+  text-transform: uppercase;
+  rotate: -8deg;
+  animation: cine-stamp 0.4s calc(0.9s + var(--i) * 0.7s) both;
+}
+.cine-sheet .stamp.ok {
+  color: var(--moss);
+}
+.cine-sheet .stamp.ko {
+  color: var(--seal);
+}
+.cine-podnames {
+  position: absolute;
+  left: 2%;
+  right: 2%;
+  top: 4%;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 4px;
+  text-align: center;
+}
+.cine-podnames .pn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  animation: cine-rise 0.6s 1.6s both;
+}
+.cine-podnames .p0 {
+  animation-delay: 2.2s;
+}
+.cine-podnames .pos {
+  font: 800 13px var(--font-pixel);
+  color: var(--brass-hi);
+}
+.cine-podnames b {
+  max-width: 100%;
+  font: 800 12px/1.1 var(--font-text);
+  color: var(--chalk);
+  border-bottom: 3px solid var(--c);
+  overflow-wrap: anywhere;
+}
+.cine-podnames .num {
+  font: 400 11px var(--font-serif);
+  color: var(--dust);
+}
+.cine-hail {
+  position: absolute;
+  left: 4%;
+  right: 4%;
+  top: 4%;
+  text-align: center;
+  font: 800 clamp(22px, 8cqw, 32px) / 1.05 var(--font-serif);
+  color: var(--brass-hi);
+  text-shadow: 0 3px 0 #3b2208, 0 0 18px rgba(0, 0, 0, 0.8);
+  animation: cine-hail 1s 5.3s both;
+}
+@keyframes cine-hail {
+  0% {
+    opacity: 0;
+    scale: 0.4;
+  }
+  60% {
+    opacity: 1;
+    scale: 1.12;
+  }
+  100% {
+    opacity: 1;
+    scale: 1;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   .cine-over * {
     animation-duration: 0.001s !important;
@@ -4010,4 +4166,139 @@ button.wide {
   background: var(--seal);
   color: #fff;
   font: 800 0.72rem var(--font-text);
+}
+
+/* Bloque 13: la página pública de la coronación y sus botones en Reino. */
+.coronation-actions {
+  justify-content: center;
+  margin-top: 12px;
+}
+.coronation-page .lead {
+  font: 800 1.2rem var(--font-serif);
+  color: var(--brass-hi);
+}
+.coronation-list {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.coronation-list li {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: linear-gradient(180deg, var(--vellum), var(--vellum-2));
+  color: var(--ink);
+}
+.coronation-list p {
+  margin: 4px 0 0;
+  font: 400 0.95rem/1.3 var(--font-serif);
+}
+.coronation-list strong {
+  color: var(--seal);
+}
+
+/* Bloque 13: la última semana (reloj de arena y clasificación) y el bocadillo del fantasma. */
+.cine-last {
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  top: 4%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  color: #f4e6c0;
+  text-align: center;
+  animation: cine-fade-in 0.8s ease-out both;
+}
+.cine-last small {
+  font: 800 0.68rem var(--font-text);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: #e8b83a;
+}
+.cine-last b {
+  font: 800 clamp(20px, 7cqw, 26px) / 1.1 var(--font-serif);
+}
+.cine-last .nights {
+  font: 600 clamp(13px, 4.2cqw, 15px) var(--font-serif);
+  font-style: italic;
+  color: #fbe39a;
+}
+.cine-last ol {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  width: 100%;
+  display: grid;
+  gap: 3px;
+}
+.cine-last li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 8px;
+  background: rgba(20, 12, 8, 0.7);
+  border: 1px solid rgba(232, 184, 58, 0.45);
+  border-radius: 4px;
+  font: 700 clamp(13px, 4cqw, 15px) var(--font-serif);
+  animation: cine-fade-in 0.6s ease-out both;
+}
+.cine-last li:nth-child(2) {
+  animation-delay: 0.4s;
+}
+.cine-last li:nth-child(3) {
+  animation-delay: 0.8s;
+}
+.cine-last li span {
+  flex: 1;
+  text-align: left;
+}
+.cine-last li em {
+  font-style: normal;
+  color: #fbe39a;
+}
+.cine-bubble {
+  position: absolute;
+  left: 46%;
+  right: 6%;
+  top: 22%;
+  padding: 8px 10px;
+  background: #f4fcff;
+  color: #1a2a3a;
+  border: 2px solid #3d6e8e;
+  border-radius: 10px;
+  font: 700 clamp(14px, 4.4cqw, 17px) / 1.2 var(--font-serif);
+  animation: cine-fade-in 0.5s 1.9s ease-out both;
+}
+.cine-bubble::after {
+  content: "";
+  position: absolute;
+  left: 14px;
+  bottom: -9px;
+  border: 8px solid transparent;
+  border-top-color: #3d6e8e;
+  border-bottom: 0;
+}
+@keyframes cine-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cine-last,
+  .cine-last li,
+  .cine-bubble {
+    animation: none;
+  }
 }

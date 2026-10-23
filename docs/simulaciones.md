@@ -54,6 +54,31 @@ npm run simular -- --semanas 4                    # duración de la partida
 npm run simular -- --json datos.json              # además, todos los datos
 ```
 
+## Títulos de fin de partida (23 de octubre de 2026, bloque 13, sin cambios de reglas)
+
+No cambia reglas: solo mira cuántas partidas reparten cada título (200 partidas mezcladas de 6 semanas, `npm run simular`, tabla «Bloque 13: títulos de fin de partida»). Cada casa recibe uno distinto, así que en partidas de 4 a 8 casas salen de 4 a 8 títulos de los 16.
+
+| Título | Partidas en que sale |
+| --- | --- |
+| Azote de Fronteras | 99% |
+| La Gallina que Cruzó el Vado | 76% |
+| Mercader de Lengua Larga | 75% |
+| Arquitecto sin Freno | 73% |
+| Muralla con Patas | 65% |
+| Traidor de la Corona | 31% |
+| Tesorero de las Llaves Perdidas | 30% |
+| General de Mil Bocas | 28% |
+| Caído con Honor | 27% |
+| Asediador con Paciencia de Santo | 25% |
+| Aliado de Hierro | 20% |
+| Saqueador de Ruinas | 20% |
+| Coleccionista de Subastas | 17% |
+| Rey de la Remontada | 10% |
+| Guardián del Castillo Propio | 9% |
+| Mecenas del Cronista | 0% (los bots no sobornan) |
+
+Todos salen alguna vez salvo el Mecenas, que depende de algo que solo hacen las personas. Ninguno sale tanto como para aburrir, salvo el Azote, que es lo normal: casi siempre alguien conquista más que nadie.
+
 ## Alianzas (22 de octubre de 2026, bloque 8, solicitud 2)
 
 `npm run simular -- --partidas 300 --alianzas no` (sin alianzas), la misma orden sin `--alianzas no` (con alianzas, sin límite por casa) y con `--alianzas-tope 1` (una por casa). Los bots proponen, aceptan y rompen con `ALLIANCE_BOTS` (`rules.ts`, `ai/alliances.ts`); los bots sencillos rechazan todas.

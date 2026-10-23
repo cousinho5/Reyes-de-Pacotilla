@@ -797,6 +797,70 @@ export const PHRASES = {
     "Y así, contra todo pronóstico (salvo el del cronista), {ganador} fue coronado rey de Aldricia. Hasta el próximo interregno.",
     "El cronista, que siempre creyó en {ganador} (ver boletines anteriores, convenientemente corregidos), da fe.",
     "Fin de la Crónica Definitiva. Cualquier parecido con lo que pasó de verdad es pura coincidencia."
+  ],
+  "titulo.azote": [
+    "Con {n} casillas tomadas a otras casas, {casa} ha obligado a redibujar el mapa tantas veces que el cartógrafo pide aumento.",
+    "{n} casillas arrebatadas a otras casas. Los mojones de las fronteras de {casa} ya no se clavan: se llevan en carro."
+  ],
+  "titulo.gallina": [
+    "{n} victorias cruzando ríos sin puente. Nadie sabe por qué cruzó {casa} el río; el cronista sospecha que para ganar.",
+    "Sin puente y con los pies mojados, {casa} ganó {n} veces al otro lado del río. Los patos lo consideran uno de los suyos."
+  ],
+  "titulo.muralla": [
+    "{n} ataques rechazados. Las tierras de {casa} no tienen murallas: tienen una muralla que camina.",
+    "Quien atacó a {casa} se fue por donde vino, y así {n} veces. El cronista ha dejado de apostar en contra."
+  ],
+  "titulo.asediador": [
+    "{n} noches de asedio a castillos. Las tiendas de {casa} llevaban tanto tiempo plantadas que ya tenían huerto.",
+    "{n} noches esperando ante unos muros. A {casa} se le podría canonizar, si los muros opinaran lo mismo."
+  ],
+  "titulo.mercader": [
+    "{n} tratos cerrados. Con {casa} nadie sale de una conversación con lo mismo que entró.",
+    "{n} tratos, y en todos {casa} juró que salía perdiendo. El cronista lo anota con una ceja levantada."
+  ],
+  "titulo.arquitecto": [
+    "{n} niveles entre sus cinco edificios. En el castillo de {casa} no se duerme: se oye el martillo.",
+    "{n} niveles de obra. Si {casa} hubiera puesto la misma piedra en murallas, aún estarían subiendo."
+  ],
+  "titulo.tesorero": [
+    "{n} de Oro guardado al final. Las llaves del tesoro del rey no aparecieron, pero el tesoro de {casa} sí.",
+    "Con {n} de Oro en el arcón, {casa} es lo más parecido a las llaves perdidas que ha visto el reino."
+  ],
+  "titulo.general": [
+    "{n} tropas al final. El ejército de {casa} es enorme y, sobre todo, come mucho Pan.",
+    "{n} soldados bajo la bandera de {casa}. Los panaderos del reino le hacen reverencias."
+  ],
+  "titulo.coleccionista": [
+    "{n} lotes de la Gran Subasta. El subastador ya saludaba a {casa} por su nombre.",
+    "Con {n} lotes ganados, {casa} pujaba por todo. Al subastador se le escapó un «¿otra vez?»."
+  ],
+  "titulo.caido": [
+    "{n} casillas perdidas ante otras casas, todas con la cabeza alta. No fue rendición de {casa}: fue ceder terreno con elegancia.",
+    "{n} casillas cambiaron de bandera a costa de {casa}. El cronista lo llama generosidad territorial."
+  ],
+  "titulo.traidor": [
+    "{n} alianzas rotas. Firmar con {casa} era como firmar en el agua: bonito mientras duró.",
+    "{n} pactos deshechos por {casa}. El cronista lo llama visión de estado; sus aliados, otras cosas."
+  ],
+  "titulo.aliado": [
+    "{n} noches de alianza sin romperla. La palabra de {casa} valía más que el Oro, que ya es decir.",
+    "{n} noches junto a sus aliados y ni una traición. El cronista anota a {casa} en mayúsculas, por rareza."
+  ],
+  "titulo.mecenas": [
+    "{n} de Oro en sobornos al cronista. Sin {casa}, Fray Abundio no habría podido comprar tanta tinta (ni tanto vino).",
+    "{n} de Oro para el cronista, que lo agradece con toda la objetividad que el Oro permite. Larga vida a {casa}."
+  ],
+  "titulo.saqueador": [
+    "{n} ruinas saqueadas. Por donde pasaba {casa}, las ruinas quedaban todavía más arruinadas.",
+    "{n} ruinas visitadas y vaciadas. Los fantasmas de las ruinas presentaron queja contra {casa}."
+  ],
+  "titulo.remontada": [
+    "{n} puestos remontados desde su peor domingo. Quien dio por perdida la causa de {casa} se precipitó.",
+    "Subió {n} puestos en la clasificación cuando nadie miraba. Lo de {casa} no es correr: es llegar."
+  ],
+  "titulo.guardian": [
+    "{n} tropas en su castillo al final. El mundo exterior es peligroso y {casa} lo sabía.",
+    "{n} tropas guardando la puerta de casa. Nadie entró en el castillo de {casa}; casi nadie salió."
   ]
 } as const;
 
