@@ -976,7 +976,13 @@ svg.ico {
   z-index: 1;
   transform: translate(-50%, -50%);
   line-height: 0;
-  pointer-events: none;
+  /* Bloque 11: el escudo abre la ficha de la casa. */
+  min-height: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  box-shadow: none;
+  cursor: pointer;
   filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.8)) drop-shadow(0 0 2px rgba(0, 0, 0, 0.6));
 }
 .tile-troops {
@@ -1464,6 +1470,118 @@ svg.ico {
 }
 .chronicle-weeks {
   margin-top: 0.8rem;
+}
+
+/* Bloque 11: ficha de casa y tira de diplomacia. */
+.sheet-layer.house-layer {
+  z-index: 30;
+}
+.house-head {
+  display: flex;
+  gap: 0.8rem;
+  align-items: center;
+  margin-right: 2.5rem;
+}
+.house-head h2 {
+  margin: 0;
+}
+.house-motto {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-style: italic;
+  color: var(--ink-soft);
+}
+.house-place {
+  margin: 0.15rem 0 0;
+}
+.house-figures {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.4rem;
+  margin: 0.8rem 0 0.4rem;
+}
+.house-figures div {
+  text-align: center;
+  padding: 0.35rem 0.1rem;
+  border-radius: 4px;
+  background: rgba(80, 50, 20, 0.08);
+}
+.house-figures dt {
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+}
+.house-figures dd {
+  margin: 0;
+  font-family: var(--font-pixel);
+  font-weight: 600;
+  font-size: 1.3rem;
+}
+.house-sheet h3 {
+  margin: 0.8rem 0 0.3rem;
+  font-size: 1rem;
+}
+.prestige-bar {
+  display: flex;
+  height: 14px;
+  border-radius: 3px;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.25);
+}
+.prestige-bar span {
+  min-width: 3px;
+}
+.prestige-legend {
+  list-style: none;
+  margin: 0.35rem 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.1rem 0.8rem;
+  font-size: 0.9rem;
+}
+.prestige-legend li {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.prestige-legend strong {
+  margin-left: auto;
+  font-family: var(--font-pixel);
+}
+.house-actions {
+  margin-top: 0.8rem;
+  flex-wrap: wrap;
+}
+.house-actions .propose {
+  flex-basis: 100%;
+}
+.shield-button {
+  min-height: var(--touch);
+  min-width: var(--touch);
+  padding: 0;
+  border: none;
+  background: none;
+  box-shadow: none;
+  display: inline-grid;
+  place-items: center;
+}
+.diplomacy-strip {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  margin: 0.9rem 0 0;
+  padding: 0.5rem 0.9rem;
+  border-radius: 4px;
+  background: linear-gradient(180deg, var(--brass-hi), var(--brass));
+  color: var(--ink);
+  font-weight: 600;
+  text-align: left;
+}
+.podium-line.chaser {
+  margin-top: 0;
+  font-size: 0.92rem;
+  color: var(--seal);
 }
 
 .chronicle {

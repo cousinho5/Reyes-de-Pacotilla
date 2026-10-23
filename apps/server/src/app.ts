@@ -85,7 +85,7 @@ import { bribeView, errataView, proclamationView, type StoredBulletin } from "./
 import { auctionView, handView, openAuctionWeek, spiedHouses, useCardStatements, type CardRow } from "./subasta";
 import { addBots, advance, botsPlayDay, deleteTestGame, testStart } from "./pruebas";
 import { ransomStatements } from "./rescate";
-import { prestigeHistory } from "./reino";
+import { prestigeHistory, relations } from "./reino";
 import { crownCost, crownMarket, crownPriceView, crownPurchaseStatements } from "./corona";
 import { hireStatements, leavingDay, loadMercenaries } from "./mercenarios";
 import { acceptOffer, bundle, offerExpiry, offerView, type OfferRow } from "./offers";
@@ -593,7 +593,7 @@ app.get("/api/partidas/:id", async (c) => {
   const allies = alliesOf(toEngineAlliances(allianceRows), house.id);
   const sharedVision = [...new Set([...spied, ...allies])];
   const per = rhythmOf(game).days.length;
-  const [buildings, prestige, orders, events, offers, trades, achievements, ending, snapshots] = await Promise.all([
+  const [buildings, prestige, orders, events, offers, trades, achievements, ending, snapshots, combats, myTrades] = await Promise.all([
     loadBuildings(db, game.id),
     computeAllPrestige(db, game.id, houses, tiles, now),
     db.prepare(
@@ -653,8 +653,21 @@ app.get("/api/partidas/:id", async (c) => {
     )
       .bind(game.id, per, game.current_resolution - 1, totalResolutions(game.weeks, rhythmOf(game).days))
       .all<{ house_id: number; resolution_no: number; total: number }>(),
+    // Bloque 11: batallas públicas y tratos de esta casa, para «qué relación tiene contigo».
+    db.prepare("SELECT payload FROM event_log WHERE game_id = ? AND type = 'combate' AND visible_to IS NULL")
+      .bind(game.id)
+      .all<{ payload: string }>(),
+    db.prepare("SELECT house_a, house_b FROM trades WHERE game_id = ? AND valid = 1 AND (house_a = ? OR house_b = ?)")
+      .bind(game.id, house.id, house.id)
+      .all<{ house_a: number; house_b: number }>(),
   ]);
   const finished = game.status === "finished";
+  const relation = relations(
+    house.id,
+    houses.map((h) => h.id),
+    combats.results.map((r) => JSON.parse(r.payload) as Record<string, unknown>),
+    myTrades.results,
+  );
   const objectiveView = (key: string | null) =>
     key ? { clave: key, texto: OBJECTIVES[key as ObjectiveKey] ?? key } : null;
 
@@ -711,6 +724,14 @@ app.get("/api/partidas/:id", async (c) => {
         prestigio: prestige.get(h.id),
         // Etapa del castillo (bloque 2): sale de los niveles de sus edificios, que ya son públicos por el Prestigio.
         etapa: castleStage(buildings.get(h.id)!),
+        // Bloque 11: las cifras de la ficha de casa. Todas son públicas (salen en el Prestigio o en el mapa).
+        cifras: {
+          casillas: tiles.filter((t) => t.owner === h.id && t.type !== "castillo").length,
+          edificios: Object.values(buildings.get(h.id)!).reduce((a, b) => a + b, 0),
+          gloria: h.glory ?? 0,
+          asedios: h.siege_nights ?? 0,
+        },
+        ...(h.id !== house.id ? { relacion: relation.get(h.id) } : {}),
         logros: achievements.results.filter((a) => a.house_id === h.id).map((a) => ({ clave: a.achievement_key, veces: a.times })),
         // Los objetivos secretos solo se revelan al final.
         objetivo: finished ? { ...objectiveView(h.objective_key), cumplido: h.objective_met === 1 } : null,

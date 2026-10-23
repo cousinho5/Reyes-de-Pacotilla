@@ -1,10 +1,10 @@
 import { ResourceIcon, ShieldIcon } from "../art";
 import { AuctionPanel } from "./AuctionPanel";
 import { CrownPanel } from "./CrownPanel";
-import { DiplomacyPanel } from "./DiplomacyPanel";
 import { useState } from "react";
 import { RESOURCES, TRADE, fairAmount, noticeText, referenceValue, totalOf, type Resource, type Resources } from "@reyes/engine";
 import { api, type GameState, type OfferInfo } from "../api";
+import { useOpenHouse } from "../houseSheet";
 import { HOUSE_COLORS, RESOURCE_LABEL, houseName } from "../ui";
 
 interface Props {
@@ -78,6 +78,7 @@ function OfferCard({
 }) {
   const me = state.yo.casa;
   const house = state.casas.find((h) => h.id === o.de);
+  const openHouse = useOpenHouse();
   const expiry = expiryText(o, state.partida.resolucionActual);
   const thread = nested ? [] : threadOf(state.ofertas ?? [], o);
   return (
@@ -98,7 +99,13 @@ function OfferCard({
         </ol>
       )}
       <div className="offer-who">
-        <ShieldIcon color={house?.color ?? ""} escudo={house?.escudo} size={26} />
+        {openHouse && house ? (
+          <button className="shield-button" onClick={() => openHouse(house.id)} aria-label={`Ficha de ${house.nombre}`}>
+            <ShieldIcon color={house.color} escudo={house.escudo} size={26} />
+          </button>
+        ) : (
+          <ShieldIcon color={house?.color ?? ""} escudo={house?.escudo} size={26} />
+        )}
         <span>
           <strong>{o.de === me ? "Tú" : houseName(state.casas, o.de)}</strong>
           {o.para != null && o.de === me && <> a {houseName(state.casas, o.para)}</>}
@@ -133,11 +140,11 @@ const STATUS: Record<OfferInfo["estado"], string> = {
 
 /**
  * Pestaña Comercio (bloque 10). Arriba lo que pide respuesta: Para ti, Mercado y
- * tus ofertas (las propuestas de alianza que te hacen, en Para ti). Después la
- * subasta (en una línea si está cerrada) y la Corona; al final, plegados, lo
- * reciente, las alianzas y los tratos del reino.
+ * tus ofertas (las propuestas de alianza, en una línea que lleva a Reino).
+ * Después la subasta (en una línea si está cerrada) y la Corona; al final,
+ * plegados, lo reciente y los tratos del reino.
  */
-export function TradePanel({ state, act }: Props) {
+export function TradePanel({ state, act, onGoRealm }: Props & { onGoRealm?: () => void }) {
   const me = state.yo.casa;
   const gameId = state.partida.id;
   const offers = state.ofertas ?? [];
@@ -213,7 +220,13 @@ export function TradePanel({ state, act }: Props) {
           <p className="muted">Nadie te ha hecho una oferta directa. De momento.</p>
         ) : (
           <ul className="list">
-            <DiplomacyPanel state={state} act={act} part="propuestas" />
+            {proposals > 0 && (
+              <li>
+                <button className="link" onClick={onGoRealm}>
+                  {proposals === 1 ? "Tienes 1 propuesta de alianza" : `Tienes ${proposals} propuestas de alianza`}: respóndelas en Reino ›
+                </button>
+              </li>
+            )}
             {forMe.map((o) => (
               <OfferCard key={o.id} state={state} o={o}>
                 {answer(o)}
@@ -313,9 +326,6 @@ export function TradePanel({ state, act }: Props) {
           </ul>
         </details>
       )}
-
-      {/* Bloque 8: las alianzas, plegadas aquí hasta que el bloque 11 las lleve a Reino. */}
-      <DiplomacyPanel state={state} act={act} />
 
       <details className="card fold">
         <summary>

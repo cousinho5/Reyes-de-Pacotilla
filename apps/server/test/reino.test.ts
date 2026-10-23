@@ -29,3 +29,27 @@ describe("Historia del Prestigio para Reino", () => {
     expect(h.semanas.map((s) => s.semana)).toEqual([1]);
   });
 });
+
+describe("Relación entre casas para la ficha", () => {
+  it("cuenta batallas ganadas y perdidas entre las dos y sus tratos", async () => {
+    const { relations } = await import("../src/reino");
+    const r = relations(
+      1,
+      [1, 2, 3],
+      [
+        { winner: 1, previousOwner: 2, sides: [{ house: 1 }] },
+        { winner: 2, previousOwner: 1, sides: [{ house: 2 }, { house: 3 }] },
+        { winner: 3, previousOwner: 2, sides: [{ house: 3 }] }, // no estaba la casa 1
+        { winner: 3, previousOwner: null, sides: [{ house: 3 }, { house: 4, joint: [1] }] },
+      ],
+      [
+        { house_a: 1, house_b: 2 },
+        { house_a: 3, house_b: 1 },
+        { house_a: 2, house_b: 3 },
+      ],
+    );
+    expect(r.get(2)).toEqual({ ganadas: 1, perdidas: 1, tratos: 1 });
+    expect(r.get(3)).toEqual({ ganadas: 0, perdidas: 1, tratos: 1 });
+    expect(r.has(1)).toBe(false);
+  });
+});

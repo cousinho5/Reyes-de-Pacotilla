@@ -4,8 +4,9 @@
 import type { ReactNode } from "react";
 import { Icon, ShieldIcon } from "../art";
 import type { GameState } from "../api";
-import { podiumLine, standings, type Standing } from "../realm";
+import { chaserLine, podiumLine, standings, type Standing } from "../realm";
 import { ACHIEVEMENT_LABEL } from "../ui";
+import { useOpenHouse } from "../houseSheet";
 
 function Move({ move }: { move: number | null }) {
   if (move == null) return null;
@@ -19,7 +20,9 @@ function Move({ move }: { move: number | null }) {
   );
 }
 
-export function Standings({ state, onPick, children }: { state: GameState; onPick?: (house: number) => void; children?: ReactNode }) {
+export function Standings({ state, children }: { state: GameState; children?: ReactNode }) {
+  // Al tocar una casa, su ficha (bloque 11).
+  const onPick = useOpenHouse();
   const rows = standings(state);
   const me = state.yo.casa;
   const final = !!state.partida.final;
@@ -27,6 +30,7 @@ export function Standings({ state, onPick, children }: { state: GameState; onPic
   // El podio, en el orden de siempre: segundo, primero, tercero.
   const podium = [rows[1], rows[0], rows[2]].filter((r): r is Standing => !!r);
   const line = podiumLine(rows, me);
+  const chaser = final ? null : chaserLine(rows, me);
 
   return (
     <section className="card standings">
@@ -54,6 +58,7 @@ export function Standings({ state, onPick, children }: { state: GameState; onPic
         ))}
       </ol>
       {line && <p className="podium-line">{line}</p>}
+      {chaser && <p className="podium-line chaser">{chaser}</p>}
       {rows.length > 3 && (
       <ol className="ranking" start={4}>
         {rows.slice(3).map((r) => (

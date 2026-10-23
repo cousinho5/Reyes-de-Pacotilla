@@ -56,6 +56,19 @@ export function podiumLine(rows: Standing[], me: number): string | null {
   return gap > 0 ? `Estás a ${n(gap)} del podio.` : "Estás empatado con el tercero: a un empujón del podio.";
 }
 
+/** Cuánto Prestigio de distancia cuenta como «pisar los talones». */
+export const CHASE_GAP = 5;
+
+/** «Te pisan los talones: X, a N»: la casa justo detrás de la tuya, si está cerca. */
+export function chaserLine(rows: Standing[], me: number): string | null {
+  const i = rows.findIndex((r) => r.house.id === me);
+  const next = i >= 0 ? rows[i + 1] : undefined;
+  if (!next) return null;
+  const gap = rows[i]!.total - next.total;
+  if (gap > CHASE_GAP) return null;
+  return gap === 0 ? `Te pisan los talones: ${next.house.nombre}, empatado contigo.` : `Te pisan los talones: ${next.house.nombre}, a ${gap}.`;
+}
+
 export interface RacePoint {
   /** Etiqueta del punto: «S1», «S2»… y «Hoy». */
   label: string;

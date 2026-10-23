@@ -1,7 +1,7 @@
-// Alianzas (bloque 8): pantalla sencilla, plegada al final de Comercio; las
-// propuestas recibidas van en «Para ti» (bloque 10) hasta que el bloque 11 las lleve a Reino. Propuestas recibidas y enviadas, tus
-// alianzas (con las noches de aviso que quedan) y proponer una nueva con el
-// nombre solemne que pone Fray Abundio. La bonita llega con los bloques 9 a 12.
+// Alianzas (bloque 8), plegadas al final de Reino (bloque 11): propuestas
+// recibidas y enviadas, tus alianzas (con las noches de aviso que quedan) y
+// proponer una nueva con el nombre solemne que pone Fray Abundio. También se
+// propone desde la ficha de cada casa.
 
 import { useEffect, useState } from "react";
 import { api, type GameState } from "../api";
@@ -11,10 +11,7 @@ import { formatShort, houseName, withArticle } from "../ui";
 interface Props {
   state: GameState;
   act: (fn: () => Promise<unknown>, ok?: string) => Promise<void>;
-  /**
-   * Bloque 10: "propuestas" da solo las propuestas recibidas, como filas de la
-   * lista «Para ti» de Comercio; sin él, el resto del panel, plegado.
-   */
+  /** "propuestas" da solo las propuestas recibidas, como filas de una lista; sin él, el panel entero, plegado. */
   part?: "propuestas";
 }
 
@@ -78,10 +75,18 @@ export function DiplomacyPanel({ state, act, part }: Props) {
   }
 
   return (
-    <details className="card fold diplomacy">
+    <details className="card fold diplomacy" id="diplomacia" open={received.length > 0 || undefined}>
       <summary>
-        <h2>Alianzas{mine.length > 0 ? ` (${mine.length})` : ""}</h2>
+        <h2>Diplomacia{mine.length + received.length > 0 ? ` (${mine.length + received.length})` : ""}</h2>
       </summary>
+      {received.length > 0 && (
+        <>
+          <h3>Te proponen</h3>
+          <ul className="list">
+            <DiplomacyPanel state={state} act={act} part="propuestas" />
+          </ul>
+        </>
+      )}
       <p className="muted">
         Con una alianza hay paso libre por las casillas del aliado (nunca su castillo), visión compartida y no os podéis atacar. Si atacáis
         juntos la misma casilla, hay una sola batalla. Romperla no cuesta nada, pero dura {nights(info.nochesDeAviso)} más y quien rompe

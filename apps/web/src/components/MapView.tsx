@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEven
 import { BATTLE_TWEAKS, DEFENSE_BONUS, SIEGE, defenseMultiplier, FORTIFY_UPKEEP, RIVERS, TILE_NAMES, TILE_PRODUCTION, areAdjacent, bridgeBetween, fortifyCost, marchKind, riverBetween, subUnits, threats, unitsOf, type Tile, type Units } from "@reyes/engine";
 import { api, type GameState, type OrderView, type TileView } from "../api";
 import { Icon, ResourceIcon, ShieldIcon, TileArt } from "../art";
+import { useOpenHouse } from "../houseSheet";
 import { cellBox, sharedEdge, type Geo } from "../art/grid";
 import { geoOf } from "../art/world";
 import { WorldCanvas, useWorldMeta } from "./WorldCanvas";
@@ -26,6 +27,9 @@ interface Props {
   setNight: (n: number) => void;
   /** Bloque 10: abrir Comercio (el aviso de la Gran Subasta abierta). */
   onOpenTrade?: () => void;
+  /** Bloque 11: casilla en la que centrar el mapa al abrirlo («Ver en el mapa» de la ficha de casa). */
+  focusTile?: number | null;
+  onFocused?: () => void;
 }
 
 /** "orden": el destino propone el verbo (bloque 12); "capitan": el Capitán va solo, sin tropas, a otra casilla tuya (bloque 4). */
@@ -81,7 +85,8 @@ function markSeen(game: number, n: number) {
   }
 }
 
-export function MapView({ state, draft, setDraft, act, night, setNight, editOrder, onEditOpened, onOpenTrade }: Props) {
+export function MapView({ state, draft, setDraft, act, night, setNight, editOrder, onEditOpened, onOpenTrade, focusTile, onFocused }: Props) {
+  const openHouse = useOpenHouse();
   const now = state.casillas ?? [];
   const next = nextResolution(state);
   const nightsOpen = state.partida.estado === "active" && state.partida.ordenesAbiertas ? queueNights(state) : 1;
@@ -312,6 +317,13 @@ export function MapView({ state, draft, setDraft, act, night, setNight, editOrde
     }
     setFlash(id);
   };
+  // Desde la ficha de una casa: a su castillo, con un destello.
+  useEffect(() => {
+    if (focusTile == null) return;
+    onFocused?.();
+    window.setTimeout(() => goTo(focusTile), 80);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusTile]);
   useEffect(() => {
     if (flash == null) return;
     const t = window.setTimeout(() => setFlash(null), 1600);
@@ -850,9 +862,18 @@ export function MapView({ state, draft, setDraft, act, night, setNight, editOrde
                 const [cx, cy] = geo.center(t.x, t.y);
                 const size = Math.max(16, Math.round(cellBox(geo, t.x, t.y)[2] * scale * 0.75));
                 return (
-                  <span key={`e${t.id}`} className="territory-shield" style={{ left: `${(cx / W) * 100}%`, top: `${(cy / H) * 100}%` }} aria-hidden>
+                  <button
+                    key={`e${t.id}`}
+                    className="territory-shield"
+                    style={{ left: `${(cx / W) * 100}%`, top: `${(cy / H) * 100}%` }}
+                    aria-label={`Ficha de ${h.nombre}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openHouse?.(h.id);
+                    }}
+                  >
                     <ShieldIcon color={h.color} escudo={h.escudo} size={size} title="" />
-                  </span>
+                  </button>
                 );
               })}
           </div>
