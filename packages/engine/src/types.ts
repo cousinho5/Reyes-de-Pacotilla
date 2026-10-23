@@ -226,6 +226,10 @@ export type CampaignEvent =
         from?: TileId[];
         /** Ataque: alguno de sus grupos entra cruzando un río sin puente (bloque 1). */
         river?: boolean;
+        /** Ataque: sus jinetes cargan (casilla llana sin murallas). Para el cronista (bloque 3). */
+        charge?: boolean;
+        /** Ataque: sus catapultas abren brecha en unas murallas. Para el cronista (bloque 3). */
+        breach?: boolean;
         /** Ataque conjunto (bloque 8): casas aliadas con las que ataca. Defensa: tropas de paso que defienden. */
         joint?: HouseId[];
       }[];

@@ -1,6 +1,6 @@
 # Banco de frases de Fray Abundio
 
-Banco de textos del cronista de Reyes de Pacotilla, versión 2 (adaptada al diseño v2: sin puntos de acción, con apoyos, rebotes, logros y objetivos secretos). Complementa la sección 17 del documento de diseño. En el código, las secciones 1 a 8 (y los avisos de alianzas, 11.15 a 11.19) están en `packages/engine/src/texts/cronista.ts` y los eventos en `packages/engine/src/events.ts`: si cambia una frase aquí, se cambia también allí.
+Banco de textos del cronista de Reyes de Pacotilla, versión 2 (adaptada al diseño v2: sin puntos de acción, con apoyos, rebotes, logros y objetivos secretos). Complementa la sección 17 del documento de diseño. En el código, las secciones 1 a 9 y 12 a 20 (y los avisos de alianzas, 11.15 a 11.19) están en `packages/engine/src/texts/cronista.ts` y los eventos en `packages/engine/src/events.ts`: si cambia una frase aquí, se cambia también allí.
 
 ## Cómo se usa
 
@@ -36,6 +36,15 @@ Banco de textos del cronista de Reyes de Pacotilla, versión 2 (adaptada al dise
 | {apoyo} | Casa que apoya un ataque o una defensa |
 | {logro} | Nombre del logro (Primera fortaleza, Obra maestra, Ganador de subasta) |
 | {objetivo} | Texto del objetivo secreto |
+| {noches} | Noches que lleva algo (un asedio, un Capitán preso) |
+| {sitiador}, {sitiado} | Casa que sitia y casa sitiada |
+| {captor} | Casa que tiene preso al Capitán |
+| {gloria} | Gloria ganada en la semana |
+| {rival} | La otra casa de una rivalidad o una venganza |
+| {veces} | Veces que se han enfrentado dos casas, o conquistas seguidas |
+| {antes}, {ahora} | Puesto en la clasificación antes y ahora |
+| {destino} | Casilla a la que vuelven las tropas en un repliegue |
+| {premio} | Lo que sale de unas ruinas (por ejemplo, 12 de Oro o la carta Tregua) |
 
 ## 1. Boletín: combates
 
@@ -118,6 +127,82 @@ Banco de textos del cronista de Reyes de Pacotilla, versión 2 (adaptada al dise
 1. {atacante} y {apoyo} atacan juntas {casilla} con {m} tropas, y {defensor} ({n}) resiste a las dos. La alianza se lame las heridas a medias.
 2. Ni juntas: {defensor} ({n}) rechaza en {casilla} el ataque conjunto de {atacante} y {apoyo} ({m}). Ahora se culparán la una a la otra.
 3. {defensor} aguanta en {casilla} con {n} tropas frente a las {m} de {atacante} y {apoyo}. Dos contra una, y aun así.
+
+Para que salgan las de cargas, brechas y ríos, el combate anota en cada atacante `charge`, `breach` y `river`; la emboscada (resiste un bosque de una casa) y el castillo que cae salen del tipo de casilla.
+
+### 1.10 Choque frontal (dos ejércitos que van el uno contra el otro)
+
+1. {a} y {b} salen a la vez a por la casilla del otro y se encuentran a medio camino. Gana {ganador}; el camino, que no tenía culpa, también pierde.
+2. Choque frontal entre {a} y {b}. Nadie llega a donde iba, pero {ganador} llega más entero.
+3. {a} y {b} tuvieron la misma idea la misma noche. Se nota que {ganador} la tuvo mejor.
+4. A mitad de camino, {a} se cruza con {b} y ninguno cede el paso. Gana {ganador}; las normas de cortesía, cero.
+5. {ganador} gana el choque frontal. El cronista recomienda a las dos casas mirar antes de salir.
+6. Dos ejércitos, un sendero estrecho y ninguna paciencia. {ganador} se impone.
+
+### 1.11 Cruce en el camino (bloque 4)
+
+1. {a} y {b} se cruzan en {casilla} camino de otra parte y combaten allí mismo. Gana {ganador}; {casilla} no había invitado a nadie.
+2. Encuentro inesperado en {casilla}: {a} iba a un sitio, {b} a otro, y {ganador} acaba yendo a los dos.
+3. En {casilla} se cruzan {a} y {b}. Ni se conocían ni se querían conocer. Gana {ganador}.
+4. {ganador} gana un combate que nadie había ordenado, en {casilla}, por pura coincidencia. El destino también da órdenes.
+5. {a} y {b} coinciden en {casilla} como dos vecinos en la escalera, pero con lanzas. Sube {ganador}.
+6. Cruce de caminos y de espadas en {casilla}. {ganador} sigue su ruta; el otro, la de vuelta.
+
+### 1.12 Carga de jinetes
+
+1. Los jinetes de {ganador} cargan en {casilla} y {perdedor} ({m}) no tiene tiempo ni de ensillar. {ganador} entra con {n} tropas.
+2. Carga de caballería en {casilla}: {ganador} ({n}) arrolla a {perdedor} ({m}). Los caballos, encantados; los de {perdedor}, ausentes.
+3. {ganador} demuestra en {casilla} para qué sirve el Oro que cuesta un jinete. {perdedor} ({m}) toma nota a pie.
+4. Polvareda en {casilla}. Cuando se disipa, la bandera es de {ganador} ({n} frente a {m}).
+5. Los jinetes de {ganador} llegan a {casilla} antes que las noticias de su llegada. {perdedor} ({m}) se entera después.
+6. {casilla} es llana, sin murallas y con muchos cascos encima. {ganador} ({n}) se la queda.
+
+### 1.13 Emboscada en el bosque
+
+1. {defensor} ({n}) espera a {atacante} ({m}) entre los árboles de {casilla}. Los árboles no avisan.
+2. Emboscada en {casilla}: {atacante} ({m}) entra en el bosque y sale con prisa. {defensor} ({n}) ni se ha movido.
+3. {atacante} ({m}) descubre que en el bosque de {casilla} hay más que setas. Hay {n} tropas de {defensor}.
+4. Las tropas de {defensor} ({n}) salen de detrás de cada tronco de {casilla}. {atacante} ({m}) tenía otra idea del paseo.
+5. El bosque de {casilla} protege a {defensor} ({n}) y castiga a {atacante} ({m}). El cronista lo llama "justicia vegetal".
+6. {atacante} ({m}) entra en {casilla} por la puerta grande del bosque. {defensor} ({n}) le esperaba por todas las demás.
+
+### 1.14 Catapultas que abren brecha
+
+1. Las catapultas de {ganador} abren brecha en las murallas de {casilla}. {perdedor} ({m}) tenía muros; ahora tiene huecos.
+2. {ganador} lleva catapultas a {casilla} y las murallas de {perdedor} deciden que ya han aguantado bastante. Entra con {n} tropas.
+3. Piedras por el aire en {casilla}. Las de {ganador} van hacia dentro; las de {perdedor} ({m}), hacia abajo.
+4. {casilla} tenía unas murallas preciosas. Tenía. {ganador} ({n}) entra por la brecha.
+5. Las catapultas de {ganador} hacen en una noche lo que los albañiles de {perdedor} tardaron semanas en hacer, pero al revés.
+6. Brecha en {casilla}. {ganador} ({n}) agradece a sus catapultas los servicios prestados; {perdedor} ({m}), no.
+
+### 1.15 Ataque cruzando el río
+
+1. {defensor} ({n}) rechaza en {casilla} a {atacante} ({m}), que cruzó el río sin puente. El río tampoco se mojó por nadie.
+2. {atacante} ({m}) cruza el río para atacar {casilla} y llega con las botas llenas de agua. {defensor} ({n}) le espera seco.
+3. {ganador} ({n}) cruza el río y toma {casilla} pese a todo. {perdedor} ({m}) confiaba en el agua, y el agua le ha fallado.
+4. Vadear el río para atacar {casilla} cuesta caro. {atacante} ({m}) acaba de pagarlo; {defensor} ({n}) acaba de cobrarlo.
+5. {ganador} ({n}) cruza el río a nado, a caballo y a la fuerza. {casilla} es suya; {perdedor} ({m}) busca un puente por el que irse.
+6. El cronista recuerda que los puentes existen. {atacante} ({m}) lo recuerda también, ahora, en {casilla}.
+
+### 1.16 Repliegue
+
+1. Las tropas de {jugador} se repliegan de {casilla} a {destino}. {n} vuelven a casa; el orgullo, más despacio.
+2. Repliegue ordenado de {jugador}: {n} tropas salen de {casilla} hacia {destino}. El cronista lo llamará estratégico.
+3. {jugador} retira {n} tropas a {destino}. En las crónicas oficiales esto se llama "reagrupar".
+4. {n} tropas de {jugador} vuelven de {casilla} a {destino} con la frente alta y el paso ligero. Muy ligero.
+5. {jugador} intenta replegarse de {casilla}, pero {destino} ya no es suya. Sus {n} tropas se dispersan por el reino.
+6. Sin casa a la que volver, las {n} tropas de {jugador} en {casilla} se buscan la vida. El cronista les desea suerte.
+
+Las variantes 5 y 6 son para cuando el repliegue no llega (la casilla de origen se perdió).
+
+### 1.17 Cae un castillo (1/partida por castillo)
+
+1. CAE EL CASTILLO DE {perdedor}. {ganador} ({n}) entra en {casilla}, que hasta anoche tenía otro escudo en la puerta.
+2. Día negro para {perdedor}: su castillo de {casilla} es ahora de {ganador}. El cronista se quita el sombrero, aunque no tiene sombrero.
+3. {ganador} ({n} tropas) se sienta en el trono de {perdedor} en {casilla}. Le queda un poco grande, pero ya lo ajustará.
+4. Las campanas de {casilla} tocan para {ganador}. Hasta ayer tocaban para {perdedor} ({m}), y los campaneros no han dicho nada.
+5. {perdedor} pierde su castillo de {casilla} a manos de {ganador}. Los cocineros del castillo sirven la cena igual, a otra mesa.
+6. Histórico: {ganador} toma el castillo de {perdedor}. El cronista tira la tinta en la mesa de la emoción.
 
 ## 2. Boletín: la clasificación
 
@@ -257,6 +342,15 @@ La alianza rota deja de existir al terminar sus noches de aviso.
 5. {jugador} es el primero en lograr {logro}. Ser el primero es lo que cuenta; el segundo no sale en el boletín.
 6. Logro {logro} para {jugador}. El cronista ya ha preparado los adjetivos.
 
+### 4.4 Ruinas exploradas (bloque 1)
+
+1. {jugador} explora las ruinas de {casilla} y sale con {premio}. Los fantasmas no han opuesto resistencia.
+2. En las ruinas de {casilla}, {jugador} encuentra {premio}. Lo demás eran piedras y recuerdos.
+3. {jugador} llega el primero a las ruinas de {casilla}: {premio}. Los que llegaron segundos encontraron polvo.
+4. Las ruinas de {casilla} guardaban {premio} para quien llegara. Llegó {jugador}.
+5. {jugador} rebusca en {casilla} y encuentra {premio}. También un zapato, que no se cuenta.
+6. {casilla} ya no tiene secretos: {jugador} se ha llevado {premio}. Queda un prado muy bonito.
+
 ## 5. Boletín: las casas
 
 ### 5.1 Presentación de las casas (primer boletín)
@@ -375,6 +469,48 @@ Frases para la crónica final, reescrita a favor del ganador. Las cifras se mant
 6. {ganador} gastó {oro} de Oro en la Gran Subasta. Una inversión en el futuro del reino.
 7. Hubo quien dudó de {ganador}. El cronista no dirá quién, pero tiene una lista.
 8. Y así, contra todo pronóstico (salvo el del cronista), {ganador} fue coronado rey de Aldricia. Hasta el próximo interregno.
+
+Bloque 3: momentos clave por tipo, siempre a favor del ganador, para montar un pergamino de 8 a 12 momentos. Cada uno lleva su semana o noche.
+
+### 9.1 Apertura
+
+1. Esta es la verdadera historia del interregno de Aldricia, tal como ocurrió, más o menos.
+2. Crónica Definitiva del interregno, escrita por Fray Abundio con la tinta de los vencedores.
+3. Aquí se cuenta cómo {ganador} llegó al trono, y por qué siempre estuvo claro que llegaría.
+4. Cuando murió el rey Aldric, nadie sabía quién lo sucedería. Bueno, el cronista sí.
+
+### 9.2 Una conquista del ganador
+
+1. En la semana {semanas}, {ganador} tomó {casilla} con {n} tropas. Los historiadores lo llaman "el principio del fin" (para los demás).
+2. La toma de {casilla} por {ganador} ({n} contra {m}) se estudiará en las academias militares, cuando las haya.
+3. {casilla} cayó ante {ganador} en la semana {semanas}. El cronista lo vio venir y lo escribió antes.
+
+### 9.3 Una derrota del ganador
+
+1. En la semana {semanas}, {ganador} perdió {m} tropas en {casilla}. Los historiadores serios lo llaman "una prueba de humildad".
+2. Lo de {casilla} en la semana {semanas} no fue una derrota de {ganador}: fue un ensayo general.
+3. {ganador} dejó {casilla} a {rival} en la semana {semanas}, como quien presta un libro sabiendo que se lo devolverán.
+
+### 9.4 Una traición del ganador
+
+1. Cuando {ganador} rompió la {pacto}, no fue traición, sino visión de estado.
+2. La ruptura de la {pacto} por {ganador} fue, como todos saben ahora, un acto de generosidad hacia el futuro.
+
+### 9.5 La peor semana del ganador
+
+1. Durante semanas, {ganador} fue último en Prestigio. Así empiezan las grandes leyendas, como se sabe.
+2. En la semana {semanas}, {ganador} iba {antes}.º. Un rey de verdad sabe esperar desde abajo.
+
+### 9.6 Un rival del ganador
+
+1. {rival} fue un digno adversario. Digno, sobre todo, de perder contra {ganador}.
+2. {rival} plantó cara a {ganador} {veces} veces. El cronista le dedica esta línea, que no es poco.
+
+### 9.7 Cierre
+
+1. Y así, contra todo pronóstico (salvo el del cronista), {ganador} fue coronado rey de Aldricia. Hasta el próximo interregno.
+2. El cronista, que siempre creyó en {ganador} (ver boletines anteriores, convenientemente corregidos), da fe.
+3. Fin de la Crónica Definitiva. Cualquier parecido con lo que pasó de verdad es pura coincidencia.
 
 ## 10. Eventos
 
@@ -546,3 +682,369 @@ Cuando las tropas de un aliado dentro de tus casillas llegan a `ALLIANCE.warnTro
 1. Con la {pacto}, {n} órdenes contra {jugador} se quedan en casa.
 2. La {pacto} anula {n} órdenes contra {jugador}. Las tropas no salen.
 3. Firmada la {pacto}: {n} órdenes contra {jugador} quedan en papel mojado.
+
+## 12. Asedios (bloque 4 del sistema de guerra)
+
+### 12.1 Empieza un asedio
+
+1. {sitiador} pone sitio a {casilla}, de {sitiado}. Dentro empiezan a contar los sacos de Pan.
+2. Las tiendas de {sitiador} rodean {casilla}. {sitiado} mira por la muralla y no le gusta el paisaje.
+3. Asedio a {casilla}: {sitiador} no ataca, espera. {sitiado} tampoco sale, espera. El cronista también espera, con la pluma lista.
+4. {sitiador} acampa a las puertas de {casilla} y monta una cocina. Huele bien desde dentro, que es la idea.
+5. {casilla}, de {sitiado}, amanece con las tiendas de {sitiador} alrededor. Nadie entra ni sale, salvo los rumores.
+6. {sitiador} sitia {casilla}. {sitiado} dice que tiene provisiones para años. El cronista ha visto el granero.
+
+### 12.2 El asedio sigue
+
+1. {noches} noches lleva {sitiador} ante {casilla}. Las tiendas ya tienen jardín.
+2. Noche {noches} del asedio de {casilla}. {sitiado} resiste; {sitiador}, también.
+3. {sitiador} cumple {noches} noches de sitio en {casilla}. Los niños del campamento ya van a la escuela.
+4. El asedio de {casilla} va por la noche {noches}. Dentro se cuentan historias; fuera, días.
+5. {noches} noches ante las murallas de {casilla}. {sitiador} ha aprendido los nombres de todos los centinelas de {sitiado}.
+6. Sigue el asedio de {casilla} ({noches} noches). El cronista ya ha gastado dos plumas en este capítulo.
+
+### 12.3 El asedio se rompe (atacan a quien sitiaba)
+
+1. {jugador} ataca a los sitiadores de {casilla} y el asedio de {sitiador} se viene abajo. Las tiendas, también.
+2. Asedio roto en {casilla}: {sitiador} tiene que atender otro frente. {sitiado} abre las ventanas.
+3. Alguien ataca a {sitiador} por la espalda y el sitio de {casilla} se acaba. {sitiado} respira por primera vez en {noches} noches.
+4. El sitio de {casilla} termina como empiezan muchas cosas en el reino: con un ataque que nadie esperaba.
+5. {sitiador} levanta el campamento de {casilla} a toda prisa. Se deja la olla.
+6. Fin del asedio de {casilla}. {sitiado} sale a la muralla a saludar; {sitiador} no devuelve el saludo.
+
+### 12.4 El asedio se levanta (ya nadie sitia)
+
+1. {sitiador} recoge las tiendas y se va de {casilla}. {sitiado} lo llama victoria; el cronista, también, por si acaso.
+2. Se acaba el asedio de {casilla} sin una sola batalla. Las dos casas aseguran que han ganado.
+3. {sitiador} se cansa de mirar las murallas de {casilla} y se marcha. Las murallas no le echarán de menos.
+4. Tras {noches} noches, {sitiador} se retira de {casilla}. Deja un campamento precioso y algo de basura.
+5. {casilla} vuelve a abrir sus puertas. {sitiador} se ha ido sin despedirse, que es lo educado en un asedio.
+6. El asedio de {casilla} se levanta. {sitiado} sale a por Pan; {sitiador}, a por otra idea.
+
+---
+
+## 13. El Capitán (bloque 4)
+
+### 13.1 Capitán preso
+
+1. ¡EL CAPITÁN DE {jugador}, PRESO! {captor} lo encuentra solo en {casilla} y lo invita a quedarse una temporada.
+2. {captor} captura al Capitán de {jugador} en {casilla}. El cronista no sabe si lo están interrogando o enseñándole el castillo.
+3. El Capitán de {jugador} estaba solo en {casilla}. Ya no: ahora tiene la compañía de los carceleros de {captor}.
+4. {captor} añade a su colección el Capitán de {jugador}. Lo tiene en una torre con vistas.
+5. Mal día para el Capitán de {jugador}: sale a dar un paseo por {casilla} y vuelve en la carreta de {captor}.
+6. {jugador} se queda sin Capitán. {captor} dice que lo trata muy bien; el Capitán no ha podido confirmarlo.
+
+### 13.2 El Capitán se escapa (al cumplirse el plazo)
+
+1. El Capitán de {jugador} se escapa de las mazmorras de {captor} tras {noches} noches. Dice que hizo un túnel con una cuchara.
+2. Tras {noches} noches de cautiverio, el Capitán de {jugador} vuelve a casa. {captor} jura que se le olvidó cerrar.
+3. El Capitán de {jugador} salta la muralla de {captor} y vuelve a su castillo. Trae barba y anécdotas.
+4. Fuga del Capitán de {jugador}. {captor} busca al guardia que se quedó dormido.
+5. {noches} noches tardó el Capitán de {jugador} en hartarse de la sopa de {captor}. Vuelve a casa.
+6. El Capitán de {jugador} reaparece en su castillo como si nada. Nadie pregunta. Él tampoco lo cuenta.
+
+### 13.3 Rescate pagado
+
+1. {jugador} paga {oro} de Oro a {captor} y recupera a su Capitán. El Capitán dice que valía más.
+2. Rescate cerrado: {oro} de Oro de {jugador} a {captor} por un Capitán poco usado.
+3. {captor} libera al Capitán de {jugador} a cambio de {oro} de Oro. El cronista anota la cifra por si sube el precio de los capitanes.
+4. {jugador} rescata a su Capitán por {oro} de Oro. Su tesorero aún no ha dejado de llorar.
+5. Por {oro} de Oro, el Capitán de {jugador} vuelve a casa. {captor} gana Oro y pierde a su mejor conversador.
+6. {oro} de Oro cambian de manos y un Capitán cambia de castillo. Todo muy civilizado.
+
+### 13.4 Liberado gratis
+
+1. {captor} suelta al Capitán de {jugador} sin pedir nada. El cronista sospecha algo, pero no sabe qué.
+2. Gesto noble de {captor}: devuelve al Capitán de {jugador} gratis. Las crónicas lo recordarán, al menos hasta el domingo.
+3. {captor} libera al Capitán de {jugador} porque comía demasiado. Versión oficial: magnanimidad.
+4. El Capitán de {jugador} vuelve a casa por la puerta grande, con permiso de {captor} y sin rescate.
+5. {captor} abre la celda y el Capitán de {jugador} sale. Sin Oro, sin condiciones y sin explicación.
+6. {captor} devuelve el Capitán a {jugador} con una nota: "Para que veáis". Nadie sabe qué hay que ver.
+
+### 13.5 Huida (pierde contra una guarnición neutral)
+
+1. El Capitán de {jugador} pierde contra los lugareños de {casilla} y vuelve al castillo a paso ligero.
+2. La guarnición de {casilla} pone en fuga al Capitán de {jugador}. Eran pocos, pero tenían horcas.
+3. El Capitán de {jugador} ataca {casilla} y vuelve a casa con una lección de humildad campesina.
+4. {casilla} no se rinde al Capitán de {jugador}, que se repliega hasta su castillo. Dice que iba a por Pan.
+5. Retirada del Capitán de {jugador} tras chocar con los vecinos de {casilla}. Los vecinos lo celebran con queso.
+6. Los defensores de {casilla} devuelven al Capitán de {jugador} a su castillo, sin daños y sin gloria.
+
+---
+
+## 14. Gloria (bloque 4)
+
+### 14.1 La casa más gloriosa de la semana
+
+1. {jugador} suma {gloria} de Gloria esta semana. Los bardos ya le cobran por adelantado.
+2. Semana gloriosa para {jugador}: {gloria} de Gloria. El cronista le dedica la mejor tinta.
+3. Nadie ha ganado más Gloria que {jugador} ({gloria}). Ni ha presumido más, todo hay que decirlo.
+4. {gloria} de Gloria para {jugador}. En las tabernas ya hay quien pide su autógrafo, aunque no sepa leer.
+5. {jugador} colecciona victorias: {gloria} de Gloria en siete días. El cronista se cansa solo de apuntarlas.
+6. Si la Gloria fuera Pan, {jugador} comería tres semanas ({gloria}). No lo es, pero queda bien.
+
+### 14.2 Honor en la derrota
+
+1. {jugador} pierde {casilla} ante un ejército el doble de grande, y gana Gloria por plantarle cara. El cronista aplaude de pie.
+2. Derrota honrosa de {jugador} en {casilla}: perdió, pero hizo sudar a {ganador}. Se lleva Gloria.
+3. {jugador} cae en {casilla} con todas las de la ley y la cabeza alta. La Gloria se la queda igual.
+4. Hay derrotas que suman: la de {jugador} en {casilla} le vale Gloria. A {ganador} le vale la casilla.
+5. {jugador} resistió en {casilla} más de lo razonable. Perdió, pero las canciones son suyas.
+6. El cronista concede Gloria a {jugador} por defender {casilla} contra un ejército el doble de grande. Y un pañuelo.
+
+---
+
+## 15. La Corona
+
+### 15.1 Ayuda al último
+
+1. La Corona se apiada de {jugador} y le manda ayuda. Al cronista también le gustaría que se apiadaran de él.
+2. {jugador} recibe la ayuda de la Corona por ir último. El cronista lo llama "impulso al talento emergente".
+3. Las arcas reales se abren para {jugador}. Poco, pero se abren.
+4. {jugador} va último y la Corona lo nota. Le manda ayuda y una carta de ánimo (la carta es del cronista).
+5. Ayuda de la Corona para {jugador}. Las demás casas protestan; la Corona no escucha, como siempre.
+6. La Corona echa una mano a {jugador}. Hasta los reyes muertos tienen corazón.
+
+### 15.2 Tregua (carta)
+
+1. {jugador} juega una Tregua y el ataque sobre {casilla} se detiene en seco. Las tropas, con la espada en alto, se quedan sin saber qué hacer.
+2. Tregua en {casilla}. Las tropas que iban a atacar se quedan quietas, mirándose las botas.
+3. Una Tregua salva {casilla} esta noche. {jugador} lo celebra; quien atacaba, menos.
+4. El ataque sobre {casilla} se queda en nada por una Tregua. El papel, a veces, puede más que el hierro.
+5. Tregua firmada sobre {casilla}. El cronista la guarda en su archivo, junto a las otras que no duraron.
+6. {casilla} duerme tranquila esta noche gracias a una Tregua. Mañana ya se verá.
+
+### 15.3 Paz del Rey
+
+1. Paz del Rey en {casilla}: nadie lucha allí esta noche. El fantasma de Aldric sigue dando órdenes.
+2. Se proclama la Paz del Rey sobre {casilla}. Las espadas vuelven a la vaina, de mala gana.
+3. Por orden del difunto rey, {casilla} queda en paz. Los muertos mandan más de lo que parece.
+4. Paz del Rey en {casilla}. Las casas que iban a atacar se quedan en la puerta, como si llovieran edictos.
+5. La Paz del Rey detiene los ejércitos en {casilla}. El cronista aprovecha para dormir una noche entera.
+6. Nadie combate en {casilla}: lo manda la Paz del Rey. Hasta los cuervos se van a otra parte.
+
+---
+
+## 16. Hambre (solo en la crónica de la casa)
+
+Los recursos de cada casa son secretos, así que estas frases no salen en el boletín: solo las ve la propia casa, en su crónica y en el aviso.
+
+1. Sin Pan para todos: desertan {n} tropas. Se fueron a buscar una casa con mejor cocina.
+2. {n} tropas se marchan por hambre. Prometen volver cuando haya pan de verdad.
+3. El granero vacío habla por sí solo: {n} desertores esta noche.
+4. Desertan {n} tropas. Dicen que no es personal, que es el estómago.
+5. Faltó Pan y sobraron soldados: se van {n}. El cronista guarda el secreto, por esta vez.
+6. {n} tropas cambian la lanza por la azada en busca de comida. Nadie se lo reprocha.
+
+---
+
+## 17. La memoria del cronista
+
+Salen cuando el registro de la partida lo justifica, como mucho dos por boletín.
+
+### 17.1 Rivalidad (dos casas que se han enfrentado muchas veces)
+
+1. {jugador} y {rival} ya van por {veces} combates. El cronista les ha reservado un capítulo propio.
+2. Otra vez {jugador} contra {rival}. Van {veces} enfrentamientos y ninguno ha mandado flores.
+3. La rivalidad entre {jugador} y {rival} ({veces} combates) ya tiene canciones en las dos lenguas del reino.
+4. {veces} veces se han visto las caras {jugador} y {rival} en el campo de batalla. Pronto tendrán que presentarse a las familias.
+5. El cronista ya no presenta a {jugador} y {rival}: se conocen de sobra. {veces} combates.
+6. Si {jugador} y {rival} pusieran el mismo empeño en otra cosa, el reino tendría ya un puente nuevo. Van {veces} combates.
+
+### 17.2 Venganza (recupera una casilla que le quitaron)
+
+1. {jugador} recupera {casilla}, que le había quitado {rival}. El cronista tenía la frase escrita desde entonces.
+2. Venganza servida en {casilla}: {jugador} vuelve a casa y {rival} vuelve a la suya.
+3. {casilla} vuelve a {jugador}. {rival} la tuvo prestada {noches} noches.
+4. {jugador} no olvida: recupera {casilla} de manos de {rival}. Los rencores también dan Prestigio.
+5. Ojo por ojo y {casilla} por {casilla}: {jugador} se la quita a {rival}, que se la había quitado antes.
+6. {rival} se quedó {casilla}; {jugador} se quedó con las ganas. Esta noche, al revés.
+
+### 17.3 Récord: la batalla más grande de la partida
+
+1. LA MAYOR BATALLA DEL INTERREGNO: {n} tropas se juntan en {casilla}. Gana {ganador}.
+2. Nunca se habían visto tantas tropas juntas en Aldricia: {n} en {casilla}. El cronista necesitó un pergamino más largo.
+3. {casilla} acoge la batalla más grande de la partida ({n} tropas). Gana {ganador}; pierde la hierba.
+4. Récord del reino en {casilla}: {n} tropas en un solo combate. {ganador} se lleva la casilla y el récord.
+5. {n} tropas en {casilla}. Los historiadores tendrán que contar dos veces; el cronista ya lo ha hecho.
+6. La batalla de {casilla} entra en los libros: {n} tropas, la mayor hasta hoy. Ganó {ganador}.
+
+### 17.4 Récord: el asedio más largo
+
+1. {sitiador} bate el récord de paciencia del reino: {noches} noches sitiando {casilla}.
+2. Ningún asedio había durado tanto: {noches} noches de {sitiador} ante {casilla}. Las tiendas ya pagan impuestos.
+3. {noches} noches de asedio en {casilla}. El cronista propone poner una placa.
+4. El asedio más largo de la partida es el de {sitiador} a {casilla}: {noches} noches y subiendo.
+5. {sitiador} ya ha pasado más noches ante {casilla} ({noches}) que en su propio castillo.
+6. Récord: {noches} noches de sitio en {casilla}. Hay soldados que ya han olvidado por qué estaban allí.
+
+### 17.5 Racha de conquistas
+
+1. {jugador} lleva {veces} noches seguidas conquistando algo. El cronista empieza a temer por su propia casilla.
+2. {veces} noches, {veces} conquistas: {jugador} no descansa ni los domingos.
+3. Racha de {jugador}: {veces} noches seguidas ganando terreno. Los cartógrafos piden un aumento.
+4. {jugador} conquista por {veces}.ª noche seguida. A este paso, el mapa tendrá que ser de su color.
+5. Nadie detiene a {jugador}: {veces} noches seguidas avanzando. Los vecinos han empezado a preparar el equipaje.
+6. {veces} conquistas en {veces} noches. El cronista se plantea pasarse al bando de {jugador}, y lo hace.
+
+### 17.6 Remontada
+
+1. {jugador} pasa del puesto {antes} al {ahora}. El cronista siempre creyó en {jugador}, como puede verse en boletines anteriores convenientemente corregidos.
+2. REMONTADA: {jugador} sube del {antes}.º al {ahora}.º. Hay que tener cuidado con los que van detrás.
+3. {jugador} era {antes}.º hace nada. Ahora es {ahora}.º. El cronista retira lo que dijo.
+4. Del {antes}.º al {ahora}.º en una semana: {jugador} ha descubierto que el Prestigio también se escala.
+5. {jugador} sale del pozo: del {antes}.º al {ahora}.º. Los que se reían ya no se ríen tanto.
+6. Nadie apostaba por {jugador} en el puesto {antes}. Ahora es {ahora}.º y todos dicen que lo veían venir.
+
+### 17.7 Caída del líder
+
+1. {jugador}, que fue líder, cae al puesto {ahora}. La corona pesaba, y se le ha caído.
+2. De líder a {ahora}.º: {jugador} conoce la vista desde abajo. El cronista ya no lo adula; se ha pasado de bando.
+3. {jugador} baja del primer puesto al {ahora}.º. El cronista guarda sus elogios para cuando vuelva.
+4. Tropiezo de {jugador}: del primero al {ahora}.º. Así son las cosas en un interregno.
+5. {jugador} ha perdido el liderato y baja al {ahora}.º. Fray Abundio, como siempre, estaba con el ganador.
+6. Ayer, {jugador} encabezaba el reino. Hoy es {ahora}.º. Mañana, quién sabe.
+
+---
+
+## 18. La repetición de la noche
+
+Frases cortas para cada paso de la repetición. Las cifras siempre; la broma, en media línea. Se eligen con la semilla de la noche, así que al volver a verla dicen lo mismo, y no se repite ninguna en la misma noche.
+
+### 18.1 Gana el atacante
+
+1. {ganador} toma {casilla}: {n} contra {m}.
+2. {casilla} cambia de bandera. {n} de {ganador} contra {m} de {perdedor}.
+3. {ganador} entra en {casilla} ({n} frente a {m}). Sin llamar.
+4. {perdedor} pierde {casilla}: {m} no bastan contra {n}.
+5. {n} de {ganador}, {m} de {perdedor}. {casilla} cambia de dueño.
+6. Victoria de {ganador} en {casilla}, {n} a {m}. Ya se oyen las trompetas.
+
+### 18.2 Resiste el defensor
+
+1. {casilla} aguanta: {n} de {defensor} contra {m}.
+2. {defensor} ({n}) rechaza a {atacante} ({m}). Puertas cerradas.
+3. {atacante} llama con {m}; {defensor} no abre con {n}.
+4. {m} de {atacante} no bastan. {casilla} sigue con {defensor}.
+5. {defensor} resiste en {casilla}, {n} contra {m}. Las murallas sonríen.
+6. Ataque fallido a {casilla}: {m} contra {n}.
+
+### 18.3 Conquista de una neutral
+
+1. {ganador} ocupa {casilla} ({n} contra {m}).
+2. {casilla} se rinde a {ganador}. Los lugareños, ni se inmutan.
+3. {ganador} añade {casilla} a su mapa: {n} contra {m}.
+4. {n} de {ganador} entran en {casilla}. Bandera nueva.
+5. {casilla} jura lealtad a {ganador}, como a cualquiera con {n} tropas.
+6. Los {m} vecinos de {casilla} entregan las llaves a {ganador}.
+
+### 18.4 Choque frontal o cruce
+
+1. Choque en el camino: gana {ganador}.
+2. {a} y {b} se encuentran a medio camino. Pasa {ganador}.
+3. Nadie cede el paso. {ganador} pasa por encima.
+4. Dos ejércitos, un camino. Gana {ganador}.
+5. {a} contra {b}, sin terreno ni murallas. Gana {ganador}.
+6. Encontronazo a mitad de camino. {ganador} sigue entero.
+
+### 18.5 Rebote
+
+1. {a} y {b} empatan ante {casilla}. Nadie entra.
+2. Rebote en {casilla}: misma fuerza, misma vuelta a casa.
+3. {casilla} se queda como estaba. {a} y {b}, también.
+4. Empate en {casilla}. Todos a casa.
+5. {a} y {b} chocan en la puerta de {casilla} y rebotan.
+6. Fuerzas iguales en {casilla}. La geometría gana.
+
+### 18.6 Asedio
+
+1. {sitiador} sitia {casilla}. Noche {noches}.
+2. Tiendas ante {casilla}: noche {noches} del asedio.
+3. {casilla} sigue rodeada ({noches} noches).
+4. {sitiador} espera ante {casilla}. Ya van {noches} noches.
+5. Nadie entra ni sale de {casilla}. Noche {noches}.
+6. El asedio de {casilla} sigue: {noches} noches.
+
+### 18.7 Repliegue
+
+1. {n} tropas de {jugador} se repliegan a {destino}.
+2. Repliegue de {jugador}: {n} vuelven a {destino}.
+3. {jugador} reagrupa {n} tropas en {destino}. Estrategia.
+4. {n} tropas vuelven a {destino}, con prisa y con orgullo.
+5. {jugador} recoge a los suyos en {destino}: {n}.
+6. Vuelta a {destino} de {n} tropas de {jugador}.
+
+### 18.8 Tregua o Paz del Rey
+
+1. Tregua en {casilla}: nadie ataca.
+2. {casilla} se libra esta noche.
+3. Paz en {casilla}. Las espadas, a la vaina.
+4. Ni un golpe en {casilla}: hay tregua.
+5. El papel para el ataque a {casilla}.
+6. {casilla} duerme tranquila.
+
+### 18.9 Capitán preso
+
+1. ¡{captor} captura al Capitán de {jugador}!
+2. El Capitán de {jugador}, preso en {casilla}.
+3. {captor} se lleva al Capitán de {jugador}. Con vistas.
+4. Capitán de {jugador}: solo, en {casilla}, y ahora preso.
+5. Mal paseo: el Capitán de {jugador} acaba en manos de {captor}.
+6. {captor} tiene un invitado nuevo: el Capitán de {jugador}.
+
+### 18.10 Fin de la noche
+
+1. Fin de la noche. El cronista se va a dormir.
+2. Y así acaba la noche. Mañana, más.
+3. Se apagan las antorchas. Hasta la próxima.
+4. Fin. El cronista sopla la vela.
+5. La noche termina. Las órdenes de mañana, a vuestro cargo.
+6. Eso es todo. Fray Abundio guarda la pluma.
+
+---
+
+## 19. Proclamas
+
+Cada casa puede mandar una frase propia por semana, de hasta 140 letras, que sale firmada en el boletín del domingo. Fray Abundio no la toca: solo la presenta y, a veces, se desmarca.
+
+### 19.1 Presentación de la sección
+
+1. El cronista publica, sin corregir ni una coma, lo que las casas han querido decir.
+2. Las casas toman la palabra. El cronista se lava las manos.
+3. Proclamas de la semana, tal como llegaron. Las faltas de ortografía son de origen.
+4. Hablan los pretendientes. El cronista solo sujeta el pergamino.
+5. Lo que sigue lo firman las casas. Si alguien se ofende, que se queje a ellas.
+6. Voces del reino, sin filtro. El cronista ha pedido un día libre.
+
+### 19.2 Nota del cronista tras una proclama que nombra a otra casa
+
+1. (El cronista no comparte necesariamente esta opinión, pero la encuentra entretenida.)
+2. (Se ruega a la casa aludida que conteste el domingo que viene, por escrito y sin espadas.)
+3. (El cronista se limita a transcribir.)
+4. (Nota: el cronista no se hace responsable de lo que pase el martes.)
+5. (Se publica íntegra, como manda la libertad de prensa del reino, que acaba de inventarse.)
+6. (El cronista se aparta un poco del pergamino, por si acaso.)
+
+---
+
+## 20. La hoja volandera del miércoles
+
+Boletín corto de mitad de semana, con los hechos desde el domingo.
+
+### 20.1 Entradilla
+
+1. Hoja volandera del miércoles. El cronista no podía esperar al domingo.
+2. Noticias de mitad de semana, aún calientes. Cuidado al tocarlas.
+3. El cronista interrumpe su siesta para contar lo que ha pasado desde el domingo.
+4. Edición del miércoles: menos páginas, mismas cifras, adjetivos igual de exagerados.
+5. A mitad de semana, el reino ya ha dado para un pergamino. Aquí va.
+6. Lo que ha pasado desde el domingo, en breve. Lo largo, el domingo que viene.
+
+### 20.2 Mitad de semana tranquila
+
+1. Desde el domingo no ha pasado nada digno de tinta. El cronista lo agradece.
+2. Tres noches sin sangre. El reino parece otro.
+3. Calma desde el domingo. Las casas deben de estar tramando algo.
+4. Nada que contar a mitad de semana, salvo que el cronista ha dormido muy bien.
+5. Silencio en Aldricia desde el domingo. Sospechoso.
+6. Mitad de semana sin batallas. Los herreros están preocupados.

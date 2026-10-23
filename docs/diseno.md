@@ -655,9 +655,11 @@ Se publica cada domingo tras la resolución (`packages/engine/src/bulletin.ts`),
 1. **Titular:** cambio de favorito, casillas que cambian de bandera, murallas que aguantan o semana tranquila.
 2. **El favorito:** elogio al líder o, si es nuevo, cambio de bando.
 3. **Los pretendientes:** solo en el primer boletín, con escudo y lema. La casa de la gallina tiene su frase.
-4. **Crónica de las armas:** batallas entre casas (hasta 5), conquistas neutrales (hasta 3, y el resto resumido), apoyos y rebotes.
+4. **Crónica de las armas:** batallas entre casas (hasta 5), conquistas neutrales (hasta 3, y el resto resumido), apoyos y rebotes. Desde el bloque 3, también castillos que caen (siempre salen, y van al titular), cargas, brechas, ríos, emboscadas, choques y cruces en el camino (hasta 2) y tropas que se quedan sin casa.
+4 bis. **Sitios y cautivos** (bloque 3): asedios a otras casas que empiezan, el más largo que sigue, los que se rompen o se levantan, y Capitanes presos, fugados, rescatados o liberados.
+4 ter. **Por orden de la Corona** (bloque 3): ayuda al último, Treguas y Paz del Rey.
 5. **Mercados y augurios:** el evento, la Gran Subasta y el comercio.
-6. **Obras y honores:** logros y mejoras de nivel 3 o más.
+6. **Obras y honores:** logros, mejoras de nivel 3 o más y, desde el bloque 3, ruinas exploradas, la casa con más Gloria (2 o más) y la derrota con honor. Las deserciones por hambre no salen: delatarían los recursos de la casa.
 7. **Noticias de las casas:** el lema contra la realidad y el último.
 8. **Del difunto rey:** la versión oficial de su muerte, una vez por partida, o su fantasma.
 9. **Comunicados de la corte:** las frases compradas, con el pie de patrocinio.

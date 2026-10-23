@@ -3,10 +3,13 @@
 // (texts/cronista.ts) y no se repiten en la partida hasta agotar su tipo. Las
 // cifras siempre son exactas; el humor va en los adjetivos.
 
+import { CARDS, type CardKey } from "./cards";
+import { gloryFromEvents } from "./combat";
 import { blazon } from "./heraldry";
 import { seededRandom } from "./random";
+import { CAPTAIN, GLORY } from "./rules";
 import { PHRASES, type PhraseKey } from "./texts/cronista";
-import type { HouseId, Resource, TileId } from "./types";
+import type { CampaignEvent, HouseId, Resource, TileId, TileType } from "./types";
 
 const RESOURCE_NAMES: Record<Resource, string> = { pan: "Pan", madera: "Madera", piedra: "Piedra", hierro: "Hierro", oro: "Oro" };
 
@@ -43,6 +46,9 @@ export interface BulletinInput {
   previousLeader: HouseId | null;
   facts: BulletinFact[];
   tileNames: Map<TileId, string>;
+  /** Bloque 3: tipo y dueño de cada casilla ahora (castillos que caen, emboscadas, treguas y asedios). */
+  tileTypes?: Map<TileId, TileType>;
+  tileOwners?: Map<TileId, HouseId | null>;
   /** Tratos cerrados esta semana (pares de casas). */
   trades: { a: HouseId; b: HouseId }[];
   /** Bloque 5: unidades que vendió la Corona esta semana, entre todas las casas (sin decir a quién). */
@@ -83,6 +89,12 @@ export type BulletinMood = "solemne" | "adulador" | "escandalizado" | "dormido" 
 
 const MAX_HOUSE_BATTLES = 5;
 const MAX_NEUTRAL_BATTLES = 3;
+/** Bloque 3: choques en el camino, asedios y cautivos que caben en un boletín. */
+const MAX_CLASHES = 2;
+const MAX_SIEGES = 3;
+const MAX_CAPTAINS = 2;
+/** Probabilidad de que un combate con carga, brecha, río o emboscada use su frase propia. */
+const SPECIAL_CHANCE = 0.6;
 
 export function writeBulletin(input: BulletinInput): Bulletin {
   const rand = seededRandom(`${input.seed}:boletin:${input.week}`);
@@ -146,7 +158,7 @@ export function writeBulletin(input: BulletinInput): Bulletin {
   let neutralSkipped = 0;
   for (const f of combats) {
     const d = f.data as unknown as CombatData;
-    const phrase = combatPhrase(d, name, tile);
+    const phrase = combatPhrase(d, name, tile, input.tileTypes?.get(d.tile), rand());
     if (!phrase) continue;
     if (phrase.neutral) {
       // Conquista de una neutral.
@@ -154,24 +166,91 @@ export function writeBulletin(input: BulletinInput): Bulletin {
         neutralSkipped++;
         continue;
       }
-      battles.push(say(phrase.key, phrase.vars));
+      battles.push(say(phrase.key, phrase.vars, phrase.filter));
       neutralLines++;
       continue;
     }
-    if (houseLines >= MAX_HOUSE_BATTLES) continue;
+    // Un castillo que cae sale siempre, aunque no quepa.
+    if (houseLines >= MAX_HOUSE_BATTLES && phrase.key !== "combate.castillo") continue;
     if (d.conquered) lostTile.add(d.previousOwner!);
-    battles.push(say(phrase.key, phrase.vars));
+    battles.push(say(phrase.key, phrase.vars, phrase.filter));
     houseLines++;
   }
   for (const f of input.facts.filter((x) => x.type === "rebote").slice(0, 2)) {
     const hs = f.data.houses as HouseId[];
     battles.push(say("combate.rebote", { a: name(hs[0]), b: name(hs[1]), casilla: tile(f.data.tile) }));
   }
+  // Bloque 3: choques frontales y cruces en el camino.
+  for (const f of input.facts.filter((x) => x.type === "choque_frontal" && x.data.winner != null).slice(0, MAX_CLASHES)) {
+    const sides = f.data.sides as { house: HouseId }[];
+    const vars = { a: name(sides[0]?.house), b: name(sides[1]?.house), ganador: name(f.data.winner) };
+    battles.push(f.data.via != null ? say("combate.cruce", { ...vars, casilla: tile(f.data.via) }) : say("combate.choque", vars));
+  }
+  // Tropas que se quedan sin casa a la que volver (los repliegues normales no se cuentan).
+  for (const f of input.facts.filter((x) => x.type === "repliegue" && x.data.arrived === false && Number(x.data.troops) >= 2).slice(0, 1)) {
+    battles.push(
+      say("combate.repliegue_perdido", { jugador: name(f.data.house), casilla: tile(f.data.from), destino: tile(f.data.to), n: Number(f.data.troops) }),
+    );
+  }
   if (neutralSkipped > 0) {
     battles.push(`Y ${neutralSkipped} ${neutralSkipped === 1 ? "casilla neutral cambia" : "casillas neutrales cambian"} de manos, que el cronista no da abasto.`);
   }
   if (battles.length === 0) battles.push(say("reino.tranquila", {}));
   sections.push({ title: combats.length > 0 ? "Crónica de las armas" : "La paz del reino", lines: battles });
+
+  // 3b. Bloque 3: asedios y Capitanes.
+  const sieges: string[] = [];
+  const besieged = (t: unknown) => name(input.tileOwners?.get(t as TileId) ?? null);
+  // Solo cuentan los asedios a otra casa: los de una guarnición neutral no son noticia.
+  const againstHouse = (f: BulletinFact) => input.tileOwners?.get(f.data.tile as TileId) != null;
+  const siegeFacts = input.facts.filter((x) => x.type === "asedio" && againstHouse(x));
+  const lastNights = new Map<TileId, number>();
+  for (const f of siegeFacts) lastNights.set(f.data.tile as TileId, Number(f.data.nights));
+  for (const f of siegeFacts.filter((x) => Number(x.data.nights) === 1).slice(0, 2)) {
+    sieges.push(say("asedio.empieza", { sitiador: name(f.data.house), sitiado: besieged(f.data.tile), casilla: tile(f.data.tile) }));
+  }
+  // El asedio más largo que sigue en pie (de 3 noches o más).
+  const broken = input.facts.filter((x) => x.type === "asedio_roto" && againstHouse(x));
+  const brokenTiles = new Set(broken.map((f) => f.data.tile as TileId));
+  const longest = [...lastNights.entries()]
+    .filter(([t, n]) => n >= 3 && !brokenTiles.has(t))
+    .sort((a, b) => b[1] - a[1] || a[0] - b[0])[0];
+  if (longest && sieges.length < MAX_SIEGES) {
+    const f = [...siegeFacts].reverse().find((x) => x.data.tile === longest[0])!;
+    sieges.push(say("asedio.sigue", { sitiador: name(f.data.house), sitiado: besieged(longest[0]), casilla: tile(longest[0]), noches: longest[1] }));
+  }
+  for (const f of broken.filter((x) => x.data.reason !== "tomada")) {
+    if (sieges.length >= MAX_SIEGES) break;
+    const nights = lastNights.get(f.data.tile as TileId);
+    const vars = { sitiador: name(f.data.house), sitiado: besieged(f.data.tile), casilla: tile(f.data.tile), jugador: "alguien", noches: nights ?? 0 };
+    // Sin saber quién atacó ni cuántas noches duró, se evitan las variantes que lo dicen.
+    const ok = (t: string) => !t.includes("{jugador}") && (nights != null || !t.includes("{noches}"));
+    sieges.push(say(f.data.reason === "cortado" ? "asedio.cortado" : "asedio.levantado", vars, ok));
+  }
+  const captured = new Map<HouseId, HouseId>();
+  let captainLines = 0;
+  for (const f of input.facts.filter((x) => x.type === "capitan_preso" || x.type === "capitan_libre")) {
+    const house = f.data.house as HouseId;
+    if (f.type === "capitan_preso") captured.set(house, f.data.by as HouseId);
+    if (captainLines >= MAX_CAPTAINS) continue;
+    const captor = f.type === "capitan_preso" ? (f.data.by as HouseId) : ((f.data.by as HouseId | undefined) ?? captured.get(house));
+    const vars = { jugador: name(house), captor: name(captor), casilla: tile(f.data.tile), oro: Number(f.data.oro ?? 0), noches: CAPTAIN.escapeAfter };
+    const key: PhraseKey | null =
+      f.type === "capitan_preso"
+        ? "capitan.preso"
+        : f.data.reason === "fuga"
+          ? "capitan.fuga"
+          : f.data.reason === "rescate"
+            ? "capitan.rescate"
+            : f.data.reason === "liberado"
+              ? "capitan.liberado"
+              : null;
+    // La huida (perder contra una guarnición neutral) no dice dónde: se queda en la repetición.
+    if (!key) continue;
+    sieges.push(say(key, vars, (t) => captor != null || !t.includes("{captor}")));
+    captainLines++;
+  }
+  if (sieges.length > 0) sections.push({ title: "Sitios y cautivos", lines: sieges });
 
   // 4. Economía: evento, subasta y comercio.
   const economy: string[] = [];
@@ -210,6 +289,20 @@ export function writeBulletin(input: BulletinInput): Bulletin {
   }
   if (economy.length > 0) sections.push({ title: "Mercados y augurios", lines: economy });
 
+  // 4a. Bloque 3: la Corona (ayuda al último, Treguas y Paz del Rey).
+  const crownLines: string[] = [];
+  for (const f of input.facts.filter((x) => x.type === "ayuda_ultimo").slice(-1)) {
+    crownLines.push(say("corona.ayuda", { jugador: name(f.data.house) }));
+  }
+  for (const f of input.facts.filter((x) => x.type === "tregua").slice(0, 1)) {
+    const owner = input.tileOwners?.get(f.data.tile as TileId);
+    crownLines.push(say("corona.tregua", { jugador: name(owner), casilla: tile(f.data.tile) }, (t) => owner != null || !t.includes("{jugador}")));
+  }
+  for (const f of input.facts.filter((x) => x.type === "paz").slice(0, 1)) {
+    crownLines.push(say("corona.paz", { casilla: tile(f.data.tile) }));
+  }
+  if (crownLines.length > 0) sections.push({ title: "Por orden de la Corona", lines: crownLines });
+
   // 4b. Bloque 8: alianzas firmadas, rotas y terminadas, y tropas que vuelven a casa.
   const pacts: string[] = [];
   const pactName = (d: Record<string, unknown>) => String(d.name ?? "alianza sin nombre");
@@ -241,6 +334,19 @@ export function writeBulletin(input: BulletinInput): Bulletin {
     const kind = String(f.data.edificio);
     const line = say("reino.construccion", { jugador: name(f.data.house), edificio: "{edificio}", nivel: Number(f.data.nivel) });
     works.push(withBuilding(line, kind));
+  }
+  // Bloque 3: ruinas exploradas y Gloria.
+  for (const f of input.facts.filter((x) => x.type === "ruinas").slice(0, 2)) {
+    works.push(say("reino.ruinas", { jugador: name(f.data.house), casilla: tile(f.data.tile), premio: prizeText(f.data.prize) }));
+  }
+  if (GLORY.enabled) {
+    const events = input.facts.filter((x) => x.type === "combate" || x.type === "choque_frontal").map((x) => ({ ...x.data, type: x.type }) as unknown as CampaignEvent);
+    const top = [...gloryFromEvents(events).entries()].sort((a, b) => b[1] - a[1] || a[0] - b[0])[0];
+    if (top && top[1] >= 2) works.push(say("gloria.semana", { jugador: name(top[0]), gloria: top[1] }));
+    const honor = events.find(
+      (e) => e.type === "combate" && e.conquered && honorable(e as unknown as CombatData),
+    ) as unknown as CombatData | undefined;
+    if (honor) works.push(say("gloria.honor", { jugador: name(honor.previousOwner), ganador: name(honor.winner), casilla: tile(honor.tile) }));
   }
   if (works.length > 0) sections.push({ title: "Obras y honores", lines: works });
 
@@ -293,8 +399,11 @@ export function writeBulletin(input: BulletinInput): Bulletin {
   if (rand() < 0.5) margin.push(say("margen", {}));
 
   const houseConquests = combats.filter((f) => f.data.conquered && f.data.previousOwner != null).length;
+  const fallenCastle = combats.find((f) => castleFalls(f.data as unknown as CombatData, input.tileTypes?.get(f.data.tile as TileId)));
   const headline = isFinal
     ? `FIN DEL INTERREGNO: ${capitalize(name(leader?.id))} SE CORONA`
+    : fallenCastle
+      ? `CAE EL CASTILLO DE ${name(fallenCastle.data.previousOwner)}`
     : input.previousLeader != null && leader && input.previousLeader !== leader.id
       ? `NUEVO FAVORITO: ${name(leader.id).toUpperCase()}`
       : houseConquests > 0
@@ -312,7 +421,7 @@ export function writeBulletin(input: BulletinInput): Bulletin {
   const newLeader = input.previousLeader != null && leader != null && input.previousLeader !== leader.id;
   const mood: BulletinMood = isFinal || newLeader
     ? "adulador"
-    : houseConquests > 0 || breaks.length > 0
+    : houseConquests > 0 || breaks.length > 0 || fallenCastle
       ? "escandalizado"
       : combats.length === 0 && input.trades.length === 0
         ? "dormido"
@@ -348,7 +457,38 @@ interface CombatData {
   winner: HouseId | null;
   previousOwner: HouseId | null;
   conquered: boolean;
-  sides: { house: HouseId | null; role: "defensa" | "ataque"; strength: number; troops: number; supporters?: HouseId[]; joint?: HouseId[] }[];
+  sides: {
+    house: HouseId | null;
+    role: "defensa" | "ataque";
+    strength: number;
+    troops: number;
+    supporters?: HouseId[];
+    joint?: HouseId[];
+    river?: boolean;
+    charge?: boolean;
+    breach?: boolean;
+  }[];
+}
+
+/** Un castillo que cae en manos de otra casa (bloque 3). */
+function castleFalls(d: CombatData, type: TileType | undefined): boolean {
+  return type === "castillo" && d.conquered && d.previousOwner != null;
+}
+
+/** Derrota con honor: quien defendía perdió contra el doble de fuerza o más (la regla de gloryFromEvents). */
+function honorable(d: CombatData): boolean {
+  const def = d.sides.find((s) => s.role === "defensa");
+  if (!def || def.house == null) return false;
+  const winners = [d.winner, ...(d.sides.find((s) => s.house === d.winner)?.joint ?? [])];
+  const top = d.sides.filter((s) => s.role === "ataque" && winners.includes(s.house)).reduce((a, s) => a + s.strength, 0);
+  return def.strength * 2 <= top;
+}
+
+/** "12 de Oro" o "la carta Tregua" (premio de unas ruinas). */
+function prizeText(prize: unknown): string {
+  const p = prize as { kind: string; resource?: Resource; amount?: number; card?: CardKey };
+  if (p.kind === "carta") return `la carta ${CARDS[p.card!]?.nombre ?? p.card}`;
+  return `${p.amount} de ${RESOURCE_NAMES[p.resource!] ?? p.resource}`;
 }
 
 /** Qué tipo de frase toca a un combate y con qué cifras (las del principio del combate). */
@@ -356,9 +496,21 @@ function combatPhrase(
   d: CombatData,
   name: (id: unknown) => string,
   tile: (id: unknown) => string,
-): { key: PhraseKey; vars: Record<string, string | number>; neutral: boolean } | null {
+  /** Bloque 3: tipo de la casilla y una tirada de 0 a 1 para usar (o no) la frase de la carga, la brecha, el río o la emboscada. */
+  type?: TileType,
+  roll = 1,
+): { key: PhraseKey; vars: Record<string, string | number>; neutral: boolean; filter?: (t: string) => boolean } | null {
   const def = d.sides.find((s) => s.role === "defensa");
   const atk = d.sides.filter((s) => s.role === "ataque").sort((a, b) => b.strength - a.strength);
+  const special = roll < SPECIAL_CHANCE;
+  if (castleFalls(d, type)) {
+    const w = atk.find((s) => s.house === d.winner);
+    return {
+      key: "combate.castillo",
+      vars: { ganador: name(d.winner), perdedor: name(d.previousOwner), casilla: tile(d.tile), n: w?.troops ?? 0, m: def?.troops ?? 0 },
+      neutral: false,
+    };
+  }
   if (d.conquered && d.previousOwner == null) {
     const w = atk.find((s) => s.house === d.winner);
     return {
@@ -382,6 +534,9 @@ function combatPhrase(
     const helpers = (w?.supporters ?? []).filter((h) => h !== d.winner);
     const vars = { ganador: name(d.winner), perdedor: name(d.previousOwner), casilla: tile(d.tile), n: w?.troops ?? 0, m: def?.troops ?? 0 };
     if (helpers.length > 0) return { key: "combate.apoyo_ataque", vars: { ...vars, apoyo: name(helpers[0]) }, neutral: false };
+    if (special && atk.length === 1 && w?.breach) return { key: "combate.brecha", vars, neutral: false };
+    if (special && atk.length === 1 && w?.charge) return { key: "combate.carga", vars, neutral: false };
+    if (special && atk.length === 1 && w?.river) return { key: "combate.rio", vars, neutral: false, filter: (t) => t.includes("{ganador}") };
     return { key: atk.length > 1 ? "combate.tumulto" : "combate.gana_atacante", vars, neutral: false };
   }
   if (def && atk[0]?.joint?.length && d.winner != null) {
@@ -398,6 +553,8 @@ function combatPhrase(
     const helpers = (def.supporters ?? []).filter((h) => h !== d.winner);
     const vars = { defensor: name(d.winner), atacante: name(atk[0].house), casilla: tile(d.tile), n: def.troops, m: atk[0].troops };
     if (helpers.length > 0 && d.winner != null) return { key: "combate.apoyo_defensa", vars: { ...vars, apoyo: name(helpers[0]) }, neutral: false };
+    if (special && d.winner != null && type === "bosque") return { key: "combate.emboscada", vars, neutral: false };
+    if (special && d.winner != null && atk[0].river) return { key: "combate.rio", vars, neutral: false, filter: (t) => !t.includes("{ganador}") };
     return { key: "combate.resiste", vars, neutral: false };
   }
   return null;
