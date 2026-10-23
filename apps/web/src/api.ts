@@ -69,6 +69,10 @@ export interface HouseInfo {
   prestigio?: PrestigeBreakdown;
   /** Etapa de su castillo, de 1 a 5 (bloque 2). */
   etapa?: number;
+  /** Bloque 11: cifras públicas para la ficha de casa. */
+  cifras?: { casillas: number; edificios: number; gloria: number; asedios: number };
+  /** Bloque 11: batallas entre esa casa y la tuya (desde tu lado) y tratos cerrados. No va en la tuya. */
+  relacion?: { ganadas: number; perdidas: number; tratos: number };
   logros?: { clave: string; veces: number }[];
   objetivo?: (ObjectiveView & { cumplido: boolean }) | null;
   /** Capitán de la casa: su nombre y, si está preso, de quién y hasta qué resolución. */

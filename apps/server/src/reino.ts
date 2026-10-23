@@ -36,3 +36,49 @@ export function prestigeHistory(rows: Snapshot[], perWeek: number, current: numb
     final: at(totalResolutions + 1),
   };
 }
+
+/** Casas que pelearon en un combate: el defensor, cada bando y quienes iban con ellos. */
+export function combatHouses(c: Record<string, unknown>): Set<number> {
+  const out = new Set<number>();
+  const add = (h: unknown) => typeof h === "number" && out.add(h);
+  add(c.previousOwner);
+  for (const s of Array.isArray(c.sides) ? (c.sides as { house?: unknown; joint?: unknown[] }[]) : []) {
+    add(s?.house);
+    for (const j of s?.joint ?? []) add(j);
+  }
+  for (const a of Array.isArray(c.allies) ? c.allies : []) add(a);
+  return out;
+}
+
+export interface Relation {
+  /** Batallas entre las dos casas que ganó esta casa (la que mira) y que perdió. */
+  ganadas: number;
+  perdidas: number;
+  /** Tratos válidos cerrados entre las dos. */
+  tratos: number;
+}
+
+/** Bloque 11: «qué relación tiene contigo» en la ficha de casa, con sucesos públicos. */
+export function relations(
+  me: number,
+  others: number[],
+  combats: Record<string, unknown>[],
+  trades: { house_a: number; house_b: number }[],
+): Map<number, Relation> {
+  const out = new Map(others.filter((h) => h !== me).map((h) => [h, { ganadas: 0, perdidas: 0, tratos: 0 }]));
+  for (const c of combats) {
+    const in_ = combatHouses(c);
+    if (!in_.has(me)) continue;
+    for (const [h, r] of out) {
+      if (!in_.has(h)) continue;
+      if (c.winner === me) r.ganadas++;
+      else if (c.winner === h) r.perdidas++;
+    }
+  }
+  for (const t of trades) {
+    const other = t.house_a === me ? t.house_b : t.house_b === me ? t.house_a : null;
+    const r = other != null ? out.get(other) : undefined;
+    if (r) r.tratos++;
+  }
+  return out;
+}

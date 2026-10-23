@@ -1,7 +1,7 @@
 // Bloque 11: clasificación con flechas desde la noche anterior y la gráfica de la carrera.
 import { describe, expect, it } from "vitest";
 import type { EventView, GameState, HouseInfo } from "../src/api";
-import { byNight, chronicleFilter, involves, podiumLine, racePoints, standings } from "../src/realm";
+import { byNight, chaserLine, chronicleFilter, involves, podiumLine, racePoints, standings } from "../src/realm";
 
 const house = (id: number, total: number): HouseInfo =>
   ({ id, nombre: `Casa ${id}`, color: "gules", lema: null, prestigio: { total } }) as unknown as HouseInfo;
@@ -50,6 +50,14 @@ describe("Clasificación de Reino", () => {
     expect(podiumLine(standings(game([4, 30, 20, 10])), 1)).toBe("Estás a 6 de Prestigio del podio.");
     expect(podiumLine(standings(game([25, 30, 20])), 1)).toBe("Estás en el podio, a 5 de Prestigio del primero.");
     expect(podiumLine(standings(game([31, 30])), 1)).toBe("Vas primero, con 1 de Prestigio de ventaja.");
+  });
+});
+
+describe("Te pisan los talones", () => {
+  it("nombra a la casa justo detrás si está a 5 o menos", () => {
+    expect(chaserLine(standings(game([20, 30, 17])), 1)).toBe("Te pisan los talones: Casa 3, a 3.");
+    expect(chaserLine(standings(game([20, 30, 10])), 1)).toBeNull();
+    expect(chaserLine(standings(game([5, 30])), 1)).toBeNull();
   });
 });
 

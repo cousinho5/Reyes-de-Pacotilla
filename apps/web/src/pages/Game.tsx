@@ -1,6 +1,7 @@
 import { Suspense, lazy, useCallback, useEffect, useRef, useState } from "react";
 import { RESOURCES } from "@reyes/engine";
 import { api, ApiError, isOffline, saveGame, savedGame, type GameState, type HouseForm, type OrderView } from "../api";
+import { OpenHouse } from "../houseSheet";
 import { FrayAbundio, Icon, ResourceIcon, ShieldIcon } from "../art";
 import { HouseEditor } from "../components/HouseEditor";
 import { navigate } from "../App";
@@ -22,6 +23,7 @@ const CastlePanel = lazy(() => loadCastle().then((m) => ({ default: m.CastlePane
 const OrdersPanel = lazy(() => loadOrders().then((m) => ({ default: m.OrdersPanel })));
 const TradePanel = lazy(() => loadTrade().then((m) => ({ default: m.TradePanel })));
 const Realm = lazy(() => loadRealm().then((m) => ({ default: m.Realm })));
+const HouseSheet = lazy(() => import("../components/HouseSheet").then((m) => ({ default: m.HouseSheet })));
 // Bloque 3: la ventana del boletín recién publicado, solo cuando hay uno sin leer.
 const BulletinPopup = lazy(() => import("../components/BulletinPopup").then((m) => ({ default: m.BulletinPopup })));
 const OFFLINE_TOAST = "Sin conexión: podrás dar órdenes cuando vuelva la red.";
@@ -57,6 +59,9 @@ export function Game({ id }: { id: number }) {
   const [undo, setUndo] = useState<OrderView[] | null>(null);
   // Bloque 6: en el Mapa, el reloj y el evento se abren desde una etiqueta de la barra fina.
   const [statusOpen, setStatusOpen] = useState(false);
+  // Bloque 11: ficha de casa abierta (desde cualquier pestaña) y casilla a la que llevar el mapa.
+  const [houseOpen, setHouseOpen] = useState<number | null>(null);
+  const [mapFocus, setMapFocus] = useState<number | null>(null);
   // Mientras se guarda una orden, las recargas no pisan lo que se ve.
   const savingRef = useRef(false);
   const freshRef = useRef(false);
@@ -143,10 +148,9 @@ export function Game({ id }: { id: number }) {
   }
 
   const me = state.casas.find((h) => h.id === state.yo.casa)!;
-  // En Comercio: ofertas para ti y propuestas de alianza que esperan respuesta (bloque 8).
-  const offersForMe =
-    (state.ofertas ?? []).filter((o) => o.estado === "open" && o.para === state.yo.casa).length +
-    (state.alianzas?.propuestas ?? []).filter((p) => p.para === state.yo.casa).length;
+  // En Comercio, las ofertas para ti; en Reino, las propuestas de alianza que esperan respuesta (bloque 11).
+  const offersForMe = (state.ofertas ?? []).filter((o) => o.estado === "open" && o.para === state.yo.casa).length;
+  const proposalsForMe = (state.alianzas?.propuestas ?? []).filter((p) => p.para === state.yo.casa).length;
   const p = state.partida;
   const rank = [...state.casas]
     .sort((x, y) => (y.prestigio?.total ?? 0) - (x.prestigio?.total ?? 0))
@@ -240,6 +244,7 @@ export function Game({ id }: { id: number }) {
   );
 
   return (
+    <OpenHouse.Provider value={setHouseOpen}>
     <div className={`game${mapMode ? " map-mode" : ""}`}>
       <header className="topbar">
         {mapMode ? (
@@ -313,6 +318,8 @@ export function Game({ id }: { id: number }) {
             editOrder={editOrder}
             onEditOpened={() => setEditOrder(null)}
             onOpenTrade={() => setTab("comercio")}
+            focusTile={mapFocus}
+            onFocused={() => setMapFocus(null)}
           />
         )}
         {tab === "castillo" && <CastlePanel state={state} act={act} gameId={id} />}
@@ -332,10 +339,27 @@ export function Game({ id }: { id: number }) {
             }}
           />
         )}
-        {tab === "comercio" && <TradePanel state={state} act={act} />}
+        {tab === "comercio" && <TradePanel state={state} act={act} onGoRealm={() => setTab("reino")} />}
         {tab === "reino" && <Realm state={state} act={act} />}
         </Suspense>
       </main>
+
+      {houseOpen != null && (
+        <Suspense fallback={null}>
+          <HouseSheet
+            key={houseOpen}
+            state={state}
+            house={houseOpen}
+            act={act}
+            onClose={() => setHouseOpen(null)}
+            onShowMap={(tile) => {
+              setHouseOpen(null);
+              setMapFocus(tile);
+              setTab("mapa");
+            }}
+          />
+        </Suspense>
+      )}
 
       {tab !== "reino" && unreadBulletins(state).length > 0 && (
         <Suspense fallback={null}>
@@ -368,7 +392,7 @@ export function Game({ id }: { id: number }) {
             ["castillo", "Castillo", 0],
             ["ordenes", "Órdenes", draft.length],
             ["comercio", "Comercio", offersForMe],
-            ["reino", "Reino", 0],
+            ["reino", "Reino", proposalsForMe],
           ] as [Tab, string, number][]
         ).map(([key, label, count]) => (
           <button key={key} className={tab === key ? "active" : ""} onClick={() => setTab(key)} aria-current={tab === key}>
@@ -383,6 +407,7 @@ export function Game({ id }: { id: number }) {
         ))}
       </nav>
     </div>
+    </OpenHouse.Provider>
   );
 }
 
