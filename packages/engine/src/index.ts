@@ -30,5 +30,7 @@ export * from "./events";
 export * from "./bulletin";
 export * from "./memory";
 export * from "./chronicle";
+export * from "./night";
+export * from "./notices";
 export { PHRASES, type PhraseKey } from "./texts/cronista";
 export * from "./heraldry";

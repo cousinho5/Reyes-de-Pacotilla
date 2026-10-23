@@ -188,6 +188,61 @@ export const PHRASES = {
     "La {pacto} anula {n} órdenes contra {jugador}. Las tropas no salen.",
     "Firmada la {pacto}: {n} órdenes contra {jugador} quedan en papel mojado."
   ],
+  "aviso.cierre": [
+    "Cierre en 1 h. Aún no has dado órdenes. Fray Abundio se impacienta.",
+    "Queda 1 hora para dar órdenes y no has dado ninguna.",
+    "Cierre en 1 h. El mensajero ya se está poniendo las botas, y tus tropas siguen esperando.",
+    "1 hora para el cierre y ni una orden. Última llamada, alteza.",
+    "Cierre en 1 h. Sin órdenes, que sea lo que el destino quiera."
+  ],
+  "aviso.trato": [
+    "{jugador} acepta tu oferta. Ambas partes creen haber ganado.",
+    "{jugador} acepta tu oferta. Apretón de manos y trato cerrado.",
+    "Trato cerrado con {jugador}. El cronista lo apunta.",
+    "{jugador} acepta el trato. Contad los dedos, por si acaso.",
+    "{jugador} acepta tu oferta. Intercambio completado, sin regateos de última hora."
+  ],
+  "aviso.oferta": [
+    "{jugador} quiere comerciar contigo.",
+    "{jugador} te hace una oferta. El mercader espera en la puerta.",
+    "Oferta nueva de {jugador}. Mírala antes de que caduque.",
+    "{jugador} te propone un trato. El cronista ya huele el regateo.",
+    "{jugador} te ofrece un negocio. Contad bien antes de firmar."
+  ],
+  "aviso.combate_gana": [
+    "¡Victoria en {casilla}! Te quedan {n} tropas allí.",
+    "{casilla} es tuya, con {n} tropas dentro. El cronista ya afila la pluma.",
+    "Tomas {casilla} y quedan {n} tropas. Las trompetas, por cuenta de la casa."
+  ],
+  "aviso.combate_resiste": [
+    "{casilla} resiste. Tus {n} tropas siguen allí.",
+    "Atacan {casilla} y aguanta: quedan {n} tropas. Las murallas sonríen.",
+    "{casilla} sigue siendo tuya, con {n} tropas. El enemigo vuelve a casa."
+  ],
+  "aviso.combate_pierde": [
+    "{casilla} ha caído. El cronista ya está buscando un adjetivo amable.",
+    "Pierdes {casilla}. La repetición de la noche lo cuenta todo.",
+    "{casilla} cambia de bandera, y no a tu favor. Habrá revancha."
+  ],
+  "aviso.combate_falla": [
+    "Ataque fallido en {casilla}: vuelven {m} tropas. Fray Abundio lo llamará repliegue genial.",
+    "{casilla} resiste tu ataque. Vuelven {m} tropas a casa.",
+    "No entras en {casilla}: se repliegan {m} tropas. Habrá otra noche."
+  ],
+  "interfaz.mercado_vacio": [
+    "No hay ofertas. El mercado está más vacío que el tesoro real.",
+    "Ninguna oferta abierta. ¿Por qué no publicas la primera?",
+    "Mercado en silencio. Solo se oyen las gaviotas.",
+    "Nadie vende nada. Buen momento para poner precio.",
+    "No hay ofertas. Los mercaderes han ido a comer."
+  ],
+  "interfaz.mejora": [
+    "{edificio} sube a nivel {nivel}. Las obras han terminado a tiempo, cosa nunca vista.",
+    "{edificio} a nivel {nivel}. Los albañiles piden propina.",
+    "¡{edificio} a nivel {nivel}! Producirá más desde mañana.",
+    "Obra terminada: {edificio} a nivel {nivel}. Queda precioso.",
+    "Nivel {nivel} para tu {edificio}. El cronista lo mencionará, si hay sitio."
+  ],
   "reino.tranquila": [
     "Semana sin batallas. El reino descansa, los pretendientes conspiran y el cronista se ha dormido sobre el pergamino.",
     "Ni una espada desenvainada. El cronista sospecha que se está tramando algo.",
@@ -637,6 +692,46 @@ export const PHRASES = {
     "Fin. El cronista sopla la vela.",
     "La noche termina. Las órdenes de mañana, a vuestro cargo.",
     "Eso es todo. Fray Abundio guarda la pluma."
+  ],
+  "noche.ganas": [
+    "Vuestra merced toma {casilla}: {n} contra {m}. El cronista ya afila la pluma.",
+    "{casilla} es vuestra: {n} contra {m} de {perdedor}. Enhorabuena, vuestra merced.",
+    "Victoria de vuestra merced en {casilla}, {n} a {m}. {perdedor} no lo contará igual.",
+    "{perdedor} pierde {casilla} a manos de vuestra merced: {n} contra {m}.",
+    "Vuestras {n} tropas entran en {casilla}. Las {m} de {perdedor} no bastaron.",
+    "{casilla} cambia de bandera, y la nueva es la vuestra: {n} contra {m}."
+  ],
+  "noche.pierdes": [
+    "Vuestra merced pierde {casilla}: {m} contra {n} de {ganador}.",
+    "{ganador} entra en {casilla} con {n}. Vuestras {m} no bastaron.",
+    "{casilla} ya no es vuestra: {n} de {ganador} contra {m}. El cronista lo siente, a su manera.",
+    "Mala noche, vuestra merced: {ganador} os quita {casilla}, {n} contra {m}.",
+    "{casilla} cae ante {ganador}: {n} contra vuestras {m}. Habrá revancha, se supone.",
+    "Baja vuestra bandera en {casilla}. {ganador} traía {n} y vuestra merced tenía {m}."
+  ],
+  "noche.resistes": [
+    "{casilla} aguanta: vuestras {n} contra {m} de {atacante}. Bien hecho, vuestra merced.",
+    "{atacante} llama con {m} y vuestra merced no abre con {n}.",
+    "Vuestra merced resiste en {casilla}, {n} contra {m}. Las murallas os lo agradecen.",
+    "{m} de {atacante} se estrellan contra vuestras {n}. {casilla} sigue siendo vuestra.",
+    "Ni un palmo para {atacante}: {casilla} resiste con {n} contra {m}.",
+    "{atacante} viene a por {casilla} con {m} y se vuelve sin ella. Vuestras {n} ni se despeinan."
+  ],
+  "noche.fallas": [
+    "Vuestro ataque a {casilla} no pasa: {m} contra {n} de {defensor}.",
+    "{defensor} aguanta en {casilla} con {n}. Vuestras {m} vuelven a casa.",
+    "Vuestra merced llama a {casilla} con {m} y {defensor} no abre con {n}.",
+    "{casilla} resiste a vuestra merced, {n} contra {m}. El cronista lo llamará tanteo.",
+    "Ataque fallido de vuestra merced en {casilla}: {m} contra {n}. Habrá otra noche.",
+    "{m} tropas vuestras contra {n} de {defensor}. {casilla}, de momento, sigue sin ser vuestra."
+  ],
+  "noche.neutral_tu": [
+    "Vuestra merced ocupa {casilla}: {n} contra {m}.",
+    "{casilla} se rinde a vuestra merced. Los lugareños ni se inmutan.",
+    "{casilla} entra en vuestro mapa: {n} contra {m}.",
+    "Vuestras {n} tropas entran en {casilla}. Bandera nueva.",
+    "Los {m} vecinos de {casilla} entregan las llaves a vuestra merced.",
+    "{casilla} jura lealtad a vuestra merced, como a cualquiera con {n} tropas."
   ],
   "proclamas.entrada": [
     "El cronista publica, sin corregir ni una coma, lo que las casas han querido decir.",

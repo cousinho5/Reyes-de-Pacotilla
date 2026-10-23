@@ -2,6 +2,7 @@ import { ENAMEL, Icon, ResourceIcon, shieldArt } from "../art";
 import { MercenariesCard } from "./MercenariesCard";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  noticeText,
   BUILDINGS,
   BUILDING_PRODUCTION,
   BUILDING_RESOURCE,
@@ -132,7 +133,7 @@ function BuildingSheet({ kind, state, gameId, act }: Props & { kind: BuildingKin
             className="primary wide"
             disabled={missing.length > 0 || !active}
             onClick={() =>
-              act(() => api.upgrade(gameId, kind), `${BUILDING_LABEL[kind]} sube a nivel ${level + 1}. Las obras han terminado a tiempo, cosa nunca vista.`)
+              act(() => api.upgrade(gameId, kind), noticeText("interfaz.mejora", level + 1, { edificio: BUILDING_LABEL[kind], nivel: level + 1 }))
             }
           >
             Mejorar a nivel {level + 1}
@@ -249,7 +250,7 @@ export function CastlePanel({ state, gameId, act }: Props) {
                 {cost && (
                   <button
                     disabled={!affordable || !active}
-                    onClick={() => act(() => api.upgrade(gameId, b), `${BUILDING_LABEL[b]} sube a nivel ${level + 1}. Las obras han terminado a tiempo, cosa nunca vista.`)}
+                    onClick={() => act(() => api.upgrade(gameId, b), noticeText("interfaz.mejora", level + 1, { edificio: BUILDING_LABEL[b], nivel: level + 1 }))}
                   >
                     Mejorar
                   </button>

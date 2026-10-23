@@ -517,7 +517,15 @@ Bloque 3: momentos clave por tipo, siempre a favor del ganador, para montar un p
 Cada evento tiene un nombre épico, el efecto exacto (diseño, sección 10) y dos líneas del cronista; la variante de cada partida la fija la semilla. En el código viven en `packages/engine/src/events.ts` (`EVENT_LINES`). `{jugador}` es la casa afectada.
 
 | Evento | Variantes |
-| --- | --- |
+| --- | ### 11.20 Oferta nueva (notificación)
+
+1. {jugador} quiere comerciar contigo.
+2. {jugador} te hace una oferta. El mercader espera en la puerta.
+3. Oferta nueva de {jugador}. Mírala antes de que caduque.
+4. {jugador} te propone un trato. El cronista ya huele el regateo.
+5. {jugador} te ofrece un negocio. Contad bien antes de firmar.
+
+--- |
 | **La Gran Plaga de Ratas** | Las ratas reclaman su parte de la cosecha. / Las ratas han organizado un banquete en los graneros reales. No invitaron a nadie. |
 | **Cosecha Gloriosa** | Los campos rebosan. Los campesinos, sospechosamente contentos. / El cielo sonríe al reino. El cronista no se fía. |
 | **La Fiebre del Oro** | Todo el reino quiere ser mercader. Los mercados no dan abasto, y el cronista tampoco. / Fiebre del oro: los mercaderes sonríen y los bolsillos tintinean. |
@@ -559,13 +567,15 @@ Pocas palabras y siempre con la información primero. Cinco variantes por tipo c
 4. Órdenes registradas. Nadie más las conoce. Por ahora.
 5. Órdenes selladas con cera real. Bueno, con cera.
 
-### 11.3 Trato cerrado
+### 11.3 Trato cerrado (notificación y aviso)
 
-1. Trato cerrado. Ambas partes creen haber ganado.
-2. Trato hecho: recibes {cantidad} de {recurso}.
-3. Apretón de manos y trato cerrado.
-4. Trato cerrado con {jugador}. El cronista lo apunta.
-5. Intercambio completado. Contad los dedos, por si acaso.
+La información primero: quién acepta.
+
+1. {jugador} acepta tu oferta. Ambas partes creen haber ganado.
+2. {jugador} acepta tu oferta. Apretón de manos y trato cerrado.
+3. Trato cerrado con {jugador}. El cronista lo apunta.
+4. {jugador} acepta el trato. Contad los dedos, por si acaso.
+5. {jugador} acepta tu oferta. Intercambio completado, sin regateos de última hora.
 
 ### 11.4 Oferta rechazada
 
@@ -587,11 +597,31 @@ Sale 1 hora antes del cierre y solo a quien aún no ha dado órdenes (bloque 12)
 
 ### 11.6 Combate (notificación tras la resolución)
 
-1. Ataque fallido en {casilla}: tus tropas se repliegan con {m}. Fray Abundio lo llamará repliegue genial.
-2. Combate en {casilla}: ¡victoria! Te quedan {n} tropas.
-3. Han atacado {casilla}. Resultado completo en el boletín.
-4. {casilla} resiste. Tus {n} tropas siguen allí.
-5. {casilla} ha caído. El cronista ya está buscando un adjetivo amable.
+A cada casa, el combate más importante de los suyos esa noche: primero lo que pierde, luego lo que gana. Si hay más, se añade cuántos.
+
+#### 11.6.1 Ganas
+
+1. ¡Victoria en {casilla}! Te quedan {n} tropas allí.
+2. {casilla} es tuya, con {n} tropas dentro. El cronista ya afila la pluma.
+3. Tomas {casilla} y quedan {n} tropas. Las trompetas, por cuenta de la casa.
+
+#### 11.6.2 Resistes
+
+1. {casilla} resiste. Tus {n} tropas siguen allí.
+2. Atacan {casilla} y aguanta: quedan {n} tropas. Las murallas sonríen.
+3. {casilla} sigue siendo tuya, con {n} tropas. El enemigo vuelve a casa.
+
+#### 11.6.3 Pierdes una casilla
+
+1. {casilla} ha caído. El cronista ya está buscando un adjetivo amable.
+2. Pierdes {casilla}. La repetición de la noche lo cuenta todo.
+3. {casilla} cambia de bandera, y no a tu favor. Habrá revancha.
+
+#### 11.6.4 Falla tu ataque
+
+1. Ataque fallido en {casilla}: vuelven {m} tropas. Fray Abundio lo llamará repliegue genial.
+2. {casilla} resiste tu ataque. Vuelven {m} tropas a casa.
+3. No entras en {casilla}: se repliegan {m} tropas. Habrá otra noche.
 
 ### 11.7 Mercado vacío
 
@@ -606,7 +636,7 @@ Sale 1 hora antes del cierre y solo a quien aún no ha dado órdenes (bloque 12)
 1. {edificio} sube a nivel {nivel}. Las obras han terminado a tiempo, cosa nunca vista.
 2. {edificio} nivel {nivel}. Los albañiles piden propina.
 3. ¡{edificio} a nivel {nivel}! Producirá más desde mañana.
-4. {edificio} mejorado a nivel {nivel}. Queda precioso.
+4. Obra terminada: {edificio} a nivel {nivel}. Queda precioso.
 5. Nivel {nivel} para tu {edificio}. El cronista lo mencionará, si hay sitio.
 
 ### 11.9 Ausencia y regreso
@@ -1000,6 +1030,53 @@ Frases cortas para cada paso de la repetición. Las cifras siempre; la broma, en
 4. Fin. El cronista sopla la vela.
 5. La noche termina. Las órdenes de mañana, a vuestro cargo.
 6. Eso es todo. Fray Abundio guarda la pluma.
+
+Cuando el combate es de tu casa, Fray Abundio te habla de «vuestra merced» (solo en los combates).
+
+### 18.11 Vuestra merced gana
+
+1. Vuestra merced toma {casilla}: {n} contra {m}. El cronista ya afila la pluma.
+2. {casilla} es vuestra: {n} contra {m} de {perdedor}. Enhorabuena, vuestra merced.
+3. Victoria de vuestra merced en {casilla}, {n} a {m}. {perdedor} no lo contará igual.
+4. {perdedor} pierde {casilla} a manos de vuestra merced: {n} contra {m}.
+5. Vuestras {n} tropas entran en {casilla}. Las {m} de {perdedor} no bastaron.
+6. {casilla} cambia de bandera, y la nueva es la vuestra: {n} contra {m}.
+
+### 18.12 Vuestra merced pierde una casilla
+
+1. Vuestra merced pierde {casilla}: {m} contra {n} de {ganador}.
+2. {ganador} entra en {casilla} con {n}. Vuestras {m} no bastaron.
+3. {casilla} ya no es vuestra: {n} de {ganador} contra {m}. El cronista lo siente, a su manera.
+4. Mala noche, vuestra merced: {ganador} os quita {casilla}, {n} contra {m}.
+5. {casilla} cae ante {ganador}: {n} contra vuestras {m}. Habrá revancha, se supone.
+6. Baja vuestra bandera en {casilla}. {ganador} traía {n} y vuestra merced tenía {m}.
+
+### 18.13 Vuestra merced resiste
+
+1. {casilla} aguanta: vuestras {n} contra {m} de {atacante}. Bien hecho, vuestra merced.
+2. {atacante} llama con {m} y vuestra merced no abre con {n}.
+3. Vuestra merced resiste en {casilla}, {n} contra {m}. Las murallas os lo agradecen.
+4. {m} de {atacante} se estrellan contra vuestras {n}. {casilla} sigue siendo vuestra.
+5. Ni un palmo para {atacante}: {casilla} resiste con {n} contra {m}.
+6. {atacante} viene a por {casilla} con {m} y se vuelve sin ella. Vuestras {n} ni se despeinan.
+
+### 18.14 Falla el ataque de vuestra merced
+
+1. Vuestro ataque a {casilla} no pasa: {m} contra {n} de {defensor}.
+2. {defensor} aguanta en {casilla} con {n}. Vuestras {m} vuelven a casa.
+3. Vuestra merced llama a {casilla} con {m} y {defensor} no abre con {n}.
+4. {casilla} resiste a vuestra merced, {n} contra {m}. El cronista lo llamará tanteo.
+5. Ataque fallido de vuestra merced en {casilla}: {m} contra {n}. Habrá otra noche.
+6. {m} tropas vuestras contra {n} de {defensor}. {casilla}, de momento, sigue sin ser vuestra.
+
+### 18.15 Vuestra merced ocupa una neutral
+
+1. Vuestra merced ocupa {casilla}: {n} contra {m}.
+2. {casilla} se rinde a vuestra merced. Los lugareños ni se inmutan.
+3. {casilla} entra en vuestro mapa: {n} contra {m}.
+4. Vuestras {n} tropas entran en {casilla}. Bandera nueva.
+5. Los {m} vecinos de {casilla} entregan las llaves a vuestra merced.
+6. {casilla} jura lealtad a vuestra merced, como a cualquiera con {n} tropas.
 
 ---
 
