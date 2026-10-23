@@ -5,6 +5,7 @@ import { Hono, type Context } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import {
   ANY_ORIGIN,
+  castleStage,
   BUILDINGS,
   captainName,
   UNIT_KINDS,
@@ -695,6 +696,8 @@ app.get("/api/partidas/:id", async (c) => {
         lema: h.motto,
         escudo: shieldView(h),
         prestigio: prestige.get(h.id),
+        // Etapa del castillo (bloque 2): sale de los niveles de sus edificios, que ya son públicos por el Prestigio.
+        etapa: castleStage(buildings.get(h.id)!),
         logros: achievements.results.filter((a) => a.house_id === h.id).map((a) => ({ clave: a.achievement_key, veces: a.times })),
         // Los objetivos secretos solo se revelan al final.
         objetivo: finished ? { ...objectiveView(h.objective_key), cumplido: h.objective_met === 1 } : null,

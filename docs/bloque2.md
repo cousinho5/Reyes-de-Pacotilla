@@ -62,10 +62,10 @@ Los dibujos se hacen en pxl, en `docs/maquetas/bloque2/pxl/castillo.px.js` (esce
 
 ## Pasos
 
-1. **Bocetos.** Escena y edificios en pixel art, diseñados en pxl (`docs/pixel-art.md`) para revisarlos como PNG o GIF antes de seguir; los aprobados pasan al juego con `scripts/pxl-a-juego.mjs`.
-2. **Escena del castillo.** Componente nuevo en `apps/web/src/art` a escala de móvil (unos 390 píxeles de ancho), con los colores y el escudo de la casa.
-3. **Edificios por nivel.** Los 25 dibujos.
-4. **Crecimiento del castillo** (5 etapas) en la escena y en la loseta del mapa (`world.ts`). La etapa se calcula en el cliente con los niveles que ya ve cada casa; para las demás casas, el servidor envía la etapa de cada una (ya es pública por el Prestigio de edificios).
+1. ✅ **Bocetos.** Escena y edificios en pixel art, diseñados en pxl (`docs/pixel-art.md`) para revisarlos como PNG o GIF antes de seguir; los aprobados pasan al juego con `scripts/pxl-a-juego.mjs`.
+2. ✅ **Escena del castillo.** Componente nuevo en `apps/web/src/art` a escala de móvil (unos 390 píxeles de ancho), con los colores y el escudo de la casa.
+3. ✅ **Edificios por nivel.** Los 25 dibujos.
+4. ✅ **Crecimiento del castillo** (5 etapas) en la escena y en la loseta del mapa (`world.ts`, `castillo` con `stage`). La etapa se calcula en el cliente con los niveles que ya ve cada casa; para las demás casas, el servidor envía la etapa de cada una (ya es pública por el Prestigio de edificios).
 5. **Toques y lista** rehecha.
 6. **Animaciones**, respetando «reducir movimiento».
 7. **Comprobación** con Playwright a 390x844 y capturas de los 5 niveles de cada edificio y de las 5 etapas del castillo.
