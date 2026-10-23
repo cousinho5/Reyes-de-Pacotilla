@@ -2,13 +2,16 @@ import { useEffect, useRef, useState } from "react";
 import { api, type GameState } from "../api";
 import { FrayAbundio } from "../art";
 import { HOUSE_COLORS } from "../ui";
-import { markBulletinSeen } from "../bulletinSeen";
-import { Parchment, type Shown } from "./Parchment";
+import { BulletinReader } from "./BulletinPopup";
+import { Sheet, type SheetState } from "./Sheet";
 
-type Edition = "domingo" | "miercoles";
-const keyOf = (b: { semana: number; edicion?: Edition }) => `${b.semana}:${b.edicion ?? "domingo"}`;
+type Sheetful = "soborno" | "proclama" | null;
 
-/** Boletines de Fray Abundio (domingo y hoja volandera del miércoles), en pergamino; la proclama y el soborno al cronista. */
+/**
+ * Bloque 11: el boletín en Reino es una tarjeta de pergamino con Fray Abundio,
+ * el titular del último, «Leer el boletín» (la ventana con los anteriores),
+ * «Sobornar» y «Tu proclama», estas dos en una hoja que sube desde abajo.
+ */
 export function BulletinPanel({
   state,
   act,
@@ -17,69 +20,57 @@ export function BulletinPanel({
   act: (fn: () => Promise<unknown>, ok?: string) => Promise<void>;
 }) {
   // La Crónica Definitiva (semana 0), si la hay, va la primera.
-  const list = [...(state.boletines ?? [])].sort((a, b) => (a.semana === 0 ? -1 : b.semana === 0 ? 1 : 0));
-  const latest = list[0] ? keyOf(list[0]) : null;
-  const [chosen, setChosen] = useState<string | null>(latest);
-  const [bulletin, setBulletin] = useState<Shown | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  // Al publicarse un boletín nuevo, se muestra ese.
-  useEffect(() => setChosen(latest), [latest]);
-  useEffect(() => {
-    if (chosen == null) return;
-    const [week, edition] = chosen.split(":") as [string, Edition];
-    let alive = true;
-    api
-      .bulletin(state.partida.id, Number(week), edition)
-      .then((b) => alive && (setBulletin(b), setError(null)))
-      .catch((e: Error) => alive && setError(e.message));
-    return () => {
-      alive = false;
-    };
-    // La fe de erratas cambia el pie de la Crónica: se vuelve a leer.
-  }, [state.partida.id, chosen, state.feDeErratas?.texto]);
-  const shown = bulletin && chosen === `${bulletin.week}:${bulletin.edition ?? "domingo"}` ? bulletin : null;
-  // Leerlo aquí cuenta como leído: no sale después en la ventana emergente.
-  useEffect(() => {
-    if (shown && latest && latest === chosen) markBulletinSeen(state.partida.id, latest);
-  }, [shown, latest, chosen, state.partida.id]);
+  const latest = [...(state.boletines ?? [])].sort((a, b) => (a.semana === 0 ? -1 : b.semana === 0 ? 1 : 0))[0];
+  const [reading, setReading] = useState(false);
+  const [open, setOpen] = useState<Sheetful>(null);
+  const [sheet, setSheet] = useState<SheetState>("half");
+  const s = state.soborno;
+  const p = state.proclama;
+  const edition = !latest
+    ? null
+    : latest.semana === 0
+      ? "La Crónica Definitiva"
+      : latest.edicion === "miercoles"
+        ? `Hoja volandera · miércoles ${latest.semana}`
+        : `Boletín del Reino · domingo ${latest.semana}`;
+  const show = (what: Sheetful) => (setOpen(what), setSheet("half"));
 
   return (
     <>
-      {list.length === 0 ? (
-        <section className="card">
-          <h2>Boletín del Reino</h2>
-          <FrayAbundio mood="solemne" anim="moja" size={64} />
-          <p className="muted">
-            Fray Abundio publica dos por semana: la hoja volandera del miércoles y el boletín del domingo, tras la resolución. Ya afila la
-            pluma.
-          </p>
-        </section>
-      ) : (
-        <section className="bulletin-wrap">
-          {list.length > 1 && (
-            <div className="bulletin-weeks" role="tablist" aria-label="Boletines">
-              {list.map((b) => (
-                <button
-                  key={keyOf(b)}
-                  role="tab"
-                  aria-selected={keyOf(b) === chosen}
-                  className={keyOf(b) === chosen ? "chosen" : ""}
-                  onClick={() => setChosen(keyOf(b))}
-                  title={b.titular}
-                >
-                  {b.semana === 0 ? "Crónica Definitiva" : b.edicion === "miercoles" ? `Miércoles ${b.semana}` : `Domingo ${b.semana}`}
-                </button>
-              ))}
-            </div>
+      <section className="card bulletin-card">
+        <div className="bulletin-card-head">
+          <FrayAbundio mood={latest ? "solemne" : "dormido"} size={64} anim={latest ? "habla" : "cabecea"} />
+          <div>
+            <small className="muted">{edition ?? "Boletín del Reino"}</small>
+            <p className="bulletin-card-headline">
+              {latest ? latest.titular : "Fray Abundio publica la hoja volandera del miércoles y el boletín del domingo. Ya afila la pluma."}
+            </p>
+          </div>
+        </div>
+        <div className="bulletin-card-actions">
+          {latest && (
+            <button className="primary" onClick={() => setReading(true)}>
+              Leer el boletín
+            </button>
           )}
-          {error && <p className="error">{error}</p>}
-          {shown && <Parchment bulletin={shown} gameName={state.partida.nombre} houses={state.casas} />}
-        </section>
-      )}
+          {s &&
+            (s.pagado != null ? (
+              <button onClick={() => show("soborno")}>Patrocinador ✓</button>
+            ) : (
+              <button onClick={() => show("soborno")}>Sobornar · {s.coste} Oro</button>
+            ))}
+          {p && <button onClick={() => show("proclama")}>{p.texto ? "Tu proclama ✓" : "Tu proclama"}</button>}
+        </div>
+      </section>
       <ErrataCard state={state} act={act} />
-      <ProclamationCard state={state} act={act} />
-      <BribeCard state={state} act={act} />
+      {reading && <BulletinReader state={state} onClose={() => setReading(false)} />}
+      {open && (
+        <div className="sheet-layer">
+          <Sheet state={sheet} setState={setSheet} onClose={() => setOpen(null)} label={open === "soborno" ? "Sobornar al cronista" : "Tu proclama"}>
+            {open === "soborno" ? <BribeCard state={state} act={act} /> : <ProclamationCard state={state} act={act} />}
+          </Sheet>
+        </div>
+      )}
     </>
   );
 }

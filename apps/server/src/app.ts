@@ -616,14 +616,14 @@ app.get("/api/partidas/:id", async (c) => {
         repeat: number;
       }>(),
     db.prepare(
-      `SELECT e.id, e.type, e.payload, e.at, r.number AS resolucion FROM event_log e LEFT JOIN resolutions r ON r.id = e.resolution_id
+      `SELECT e.id, e.type, e.payload, e.at, e.visible_to, r.number AS resolucion FROM event_log e LEFT JOIN resolutions r ON r.id = e.resolution_id
        WHERE e.game_id = ? AND (e.visible_to IS NULL OR e.visible_to = ?)
        -- Por resolución (la más reciente arriba) y, dentro, en orden. Lo que no
        -- pertenece a una resolución (logros, piloto, final) va con la siguiente.
        ORDER BY COALESCE(r.number, (SELECT current_resolution + 1 FROM games WHERE id = e.game_id)) DESC, e.id ASC LIMIT 40`,
     )
       .bind(game.id, house.id)
-      .all<{ id: number; type: string; payload: string; at: string; resolucion: number | null }>(),
+      .all<{ id: number; type: string; payload: string; at: string; visible_to: number | null; resolucion: number | null }>(),
     db.prepare(
       `SELECT * FROM offers WHERE game_id = ? AND (
          (status = 'open' AND (to_house_id IS NULL OR to_house_id = ? OR from_house_id = ?))
@@ -804,7 +804,13 @@ app.get("/api/partidas/:id", async (c) => {
       // Se copia a la noche siguiente al resolver (bloque 12).
       ...(o.repeat ? { repetir: true } : {}),
     })),
-    eventos: events.results.map((e) => ({ id: e.id, tipo: e.type, resolucion: e.resolucion, datos: JSON.parse(e.payload) })),
+    eventos: events.results.map((e) => ({
+      id: e.id,
+      tipo: e.type,
+      resolucion: e.resolucion,
+      datos: JSON.parse(e.payload),
+      ...(e.visible_to != null ? { privado: true } : {}),
+    })),
     ofertas: offers.results.map(offerView),
     tratos: trades.results.map((t) => ({
       id: t.id,
@@ -1497,6 +1503,41 @@ app.get("/api/partidas/:id/boletin/:semana", async (c) => {
   // Bloque 3: la Crónica Definitiva (semana 0) lleva al pie la fe de erratas de los vencidos.
   const erratas = Number(c.req.param("semana")) === 0 ? await errataView(c.env.DB, m.game.id) : undefined;
   return c.json({ ...content, lastEventId: undefined, publicado: row.published_at, ...(erratas ? { erratas } : {}) });
+});
+
+/**
+ * Bloque 11: la crónica de una semana, noche a noche, con lo que esta casa puede
+ * ver. Lo que no pertenece a una resolución (logros, piloto, final) va con la
+ * noche siguiente, como en la crónica del estado.
+ */
+app.get("/api/partidas/:id/cronica/:semana", async (c) => {
+  const m = await membership(c);
+  if (m instanceof Response) return m;
+  const per = rhythmOf(m.game).days.length;
+  const lastWeek = Math.max(1, Math.ceil(Math.max(1, m.game.current_resolution) / per));
+  const week = Math.min(lastWeek, Math.max(1, Number(c.req.param("semana")) || lastWeek));
+  const rows = await c.env.DB.prepare(
+    `SELECT id, type, payload, visible_to, night FROM (
+       SELECT e.id, e.type, e.payload, e.visible_to, COALESCE(r.number,
+         (SELECT MIN(r2.number) FROM event_log e2 JOIN resolutions r2 ON r2.id = e2.resolution_id WHERE e2.game_id = e.game_id AND e2.id > e.id),
+         ?) AS night
+       FROM event_log e LEFT JOIN resolutions r ON r.id = e.resolution_id
+       WHERE e.game_id = ? AND (e.visible_to IS NULL OR e.visible_to = ?) AND e.type <> 'movimiento'
+     ) WHERE night BETWEEN ? AND ? ORDER BY night DESC, id ASC`,
+  )
+    .bind(m.game.current_resolution + 1, m.game.id, m.house.id, (week - 1) * per + 1, week * per)
+    .all<{ id: number; type: string; payload: string; visible_to: number | null; night: number }>();
+  return c.json({
+    semana: week,
+    semanas: lastWeek,
+    eventos: rows.results.map((e) => ({
+      id: e.id,
+      tipo: e.type,
+      resolucion: e.night,
+      datos: JSON.parse(e.payload),
+      ...(e.visible_to != null ? { privado: true } : {}),
+    })),
+  });
 });
 
 /** Bloque 3: escribir, cambiar o retirar (texto vacío) la proclama de la semana. */

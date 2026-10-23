@@ -1,7 +1,7 @@
 // Bloque 11: clasificación con flechas desde la noche anterior y la gráfica de la carrera.
 import { describe, expect, it } from "vitest";
-import type { GameState, HouseInfo } from "../src/api";
-import { podiumLine, racePoints, standings } from "../src/realm";
+import type { EventView, GameState, HouseInfo } from "../src/api";
+import { byNight, chronicleFilter, involves, podiumLine, racePoints, standings } from "../src/realm";
 
 const house = (id: number, total: number): HouseInfo =>
   ({ id, nombre: `Casa ${id}`, color: "gules", lema: null, prestigio: { total } }) as unknown as HouseInfo;
@@ -64,5 +64,34 @@ describe("Gráfica de la carrera", () => {
 
   it("antes de la primera noche no hay puntos", () => {
     expect(racePoints(game([0, 0], { partida: { estado: "active", resolucionActual: 0, final: null } } as Partial<GameState>))).toEqual([]);
+  });
+});
+
+describe("Crónica por noches", () => {
+  const ev = (id: number, tipo: string, resolucion: number | null, datos: Record<string, unknown>, privado?: boolean): EventView =>
+    ({ id, tipo, resolucion, datos, ...(privado ? { privado } : {}) }) as EventView;
+  const events = [
+    ev(1, "combate", 8, { tile: 1, winner: 2, sides: [{ house: 2 }, { house: 3, joint: [1] }] }),
+    ev(2, "mejora", 8, { house: 4, tile: 1 }),
+    ev(3, "mantenimiento", 9, { house: 1 }, true),
+    ev(4, "logro", null, { house: 5 }),
+    ev(5, "asedio", 9, { house: 3, tile: 1 }),
+  ];
+
+  it("«Solo lo mío» toma lo privado y donde sale tu casa, nunca por el número de una casilla", () => {
+    expect(events.filter((e) => involves(e, 1)).map((e) => e.id)).toEqual([1, 3]);
+    expect(chronicleFilter(events.filter((e) => !e.privado), "mio", 4).map((e) => e.id)).toEqual([2]);
+  });
+
+  it("«Batallas» deja combates y asedios", () => {
+    expect(chronicleFilter(events, "batallas", 1).map((e) => e.id)).toEqual([1, 5]);
+  });
+
+  it("agrupa por noche, la última primero y lo que no tiene noche al final", () => {
+    expect(byNight(events).map((g) => [g.night, g.events.map((e) => e.id)])).toEqual([
+      [9, [3, 5]],
+      [8, [1, 2]],
+      [null, [4]],
+    ]);
   });
 });

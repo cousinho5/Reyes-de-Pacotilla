@@ -1,7 +1,7 @@
 // Bloque 11: cuentas de la pestaña Reino (clasificación, flechas y gráfica).
 // Solo usan el Prestigio total de cada casa, que es público.
 
-import type { GameState, HouseInfo } from "./api";
+import type { EventView, GameState, HouseInfo } from "./api";
 
 export interface Standing {
   house: HouseInfo;
@@ -73,4 +73,36 @@ export function racePoints(state: GameState): RacePoint[] {
     points.push({ label: "Hoy", totals: live });
   }
   return points;
+}
+
+/** Filtros de la crónica: «Todo», «Solo lo mío» y «Batallas». */
+export type ChronicleFilter = "todo" | "mio" | "batallas";
+
+export const BATTLE_TYPES = new Set(["combate", "rebote", "choque_frontal", "repliegue", "asedio", "asedio_roto", "capitan_preso", "expulsion"]);
+
+/** Campos de un suceso que nombran casas (nunca casillas). */
+const HOUSE_KEYS = ["house", "winner", "by", "previousOwner", "guest", "host", "a", "b", "captor", "de", "para"];
+const HOUSE_LISTS = ["houses", "winners", "aside", "casas"];
+
+/** Si el suceso toca a esta casa: lo que solo ve ella o donde sale nombrada. */
+export function involves(e: EventView, house: number): boolean {
+  if (e.privado) return true;
+  const d = e.datos as Record<string, unknown>;
+  if (HOUSE_KEYS.some((k) => d[k] === house)) return true;
+  if (HOUSE_LISTS.some((k) => Array.isArray(d[k]) && (d[k] as unknown[]).includes(house))) return true;
+  const sides = d.sides;
+  return Array.isArray(sides) && sides.some((s) => s && typeof s === "object" && ((s as { house?: unknown }).house === house || ((s as { joint?: unknown[] }).joint ?? []).includes(house)));
+}
+
+export function chronicleFilter(events: EventView[], filter: ChronicleFilter, house: number): EventView[] {
+  if (filter === "mio") return events.filter((e) => involves(e, house));
+  if (filter === "batallas") return events.filter((e) => BATTLE_TYPES.has(e.tipo));
+  return events;
+}
+
+/** Sucesos agrupados por noche, la más reciente primero (sin noche, al final). */
+export function byNight<E extends Pick<EventView, "resolucion">>(events: E[]): { night: number | null; events: E[] }[] {
+  const groups = new Map<number | null, E[]>();
+  for (const e of events) groups.set(e.resolucion, [...(groups.get(e.resolucion) ?? []), e]);
+  return [...groups.entries()].sort(([a], [b]) => (b ?? -1) - (a ?? -1)).map(([night, events]) => ({ night, events }));
 }

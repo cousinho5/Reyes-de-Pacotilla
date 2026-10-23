@@ -182,6 +182,8 @@ export interface EventView {
   tipo: string;
   resolucion: number | null;
   datos: Record<string, unknown>;
+  /** Solo la ve esta casa (bloque 11: cuenta como «lo mío»). */
+  privado?: boolean;
 }
 
 export interface GameState {
@@ -408,6 +410,9 @@ export const api = {
       "GET",
       `/partidas/${id}/boletin/${semana}${edicion === "miercoles" ? "?edicion=miercoles" : ""}`,
     ),
+  /** Bloque 11: la crónica de una semana (sin semana, la última). */
+  chronicle: (id: number, semana?: number) =>
+    call<{ semana: number; semanas: number; eventos: EventView[] }>("GET", `/partidas/${id}/cronica/${semana ?? 0}`),
   errata: (id: number, texto: string) => call<{ ok: true; texto: string | null }>("PUT", `/partidas/${id}/fe-de-erratas`, { texto }),
   proclaim: (id: number, texto: string) => call<{ ok: true; texto: string | null }>("PUT", `/partidas/${id}/proclama`, { texto }),
   bribe: (id: number, plantilla: number) => call<{ ok: true }>("POST", `/partidas/${id}/soborno`, { plantilla }),
