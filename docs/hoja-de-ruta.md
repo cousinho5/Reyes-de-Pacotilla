@@ -1,6 +1,6 @@
 # Reyes de Pacotilla: hoja de ruta
 
-Actualizada el 22 de octubre de 2026 · copia del documento «Reyes de Pacotilla: hoja de ruta» (claude.ai)
+Actualizada el 23 de octubre de 2026 · copia del documento «Reyes de Pacotilla: hoja de ruta» (claude.ai)
 
 Primero se definen todos los bloques; después se hacen uno a uno, en el orden de la tabla. Cada bloque conserva su número aunque cambie de puesto, porque los documentos y el código lo citan así (`docs/bloque4.md`, «bloque 4» en `rules.ts`). Se pueden añadir o mover bloques sobre la marcha.
 
@@ -14,13 +14,13 @@ Primero se definen todos los bloques; después se hacen uno a uno, en el orden d
 | 6.º | 9. Diseño de la sección Mapa | ✅ Hecho (falta probarlo en un móvil de verdad) | #65 y #66 | Capas (con Alcance automático), escudos, tropas por color y tipo, niebla, línea de avisos y leyenda |
 | 7.º | 12. Diseño de la sección Órdenes | ✅ Hecho (falta probarlo en un móvil de verdad) | #67 a #71 | Verbo según el destino, botones de tropas, cambiar órdenes, tarjetas agrupadas, simulación con «¿Y si atacan?», repetir asedios y aviso 1 hora antes del cierre |
 | 8.º | 2. Vista del castillo y construcciones | ✅ Hecho (falta probarlo en un móvil de verdad) | #72 a #74 | Escena del castillo en pixel art con su hora del día, 25 dibujos de edificios, castillo que crece en 5 etapas (también en el mapa), ficha al tocar, lista con dibujos, tiendas del asedio y obra al mejorar |
-| 9.º | 10. Diseño de la sección Comercio | ⏳ Pendiente (decidido) | — | Lo urgente arriba, oferta en dos líneas con «Precio justo», valor en Oro de la Corona, aceptar en gris, ofertas que caducan, Corona en Comercio e hilo del trato con frase |
+| 9.º | 10. Diseño de la sección Comercio | 🔨 En curso | #75 | Lo urgente arriba, oferta en dos líneas con «Precio justo», valor en Oro de la Corona, aceptar en gris, ofertas que caducan, Corona en Comercio e hilo del trato con frase |
 | 10.º | 3. Mejora del cronista | ⏳ Pendiente (decidido) | — | Fray Abundio: dos boletines por semana, repetición narrada, frases nuevas, memoria, proclamas y dibujo nuevo |
 | 11.º | 11. Diseño de la sección Reino | ⏳ Pendiente (decidido) | — | Clasificación con podio y flechas arriba, gráfica de la carrera, boletín en tarjeta, crónica por noches, ficha de casa, tira de diplomacia y pantalla de coronación |
 | 12.º | 13. Historia y cinemáticas | ⏳ Pendiente (decidido) | — | Cinco cinemáticas en pixel art: prólogo de la muerte de Aldric, coronación con mapa por semanas y títulos cómicos, viñetas de eventos, última semana y fantasma de Aldric; sin sonido de momento |
 | 13.º | 7. Mejorar pagina de inicio del juego | ⏳ Pendiente (decidido) | — | Portada con Aldricia viva en pixel art según la hora real, tarjeta de la partida más urgente con cuenta atrás y avisos, entrar con código en una hoja, invitación como bando real, vitrina de coronas e instalar |
 
-**Cómo vamos:** 8 de 13 bloques hechos; el siguiente, el 10 (Comercio). La tabla se actualiza al empezar y al cerrar cada bloque, con sus PR.
+**Cómo vamos:** 8 de 13 bloques hechos; en curso, el 10 (Comercio). La tabla se actualiza al empezar y al cerrar cada bloque, con sus PR.
 
 **Por qué este orden:**
 

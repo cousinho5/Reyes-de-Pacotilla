@@ -1234,6 +1234,12 @@ svg.ico {
 .offer-terms .res {
   margin-right: 0.4rem;
 }
+.offer-worth {
+  display: block;
+  font-family: var(--font-text);
+  font-weight: 400;
+  color: var(--ink-soft);
+}
 .offer .actions button {
   min-height: var(--touch);
 }
@@ -2704,17 +2710,21 @@ button.wide {
   color: #a8321f;
   font-weight: 700;
 }
-.house-settings summary {
+.house-settings summary,
+.fold summary {
   cursor: pointer;
   list-style: none;
 }
-.house-settings summary::-webkit-details-marker {
+.house-settings summary::-webkit-details-marker,
+.fold summary::-webkit-details-marker {
   display: none;
 }
-.house-settings summary h2 {
+.house-settings summary h2,
+.fold summary h2 {
   display: inline;
 }
-.house-settings summary::after {
+.house-settings summary::after,
+.fold summary::after {
   content: "";
   display: inline-block;
   width: 0.45em;
@@ -2725,7 +2735,8 @@ button.wide {
   transform: rotate(-45deg);
   transition: transform 0.15s;
 }
-.house-settings[open] summary::after {
+.house-settings[open] summary::after,
+.fold[open] summary::after {
   transform: rotate(45deg) translate(-0.15em, -0.15em);
 }
 .house-settings section {

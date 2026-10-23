@@ -2,7 +2,10 @@ import { useState } from "react";
 import { api, type GameState } from "../api";
 import { formatWhen, houseName } from "../ui";
 
-/** Gran Subasta del miércoles: tres lotes y pujas ciegas en Oro. */
+/**
+ * Gran Subasta del miércoles: tres lotes y pujas ciegas en Oro. Cerrada, ocupa
+ * una línea (bloque 10); el resultado de la última, plegado.
+ */
 export function AuctionPanel({
   state,
   act,
@@ -14,24 +17,37 @@ export function AuctionPanel({
   const [bids, setBids] = useState<Record<number, string>>({});
   if (!a) {
     return (
-      <section className="card">
-        <h2>Gran Subasta</h2>
-        <p className="muted">Los lotes de la semana se anuncian el martes a las 22:00.</p>
-      </section>
+      <p className="card auction-line">
+        <strong>Gran Subasta:</strong> lotes el martes a las 22:00.
+      </p>
+    );
+  }
+  if (!a.abierta) {
+    return (
+      <details className="card fold auction-line">
+        <summary>
+          <strong>Gran Subasta:</strong> cerrada; lotes el martes a las 22:00.
+        </summary>
+        <ul className="list">
+          {a.lotes.map((l) => (
+            <li key={l.lote}>
+              {l.carta ? `Carta: ${l.carta.nombre}` : l.nombre}
+              <br />
+              <small>{l.ganador != null ? `Para ${houseName(state.casas, l.ganador)} por ${l.precio} de Oro.` : "Nadie pujó."}</small>
+            </li>
+          ))}
+        </ul>
+      </details>
     );
   }
   const oro = state.yo.recursos?.oro ?? 0;
   return (
     <section className="card auction">
       <h2>Gran Subasta · semana {a.semana}</h2>
-      {a.abierta ? (
-        <p className="muted">
-          Pujas ciegas en Oro hasta el {formatWhen(state.partida.cierre)}. Gana la más alta (en empate, la primera) y el Oro
-          pagado desaparece. Cada lote ganado da +2 de Prestigio, hasta 3 veces.
-        </p>
-      ) : (
-        <p className="muted">Subasta cerrada. Resultado:</p>
-      )}
+      <p className="muted">
+        Pujas ciegas en Oro hasta el {formatWhen(state.partida.cierre)}. Gana la más alta (en empate, la primera) y el Oro pagado
+        desaparece. Cada lote ganado da +2 de Prestigio, hasta 3 veces.
+      </p>
       <ul className="list">
         {a.lotes.map((l) => {
           const value = bids[l.lote] ?? (l.miPuja != null ? String(l.miPuja) : "");
@@ -45,48 +61,38 @@ export function AuctionPanel({
                     <small>{l.carta.texto}</small>
                   </>
                 )}
-                {!a.abierta && (
-                  <>
-                    <br />
-                    <small>
-                      {l.ganador != null ? `Para ${houseName(state.casas, l.ganador)} por ${l.precio} de Oro.` : "Nadie pujó."}
-                    </small>
-                  </>
-                )}
-                {a.abierta && l.miPuja != null && (
+                {l.miPuja != null && (
                   <>
                     <br />
                     <small>Tu puja: {l.miPuja} de Oro</small>
                   </>
                 )}
               </div>
-              {a.abierta && (
-                <form
-                  className="inline bid"
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    const n = Number(value);
-                    act(() => api.bid(state.partida.id, l.lote, n), n === 0 ? "Puja retirada." : "Puja sellada. Nadie sabe cuánto.");
-                  }}
-                >
-                  <input
-                    type="number"
-                    min={0}
-                    max={oro}
-                    inputMode="numeric"
-                    aria-label={`Puja por el lote ${l.lote}`}
-                    placeholder="Oro"
-                    value={value}
-                    onChange={(e) => setBids({ ...bids, [l.lote]: e.target.value })}
-                  />
-                  <button type="submit">{l.miPuja != null ? "Cambiar" : "Pujar"}</button>
-                </form>
-              )}
+              <form
+                className="inline bid"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const n = Number(value);
+                  act(() => api.bid(state.partida.id, l.lote, n), n === 0 ? "Puja retirada." : "Puja sellada. Nadie sabe cuánto.");
+                }}
+              >
+                <input
+                  type="number"
+                  min={0}
+                  max={oro}
+                  inputMode="numeric"
+                  aria-label={`Puja por el lote ${l.lote}`}
+                  placeholder="Oro"
+                  value={value}
+                  onChange={(e) => setBids({ ...bids, [l.lote]: e.target.value })}
+                />
+                <button type="submit">{l.miPuja != null ? "Cambiar" : "Pujar"}</button>
+              </form>
             </li>
           );
         })}
       </ul>
-      {a.abierta && <p className="hint">Para retirar una puja, pon 0. Tienes {oro} de Oro.</p>}
+      <p className="hint">Para retirar una puja, pon 0. Tienes {oro} de Oro.</p>
     </section>
   );
 }

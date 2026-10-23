@@ -46,3 +46,7 @@ Van después de los bloques 5 (usan los precios de la Corona) y 6.
 6. **Corona y mercenarios** (punto 7): la Corona en Comercio y los mercenarios en Castillo, junto a Reclutar.
 7. **Hilo del trato** (punto 8): las contraofertas ya guardan su oferta madre (`parent_offer_id`); la tarjeta junta la cadena. La frase corta es una columna nueva, de 80 letras como mucho.
 8. **Comprobar en un móvil** de 390x844: hacer, contraofertar y aceptar un trato.
+
+## Hecho
+
+- **PR 1** (pasos 1 y 3): Para ti, Mercado y Tus ofertas arriba; la Gran Subasta en una línea si no está abierta (el resultado, plegado); Recientes y Tratos del reino plegados. El valor en Oro de cada lado va debajo de lo que se da y lo que se pide (`referenceValue` de `crown.ts`, con `referenceUnit` y `fairAmount` para «Precio justo»). La API ya enviaba solo los precios de la Corona. Los mercenarios ya estaban en Castillo, debajo de Reclutar.

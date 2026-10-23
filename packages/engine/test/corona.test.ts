@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CROWN, PERSONALITIES, crownAffordable, crownPrices, crownQuote, crownUnitPrice, planCrown, situation, writeBulletin, type AiView, type BulletinInput, type Resources } from "../src";
+import { CROWN, PERSONALITIES, crownAffordable, crownPrices, crownQuote, crownUnitPrice, fairAmount, planCrown, referenceUnit, referenceValue, situation, writeBulletin, type AiView, type BulletinInput, type Resources } from "../src";
 
 // Reino equilibrado: la media de los cuatro recursos es 100 y el Hierro escasea.
 const realm: Resources = { pan: 130, madera: 130, piedra: 130, hierro: 10, oro: 300 };
@@ -80,5 +80,36 @@ describe("Cambio con la Corona (bloque 5)", () => {
     const text = writeBulletin(input).sections.flatMap((s) => s.lines).join(" ");
     expect(text).toContain("12 de Hierro");
     expect(text).not.toContain("Casa Uno compra");
+  });
+});
+
+describe("Precio de referencia (bloque 10)", () => {
+  const prices = crownPrices(realm, none);
+
+  it("es el precio de la Corona sin su 30%, y el Oro vale 1", () => {
+    expect(referenceUnit(prices, "hierro")).toBeCloseTo(Math.sqrt(110 / 20) * 2, 6);
+    expect(referenceUnit(prices, "oro")).toBe(1);
+  });
+
+  it("valora un lote sumando cada recurso y redondea", () => {
+    const pan = Math.sqrt(110 / 140) * 2;
+    expect(referenceValue({ pan: 20, oro: 5 }, prices)).toBe(Math.round(20 * pan + 5));
+    expect(referenceValue({}, prices)).toBe(0);
+  });
+
+  it("«Precio justo» da las unidades que valen lo mismo", () => {
+    const give = { hierro: 10 };
+    const pan = fairAmount(give, prices, "pan");
+    expect(pan).toBe(Math.round((10 * Math.sqrt(110 / 20)) / Math.sqrt(110 / 140)));
+    expect(fairAmount(give, prices, "oro")).toBe(referenceValue(give, prices));
+    expect(fairAmount({ pan: 1 }, prices, "hierro")).toBe(1);
+  });
+
+  it("no cambia la entrada", () => {
+    const give = { pan: 10 };
+    const copy = { ...prices };
+    fairAmount(give, prices, "madera");
+    expect(give).toEqual({ pan: 10 });
+    expect(prices).toEqual(copy);
   });
 });

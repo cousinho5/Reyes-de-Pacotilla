@@ -3,7 +3,7 @@ import { AuctionPanel } from "./AuctionPanel";
 import { CrownPanel } from "./CrownPanel";
 import { DiplomacyPanel } from "./DiplomacyPanel";
 import { useState } from "react";
-import { RESOURCES, type Resources } from "@reyes/engine";
+import { RESOURCES, referenceValue, type Resources } from "@reyes/engine";
 import { api, type GameState, type OfferInfo } from "../api";
 import { HOUSE_COLORS, RESOURCE_LABEL, houseName } from "../ui";
 
@@ -28,6 +28,57 @@ function Bundle({ r }: { r: Partial<Resources> }) {
 
 const empty = (): Record<keyof Resources, number> => ({ pan: 0, madera: 0, piedra: 0, hierro: 0, oro: 0 });
 
+/** Valor en Oro de un lado con el precio de referencia (bloque 10): sin etiquetas. */
+function Worth({ r, prices }: { r: Partial<Resources>; prices?: Partial<Resources> }) {
+  if (!prices) return null;
+  return (
+    <small className="offer-worth" title="Lo que vale en Oro con los precios de la Corona, sin su recargo">
+      ≈ {referenceValue(r, prices)} de Oro
+    </small>
+  );
+}
+
+function OfferCard({ state, o, children }: { state: GameState; o: OfferInfo; children?: React.ReactNode }) {
+  const me = state.yo.casa;
+  const house = state.casas.find((h) => h.id === o.de);
+  return (
+    <li className="offer">
+      <div className="offer-who">
+        <ShieldIcon color={house?.color ?? ""} escudo={house?.escudo} size={26} />
+        <span>
+          <strong>{o.de === me ? "Tú" : houseName(state.casas, o.de)}</strong>
+          {o.para != null && o.de === me && <> a {houseName(state.casas, o.para)}</>}
+          {o.contraofertaDe != null && <small className="muted"> · contraoferta</small>}
+        </span>
+      </div>
+      <div className="offer-terms">
+        <span>
+          <em>{o.de === me ? "Das" : "Te da"}</em> <Bundle r={o.da} />
+          <Worth r={o.da} prices={state.corona?.precios} />
+        </span>
+        <span>
+          <em>{o.de === me ? "Pides" : "A cambio de"}</em> <Bundle r={o.pide} />
+          <Worth r={o.pide} prices={state.corona?.precios} />
+        </span>
+      </div>
+      {state.partida.estado === "active" && children && <div className="actions">{children}</div>}
+    </li>
+  );
+}
+
+const STATUS: Record<OfferInfo["estado"], string> = {
+  open: "abierta",
+  accepted: "aceptada",
+  rejected: "rechazada",
+  countered: "contraofertada",
+  cancelled: "retirada",
+};
+
+/**
+ * Pestaña Comercio (bloque 10). Arriba lo que pide respuesta: Para ti, Mercado y
+ * tus ofertas. Después la subasta (en una línea si está cerrada) y la Corona;
+ * al final, plegados, lo reciente y los tratos del reino.
+ */
 export function TradePanel({ state, act }: Props) {
   const me = state.yo.casa;
   const gameId = state.partida.id;
@@ -39,37 +90,12 @@ export function TradePanel({ state, act }: Props) {
   const closed = offers.filter((o) => o.estado !== "open");
   const [draft, setDraft] = useState<{ para: number | null; da: Record<keyof Resources, number>; pide: Record<keyof Resources, number>; contra?: OfferInfo } | null>(null);
   const active = state.partida.estado === "active";
-  const house = (id: number) => state.casas.find((h) => h.id === id);
 
-  const startCounter = (o: OfferInfo) =>
-    setDraft({ para: o.de, da: { ...o.pide }, pide: { ...o.da }, contra: o });
-
-  const OfferCard = ({ o, children }: { o: OfferInfo; children?: React.ReactNode }) => (
-    <li className="offer">
-      <div className="offer-who">
-        <ShieldIcon color={house(o.de)?.color ?? ""} escudo={house(o.de)?.escudo} size={26} />
-        <span>
-          <strong>{o.de === me ? "Tú" : houseName(state.casas, o.de)}</strong>
-          {o.para != null && o.de === me && <> a {houseName(state.casas, o.para)}</>}
-          {o.contraofertaDe != null && <small className="muted"> · contraoferta</small>}
-        </span>
-      </div>
-      <div className="offer-terms">
-        <span>
-          <em>{o.de === me ? "Das" : "Te da"}</em> <Bundle r={o.da} />
-        </span>
-        <span>
-          <em>{o.de === me ? "Pides" : "A cambio de"}</em> <Bundle r={o.pide} />
-        </span>
-      </div>
-      {active && <div className="actions">{children}</div>}
-    </li>
-  );
+  const startCounter = (o: OfferInfo) => setDraft({ para: o.de, da: { ...o.pide }, pide: { ...o.da }, contra: o });
+  const accept = (o: OfferInfo) => act(() => api.acceptOffer(gameId, o.id), "Trato cerrado. Ambas partes creen haber ganado.");
 
   return (
-    <div>
-      {/* Bloque 8: las alianzas, arriba mientras no tengan su sitio en el diseño de Comercio (bloque 10). */}
-      <DiplomacyPanel state={state} act={act} />
+    <div className="trade">
       {draft ? (
         <OfferForm
           state={state}
@@ -95,10 +121,6 @@ export function TradePanel({ state, act }: Props) {
         )
       )}
 
-      <AuctionPanel state={state} act={act} />
-
-      <CrownPanel state={state} act={act} />
-
       <section className="card">
         <h2>Para ti ({forMe.length})</h2>
         {forMe.length === 0 ? (
@@ -106,8 +128,8 @@ export function TradePanel({ state, act }: Props) {
         ) : (
           <ul className="list">
             {forMe.map((o) => (
-              <OfferCard key={o.id} o={o}>
-                <button className="primary" onClick={() => act(() => api.acceptOffer(gameId, o.id), "Trato cerrado. Ambas partes creen haber ganado.")}>
+              <OfferCard key={o.id} state={state} o={o}>
+                <button className="primary" onClick={() => accept(o)}>
                   Aceptar
                 </button>
                 <button onClick={() => startCounter(o)}>Contraofertar</button>
@@ -127,8 +149,8 @@ export function TradePanel({ state, act }: Props) {
         ) : (
           <ul className="list">
             {market.map((o) => (
-              <OfferCard key={o.id} o={o}>
-                <button className="primary" onClick={() => act(() => api.acceptOffer(gameId, o.id), "Trato cerrado. Ambas partes creen haber ganado.")}>
+              <OfferCard key={o.id} state={state} o={o}>
+                <button className="primary" onClick={() => accept(o)}>
                   Aceptar
                 </button>
                 <button onClick={() => startCounter(o)}>Contraofertar</button>
@@ -139,13 +161,13 @@ export function TradePanel({ state, act }: Props) {
       </section>
 
       <section className="card">
-        <h2>Tus ofertas abiertas ({mine.length})</h2>
+        <h2>Tus ofertas ({mine.length})</h2>
         {mine.length === 0 ? (
           <p className="muted">No tienes ofertas abiertas. Puedes tener hasta 3 públicas.</p>
         ) : (
           <ul className="list">
             {mine.map((o) => (
-              <OfferCard key={o.id} o={o}>
+              <OfferCard key={o.id} state={state} o={o}>
                 <button className="link" onClick={() => act(() => api.cancelOffer(gameId, o.id), "Oferta retirada.")}>
                   Retirar
                 </button>
@@ -155,30 +177,36 @@ export function TradePanel({ state, act }: Props) {
         )}
       </section>
 
+      <AuctionPanel state={state} act={act} />
+
+      <CrownPanel state={state} act={act} />
+
+      {/* Bloque 8: las alianzas, aquí hasta que el bloque 11 las lleve a Reino. */}
+      <DiplomacyPanel state={state} act={act} />
+
       {closed.length > 0 && (
-        <section className="card">
-          <h2>Tus ofertas recientes</h2>
+        <details className="card fold">
+          <summary>
+            <h2>Tus ofertas recientes ({closed.length})</h2>
+          </summary>
           <ul className="list">
             {closed.slice(0, 8).map((o) => (
               <li key={o.id}>
                 <Bundle r={o.da} /> por <Bundle r={o.pide} /> ·{" "}
                 <small>
-                  {o.estado === "accepted"
-                    ? `aceptada${o.aceptadaPor && o.aceptadaPor !== me ? ` por ${houseName(state.casas, o.aceptadaPor)}` : ""}`
-                    : o.estado === "rejected"
-                      ? "rechazada"
-                      : o.estado === "countered"
-                        ? "contraofertada"
-                        : "retirada"}
+                  {STATUS[o.estado]}
+                  {o.estado === "accepted" && o.aceptadaPor && o.aceptadaPor !== me ? ` por ${houseName(state.casas, o.aceptadaPor)}` : ""}
                 </small>
               </li>
             ))}
           </ul>
-        </section>
+        </details>
       )}
 
-      <section className="card">
-        <h2>Tratos del reino</h2>
+      <details className="card fold">
+        <summary>
+          <h2>Tratos del reino ({(state.tratos ?? []).length})</h2>
+        </summary>
         <p className="muted">
           Cada casa distinta con la que cierras un trato de al menos 10 recursos por lado en los últimos 7 días da 2 de Prestigio
           (máximo 6).
@@ -196,7 +224,7 @@ export function TradePanel({ state, act }: Props) {
             ))}
           </ul>
         )}
-      </section>
+      </details>
     </div>
   );
 }
