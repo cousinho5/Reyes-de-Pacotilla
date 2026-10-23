@@ -11,13 +11,14 @@ import {
   PHRASES,
   PROCLAMATION,
   writeBulletin,
+  writeChronicle,
   type Bulletin,
   type BulletinEdition,
   type BulletinFact,
   type ObjectiveKey,
 } from "@reyes/engine";
 import { notifyHouses, type NotifyEnv } from "./notify";
-import { computeAllPrestige, gameNow, loadHouses, loadTiles, toEngineTiles, type GameRow } from "./state";
+import { computeAllPrestige, gameNow, loadHouses, loadTiles, rhythmOf, toEngineTiles, type GameRow } from "./state";
 
 export interface StoredBulletin extends Bulletin {
   /** Último evento del registro incluido (el siguiente boletín empieza después). */
@@ -63,16 +64,30 @@ export async function publishBulletin(
   // Hechos desde el domingo anterior: el miércoles, los de mitad de semana; el
   // domingo, toda la semana, marcando los que ya contó la hoja volandera.
   const since = previous?.lastEventId ?? 0;
-  const [facts, trades, crown] = await Promise.all([
-    db.prepare("SELECT id, type, payload FROM event_log WHERE game_id = ? AND visible_to IS NULL AND id > ? ORDER BY id")
+  const per = rhythmOf(game).days.length;
+  const [facts, trades, crown, pastRows, prevRanking] = await Promise.all([
+    db.prepare(
+      "SELECT e.id, e.type, e.payload, r.number AS resolution FROM event_log e LEFT JOIN resolutions r ON r.id = e.resolution_id WHERE e.game_id = ? AND e.visible_to IS NULL AND e.id > ? ORDER BY e.id",
+    )
       .bind(game.id, since)
-      .all<{ id: number; type: string; payload: string }>(),
+      .all<{ id: number; type: string; payload: string; resolution: number | null }>(),
     db.prepare("SELECT house_a, house_b FROM trades WHERE game_id = ? AND at >= ?")
       .bind(game.id, new Date(now.getTime() - 7 * 864e5).toISOString())
       .all<{ house_a: number; house_b: number }>(),
     db.prepare("SELECT resource, SUM(units) AS units FROM crown_purchases WHERE game_id = ? AND at >= ? GROUP BY resource")
       .bind(game.id, new Date(now.getTime() - 7 * 864e5).toISOString())
       .all<{ resource: string; units: number }>(),
+    // Bloque 3: para la memoria del cronista, los combates y asedios de antes y la clasificación del domingo anterior.
+    db.prepare(
+      "SELECT e.type, e.payload, r.number AS resolution FROM event_log e LEFT JOIN resolutions r ON r.id = e.resolution_id WHERE e.game_id = ? AND e.visible_to IS NULL AND e.id <= ? AND e.type IN ('combate', 'asedio') ORDER BY e.id",
+    )
+      .bind(game.id, since)
+      .all<{ type: string; payload: string; resolution: number | null }>(),
+    mid || week <= 1
+      ? { results: [] }
+      : db.prepare("SELECT house_id FROM prestige_snapshots WHERE game_id = ? AND resolution_no = ? ORDER BY total DESC, house_id")
+          .bind(game.id, (week - 1) * per)
+          .all<{ house_id: number }>(),
   ]);
   const tiles = toEngineTiles(tileRows);
   const prestige = await computeAllPrestige(db, game.id, houses, tiles, now);
@@ -106,6 +121,12 @@ export async function publishBulletin(
     if (row) traitor = { house: row.house, broken: row.n };
   }
 
+  const allFacts = facts.results.map<BulletinFact>((f) => ({
+    type: f.type,
+    data: JSON.parse(f.payload) as Record<string, unknown>,
+    resolution: f.resolution,
+    ...(f.id <= told && MIDWEEK_TYPES.includes(f.type) ? { told: true } : {}),
+  }));
   const bulletin = writeBulletin({
     seed: game.seed,
     week,
@@ -122,11 +143,15 @@ export async function publishBulletin(
       prestige: ranking?.find((r) => r.house === h.id)?.total ?? prestige.get(h.id)?.total ?? 0,
     })),
     previousLeader: previous?.leader ?? null,
-    facts: facts.results.map<BulletinFact>((f) => ({
-      type: f.type,
-      data: JSON.parse(f.payload) as Record<string, unknown>,
-      ...(f.id <= told && MIDWEEK_TYPES.includes(f.type) ? { told: true } : {}),
-    })),
+    facts: allFacts,
+    memory: {
+      // Lo ya contado el miércoles también es pasado para la memoria del domingo.
+      past: [
+        ...pastRows.results.map((f) => ({ type: f.type, data: JSON.parse(f.payload) as Record<string, unknown>, resolution: f.resolution })),
+        ...allFacts.filter((f) => f.told),
+      ],
+      ...(prevRanking.results.length > 0 ? { previousRanking: prevRanking.results.map((r) => r.house_id) } : {}),
+    },
     tileNames: new Map(tileRows.map((t) => [t.id, t.name])),
     tileTypes: new Map(tiles.map((t) => [t.id, t.type])),
     tileOwners: new Map(tiles.map((t) => [t.id, t.owner])),
@@ -204,4 +229,80 @@ export async function proclamationView(db: D1Database, game: GameRow, houseId: n
     .bind(game.id, houseId, week)
     .first<{ text: string }>();
   return { semana: week, texto: row?.text ?? null, max: PROCLAMATION.maxLetters };
+}
+
+/**
+ * Bloque 3: la Crónica Definitiva, al acabar la partida. Se guarda como la
+ * semana 0 y se lee en el mismo pergamino que los boletines.
+ */
+export async function publishChronicle(env: NotifyEnv, game: GameRow): Promise<void> {
+  const db = env.DB;
+  const exists = await db.prepare("SELECT 1 AS x FROM bulletins WHERE game_id = ? AND week = 0").bind(game.id).first();
+  if (exists) return;
+  const per = rhythmOf(game).days.length;
+  const [houses, tileRows, end, facts, snapshots] = await Promise.all([
+    loadHouses(db, game.id),
+    loadTiles(db, game.id),
+    db.prepare("SELECT payload FROM event_log WHERE game_id = ? AND type = 'fin' ORDER BY id DESC LIMIT 1").bind(game.id).first<{ payload: string }>(),
+    db.prepare(
+      "SELECT e.type, e.payload, r.number AS resolution FROM event_log e LEFT JOIN resolutions r ON r.id = e.resolution_id WHERE e.game_id = ? AND e.visible_to IS NULL AND e.type IN ('combate', 'alianza_rota') ORDER BY e.id",
+    )
+      .bind(game.id)
+      .all<{ type: string; payload: string; resolution: number | null }>(),
+    db.prepare("SELECT house_id, resolution_no, total FROM prestige_snapshots WHERE game_id = ? AND resolution_no % ? = 0 ORDER BY resolution_no, total DESC, house_id")
+      .bind(game.id, per)
+      .all<{ house_id: number; resolution_no: number; total: number }>(),
+  ]);
+  const winner = end ? (JSON.parse(end.payload) as { winner: number | null }).winner : null;
+  if (winner == null) return;
+  // La semana de cada hecho sale de su resolución; las alianzas rotas sin resolución, de la anterior.
+  let lastResolution = 0;
+  const logged = facts.results.map((f) => {
+    if (f.resolution != null) lastResolution = f.resolution;
+    const r = f.resolution ?? lastResolution + 1;
+    return { type: f.type, data: JSON.parse(f.payload) as Record<string, unknown>, resolution: f.resolution, week: Math.ceil(r / per) };
+  });
+  const weeklyRanking: number[][] = [];
+  for (let w = 1; w <= game.weeks; w++) {
+    const rows = snapshots.results.filter((x) => x.resolution_no === w * per);
+    if (rows.length > 0) weeklyRanking.push(rows.map((x) => x.house_id));
+  }
+  const chronicle = writeChronicle({
+    seed: game.seed,
+    houses: houses.map((h) => ({ id: h.id, name: h.name, motto: h.motto, color: h.color, symbol: h.symbol, prestige: 0 })),
+    winner,
+    facts: logged,
+    weeklyRanking,
+    tileNames: new Map(tileRows.map((t) => [t.id, t.name])),
+  });
+  const now = gameNow(game);
+  try {
+    await db.batch([
+      db.prepare("INSERT INTO job_runs (game_id, job_key) VALUES (?, ?)").bind(game.id, "cronica"),
+      db.prepare("INSERT INTO bulletins (game_id, week, edition, content, published_at) VALUES (?, 0, 'domingo', ?, ?)").bind(
+        game.id,
+        JSON.stringify({ ...chronicle, lastEventId: 0 }),
+        now.toISOString(),
+      ),
+    ]);
+  } catch (err) {
+    if (err instanceof Error && /UNIQUE constraint failed/.test(err.message)) return;
+    throw err;
+  }
+  await notifyHouses(env, houses.map((h) => h.id), {
+    kind: "boletin",
+    title: "La Crónica Definitiva",
+    body: "Fray Abundio cuenta cómo fue de verdad el interregno. Más o menos.",
+    url: `/partida/${game.id}`,
+    dedupe: `cronica:${game.id}`,
+  });
+}
+
+/** Bloque 3: la fe de erratas de las casas que no ganaron, al pie de la Crónica (proclamas de la semana 0). */
+export async function errataView(db: D1Database, gameId: number) {
+  const rows = await db
+    .prepare("SELECT house_id, text FROM proclamations WHERE game_id = ? AND week = 0 ORDER BY updated_at, house_id")
+    .bind(gameId)
+    .all<{ house_id: number; text: string }>();
+  return rows.results.map((r) => ({ casa: r.house_id, texto: r.text }));
 }

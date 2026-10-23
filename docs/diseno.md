@@ -673,6 +673,12 @@ El último boletín sale con el final: revela las ambiciones secretas y nombra a
 - Al terminar la partida, Fray Abundio publica la historia completa del interregno, **reescrita a favor del ganador**: sus derrotas pasan a ser "pruebas de humildad" y sus traiciones, "visión de estado".
 - Las cifras no cambian; solo los adjetivos.
 - Se genera a partir de los boletines y del registro de eventos, y se puede compartir como recuerdo del grupo.
+- Hecho en el bloque 3 (`packages/engine/src/chronicle.ts`): prólogo, hasta dos momentos por semana y ocho en total (conquistas, derrotas convertidas en «pruebas de humildad», traiciones convertidas en «visión de estado» y su peor semana) y epílogo con el rival más tenaz. Se guarda como la semana 0 y se lee en el mismo pergamino, con ribete dorado.
+- **Fe de erratas:** cada casa que no ganó puede dejar una línea (hasta 140 letras) al pie de la Crónica.
+
+### 17.7 bis La memoria del cronista (bloque 3)
+
+En cada boletín, dos recuerdos como mucho, sacados del registro de la partida (`packages/engine/src/memory.ts`): venganzas (recuperar la casilla que te quitó esa misma casa), la batalla más grande de la partida (12 tropas o más), rivalidades (3, 5, 8, 12 y 20 combates entre dos casas), rachas de noches seguidas conquistando (3, 5, 7 y 10), el asedio más largo (4 noches o más) y, solo el domingo, remontadas (subir 3 puestos, o de último al podio) y la caída del líder. Solo dentro de cada partida.
 
 ### 17.8 Aspecto visual
 

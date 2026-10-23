@@ -48,6 +48,7 @@ import {
   BRIBE_COST,
   PHRASES,
   checkProclamation,
+  PROCLAMATION,
   resolutionInfo,
   type WeekEvent,
   EVENTS,
@@ -78,7 +79,7 @@ import {
 import { notifyHouses, vapidFrom, type NotifyEnv } from "./notify";
 import { COLORS, shieldOf, shieldView } from "./heraldry";
 import { clockOf, runGameJobs } from "./jobs";
-import { bribeView, proclamationView, type StoredBulletin } from "./boletin";
+import { bribeView, errataView, proclamationView, type StoredBulletin } from "./boletin";
 import { auctionView, handView, openAuctionWeek, spiedHouses, useCardStatements, type CardRow } from "./subasta";
 import { addBots, advance, botsPlayDay, deleteTestGame, testStart } from "./pruebas";
 import { ransomStatements } from "./rescate";
@@ -754,6 +755,11 @@ app.get("/api/partidas/:id", async (c) => {
     soborno:
       game.status === "active"
         ? await bribeView(db, game, house.id, house.name, resolutionInfo(Math.min(game.current_resolution + 1, totalResolutions(game.weeks, rhythmOf(game).days)), rhythmOf(game).days).week)
+        : null,
+    // Bloque 3: la fe de erratas de esta casa al pie de la Crónica Definitiva (si no ganó).
+    feDeErratas:
+      finished && ending != null && (JSON.parse(ending.payload) as { winner: number | null }).winner !== house.id
+        ? { texto: (await errataView(db, game.id)).find((e) => e.casa === house.id)?.texto ?? null, max: PROCLAMATION.maxLetters }
         : null,
     // Bloque 3: la proclama de esta casa para el próximo domingo.
     proclama:
@@ -1477,7 +1483,9 @@ app.get("/api/partidas/:id/boletin/:semana", async (c) => {
     .first<{ content: string; published_at: string }>();
   if (!row) return fail(c, 404, "Ese boletín aún no se ha escrito.");
   const content = JSON.parse(row.content) as StoredBulletin;
-  return c.json({ ...content, lastEventId: undefined, publicado: row.published_at });
+  // Bloque 3: la Crónica Definitiva (semana 0) lleva al pie la fe de erratas de los vencidos.
+  const erratas = Number(c.req.param("semana")) === 0 ? await errataView(c.env.DB, m.game.id) : undefined;
+  return c.json({ ...content, lastEventId: undefined, publicado: row.published_at, ...(erratas ? { erratas } : {}) });
 });
 
 /** Bloque 3: escribir, cambiar o retirar (texto vacío) la proclama de la semana. */
@@ -1500,6 +1508,35 @@ app.put("/api/partidas/:id/proclama", async (c) => {
         "INSERT INTO proclamations (game_id, house_id, week, text, updated_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT (game_id, house_id, week) DO UPDATE SET text = excluded.text, updated_at = excluded.updated_at",
       )
       .bind(m.game.id, m.house.id, week, checked.text, gameNow(m.game).toISOString())
+      .run();
+  }
+  return c.json({ ok: true, texto: checked.text || null });
+});
+
+/**
+ * Bloque 3: fe de erratas. Al acabar la partida, cada casa que no ganó puede
+ * dejar una línea al pie de la Crónica Definitiva (vacía = retirarla).
+ */
+app.put("/api/partidas/:id/fe-de-erratas", async (c) => {
+  const m = await membership(c);
+  if (m instanceof Response) return m;
+  if (m.game.status !== "finished") return fail(c, 409, "La fe de erratas se escribe cuando acaba la partida.");
+  const db = c.env.DB;
+  const end = await db.prepare("SELECT payload FROM event_log WHERE game_id = ? AND type = 'fin' ORDER BY id DESC LIMIT 1").bind(m.game.id).first<{ payload: string }>();
+  const winner = end ? (JSON.parse(end.payload) as { winner: number | null }).winner : null;
+  if (winner === m.house.id) return fail(c, 409, "El ganador no necesita erratas: la Crónica ya dice lo que quiere.");
+  const { texto } = await c.req.json<{ texto?: unknown }>().catch(() => ({ texto: undefined }));
+  if (typeof texto !== "string") return fail(c, 400, "Falta el texto.");
+  const checked = checkProclamation(texto);
+  if (!checked.ok) return fail(c, 400, checked.error);
+  if (checked.text === "") {
+    await db.prepare("DELETE FROM proclamations WHERE game_id = ? AND house_id = ? AND week = 0").bind(m.game.id, m.house.id).run();
+  } else {
+    await db
+      .prepare(
+        "INSERT INTO proclamations (game_id, house_id, week, text, updated_at) VALUES (?, ?, 0, ?, ?) ON CONFLICT (game_id, house_id, week) DO UPDATE SET text = excluded.text, updated_at = excluded.updated_at",
+      )
+      .bind(m.game.id, m.house.id, checked.text, gameNow(m.game).toISOString())
       .run();
   }
   return c.json({ ok: true, texto: checked.text || null });

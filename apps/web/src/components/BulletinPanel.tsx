@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { bulletinText, type Bulletin } from "@reyes/engine";
+import { bulletinText, houseInSentence, type Bulletin } from "@reyes/engine";
 import { api, type GameState } from "../api";
 import { FrayAbundio } from "../art";
 import { HOUSE_COLORS } from "../ui";
 
 type Edition = "domingo" | "miercoles";
+type Shown = Bulletin & { erratas?: { casa: number; texto: string }[] };
 const keyOf = (b: { semana: number; edicion?: Edition }) => `${b.semana}:${b.edicion ?? "domingo"}`;
 
 /** Boletines de Fray Abundio (domingo y hoja volandera del miércoles), en pergamino; la proclama y el soborno al cronista. */
@@ -15,10 +16,11 @@ export function BulletinPanel({
   state: GameState;
   act: (fn: () => Promise<unknown>, ok?: string) => Promise<void>;
 }) {
-  const list = state.boletines ?? [];
+  // La Crónica Definitiva (semana 0), si la hay, va la primera.
+  const list = [...(state.boletines ?? [])].sort((a, b) => (a.semana === 0 ? -1 : b.semana === 0 ? 1 : 0));
   const latest = list[0] ? keyOf(list[0]) : null;
   const [chosen, setChosen] = useState<string | null>(latest);
-  const [bulletin, setBulletin] = useState<Bulletin | null>(null);
+  const [bulletin, setBulletin] = useState<Shown | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Al publicarse un boletín nuevo, se muestra ese.
@@ -34,7 +36,8 @@ export function BulletinPanel({
     return () => {
       alive = false;
     };
-  }, [state.partida.id, chosen]);
+    // La fe de erratas cambia el pie de la Crónica: se vuelve a leer.
+  }, [state.partida.id, chosen, state.feDeErratas?.texto]);
   const shown = bulletin && chosen === `${bulletin.week}:${bulletin.edition ?? "domingo"}` ? bulletin : null;
 
   return (
@@ -60,30 +63,36 @@ export function BulletinPanel({
                   onClick={() => setChosen(keyOf(b))}
                   title={b.titular}
                 >
-                  {b.edicion === "miercoles" ? `Miércoles ${b.semana}` : `Domingo ${b.semana}`}
+                  {b.semana === 0 ? "Crónica Definitiva" : b.edicion === "miercoles" ? `Miércoles ${b.semana}` : `Domingo ${b.semana}`}
                 </button>
               ))}
             </div>
           )}
           {error && <p className="error">{error}</p>}
-          {shown && <Parchment bulletin={shown} gameName={state.partida.nombre} />}
+          {shown && <Parchment bulletin={shown} gameName={state.partida.nombre} houses={state.casas} />}
         </section>
       )}
+      <ErrataCard state={state} act={act} />
       <ProclamationCard state={state} act={act} />
       <BribeCard state={state} act={act} />
     </>
   );
 }
 
-function Parchment({ bulletin: b, gameName }: { bulletin: Bulletin; gameName: string }) {
-  const share = `https://wa.me/?text=${encodeURIComponent(bulletinText(b, gameName))}`;
+function Parchment({ bulletin: b, gameName, houses }: { bulletin: Shown; gameName: string; houses: GameState["casas"] }) {
+  // Bloque 3: al pie de la Crónica, la fe de erratas de los vencidos.
+  const erratas = (b.erratas ?? []).map((e) => `«${e.texto}» (firma ${houseInSentence(houses.find((h) => h.id === e.casa)?.nombre ?? "una casa")})`);
+  const text = bulletinText(b, gameName) + (erratas.length > 0 ? `\n\n*Fe de erratas*\n${erratas.map((l) => `• ${l}`).join("\n")}` : "");
+  const share = `https://wa.me/?text=${encodeURIComponent(text)}`;
   return (
-    <article className="parchment">
+    <article className={b.chronicle ? "parchment chronicle" : "parchment"}>
       <header>
         <FrayAbundio mood={b.mood ?? "solemne"} size={64} />
         <div>
           <p className="parchment-kicker">
-            {b.edition === "miercoles" ? "Hoja volandera" : "Boletín del Reino"} · {gameName} · semana {b.week}
+            {b.chronicle
+              ? `Crónica Definitiva · ${gameName}`
+              : `${b.edition === "miercoles" ? "Hoja volandera" : "Boletín del Reino"} · ${gameName} · semana ${b.week}`}
           </p>
           <h2>{b.headline}</h2>
         </div>
@@ -106,6 +115,16 @@ function Parchment({ bulletin: b, gameName }: { bulletin: Bulletin; gameName: st
           ))}
         </section>
       ))}
+      {erratas.length > 0 && (
+        <section>
+          <h3>Fe de erratas</h3>
+          {erratas.map((l, i) => (
+            <p key={i} className="proclama">
+              {l}
+            </p>
+          ))}
+        </section>
+      )}
       {b.sponsors.length > 0 && (
         <footer className="sponsors">
           <FrayAbundio mood="monedas" size={40} />
@@ -237,6 +256,40 @@ function ProclamationCard({ state, act }: { state: GameState; act: (fn: () => Pr
             Retirar
           </button>
         )}
+      </div>
+    </section>
+  );
+}
+
+/** Bloque 3: al acabar la partida, quien no ganó puede dejar una línea al pie de la Crónica Definitiva. */
+function ErrataCard({ state, act }: { state: GameState; act: (fn: () => Promise<unknown>, ok?: string) => Promise<void> }) {
+  const f = state.feDeErratas;
+  const [text, setText] = useState(f?.texto ?? "");
+  useEffect(() => setText(f?.texto ?? ""), [f?.texto]);
+  if (!f) return null;
+  const letters = [...text].length;
+  return (
+    <section className="card proclamation-card">
+      <h2>Fe de erratas</h2>
+      <p className="muted">
+        La Crónica Definitiva la escribe el ganador, o casi. Deja una línea al pie con tu versión de los hechos (hasta {f.max} letras).
+      </p>
+      <label>
+        Tu versión
+        <textarea value={text} maxLength={f.max * 2} rows={3} onChange={(e) => setText(e.target.value)} placeholder="Donde dice «repliegue genial», léase…" />
+      </label>
+      <p className={letters > f.max ? "error" : "muted"} aria-live="polite">
+        {letters} de {f.max} letras
+      </p>
+      <div className="actions">
+        <button
+          className="primary"
+          disabled={text.trim() === (f.texto ?? "") || letters > f.max || text.trim() === ""}
+          onClick={() => act(() => api.errata(state.partida.id, text), "Fray Abundio la añade al pie, con letra pequeña.")}
+        >
+          {f.texto ? "Cambiar" : "Añadir al pie"}
+        </button>
+        {f.texto && <button onClick={() => act(() => api.errata(state.partida.id, ""), "Retirada. La Crónica queda como estaba.")}>Retirar</button>}
       </div>
     </section>
   );
