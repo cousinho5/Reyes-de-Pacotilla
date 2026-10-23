@@ -3,7 +3,7 @@ import { AuctionPanel } from "./AuctionPanel";
 import { CrownPanel } from "./CrownPanel";
 import { DiplomacyPanel } from "./DiplomacyPanel";
 import { useState } from "react";
-import { RESOURCES, TRADE, fairAmount, referenceValue, totalOf, type Resource, type Resources } from "@reyes/engine";
+import { RESOURCES, TRADE, fairAmount, noticeText, referenceValue, totalOf, type Resource, type Resources } from "@reyes/engine";
 import { api, type GameState, type OfferInfo } from "../api";
 import { HOUSE_COLORS, RESOURCE_LABEL, houseName } from "../ui";
 
@@ -232,7 +232,7 @@ export function TradePanel({ state, act }: Props) {
           </label>
         )}
         {market.length === 0 ? (
-          <p className="muted">No hay ofertas. El mercado está más vacío que el tesoro real.</p>
+          <p className="muted">{noticeText("interfaz.mercado_vacio", state.partida.resolucionActual)}</p>
         ) : shown.length === 0 ? (
           <p className="muted">Ninguna está a tu alcance. Habrá que vender algo primero.</p>
         ) : (

@@ -2,11 +2,12 @@
 // resolución, el mapa cuenta en unos 20 segundos lo que pasó. Primero marchan
 // los ejércitos, luego cada batalla con sus cifras y una línea de Fray Abundio,
 // los asedios y los repliegues. Se puede saltar. Solo enseña lo que esta casa
-// ve: las batallas fuera de su vista se cuentan, no se dibujan.
+// ve: las batallas fuera de su vista se cuentan, no se dibujan. Las frases son
+// del banco (bloque 3), con `narrateNight` del motor.
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { battleLine } from "@reyes/engine";
+import { narrateNight, type NightStepFacts } from "@reyes/engine";
 import type { EventView, HouseInfo, TileView } from "../api";
 import { FrayAbundio, Icon, ShieldIcon } from "../art";
 import { cellBox, type Geo } from "../art/grid";
@@ -27,6 +28,8 @@ type Step =
   | { kind: "combate"; event: EventView; tile: number; start: number; dur: number }
   | { kind: "choque"; event: EventView; tiles: [number, number]; via?: number; start: number; dur: number }
   | { kind: "rebote"; event: EventView; tile: number; start: number; dur: number }
+  | { kind: "tregua"; event: EventView; tile: number; start: number; dur: number }
+  | { kind: "capitan"; event: EventView; tile: number; start: number; dur: number }
   | { kind: "asedio"; events: EventView[]; start: number; dur: number }
   | { kind: "repliegue"; tokens: Token[]; start: number; dur: number }
   | { kind: "fin"; start: number; dur: number };
@@ -38,6 +41,8 @@ interface Props {
   tiles: TileView[];
   houses: HouseInfo[];
   events: EventView[];
+  /** Casa que mira (Fray Abundio le habla de «vuestra merced» en sus combates). */
+  me: number | null;
   /** Semilla de las frases (partida y resolución): la misma noche dice siempre lo mismo. */
   seed: string;
   resolution: number;
@@ -59,6 +64,7 @@ export function replaySteps(events: EventView[], tiles: TileView[]): { steps: St
   const fights: Step[] = [];
   const sieges: EventView[] = [];
   const back: Token[] = [];
+  const quiet: Step[] = [];
   let hidden = 0;
   for (const e of events) {
     const d = e.datos as Record<string, any>;
@@ -87,6 +93,10 @@ export function replaySteps(events: EventView[], tiles: TileView[]): { steps: St
       fights.unshift({ kind: "choque", event: e, tiles: [d.tiles[0], d.tiles[1]], ...(d.via != null ? { via: d.via } : {}), start: 0, dur: 0 });
     } else if (e.tipo === "rebote" && seen(d.tile)) {
       fights.push({ kind: "rebote", event: e, tile: d.tile, start: 0, dur: 0 });
+    } else if (e.tipo === "tregua" && seen(d.tile)) {
+      quiet.push({ kind: "tregua", event: e, tile: d.tile, start: 0, dur: 0 });
+    } else if (e.tipo === "capitan_preso" && seen(d.tile)) {
+      quiet.push({ kind: "capitan", event: e, tile: d.tile, start: 0, dur: 0 });
     } else if (e.tipo === "asedio" && seen(d.tile)) {
       sieges.push(e);
     } else if (e.tipo === "repliegue" && (seen(d.from) || seen(d.to))) {
@@ -104,14 +114,16 @@ export function replaySteps(events: EventView[], tiles: TileView[]): { steps: St
   // Unos 20 segundos en total: con muchas batallas, cada una dura menos.
   const each = Math.max(1500, Math.min(2800, 13000 / Math.max(1, fights.length)));
   for (const f of fights) add({ ...f, dur: each } as Step);
+  for (const q of quiet) add({ ...q, dur: 1500 } as Step);
   if (sieges.length > 0) add({ kind: "asedio", events: sieges, start: 0, dur: 1800 });
   if (back.length > 0) add({ kind: "repliegue", tokens: back, start: 0, dur: 1600 });
   if (steps.length > 0) add({ kind: "fin", start: 0, dur: 1800 });
   return { steps, hidden };
 }
 
-export function NightReplay({ geo, W, H, tiles, houses, events, seed, resolution, onFocus, onClose, chrome }: Props) {
+export function NightReplay({ geo, W, H, tiles, houses, events, me, seed, resolution, onFocus, onClose, chrome }: Props) {
   const { steps, hidden } = useMemo(() => replaySteps(events, tiles), [events, tiles]);
+  const lines = useMemo(() => narrate(steps, { houses, tiles, seed, me }), [steps, houses, tiles, seed, me]);
   const total = steps.reduce((a, s) => a + s.dur, 0);
   const [t, setT] = useState(0);
   const byId = useMemo(() => new Map(tiles.map((x) => [x.id, x])), [tiles]);
@@ -147,7 +159,7 @@ export function NightReplay({ geo, W, H, tiles, houses, events, seed, resolution
   useEffect(() => {
     if (!current || focused.current === current) return;
     focused.current = current;
-    const id = current.kind === "combate" || current.kind === "rebote" ? current.tile : current.kind === "choque" ? (current.via ?? current.tiles[0]) : null;
+    const id = current.kind === "combate" || current.kind === "rebote" || current.kind === "tregua" || current.kind === "capitan" ? current.tile : current.kind === "choque" ? (current.via ?? current.tiles[0]) : null;
     const tile = id != null ? byId.get(id) : undefined;
     if (tile) onFocus(tile.x, tile.y);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -179,7 +191,7 @@ export function NightReplay({ geo, W, H, tiles, houses, events, seed, resolution
       ? current.tokens.map((k) => ({ ...k, q: ease(clamp01(p / 0.85)) * (k.half ? 0.45 : 1) }))
       : [];
 
-  const caption = captionOf(current, p, { houses, tiles, seed, resolution, hidden });
+  const caption = captionOf(current, p, lines[current ? steps.indexOf(current) : -1] ?? null, { houses, tiles, resolution, hidden });
 
   return (
     <div className="replay">
@@ -207,7 +219,7 @@ export function NightReplay({ geo, W, H, tiles, houses, events, seed, resolution
             </g>
           ) : null,
         )}
-        {current && (current.kind === "combate" || current.kind === "rebote") && byId.get(current.tile) && (
+        {current && "tile" in current && byId.get(current.tile) && (
           <polygon points={points(current.tile)} className="replay-focus" />
         )}
       </svg>
@@ -384,37 +396,61 @@ function Battle({
   );
 }
 
+/** La frase del banco para cada paso, elegida con la semilla de la noche. */
+function narrate(steps: Step[], ctx: { houses: HouseInfo[]; tiles: TileView[]; seed: string; me: number | null }): (string | null)[] {
+  const facts: NightStepFacts[] = steps.map((s) =>
+    s.kind === "asedio"
+      ? { kind: s.kind, data: s.events.map((e) => e.datos as Record<string, unknown>) }
+      : s.kind === "repliegue"
+        ? { kind: s.kind, data: s.tokens.map((k) => ({ house: k.house, troops: k.troops, to: k.to })) }
+        : s.kind === "marcha" || s.kind === "fin"
+          ? { kind: s.kind }
+          : { kind: s.kind, data: s.event.datos as Record<string, unknown> },
+  );
+  return narrateNight(facts, {
+    seed: ctx.seed,
+    me: ctx.me,
+    houseName: (id) => ctx.houses.find((h) => h.id === id)?.nombre,
+    tileName: (id) => ctx.tiles.find((t) => t.id === id)?.nombre,
+  });
+}
+
 function captionOf(
   step: Step | undefined,
   p: number,
-  ctx: { houses: HouseInfo[]; tiles: TileView[]; seed: string; resolution: number; hidden: number },
+  line: string | null,
+  ctx: { houses: HouseInfo[]; tiles: TileView[]; resolution: number; hidden: number },
 ): string {
   if (!step) return "";
   const tileName = (id: unknown) => ctx.tiles.find((t) => t.id === id)?.nombre ?? "una casilla";
   switch (step.kind) {
     case "marcha":
       return "Cae la noche y los ejércitos se ponen en marcha.";
-    case "combate": {
+    case "combate":
       if (p < 0.55) return `Batalla en ${tileName(step.tile)}.`;
-      const line = battleLine(step.event.datos, (id) => ctx.houses.find((h) => h.id === id)?.nombre, tileName(step.tile), `${ctx.seed}:${step.event.id}`);
       return line ?? describeEvent(step.event, ctx.houses, ctx.tiles) ?? "";
-    }
     case "choque":
       if (step.via != null && p < 0.55) return `Dos ejércitos se cruzan por el camino en ${tileName(step.via)}.`;
-      return p < 0.55 ? "Dos ejércitos se encuentran." : (describeEvent(step.event, ctx.houses, ctx.tiles) ?? "");
+      return p < 0.55 ? "Dos ejércitos se encuentran." : (line ?? describeEvent(step.event, ctx.houses, ctx.tiles) ?? "");
     case "rebote":
-      return p < 0.55 ? "Dos ejércitos se encuentran." : (describeEvent(step.event, ctx.houses, ctx.tiles) ?? "");
+      return p < 0.55 ? "Dos ejércitos se encuentran." : (line ?? describeEvent(step.event, ctx.houses, ctx.tiles) ?? "");
+    case "tregua":
+    case "capitan":
+      return line ?? describeEvent(step.event, ctx.houses, ctx.tiles) ?? "";
     case "asedio": {
+      if (line) return line;
       const d = step.events[0]!.datos as Record<string, any>;
       return step.events.length === 1
         ? (d.castle ? `${houseName(ctx.houses, d.house)} rodea ${tileName(d.tile)}.` : `Asedio a ${tileName(d.tile)}: ${wallsLeft(d.nights)}.`)
         : `${step.events.length} asedios siguen en pie.`;
     }
     case "repliegue":
-      return "Los derrotados vuelven a casa con la mitad de las tropas.";
-    case "fin":
+      return line ?? "Los derrotados vuelven a casa con la mitad de las tropas.";
+    case "fin": {
+      const end = line ?? "Fin de la noche. El cronista se retira a dormir.";
       return ctx.hidden > 0
-        ? `Fin de la noche ${ctx.resolution}. Y ${ctx.hidden} ${ctx.hidden === 1 ? "batalla" : "batallas"} lejos de tu vista: la crónica las cuenta.`
-        : `Fin de la noche ${ctx.resolution}. El cronista se retira a dormir.`;
+        ? `${end} Y ${ctx.hidden} ${ctx.hidden === 1 ? "batalla" : "batallas"} lejos de tu vista: la crónica las cuenta.`
+        : end;
+    }
   }
 }

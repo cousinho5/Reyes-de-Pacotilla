@@ -65,6 +65,8 @@ import {
   mercenaryCost,
   alliesOf,
   guestStacks,
+  houseInSentence,
+  noticeText,
 } from "@reyes/engine";
 import {
   SESSION_COOKIE,
@@ -1403,7 +1405,7 @@ app.post("/api/partidas/:id/ofertas", async (c) => {
     await notifyHouses(c.env, [to], {
       kind: "oferta",
       title: "Te han hecho una oferta",
-      body: `${m.house.name} quiere comerciar contigo.`,
+      body: noticeText("aviso.oferta", m.house.id + to, { jugador: houseInSentence(m.house.name) }),
       url: `/partida/${m.game.id}`,
       dedupe: `oferta:${m.game.id}:${Date.now()}:${to}`,
     });

@@ -38,6 +38,8 @@ import {
   PHRASES,
   fill,
   houseInSentence,
+  combatNotice,
+  noticeText,
   type AutopilotTemplate,
   type BuildingKind,
   type Alliance,
@@ -258,7 +260,7 @@ export async function closeWarning(env: NotifyEnv, game: GameRow, n: number): Pr
   await notifyHouses(env, to, {
     kind: "cierre",
     title: "Cierre en 1 h",
-    body: "Aún no has dado órdenes. Fray Abundio se impacienta.",
+    body: noticeText("aviso.cierre", n),
     url: `/partida/${game.id}`,
     dedupe: `cierre:${game.id}:${n}`,
   });
@@ -409,12 +411,15 @@ export async function runResolution(env: NotifyEnv, game: GameRow, n: number, no
     );
   }
 
+  // Deserciones por hambre de cada casa: solo las ve ella (crónica y aviso), nunca el boletín.
+  const deserted = new Map<number, number>();
   if (kind === "domingo") {
     // Mantenimiento: Pan por tropas y por estirarse; si no llega, deserciones.
     for (const h of houses) {
       // Los mercenarios no comen: su Pan lo pone la Corona (bloque 5).
       const upkeep = applyUpkeep(finalTiles, h.id, h.pan, eventUpkeepFactor(event), mercenaryCount(mercs, h.id));
       finalTiles = upkeep.tiles;
+      if (upkeep.deserted > 0) deserted.set(h.id, upkeep.deserted);
       if (upkeep.paid > 0) extraStatements.push(db.prepare("UPDATE houses SET pan = pan - ? WHERE id = ?").bind(upkeep.paid, h.id));
       extraEvents.push({ type: "mantenimiento", visibleTo: h.id, payload: { house: h.id, ...upkeep, tiles: undefined } });
     }
@@ -604,15 +609,26 @@ export async function runResolution(env: NotifyEnv, game: GameRow, n: number, no
             seen.length > 1 ? ` y ${seen.length - 1} ${seen.length === 2 ? "aviso" : "avisos"} más` : ""
           }.`
         : "";
+    // Bloque 3: el combate más importante de la casa, con frase del banco (11.6), y sus deserciones (16).
+    const fight = combatNotice(result.events, h.id);
+    const fightText = fight
+      ? noticeText(fight.key, n + h.id, { casilla: tileName.get(fight.tile) ?? "una casilla", n: fight.troops, m: fight.troops }) +
+        (fight.more > 0 ? ` Y ${fight.more} ${fight.more === 1 ? "combate" : "combates"} más: mira la repetición de la noche.` : "")
+      : null;
+    const lost = deserted.get(h.id) ?? 0;
+    const hunger = lost > 0 ? ` ${noticeText("hambre.desercion", n + h.id, { n: lost })}` : "";
     await notifyHouses(env, [h.id], {
       kind: "resolucion",
       title: fought.has(h.id) ? `Combate en la resolución ${n}` : seen.length > 0 ? `Estandartes a la vista` : `Resolución ${n}`,
       body:
-        (fought.has(h.id)
-          ? "Ha habido batalla en tus tierras. Mira la repetición de la noche."
-          : seen.length > 0
-            ? "Hay movimiento junto a tus tierras."
-            : "El reino se ha movido. Echa un vistazo a la crónica.") + banners,
+        (fightText ??
+          (fought.has(h.id)
+            ? "Ha habido batalla en tus tierras. Mira la repetición de la noche."
+            : seen.length > 0
+              ? "Hay movimiento junto a tus tierras."
+              : "El reino se ha movido. Echa un vistazo a la crónica.")) +
+        banners +
+        hunger,
       url: `/partida/${game.id}`,
       dedupe: `resolucion:${game.id}:${n}:${h.id}`,
     });

@@ -1,7 +1,7 @@
 // Ofertas de comercio en D1: tipos, vista para el cliente y aceptación atómica.
 // La usan las rutas de la API y los bots de las partidas de prueba.
 
-import { RESOURCES, TRADE, totalOf, type Resources } from "@reyes/engine";
+import { RESOURCES, TRADE, houseInSentence, noticeText, totalOf, type Resources } from "@reyes/engine";
 import { randomCode } from "./auth";
 import { notifyHouses, type NotifyEnv } from "./notify";
 import { gameNow, type GameRow, type HouseRow } from "./state";
@@ -127,7 +127,7 @@ export async function acceptOffer(env: NotifyEnv, game: GameRow, offer: OfferRow
   await notifyHouses(env, [offer.from_house_id], {
     kind: "trato",
     title: "Trato cerrado",
-    body: `${house.name} ha aceptado tu oferta. Ambas partes creen haber ganado.`,
+    body: noticeText("aviso.trato", offer.id, { jugador: houseInSentence(house.name) }),
     url: `/partida/${game.id}`,
     dedupe: `trato:${offer.id}`,
   });

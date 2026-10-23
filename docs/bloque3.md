@@ -56,11 +56,11 @@ Las frases nuevas (borrador para revisar) están en el documento aparte del proy
 
 1. ✅ **Frases nuevas** (PR 1, #76) en `docs/banco-de-frases.md` y en `texts/cronista.ts`. Se escriben y se revisan antes de meterlas.
 2. ✅ **Boletín del miércoles** (PR 2): `jobs.ts` publica también el miércoles, con los hechos desde el último boletín.
-3. **Repetición narrada** en `NightReplay.tsx`, con frases elegidas por la semilla para que no cambien al volver a verla.
+3. ✅ **Repetición narrada** (PR 4): `narrateNight` del motor (`packages/engine/src/night.ts`) da una frase del banco por paso, elegida con la semilla de la noche y sin repetir variante; en los combates de tu casa, de «vuestra merced» (banco, 18.11 a 18.15). La tregua y el Capitán preso son pasos propios.
 4. ✅ **Memoria del cronista** (PR 3) en el motor (`bulletin.ts`), a partir del registro de la partida.
 5. ✅ **Crónica Definitiva** al acabar la partida (PR 3). La letra capitular en pixel art va con el Fray Abundio nuevo (paso 8).
 6. ✅ **Proclamas** (PR 2): tabla nueva (migración), un campo en Reino y su sitio en el boletín.
 7. **Boletín emergente** y **casas en su color** en el cliente.
 8. **Fray Abundio nuevo** en `apps/web/src/art/sprites.ts`, con sus animaciones (respetando «reducir movimiento»).
-9. **Mensajes y notificaciones** con frases variadas.
+9. ✅ **Mensajes y notificaciones** con frases variadas (PR 4): `noticeText` y `combatNotice` (`packages/engine/src/notices.ts`). El aviso tras la resolución cuenta el combate más importante de la casa (banco, 11.6) y sus deserciones por hambre, que también salen en su crónica y nunca en el boletín; el aviso de cierre, el trato cerrado, la oferta nueva, el mercado vacío y la mejora de un edificio usan el banco.
 10. **Pruebas** del boletín con partidas simuladas y capturas a 390x844.

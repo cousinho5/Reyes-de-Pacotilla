@@ -1,6 +1,6 @@
 // Textos, colores y formatos de la interfaz. Todo en español.
 
-import { CARDS, OBJECTIVES, type BuildingKind, type CardKey, type ObjectiveKey, type Resource, type TileType } from "@reyes/engine";
+import { CARDS, OBJECTIVES, noticeText, type BuildingKind, type CardKey, type ObjectiveKey, type Resource, type TileType } from "@reyes/engine";
 import type { EventView, HouseInfo, TileView } from "./api";
 
 /** Paleta de las casas (diseño, sección 18.2). */
@@ -312,7 +312,8 @@ export function describeEvent(e: EventView, houses: HouseInfo[], tiles: TileView
       return `Se ven estandartes de ${withArticle(houseName(houses, d.house))} en ${tile(d.tile)} (${troops(d.troops)}), junto a ${tile(d.near)}.`;
     case "mantenimiento":
       return d.deserted > 0
-        ? `Mantenimiento: costaba ${d.cost} de Pan y solo había ${d.paid}. Desertan: ${troops(d.deserted)}.`
+        ? // Bloque 3: la deserción con frase del banco (16), solo en la crónica de la casa.
+          `Mantenimiento: costaba ${d.cost} de Pan y solo había ${d.paid}. ${noticeText("hambre.desercion", e.id, { n: d.deserted })}`
         : `Mantenimiento pagado: ${d.cost} de Pan.`;
     case "mantenimiento_fortificaciones": {
       const paid = [d.piedra > 0 && `${d.piedra} de Piedra`, d.oro > 0 && `${d.oro} de Oro`].filter(Boolean).join(" y ");

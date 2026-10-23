@@ -927,6 +927,7 @@ export function MapView({ state, draft, setDraft, act, night, setNight, editOrde
               tiles={now}
               houses={state.casas}
               events={lastEvents}
+              me={state.yo.casa ?? null}
               seed={`${state.partida.id}:${last}`}
               resolution={last}
               onFocus={(x, y) => {
