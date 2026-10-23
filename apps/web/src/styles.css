@@ -2892,3 +2892,14 @@ button.wide {
 .house-settings section {
   margin-top: 0.8rem;
 }
+
+/* Bloque 3: proclamas de las casas en el pergamino, tal cual las escribieron. */
+.parchment p.proclama {
+  font-style: italic;
+  border-left: 3px solid rgba(90, 60, 25, 0.35);
+  padding-left: 0.6rem;
+}
+.proclamation-card textarea {
+  width: 100%;
+  resize: vertical;
+}

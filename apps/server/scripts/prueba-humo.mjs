@@ -345,6 +345,22 @@ check(
     !trasAviso.alianzas.lista.some((a) => a.id === pacto.data.id) && trasAviso.eventos.some((e) => e.tipo === "alianza_fin" && e.datos.id === pacto.data.id),
   { firmaBot, rompeBot, resolucion: trasAviso.partida.resolucionActual, lista: trasAviso.alianzas.lista },
 );
+// Bloque 3: tras la resolución del miércoles sale la hoja volandera, y cada casa puede dejar su proclama.
+const volandera = trasAviso.boletines?.find((b) => b.semana === 1 && b.edicion === "miercoles");
+const hoja = await pablo("GET", `/api/partidas/${prueba.data.id}/boletin/1?edicion=miercoles`);
+check(
+  "la hoja volandera del miércoles se publica y se lee",
+  volandera != null && hoja.status === 200 && hoja.data.edition === "miercoles" && hoja.data.sections[0]?.title === "Hoja volandera",
+  { boletines: trasAviso.boletines, hoja },
+);
+const conEnlace = await pablo("PUT", `/api/partidas/${prueba.data.id}/proclama`, { texto: "Visitad nabo.com" });
+const proclama = await pablo("PUT", `/api/partidas/${prueba.data.id}/proclama`, { texto: "  Que tiemblen   los vecinos " });
+const conProclama = (await pablo("GET", `/api/partidas/${prueba.data.id}`)).data.proclama;
+check(
+  "proclama sin enlaces, guardada para el domingo",
+  conEnlace.status === 400 && proclama.status === 200 && conProclama?.texto === "Que tiemblen los vecinos" && conProclama.semana === 1,
+  { conEnlace, proclama, conProclama },
+);
 const borrada = await pablo("DELETE", `/api/partidas/${prueba.data.id}`);
 check("borrar la partida de prueba entera", borrada.status === 200, borrada);
 

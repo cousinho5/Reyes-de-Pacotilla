@@ -1,6 +1,6 @@
 // Bloque 3, PR 1: frases nuevas de Fray Abundio y lo que cuenta el boletín con ellas.
 import { describe, expect, it } from "vitest";
-import { PHRASES, resolveCampaign, writeBulletin, type BulletinInput, type PhraseKey, type Tile, type TileType } from "../src";
+import { PHRASES, checkProclamation, resolveCampaign, writeBulletin, type BulletinInput, type PhraseKey, type Tile, type TileType } from "../src";
 
 const houses = [
   { id: 1, name: "Casa del Nabo", motto: null, color: "azur", symbol: "nabo", prestige: 20 },
@@ -193,5 +193,82 @@ describe("asedios a guarniciones neutrales", () => {
     const owners = new Map([[10, null]]);
     const b = writeBulletin({ ...base, tileOwners: owners, facts: [{ type: "asedio", data: { house: 1, tile: 10, nights: 1, castle: false, from: [] } }] });
     expect(b.sections.map((s) => s.title)).not.toContain("Sitios y cautivos");
+  });
+});
+
+describe("hoja volandera del miércoles (bloque 3, PR 2)", () => {
+  const facts = [
+    fight(10, 1, 2, true),
+    { type: "alianza", data: { a: 1, b: 3, name: "Liga del Nabo Sereno" } },
+    { type: "evento", data: { nombre: "Feria de otoño", linea: "Se vende de todo." } },
+  ];
+
+  it("solo lleva entradilla, armas, sitios y pactos, sin favorito, mercados ni sobornos", () => {
+    const b = writeBulletin({ ...base, edition: "miercoles", facts, bribes: [{ house: 1, template: 0, amount: 10 }] });
+    expect(b.edition).toBe("miercoles");
+    const titles = b.sections.map((s) => s.title);
+    expect(titles[0]).toBe("Hoja volandera");
+    expect(titles).toContain("Crónica de las armas");
+    expect(titles).toContain("Pactos y traiciones");
+    expect(titles).not.toContain("El favorito del cronista");
+    expect(titles).not.toContain("Mercados y augurios");
+    expect(titles).not.toContain("Comunicados de la corte");
+    expect(b.sponsors).toEqual([]);
+    expect(b.margin).toHaveLength(1);
+  });
+
+  it("sin nada que contar, su propia frase de calma y su titular", () => {
+    const b = writeBulletin({ ...base, edition: "miercoles", previousLeader: 2 });
+    expect(b.headline).toBe("MITAD DE SEMANA TRANQUILA");
+    const line = b.sections.find((s) => s.title === "La paz del reino")!.lines[0]!;
+    expect(PHRASES["volandera.tranquila"]).toContain(line);
+  });
+
+  it("el domingo no repite lo que ya contó el miércoles, pero sí el resto de la semana", () => {
+    const told = facts.map((f) => ({ ...f, told: f.type !== "evento" }));
+    const b = writeBulletin({ ...base, facts: told });
+    const titles = b.sections.map((s) => s.title);
+    expect(titles).toContain("La paz del reino");
+    expect(titles).not.toContain("Pactos y traiciones");
+    expect(text(b)).toContain("Feria de otoño");
+    expect(b.headline).toBe("SEMANA TRANQUILA EN ALDRICIA");
+  });
+
+  it("cada edición tiene su propio azar: misma semana, frases distintas", () => {
+    const sun = writeBulletin({ ...base, facts: [fight(10, 1, 2, true)] });
+    const wed = writeBulletin({ ...base, edition: "miercoles", facts: [fight(10, 1, 2, true)], used: sun.used });
+    expect(wed.used.filter((k) => sun.used.includes(k))).toEqual([]);
+  });
+});
+
+describe("proclamas (bloque 3, PR 2)", () => {
+  it("salen firmadas y sin tocar en el domingo; el cronista se desmarca si nombran a otra casa", () => {
+    const b = writeBulletin({
+      ...base,
+      proclamations: [
+        { house: 1, text: "que tiemblen los pocapena" },
+        { house: 3, text: "Cacareamos fuerte." },
+      ],
+    });
+    const s = b.sections.find((x) => x.title === "Proclamas")!;
+    expect(s.verbatim).toBe(true);
+    expect(PHRASES["proclamas.entrada"]).toContain(s.lines[0]);
+    expect(s.lines[1]).toBe("«que tiemblen los pocapena» (firma la Casa del Nabo)");
+    expect(PHRASES["proclamas.nota"]).toContain(s.lines[2]);
+    expect(s.lines[3]).toBe("«Cacareamos fuerte.» (firma Gallina Bélica)");
+  });
+
+  it("no salen en la hoja volandera", () => {
+    const b = writeBulletin({ ...base, edition: "miercoles", proclamations: [{ house: 1, text: "Hola" }] });
+    expect(b.sections.map((s) => s.title)).not.toContain("Proclamas");
+  });
+
+  it("hasta 140 letras, sin enlaces; vacía es retirarla", () => {
+    expect(checkProclamation("  Viva   el\nNabo  ")).toEqual({ ok: true, text: "Viva el Nabo" });
+    expect(checkProclamation("ñ".repeat(140)).ok).toBe(true);
+    expect(checkProclamation("ñ".repeat(141)).ok).toBe(false);
+    expect(checkProclamation("mirad https://x.y").ok).toBe(false);
+    expect(checkProclamation("entrad en nabo.com").ok).toBe(false);
+    expect(checkProclamation("   ")).toEqual({ ok: true, text: "" });
   });
 });

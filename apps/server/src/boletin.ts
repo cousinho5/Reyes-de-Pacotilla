@@ -1,14 +1,18 @@
-// Boletín semanal de Fray Abundio en D1. Se publica tras la resolución del
-// domingo (el último, al terminar la partida, con los objetivos secretos).
-// Usa los hechos públicos del registro desde el boletín anterior, los tratos y
-// sobornos de la semana y las frases ya usadas, para no repetirlas.
+// Boletines de Fray Abundio en D1. Se publican tras la resolución del domingo
+// (el último, al terminar la partida, con los objetivos secretos) y, desde el
+// bloque 3, tras la del miércoles (la hoja volandera). Usan los hechos públicos
+// del registro, los tratos, sobornos y proclamas de la semana y las frases ya
+// usadas, para no repetirlas.
 
 import {
   BRIBE_COST,
   OBJECTIVES,
+  MIDWEEK_TYPES,
   PHRASES,
+  PROCLAMATION,
   writeBulletin,
   type Bulletin,
+  type BulletinEdition,
   type BulletinFact,
   type ObjectiveKey,
 } from "@reyes/engine";
@@ -20,23 +24,44 @@ export interface StoredBulletin extends Bulletin {
   lastEventId: number;
 }
 
-export async function publishBulletin(env: NotifyEnv, game: GameRow, week: number, final = false): Promise<void> {
+export async function publishBulletin(
+  env: NotifyEnv,
+  game: GameRow,
+  week: number,
+  final = false,
+  edition: BulletinEdition = "domingo",
+): Promise<void> {
   const db = env.DB;
-  const exists = await db.prepare("SELECT 1 AS x FROM bulletins WHERE game_id = ? AND week = ?").bind(game.id, week).first();
+  const mid = edition === "miercoles";
+  const exists = await db.prepare("SELECT 1 AS x FROM bulletins WHERE game_id = ? AND week = ? AND edition = ?").bind(game.id, week, edition).first();
   if (exists) return;
   const now = gameNow(game);
-  const [houses, tileRows, prev, used, bribes] = await Promise.all([
+  const [houses, tileRows, prevSunday, midweek, used, bribes, proclamations] = await Promise.all([
     loadHouses(db, game.id),
     loadTiles(db, game.id),
-    db.prepare("SELECT content FROM bulletins WHERE game_id = ? AND week < ? AND week > 0 ORDER BY week DESC LIMIT 1")
+    db.prepare("SELECT content FROM bulletins WHERE game_id = ? AND week < ? AND week > 0 AND edition = 'domingo' ORDER BY week DESC LIMIT 1")
       .bind(game.id, week)
       .first<{ content: string }>(),
+    // El domingo, la hoja volandera de esa misma semana (lo que ya contó no se repite).
+    mid
+      ? null
+      : db.prepare("SELECT content FROM bulletins WHERE game_id = ? AND week = ? AND edition = 'miercoles'").bind(game.id, week).first<{ content: string }>(),
     db.prepare("SELECT phrase_key FROM phrase_usage WHERE game_id = ?").bind(game.id).all<{ phrase_key: string }>(),
-    db.prepare("SELECT house_id, template_key, amount FROM bribes WHERE game_id = ? AND week = ?")
-      .bind(game.id, week)
-      .all<{ house_id: number; template_key: string; amount: number }>(),
+    mid
+      ? { results: [] }
+      : db.prepare("SELECT house_id, template_key, amount FROM bribes WHERE game_id = ? AND week = ?")
+          .bind(game.id, week)
+          .all<{ house_id: number; template_key: string; amount: number }>(),
+    mid
+      ? { results: [] }
+      : db.prepare("SELECT house_id, text FROM proclamations WHERE game_id = ? AND week = ? ORDER BY updated_at, house_id")
+          .bind(game.id, week)
+          .all<{ house_id: number; text: string }>(),
   ]);
-  const previous = prev ? (JSON.parse(prev.content) as StoredBulletin) : null;
+  const previous = prevSunday ? (JSON.parse(prevSunday.content) as StoredBulletin) : null;
+  const told = midweek ? (JSON.parse(midweek.content) as StoredBulletin).lastEventId : 0;
+  // Hechos desde el domingo anterior: el miércoles, los de mitad de semana; el
+  // domingo, toda la semana, marcando los que ya contó la hoja volandera.
   const since = previous?.lastEventId ?? 0;
   const [facts, trades, crown] = await Promise.all([
     db.prepare("SELECT id, type, payload FROM event_log WHERE game_id = ? AND visible_to IS NULL AND id > ? ORDER BY id")
@@ -97,7 +122,11 @@ export async function publishBulletin(env: NotifyEnv, game: GameRow, week: numbe
       prestige: ranking?.find((r) => r.house === h.id)?.total ?? prestige.get(h.id)?.total ?? 0,
     })),
     previousLeader: previous?.leader ?? null,
-    facts: facts.results.map<BulletinFact>((f) => ({ type: f.type, data: JSON.parse(f.payload) as Record<string, unknown> })),
+    facts: facts.results.map<BulletinFact>((f) => ({
+      type: f.type,
+      data: JSON.parse(f.payload) as Record<string, unknown>,
+      ...(f.id <= told && MIDWEEK_TYPES.includes(f.type) ? { told: true } : {}),
+    })),
     tileNames: new Map(tileRows.map((t) => [t.id, t.name])),
     tileTypes: new Map(tiles.map((t) => [t.id, t.type])),
     tileOwners: new Map(tiles.map((t) => [t.id, t.owner])),
@@ -105,6 +134,8 @@ export async function publishBulletin(env: NotifyEnv, game: GameRow, week: numbe
     crown: Object.fromEntries(crown.results.map((r) => [r.resource, r.units])),
     bribes: bribes.results.map((b) => ({ house: b.house_id, template: Number(b.template_key), amount: b.amount })),
     used: used.results.map((u) => u.phrase_key),
+    edition,
+    proclamations: proclamations.results.map((p) => ({ house: p.house_id, text: p.text })),
     final: final
       ? {
           objectives: houses
@@ -119,17 +150,18 @@ export async function publishBulletin(env: NotifyEnv, game: GameRow, week: numbe
 
   try {
     await db.batch([
-      db.prepare("INSERT INTO job_runs (game_id, job_key) VALUES (?, ?)").bind(game.id, `boletin:${week}`),
-      db.prepare("INSERT INTO bulletins (game_id, week, content, published_at) VALUES (?, ?, ?, ?)").bind(
+      db.prepare("INSERT INTO job_runs (game_id, job_key) VALUES (?, ?)").bind(game.id, mid ? `boletin:${week}:miercoles` : `boletin:${week}`),
+      db.prepare("INSERT INTO bulletins (game_id, week, edition, content, published_at) VALUES (?, ?, ?, ?, ?)").bind(
         game.id,
         week,
+        edition,
         JSON.stringify(stored),
         now.toISOString(),
       ),
       ...bulletin.used.map((k) => db.prepare("INSERT OR IGNORE INTO phrase_usage (game_id, phrase_key) VALUES (?, ?)").bind(game.id, k)),
       db.prepare("INSERT INTO event_log (game_id, type, visible_to, payload) VALUES (?, 'boletin', NULL, ?)").bind(
         game.id,
-        JSON.stringify({ week, headline: bulletin.headline }),
+        JSON.stringify({ week, headline: bulletin.headline, ...(mid ? { edition } : {}) }),
       ),
     ]);
   } catch (err) {
@@ -138,10 +170,10 @@ export async function publishBulletin(env: NotifyEnv, game: GameRow, week: numbe
   }
   await notifyHouses(env, houses.map((h) => h.id), {
     kind: "boletin",
-    title: "El boletín de Fray Abundio",
+    title: mid ? "La hoja volandera de Fray Abundio" : "El boletín de Fray Abundio",
     body: bulletin.headline.charAt(0) + bulletin.headline.slice(1).toLowerCase(),
     url: `/partida/${game.id}`,
-    dedupe: `boletin:${game.id}:${week}`,
+    dedupe: mid ? `boletin:${game.id}:${week}:miercoles` : `boletin:${game.id}:${week}`,
   });
 }
 
@@ -162,4 +194,14 @@ export async function bribeView(db: D1Database, game: GameRow, houseId: number, 
       return s.charAt(0).toUpperCase() + s.slice(1);
     }),
   };
+}
+
+/** Bloque 3: la proclama de esta casa para el boletín del domingo de la semana `week`. */
+export async function proclamationView(db: D1Database, game: GameRow, houseId: number, week: number | null) {
+  if (week == null) return null;
+  const row = await db
+    .prepare("SELECT text FROM proclamations WHERE game_id = ? AND house_id = ? AND week = ?")
+    .bind(game.id, houseId, week)
+    .first<{ text: string }>();
+  return { semana: week, texto: row?.text ?? null, max: PROCLAMATION.maxLetters };
 }
