@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import type { CinematicItem } from "../src/api";
 import { MAX_AUTO, autoQueue, canPlay, cinematicTitle } from "../src/cinematicQueue";
 import { plaza, pregonero } from "../src/art/pregonero";
+import { salon_dia, salon_noche } from "../src/art/salon";
+import { corona, rey_ahoga_sin_corona, rey_contento } from "../src/art/aldric";
 
 const item = (clave: string, tipo: CinematicItem["tipo"], orden: number, more: Partial<CinematicItem> = {}): CinematicItem => ({
   clave,
@@ -47,6 +49,22 @@ describe("Cinemáticas que salen solas (bloque 13)", () => {
     expect(autoQueue([item("evento:1", "evento", 11, { datos: {} })], canPlay, new Set(["evento:1"])).play).toEqual([]);
   });
 
+  it("con «solo prólogo y coronación» pasa todas las demás", () => {
+    const q = autoQueue(
+      [item("prologo", "prologo", 10), item("evento:1", "evento", 11), item("fantasma:1", "fantasma", 16), item("coronacion", "coronacion", 70)],
+      all,
+      new Set(),
+      true,
+    );
+    expect(q.play.map((i) => i.clave)).toEqual(["prologo", "coronacion"]);
+    expect(q.skip.map((i) => i.clave)).toEqual(["evento:1", "fantasma:1"]);
+  });
+
+  it("sabe dibujar el prólogo", () => {
+    expect(canPlay(item("prologo", "prologo", 10))).toBe(true);
+    expect(canPlay(item("ultima", "ultima", 60))).toBe(false);
+  });
+
   it("nombra cada una para la lista de Reino", () => {
     expect(cinematicTitle(item("evento:3", "evento", 31, { datos: { nombre: "Carnaval" } }))).toBe("Semana 3: Carnaval");
     expect(cinematicTitle(item("fantasma:2", "fantasma", 26))).toBe("El fantasma de Aldric (semana 2)");
@@ -57,5 +75,13 @@ describe("Cinemáticas que salen solas (bloque 13)", () => {
     expect(plaza.grid.length).toBe(176);
     expect(plaza.grid.every((r) => r.length === 160)).toBe(true);
     expect(pregonero).toHaveLength(2);
+  });
+
+  it("el salón y el rey llegan de pxl", () => {
+    for (const bg of [salon_noche, salon_dia]) expect(bg.grid.every((r) => r.length === 160)).toBe(true);
+    // Todos los dibujos del rey miden lo mismo, para que no salte al cambiar de gesto.
+    expect(rey_ahoga_sin_corona.grid.length).toBe(rey_contento.grid.length);
+    expect(rey_ahoga_sin_corona.grid[0]!.length).toBe(rey_contento.grid[0]!.length);
+    expect(corona.grid.length).toBeGreaterThan(0);
   });
 });

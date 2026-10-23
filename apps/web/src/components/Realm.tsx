@@ -46,7 +46,7 @@ export function Realm({
         <PrestigeChart state={state} />
         <BulletinPanel state={state} act={act} />
         <Chronicle state={state} />
-        <CinematicList state={state} />
+        <CinematicList state={state} act={act} />
       </div>
     );
   }
@@ -58,7 +58,7 @@ export function Realm({
       <PrestigeChart state={state} />
       <BulletinPanel state={state} act={act} />
       <Chronicle state={state} />
-      <CinematicList state={state} />
+      <CinematicList state={state} act={act} />
       <DiplomacyPanel state={state} act={act} />
     </div>
   );

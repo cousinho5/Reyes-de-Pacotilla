@@ -1,7 +1,8 @@
 // Bloque 13: qué cinemáticas salen solas al entrar. Van en orden y, si hay
 // muchas pendientes (quien vuelve tras varios días), solo las MAX_AUTO últimas;
 // las demás se dan por pasadas y quedan como nuevas en la lista de Reino. El
-// prólogo y la coronación salen siempre.
+// prólogo y la coronación salen siempre. Con el ajuste «solo prólogo y
+// coronación» (`essential`), las demás se pasan todas.
 
 import type { CinematicItem } from "./api";
 
@@ -12,16 +13,17 @@ export function autoQueue(
   items: readonly CinematicItem[],
   playable: (i: CinematicItem) => boolean,
   seenHere: ReadonlySet<string> = new Set(),
+  essential = false,
 ): { play: CinematicItem[]; skip: CinematicItem[] } {
   const pending = items.filter((i) => !i.vista && i.sola && playable(i) && !seenHere.has(i.clave)).sort((a, b) => a.orden - b.orden);
   const minor = pending.filter((i) => !ALWAYS.has(i.tipo));
-  const skip = minor.slice(0, Math.max(0, minor.length - MAX_AUTO));
+  const skip = minor.slice(0, essential ? minor.length : Math.max(0, minor.length - MAX_AUTO));
   const skipped = new Set(skip.map((i) => i.clave));
   return { play: pending.filter((i) => !skipped.has(i.clave)), skip };
 }
 
 /** Las que este cliente sabe dibujar (cinematics.tsx). */
-export const canPlay = (item: CinematicItem) => item.tipo === "evento" && !!item.datos;
+export const canPlay = (item: CinematicItem) => item.tipo === "prologo" || (item.tipo === "evento" && !!item.datos);
 
 const KIND_NAME: Record<CinematicItem["tipo"], string> = {
   prologo: "Prólogo: la muerte del rey",

@@ -166,6 +166,23 @@ export function HouseSettings({ state, act, children }: Props & { children?: Rea
             Avisarme 1 hora antes del cierre si aún no he dado órdenes
           </label>
         )}
+        {state.yo.cinematicas && (
+          <label>
+            Cinemáticas al entrar
+            <select
+              value={state.yo.cinematicas}
+              onChange={(e) =>
+                act(
+                  () => api.setCinematics(gameId, e.target.value as "todas" | "esenciales"),
+                  e.target.value === "todas" ? "Fray Abundio os lo contará todo." : "Solo el prólogo y la coronación. Las demás, en Reino.",
+                )
+              }
+            >
+              <option value="todas">Todas</option>
+              <option value="esenciales">Solo prólogo y coronación</option>
+            </select>
+          </label>
+        )}
         {canVibrate() && (
           <label className="radio">
             <input

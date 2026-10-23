@@ -1,8 +1,50 @@
-import { useState } from "react";
-import { api, type GameState } from "../api";
+import { Suspense, useState } from "react";
+import { EVENTS, EVENT_LINES } from "@reyes/engine";
+import { api, type CinematicItem, type GameState } from "../api";
 import { navigate } from "../App";
 import { ShieldIcon } from "../art";
 import { formatShort } from "../ui";
+import { Player } from "./CinematicList";
+
+type Act = (fn: () => Promise<unknown>, ok?: string) => Promise<void>;
+
+/** Bloque 13: ver cualquier cinemática sin esperar a su semana (no cuenta como vista). */
+function CinematicBench({ state, act }: { state: GameState; act: Act }) {
+  const items: CinematicItem[] = [
+    { clave: "prologo", tipo: "prologo", semana: 1, orden: 10, vista: true, sola: false },
+    ...(Object.keys(EVENTS) as (keyof typeof EVENTS)[]).map((k, i) => ({
+      clave: `evento:${i + 1}`,
+      tipo: "evento" as const,
+      semana: 1,
+      orden: 12,
+      vista: true,
+      sola: false,
+      datos: { clave: k, nombre: EVENTS[k].nombre, texto: EVENTS[k].texto.replace("{recurso}", "Pan"), linea: EVENT_LINES[k][0] },
+    })),
+  ];
+  const [pick, setPick] = useState(0);
+  const [open, setOpen] = useState<CinematicItem | null>(null);
+  return (
+    <div className="actions">
+      <label>
+        Cinemática
+        <select value={pick} onChange={(e) => setPick(Number(e.target.value))}>
+          {items.map((it, i) => (
+            <option key={it.clave} value={i}>
+              {it.tipo === "prologo" ? "Prólogo" : `Evento: ${String(it.datos!.nombre)}`}
+            </option>
+          ))}
+        </select>
+      </label>
+      <button onClick={() => setOpen(items[pick]!)}>Ver</button>
+      {open && (
+        <Suspense fallback={null}>
+          <Player item={open} state={state} act={act} onClose={() => setOpen(null)} />
+        </Suspense>
+      )}
+    </div>
+  );
+}
 
 /**
  * Mesa de pruebas: solo aparece en las partidas de prueba, para quien las creó.
@@ -65,6 +107,7 @@ export function TestBench({
           avanza hasta pasar la próxima resolución. Cada bot tiene personalidad (entre paréntesis): construye,
           recluta, ataca con apoyos, defiende, publica ofertas y acepta las tuyas si le salen a cuenta.
         </p>
+        <CinematicBench state={state} act={act} />
         {confirmDelete ? (
           <div className="actions">
             <button

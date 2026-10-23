@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { api, type CinematicItem, type GameState } from "../api";
 import { buildCinematic } from "../cinematics";
 import { markSeenHere } from "../cinematicQueue";
+import { AmbitionSheet, ambitionPending } from "./AmbitionSheet";
 import { CinematicPlayer } from "./CinematicPlayer";
 
 export function CinematicQueue({
@@ -13,20 +14,29 @@ export function CinematicQueue({
   play: given,
   skip,
   onDone,
+  act,
+  onCastle,
 }: {
   state: GameState;
   play: CinematicItem[];
   skip: CinematicItem[];
   onDone: () => void;
+  act: (fn: () => Promise<unknown>, ok?: string) => Promise<void>;
+  /** Tras elegir la ambición secreta, «Entrar en mi castillo». */
+  onCastle: () => void;
 }) {
   const game = state.partida.id;
   const [index, setIndex] = useState(0);
   // La cola se fija al empezar: las recargas de cada minuto no la cambian a medias.
   const [play] = useState(given);
+  const [ambition] = useState(() => ambitionPending(state));
 
   useEffect(() => {
     if (skip.length === 0) return;
-    markSeenHere(game, skip.map((i) => i.clave));
+    markSeenHere(
+      game,
+      skip.map((i) => i.clave),
+    );
     skip.forEach((i) => api.seeCinematic(game, i.clave, false).catch(() => {}));
     if (play.length === 0) onDone();
     // Una vez por cola.
@@ -44,5 +54,19 @@ export function CinematicQueue({
     else setIndex(index + 1);
   };
   if (!cinematic) return null;
-  return <CinematicPlayer key={item!.clave} cinematic={cinematic} onClose={close} />;
+  const epilogue =
+    item!.tipo === "prologo" && ambition
+      ? (end: () => void) => (
+          <AmbitionSheet
+            state={state}
+            act={act}
+            onLater={end}
+            onEnter={() => {
+              end();
+              onCastle();
+            }}
+          />
+        )
+      : undefined;
+  return <CinematicPlayer key={item!.clave} cinematic={cinematic} onClose={close} epilogue={epilogue} />;
 }

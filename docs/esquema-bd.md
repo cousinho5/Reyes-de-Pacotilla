@@ -148,6 +148,7 @@ Alianzas (bloque 8, migración 0016):
 - `orders.guest`: la orden sale de las tropas de paso de la casa en esa casilla aliada.
 - `orders.repeat` (bloque 12, 0017): «Repetir cada noche». Al resolver, `jobs.ts` copia la orden a la noche siguiente si sigue siendo posible (en el mismo lote que la resolución); si no, la casa recibe el evento `repeticion_fin`.
 - `houses.close_warning` (bloque 12, 0017): la casa quiere el aviso 1 hora antes del cierre si aún no ha dado órdenes (1, por defecto) o lo ha apagado (0).
+- `houses.cinematics` (bloque 13, 0021): qué cinemáticas salen solas al entrar: `todas` (por defecto) o `esenciales` (solo el prólogo y la coronación; las demás quedan en Reino).
 
 Borrar una prueba elimina la partida, sus filas y los usuarios de sus bots en un solo lote (antes suelta `houses.captain_tile`, que apunta a una casilla).
 
@@ -249,6 +250,7 @@ CREATE TABLE houses (
   autopilot_template TEXT NOT NULL DEFAULT 'equilibrada'
                   CHECK (autopilot_template IN ('defensiva','economica','equilibrada')),
   close_warning   INTEGER NOT NULL DEFAULT 1 CHECK (close_warning IN (0, 1)),  -- aviso 1 h antes del cierre si no ha dado órdenes (0017)
+  cinematics      TEXT NOT NULL DEFAULT 'todas' CHECK (cinematics IN ('todas', 'esenciales')),  -- cinemáticas que salen solas (0021)
   vacation        INTEGER NOT NULL DEFAULT 0,        -- modo vacaciones avisado (0/1)
   last_seen_at    TEXT,                              -- piloto automático si > 3 días
   joined_at       TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
