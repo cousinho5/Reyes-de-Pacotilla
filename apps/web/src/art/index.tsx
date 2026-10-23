@@ -1,17 +1,17 @@
 // Piezas de pixel art listas para usar: escudos, casillas, recursos y Fray Abundio.
 
 import { SYMBOL_NAME, type Resource, type ShieldDivision, type ShieldShape, type ShieldSymbol, type TileType } from "@reyes/engine";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ShieldView } from "../api";
 import { Pixels } from "./Pixels";
 import { shieldGrid } from "./shield";
 import { shade } from "./tiles";
 import { renderWorld } from "./world";
 import { ICONS, type IconName } from "./icons";
-import { FRAY_SPRITES, RESOURCE_SPRITES, type FrayMood } from "./sprites";
+import { FRAY_ANIMS, FRAY_SPRITES, RESOURCE_SPRITES, type FrayAnim, type FrayMood } from "./sprites";
 
 export { Pixels } from "./Pixels";
-export type { FrayMood } from "./sprites";
+export type { FrayAnim, FrayMood } from "./sprites";
 
 /** Colores de la interfaz para cada esmalte (diseño, sección 18.2). */
 export const ENAMEL: Record<string, string> = {
@@ -91,8 +91,35 @@ const MOOD_LABEL: Record<FrayMood, string> = {
   monedas: "Fray Abundio, contando monedas",
 };
 
-export function FrayAbundio({ mood = "solemne", size = 72 }: { mood?: FrayMood; size?: number }) {
-  const s = FRAY_SPRITES[mood];
+/** La animación de cada cara cuando no se pide otra (bloque 3). */
+const MOOD_ANIM: Partial<Record<FrayMood, FrayAnim>> = { solemne: "parpadea", dormido: "cabecea", monedas: "tintinea" };
+const still = () => typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/**
+ * Fray Abundio (bloque 3: 48x48 tras su pupitre). Se anima solo: parpadea, cabecea
+ * dormido o hace sonar las monedas; `anim` pide otra (habla, moja). Con «reducir
+ * movimiento», la cara quieta.
+ */
+export function FrayAbundio({ mood = "solemne", size = 72, anim }: { mood?: FrayMood; size?: number; anim?: FrayAnim | null }) {
+  const which = anim === null ? undefined : (anim ?? MOOD_ANIM[mood]);
+  const [frame, setFrame] = useState(0);
+  useEffect(() => {
+    setFrame(0);
+    if (!which || still()) return;
+    const a = FRAY_ANIMS[which];
+    let i = 0;
+    let t: ReturnType<typeof setTimeout>;
+    const next = () => {
+      t = setTimeout(() => {
+        i = (i + 1) % a.frames.length;
+        setFrame(i);
+        next();
+      }, a.ms[i] ?? a.ms[0]!);
+    };
+    next();
+    return () => clearTimeout(t);
+  }, [which]);
+  const s = which && !still() ? (FRAY_ANIMS[which].frames[frame] ?? FRAY_SPRITES[mood]) : FRAY_SPRITES[mood];
   return <Pixels grid={s.grid} palette={s.palette} size={size} title={MOOD_LABEL[mood]} className="fray" />;
 }
 

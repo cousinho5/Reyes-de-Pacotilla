@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { bulletinText, houseInSentence, type Bulletin } from "@reyes/engine";
 import { api, type GameState } from "../api";
 import { FrayAbundio } from "../art";
 import { HOUSE_COLORS } from "../ui";
+import { markBulletinSeen } from "../bulletinSeen";
+import { Parchment, type Shown } from "./Parchment";
 
 type Edition = "domingo" | "miercoles";
-type Shown = Bulletin & { erratas?: { casa: number; texto: string }[] };
 const keyOf = (b: { semana: number; edicion?: Edition }) => `${b.semana}:${b.edicion ?? "domingo"}`;
 
 /** Boletines de Fray Abundio (domingo y hoja volandera del miércoles), en pergamino; la proclama y el soborno al cronista. */
@@ -39,12 +39,17 @@ export function BulletinPanel({
     // La fe de erratas cambia el pie de la Crónica: se vuelve a leer.
   }, [state.partida.id, chosen, state.feDeErratas?.texto]);
   const shown = bulletin && chosen === `${bulletin.week}:${bulletin.edition ?? "domingo"}` ? bulletin : null;
+  // Leerlo aquí cuenta como leído: no sale después en la ventana emergente.
+  useEffect(() => {
+    if (shown && latest && latest === chosen) markBulletinSeen(state.partida.id, latest);
+  }, [shown, latest, chosen, state.partida.id]);
 
   return (
     <>
       {list.length === 0 ? (
         <section className="card">
           <h2>Boletín del Reino</h2>
+          <FrayAbundio mood="solemne" anim="moja" size={64} />
           <p className="muted">
             Fray Abundio publica dos por semana: la hoja volandera del miércoles y el boletín del domingo, tras la resolución. Ya afila la
             pluma.
@@ -76,68 +81,6 @@ export function BulletinPanel({
       <ProclamationCard state={state} act={act} />
       <BribeCard state={state} act={act} />
     </>
-  );
-}
-
-function Parchment({ bulletin: b, gameName, houses }: { bulletin: Shown; gameName: string; houses: GameState["casas"] }) {
-  // Bloque 3: al pie de la Crónica, la fe de erratas de los vencidos.
-  const erratas = (b.erratas ?? []).map((e) => `«${e.texto}» (firma ${houseInSentence(houses.find((h) => h.id === e.casa)?.nombre ?? "una casa")})`);
-  const text = bulletinText(b, gameName) + (erratas.length > 0 ? `\n\n*Fe de erratas*\n${erratas.map((l) => `• ${l}`).join("\n")}` : "");
-  const share = `https://wa.me/?text=${encodeURIComponent(text)}`;
-  return (
-    <article className={b.chronicle ? "parchment chronicle" : "parchment"}>
-      <header>
-        <FrayAbundio mood={b.mood ?? "solemne"} size={64} />
-        <div>
-          <p className="parchment-kicker">
-            {b.chronicle
-              ? `Crónica Definitiva · ${gameName}`
-              : `${b.edition === "miercoles" ? "Hoja volandera" : "Boletín del Reino"} · ${gameName} · semana ${b.week}`}
-          </p>
-          <h2>{b.headline}</h2>
-        </div>
-      </header>
-      {b.margin.length > 0 && (
-        <aside className="margin-notes" aria-label="Notas al margen">
-          {b.margin.map((m, i) => (
-            <p key={i}>✎ {m}</p>
-          ))}
-        </aside>
-      )}
-      {b.sections.map((s) => (
-        <section key={s.title}>
-          <h3>{s.title}</h3>
-          {s.lines.map((l, i) => (
-            // Las proclamas, entre comillas, como citas; la entradilla y la nota del cronista, como el resto.
-            <p key={i} className={s.verbatim && l.startsWith("«") ? "proclama" : undefined}>
-              {l}
-            </p>
-          ))}
-        </section>
-      ))}
-      {erratas.length > 0 && (
-        <section>
-          <h3>Fe de erratas</h3>
-          {erratas.map((l, i) => (
-            <p key={i} className="proclama">
-              {l}
-            </p>
-          ))}
-        </section>
-      )}
-      {b.sponsors.length > 0 && (
-        <footer className="sponsors">
-          <FrayAbundio mood="monedas" size={40} />
-          {b.sponsors.map((s, i) => (
-            <p key={i}>{s}</p>
-          ))}
-        </footer>
-      )}
-      <p className="signature">Fray Abundio de la Pluma Larga, Cronista Mayor del Reino</p>
-      <a className="button share" href={share} target="_blank" rel="noreferrer">
-        Compartir en WhatsApp
-      </a>
-    </article>
   );
 }
 

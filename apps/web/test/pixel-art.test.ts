@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { SHIELD_DIVISIONS, SHIELD_SHAPES, SHIELD_SYMBOLS } from "@reyes/engine";
 import { SHIELD_H, SHIELD_W, SYMBOL_ART, shieldGrid } from "../src/art/shield";
-import { FRAY_SPRITES, RESOURCE_SPRITES } from "../src/art/sprites";
+import { FRAY_ANIMS, FRAY_SPRITES, RESOURCE_SPRITES } from "../src/art/sprites";
 import { renderWorld, roadEdges, type WorldCell } from "../src/art/world";
 import { makeGeo, sharedEdge } from "../src/art/grid";
 
@@ -38,7 +38,7 @@ describe("Pixel art", () => {
       const img = renderWorld({ cols: 1, rows: 1, margin: 0, cells: [{ x: 0, y: 0, type, owner: "#B3291D", troops: 7, fortified: true, battle: true }] });
       return { grid: img.pixels, palette: img.palette };
     });
-    const all = [...tiles, ...Object.values(RESOURCE_SPRITES), ...Object.values(FRAY_SPRITES)];
+    const all = [...tiles, ...Object.values(RESOURCE_SPRITES), ...Object.values(FRAY_SPRITES), ...Object.values(FRAY_ANIMS).flatMap((a) => a.frames)];
     for (const s of all) {
       const w = s.grid[0]!.length;
       expect(s.grid.every((r) => r.length === w)).toBe(true);
@@ -46,7 +46,7 @@ describe("Pixel art", () => {
     }
     expect(tiles.every((s) => s.grid.length === 64 && s.grid[0]!.length === 64)).toBe(true);
     expect(Object.values(RESOURCE_SPRITES).every((s) => s.grid.length === 16 && s.grid[0]!.length === 16)).toBe(true);
-    expect(Object.values(FRAY_SPRITES).every((s) => s.grid.length === 32 && s.grid[0]!.length === 32)).toBe(true);
+    expect(Object.values(FRAY_SPRITES).every((s) => s.grid.length === 50 && s.grid[0]!.length === 50)).toBe(true);
   });
 
   it("el castillo del mapa crece con la etapa de la casa, y sin etapa es el de la 3", () => {

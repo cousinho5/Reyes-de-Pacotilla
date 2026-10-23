@@ -9,6 +9,7 @@ import { TestBench } from "../components/TestBench";
 import { RESOURCE_LABEL, formatDay, formatShort, timeLeft } from "../ui";
 import { nextResolution, nightOf, pruneQueue } from "../plan";
 import { vibrate } from "../haptics";
+import { unreadBulletins } from "../bulletinSeen";
 
 type Tab = "mapa" | "castillo" | "ordenes" | "comercio" | "reino";
 
@@ -21,6 +22,8 @@ const CastlePanel = lazy(() => loadCastle().then((m) => ({ default: m.CastlePane
 const OrdersPanel = lazy(() => loadOrders().then((m) => ({ default: m.OrdersPanel })));
 const TradePanel = lazy(() => loadTrade().then((m) => ({ default: m.TradePanel })));
 const Realm = lazy(() => loadRealm().then((m) => ({ default: m.Realm })));
+// Bloque 3: la ventana del boletín recién publicado, solo cuando hay uno sin leer.
+const BulletinPopup = lazy(() => import("../components/BulletinPopup").then((m) => ({ default: m.BulletinPopup })));
 const OFFLINE_TOAST = "Sin conexión: podrás dar órdenes cuando vuelva la red.";
 
 /**
@@ -48,6 +51,8 @@ export function Game({ id }: { id: number }) {
   // Bloque 12: orden que abrir en el mapa para cambiarla (desde la pestaña Órdenes).
   const [editOrder, setEditOrder] = useState<OrderView | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  /** Cuántas veces se ha cerrado la ventana del boletín (para volver a mirar si queda alguno sin leer). */
+  const [popupClosed, setPopupClosed] = useState(0);
   // Bloque 12: al quitar una orden, el aviso lleva «Deshacer» unos segundos (las órdenes de antes).
   const [undo, setUndo] = useState<OrderView[] | null>(null);
   // Bloque 6: en el Mapa, el reloj y el evento se abren desde una etiqueta de la barra fina.
@@ -331,6 +336,12 @@ export function Game({ id }: { id: number }) {
         {tab === "reino" && <Realm state={state} act={act} />}
         </Suspense>
       </main>
+
+      {tab !== "reino" && unreadBulletins(state).length > 0 && (
+        <Suspense fallback={null}>
+          <BulletinPopup key={popupClosed} state={state} onClose={() => setPopupClosed((n) => n + 1)} />
+        </Suspense>
+      )}
 
       {toast && (
         <div className={`toast${undo ? " with-action" : ""}`} role="status">

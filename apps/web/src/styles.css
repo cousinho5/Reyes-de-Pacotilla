@@ -2935,3 +2935,115 @@ button.wide {
 .parchment.chronicle h3 {
   text-align: center;
 }
+
+/* Bloque 3: las casas en su color en el pergamino (con borde claro para leerse), y su escudo al tocarlas. */
+.parchment .house-name {
+  display: inline;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: none;
+  border-radius: 0;
+  transform: none;
+  text-shadow:
+    -1px -1px 0 #f4e7c8,
+    1px -1px 0 #f4e7c8,
+    -1px 1px 0 #f4e7c8,
+    1px 1px 0 #f4e7c8;
+  min-height: 0;
+  min-width: 0;
+}
+.parchment .house-card {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  width: 100%;
+  margin: 0.4rem 0 0.6rem;
+  padding: 0.5rem 0.7rem;
+  border: 2px solid #b08a4a;
+  border-radius: 6px;
+  background: #f9efd4;
+  color: #3a2a17;
+  text-align: left;
+  font: inherit;
+}
+.parchment .house-card span {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Bloque 3: el boletín recién publicado, una vez, encima de cualquier pestaña. */
+.bulletin-popup {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: calc(0.8rem + env(safe-area-inset-top)) 0.8rem calc(0.8rem + env(safe-area-inset-bottom));
+  background: rgba(20, 13, 8, 0.72);
+  overflow-y: auto;
+}
+.bulletin-popup-body {
+  position: relative;
+  width: 100%;
+  max-width: 34rem;
+}
+.bulletin-popup .popup-close {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.4rem;
+  z-index: 1;
+  width: 48px;
+  height: 48px;
+  border: 2px solid #5a3e22;
+  border-radius: 50%;
+  background: #f4e7c8;
+  color: #3a2a17;
+  font-size: 1.2rem;
+  line-height: 1;
+}
+.bulletin-popup .popup-previous {
+  display: block;
+  margin: 0.6rem auto 0;
+  color: #f4e7c8;
+}
+.bulletin-popup .parchment header {
+  padding-right: 2.8rem;
+}
+
+/* Bloque 3: letra capitular de la Crónica Definitiva (marco en pixel art y la letra encima). */
+.parchment .drop-cap {
+  position: relative;
+  float: left;
+  width: 52px;
+  height: 52px;
+  margin: 0.25rem 0.55rem 0 0;
+}
+.parchment .drop-cap b {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #f3c94a;
+  font-size: 2.1rem;
+  line-height: 1;
+  text-shadow: 2px 2px 0 #3a1410;
+}
+.parchment .with-drop-cap::after {
+  content: "";
+  display: block;
+  clear: both;
+}
+.parchment section:first-of-type p.with-drop-cap::first-letter {
+  float: none;
+  font-size: inherit;
+  line-height: inherit;
+  padding: 0;
+  color: inherit;
+  font-weight: inherit;
+}

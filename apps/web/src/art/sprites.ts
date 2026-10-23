@@ -1,10 +1,11 @@
-// Iconos de recursos (16x16) y Fray Abundio (32x32), dibujados con código:
+// Iconos de recursos (16x16), dibujados con código:
 // formas con luz arriba a la izquierda, sombra abajo a la derecha y contorno.
 // Las casillas están en tiles.ts y los escudos en shield.ts.
 
 import type { Resource } from "@reyes/engine";
 import type { Palette } from "./Pixels";
 import { WORLD, noise } from "./tiles";
+import { adulador, cabecea, dormido, escandalizado, habla, moja, monedas, parpadea, solemne, tintinea } from "./cronista";
 
 export interface Sprite {
   grid: string[];
@@ -127,170 +128,19 @@ export const RESOURCE_SPRITES: Record<Resource, Sprite> = {
 };
 
 // ---------------------------------------------------------------------------
-// Fray Abundio (32x32): monje mayor, tonsura despeinada, gafas de culo de
-// botella y una pluma exageradamente larga. Cinco caras.
+// Fray Abundio (bloque 3): 48x48 de medio cuerpo tras su pupitre, dibujado en pxl
+// (docs/maquetas/bloque3/pxl/fray.px.js → cronista.ts). Cinco caras y sus animaciones.
 
 export type FrayMood = "solemne" | "adulador" | "escandalizado" | "dormido" | "monedas";
 
-const FRAY_PALETTE: Palette = {
-  ...WORLD,
-  k: "#21160f",
-  s: "#efc39a",
-  S: "#d29a6e",
-  Z: "#a96f4c",
-  p: "#e98a7a",
-  h: "#f1ede4",
-  H: "#a9a398",
-  g: "#2b2a30",
-  w: "#cfe6f2",
-  O: "#ffffff",
-  e: "#1a1a1a",
-  M: "#6e2219",
-  m: "#c75b4c",
-  r: "#6b4a2b",
-  R: "#4a3119",
-  o: "#87613a",
-  y: "#cfa65a",
-  f: "#fbfaf5",
-  F: "#c4beb1",
-  b: "#73b8ec",
-};
+export const FRAY_SPRITES: Record<FrayMood, Sprite> = { solemne, adulador, escandalizado, dormido, monedas };
 
-function fray(mood: FrayMood): string[] {
-  const W = 32;
-  const g = blank(W, W);
-  const cx = 15.5;
-  // Hábito: capucha caída alrededor del cuello y cuerpo que se ensancha.
-  for (let y = 20; y < W; y++) {
-    const half = 7 + (y - 20) * 0.75;
-    for (let x = Math.floor(cx - half); x <= Math.ceil(cx + half); x++) {
-      const dx = (x - cx) / half;
-      set(g, x, y, dx < -0.55 ? "o" : dx > 0.45 ? "R" : "r");
-    }
-  }
-  // Pliegues y capucha.
-  for (let x = 9; x <= 22; x++) set(g, x, 20, x < 12 || x > 19 ? "R" : "o");
-  for (let x = 10; x <= 21; x++) set(g, x, 21, x < 13 || x > 18 ? "o" : "R");
-  for (const x of [11, 20]) for (let y = 24; y < W; y++) if ((y + x) % 3) set(g, x, y, "R");
-  // Cordón.
-  for (let x = 4; x < 28; x++) set(g, x, 28, x % 3 ? "y" : "W");
-  set(g, 13, 29, "y");
-  set(g, 13, 30, "y");
-  set(g, 14, 31, "y");
-
-  // Cabeza: calva con luz arriba a la izquierda.
-  for (let y = 3; y <= 19; y++) {
-    for (let x = 7; x <= 24; x++) {
-      const dx = (x - cx) / 7.6;
-      const dy = (y - 11.5) / 8.2;
-      if (dx * dx + dy * dy > 1) continue;
-      const lit = -dx * 0.6 - dy * 0.5;
-      set(g, x, y, dx > 0.62 || dy > 0.78 ? "Z" : lit > 0.45 ? "h" : lit > -0.25 ? "s" : "S");
-    }
-  }
-  // El brillo de la calva queda en piel clara, no en pelo.
-  for (let y = 3; y < 9; y++) for (let x = 8; x < 24; x++) if (g[y]![x] === "h") g[y]![x] = y < 5 && x < 13 ? "O" : "s";
-  set(g, 11, 5, "O");
-  set(g, 12, 5, "O");
-  set(g, 11, 6, "O");
-  // Orejas.
-  for (const [x, c] of [[7, "s"], [6, "s"], [24, "S"], [25, "S"]] as const) for (let y = 12; y <= 14; y++) set(g, x, y, c);
-  // Tonsura: cerco de pelo blanco despeinado en los lados.
-  for (let y = 7; y <= 12; y++) {
-    for (const x of [7, 8, 9, 22, 23, 24]) set(g, x, y, (x + y) % 3 ? "h" : "H");
-  }
-  for (const [x, y] of [[6, 7], [5, 8], [6, 10], [25, 7], [26, 8], [25, 10], [8, 6], [23, 6]] as const) set(g, x, y, "h");
-  // Gafas de culo de botella.
-  const lens = (x0: number) => {
-    for (let y = 11; y <= 15; y++) {
-      for (let x = x0; x <= x0 + 5; x++) {
-        const corner = (y === 11 || y === 15) && (x === x0 || x === x0 + 5);
-        if (corner) continue;
-        const frame = y === 11 || y === 15 || x === x0 || x === x0 + 5;
-        set(g, x, y, frame ? "g" : x === x0 + 1 && y === 12 ? "O" : "w");
-      }
-    }
-  };
-  lens(9);
-  lens(17);
-  set(g, 15, 12, "g");
-  set(g, 16, 12, "g");
-  // Nariz.
-  set(g, 15, 15, "S");
-  set(g, 16, 15, "Z");
-  set(g, 15, 16, "S");
-  set(g, 16, 16, "Z");
-
-  const eyes = (pattern: [string, string, string]) => {
-    for (const x0 of [10, 18]) {
-      pattern.forEach((line, dy) => [...line].forEach((c, dx) => c !== "." && set(g, x0 + dx, 12 + dy, c)));
-    }
-  };
-  const mouth = (pattern: string[]) => pattern.forEach((line, dy) => [...line].forEach((c, dx) => c !== "." && set(g, 12 + dx, 17 + dy, c)));
-
-  switch (mood) {
-    case "solemne":
-      eyes(["SSSS", "Seew", "wwww"]);
-      mouth(["..MMMM..", "........"]);
-      break;
-    case "adulador":
-      eyes(["wwww", "weew", "eWWe".replace(/W/g, "w")]);
-      mouth([".M....M.", "..MmmM..", "...MM..."]);
-      set(g, 9, 16, "p");
-      set(g, 10, 16, "p");
-      set(g, 21, 16, "p");
-      set(g, 22, 16, "p");
-      break;
-    case "escandalizado":
-      eyes(["weew", "weew", "wwww"]);
-      mouth(["...MM...", "..MmmM..", "...MM..."]);
-      for (const x of [10, 11, 12, 19, 20, 21]) set(g, x, 9, "H");
-      set(g, 5, 4, "b");
-      set(g, 5, 5, "b");
-      set(g, 4, 5, "b");
-      break;
-    case "dormido":
-      eyes(["wwww", "wwww", "eeee"]);
-      mouth(["....M...", "...MmM..", "....M..."]);
-      for (const [x, y] of [[26, 1], [27, 1], [28, 1], [27, 2], [26, 3], [27, 3], [28, 3], [22, 0], [23, 0], [23, 1], [22, 2], [23, 2]] as const) {
-        set(g, x, y, "k");
-      }
-      break;
-    case "monedas":
-      eyes(["wwww", "wwww", "weew"]);
-      mouth(["..MMMM..", ".....m.."]);
-      break;
-  }
-
-  // Manos: la derecha sujeta la pluma; en "monedas" sostienen una moneda.
-  const hand = (x0: number, y0: number) => {
-    for (let y = y0; y < y0 + 3; y++) for (let x = x0; x < x0 + 4; x++) set(g, x, y, y === y0 ? "s" : x === x0 + 3 ? "Z" : "S");
-  };
-  hand(25, 22);
-  if (mood === "monedas") {
-    hand(5, 22);
-    for (let y = 18; y <= 22; y++) for (let x = 13; x <= 18; x++) if (Math.hypot(x - 15.5, y - 20) <= 2.6) set(g, x, y, x < 15 ? "Y" : x > 16 ? "W" : "y");
-    set(g, 15, 20, "W");
-    set(g, 16, 20, "W");
-  }
-  // Pluma larguísima.
-  for (let y = 1; y <= 24; y++) {
-    const x = 28 - Math.floor((24 - y) / 14);
-    set(g, x, y, "F");
-    if (y < 19) {
-      set(g, x - 1, y, y % 2 ? "f" : "F");
-      set(g, x + 1, y, "f");
-      if (y > 3 && y < 15) set(g, x + 2, y, y % 3 ? "f" : ".");
-    }
-  }
-  set(g, 27, 25, "k");
-  return rows(outline(g));
-}
-
-export const FRAY_SPRITES: Record<FrayMood, Sprite> = {
-  solemne: { grid: fray("solemne"), palette: FRAY_PALETTE },
-  adulador: { grid: fray("adulador"), palette: FRAY_PALETTE },
-  escandalizado: { grid: fray("escandalizado"), palette: FRAY_PALETTE },
-  dormido: { grid: fray("dormido"), palette: FRAY_PALETTE },
-  monedas: { grid: fray("monedas"), palette: FRAY_PALETTE },
-};
+/** Animaciones cortas, con lo que dura cada fotograma (ms). */
+export const FRAY_ANIMS = {
+  parpadea: { frames: parpadea, ms: [2400, 90, 120, 90] },
+  habla: { frames: habla, ms: [143] },
+  moja: { frames: moja, ms: [167] },
+  cabecea: { frames: cabecea, ms: [333] },
+  tintinea: { frames: tintinea, ms: [125, 125, 125, 125, 125, 900] },
+} as const;
+export type FrayAnim = keyof typeof FRAY_ANIMS;
