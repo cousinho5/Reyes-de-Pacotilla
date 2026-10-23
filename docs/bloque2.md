@@ -66,6 +66,15 @@ Los dibujos se hacen en pxl, en `docs/maquetas/bloque2/pxl/castillo.px.js` (esce
 2. ✅ **Escena del castillo.** Componente nuevo en `apps/web/src/art` a escala de móvil (unos 390 píxeles de ancho), con los colores y el escudo de la casa.
 3. ✅ **Edificios por nivel.** Los 25 dibujos.
 4. ✅ **Crecimiento del castillo** (5 etapas) en la escena y en la loseta del mapa (`world.ts`, `castillo` con `stage`). La etapa se calcula en el cliente con los niveles que ya ve cada casa; para las demás casas, el servidor envía la etapa de cada una (ya es pública por el Prestigio de edificios).
-5. **Toques y lista** rehecha.
-6. **Animaciones**, respetando «reducir movimiento».
-7. **Comprobación** con Playwright a 390x844 y capturas de los 5 niveles de cada edificio y de las 5 etapas del castillo.
+5. ✅ **Toques y lista** rehecha.
+6. ✅ **Animaciones**, respetando «reducir movimiento».
+7. ✅ **Comprobación** con Playwright a 390x844 y capturas de los 5 niveles de cada edificio y de las 5 etapas del castillo.
+
+## Cómo quedó
+
+Hecho en las PR #72 (escena, ficha, Reclutar y los 25 dibujos), #73 (etapa de cada casa en el mapa) y #74 (lista, orden de la pestaña, hora del día, asedio y animaciones). Además de lo decidido:
+
+- La escena sigue la hora de la partida: amanecer (7-9), día (9-18), atardecer (18-21) y noche con luna y estrellas (`lightAt`). De noche el fuego luce igual.
+- Si tu castillo está sitiado, las tiendas del sitiador (dibujo `tienda`, con su color) acampan delante.
+- La escena viva (`animateScene`): antorchas que titilan, agua que brilla, telas de la casa que ondean y humo del granero (desde el nivel 3) y de la caseta de la mina (desde el 4). La obra al mejorar es `drawWork`. Todo se apaga con «reducir movimiento».
+- Queda para más adelante: aspas del molino que giren, y la guarnición y el Capitán en la escena.

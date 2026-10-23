@@ -1,4 +1,4 @@
-// Generado con scripts/pxl-a-juego.mjs desde docs/maquetas/bloque2/pxl/castillo.px.js ("fondo", "castillo_1", "castillo_2", "castillo_3", "castillo_4", "castillo_5", "granja_1", "granja_2", "granja_3", "granja_4", "granja_5", "aserradero_1", "aserradero_2", "aserradero_3", "aserradero_4", "aserradero_5", "cantera_1", "cantera_2", "cantera_3", "cantera_4", "cantera_5", "mina_1", "mina_2", "mina_3", "mina_4", "mina_5", "mercado_1", "mercado_2", "mercado_3", "mercado_4", "mercado_5"). No editar a mano: cambiar el .px.js y volver a generar.
+// Generado con scripts/pxl-a-juego.mjs desde docs/maquetas/bloque2/pxl/castillo.px.js ("fondo", "castillo_1", "castillo_2", "castillo_3", "castillo_4", "castillo_5", "tienda", "granja_1", "granja_2", "granja_3", "granja_4", "granja_5", "aserradero_1", "aserradero_2", "aserradero_3", "aserradero_4", "aserradero_5", "cantera_1", "cantera_2", "cantera_3", "cantera_4", "cantera_5", "mina_1", "mina_2", "mina_3", "mina_4", "mina_5", "mercado_1", "mercado_2", "mercado_3", "mercado_4", "mercado_5"). No editar a mano: cambiar el .px.js y volver a generar.
 import type { Sprite } from "./sprites";
 
 const fondoPalette = { "0": "#c4b496", "1": "#1b3326", "2": "#2a4f2f", "3": "#3f7134", "4": "#5f963d", "5": "#8bbd4f", "6": "#c3dd7c", "D": "#857b8c", "E": "#a99ea6", "H": "#4d2c1d", "I": "#f8d66a", "J": "#a26b3e", "L": "#8899c2", "M": "#c8d2e8", "N": "#f4e8cf", "O": "#b4e0f4", "P": "#5b9bd1", "S": "#5a4b4f", "U": "#cfd5ec", "V": "#a8978a", "W": "#efe6d2", "X": "#e2bb4a", "Y": "#d0c0a8", "Z": "#2f69a6", "a": "#41609f", "b": "#5f84c4", "c": "#86a9da", "d": "#aec8e6", "e": "#3f2820", "f": "#64432d", "g": "#8d6640", "h": "#2c1914", "i": "#cf9a5f", "k": "#1a1220", "l": "#6c7ca8", "m": "#a8b6d6", "n": "#d5e2ee", "p": "#ec8f5e", "q": "#a23d31", "s": "#3a3036", "t": "#b8915e", "u": "#f6f6ff", "v": "#80706c", "x": "#b9872a" };
@@ -783,6 +783,27 @@ export const castillo_5: Sprite = {
     "..................................................................................................................",
   ],
   palette: castillo_5Palette,
+};
+
+const tiendaPalette = { "7": "#b3291d", "8": "#7a1a12", "9": "#e0533f", "W": "#efe6d2", "h": "#2c1914", "k": "#1a1220" };
+
+export const tienda: Sprite = {
+  grid: [
+    ".......kkk.....",
+    "......kh79k....",
+    "......kh8k.....",
+    "......khk......",
+    "......kWk......",
+    ".....k99k......",
+    "....k7798kk....",
+    "....kWWWWWWk...",
+    "...k777k888k...",
+    "..k777kkk888k..",
+    ".kWWWWkkkWWWWk.",
+    "k77777kkk8888k.",
+    ".kkkkkkkkkkkk..",
+  ],
+  palette: tiendaPalette,
 };
 
 const granja_1Palette = { "0": "#c4b496", "2": "#2a4f2f", "H": "#4d2c1d", "J": "#a26b3e", "K": "#d49a2a", "W": "#efe6d2", "X": "#e2bb4a", "h": "#2c1914", "j": "#75462a", "k": "#1a1220", "q": "#a23d31", "w": "#7f5716", "x": "#b9872a", "y": "#f6e08c" };

@@ -1,6 +1,6 @@
 import { ENAMEL, Icon, ResourceIcon, shieldArt } from "../art";
 import { MercenariesCard } from "./MercenariesCard";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   BUILDINGS,
   BUILDING_PRODUCTION,
@@ -20,11 +20,11 @@ import {
   type UnitKind,
 } from "@reyes/engine";
 import { api, type GameState, type HouseInfo } from "../api";
-import type { SceneTarget } from "../art/castleScene";
+import { buildingSprite, lightAt, spriteImage, type SceneTarget } from "../art/castleScene";
 import { BUILDING_LABEL, RESOURCE_LABEL, UNIT_LABEL, UNIT_NOTE, UNIT_ONE, houseName } from "../ui";
 import { CardsPanel } from "./CardsPanel";
 import { CastleScene } from "./CastleScene";
-import { HouseSettings } from "./HouseSettings";
+import { HouseSettings, SecretObjective } from "./HouseSettings";
 import { Sheet, type SheetState } from "./Sheet";
 
 interface Props {
@@ -54,6 +54,34 @@ function whenIn(days: number, state: GameState): string {
   return days < 7 ? `el ${day}` : `en ${days} días`;
 }
 
+/** La hora en la partida (con el reloj de las partidas de prueba). */
+function hourIn(state: GameState): number {
+  const now = state.prueba?.ahora ? Date.parse(state.prueba.ahora) : Date.now();
+  const tz = state.partida.zonaHoraria;
+  return Number(new Intl.DateTimeFormat("en-GB", { hour: "numeric", hourCycle: "h23", ...(tz ? { timeZone: tz } : {}) }).format(new Date(now)));
+}
+
+/** El nivel en cinco puntos. */
+function LevelPips({ level }: { level: number }) {
+  return (
+    <span className="level-pips" aria-label={`nivel ${level} de 5`}>
+      {[1, 2, 3, 4, 5].map((n) => (
+        <span key={n} className={n <= level ? "on" : ""} aria-hidden />
+      ))}
+    </span>
+  );
+}
+
+/** El dibujo de la escena en pequeño (lista de edificios). */
+function BuildingThumb({ kind, level, color }: { kind: BuildingKind; level: number; color: string }) {
+  const canvas = useRef<HTMLCanvasElement>(null);
+  const img = useMemo(() => spriteImage(buildingSprite(kind, level), color), [kind, level, color]);
+  useEffect(() => {
+    canvas.current?.getContext("2d")?.putImageData(new ImageData(new Uint8ClampedArray(img.rgba), img.w, img.h), 0, 0);
+  }, [img]);
+  return <canvas ref={canvas} className="building-thumb" width={img.w} height={img.h} aria-hidden />;
+}
+
 /** Ficha de un edificio (bloque 2): lo que produce, lo que daría el nivel siguiente, el coste y Mejorar. */
 function BuildingSheet({ kind, state, gameId, act }: Props & { kind: BuildingKind }) {
   const res = state.yo.recursos!;
@@ -69,12 +97,7 @@ function BuildingSheet({ kind, state, gameId, act }: Props & { kind: BuildingKin
   return (
     <div className="building-sheet">
       <h2>
-        {BUILDING_LABEL[kind]}{" "}
-        <span className="level-pips" aria-label={`nivel ${level} de 5`}>
-          {[1, 2, 3, 4, 5].map((n) => (
-            <span key={n} className={n <= level ? "on" : ""} aria-hidden />
-          ))}
-        </span>
+        {BUILDING_LABEL[kind]} <LevelPips level={level} />
       </h2>
       <p className="building-yield">
         <ResourceIcon r={r} size={16} /> +{BUILDING_PRODUCTION[level]} de {RESOURCE_LABEL[r]} al día
@@ -139,6 +162,23 @@ export function CastlePanel({ state, gameId, act }: Props) {
     (t) => t.owner === state.yo.casa && t.fortifiedUntil != null && t.fortifiedUntil > state.partida.resolucionActual,
   ).length;
 
+  const light = lightAt(hourIn(state));
+  const siege = (state.casillas ?? []).find((t) => t.castleOf === state.yo.casa)?.besiegedBy;
+  const besieger = siege != null ? ENAMEL[state.casas.find((h) => h.id === siege)?.color ?? ""] ?? null : null;
+
+  const pick = (t: SceneTarget) => {
+    const el = scene.current;
+    if (el) {
+      // Justo debajo de la barra de arriba, que se queda fija.
+      const bar = document.querySelector(".topbar")?.getBoundingClientRect().bottom ?? 0;
+      window.scrollTo({ top: window.scrollY + el.getBoundingClientRect().top - bar, behavior: "instant" });
+      setSheetTop(Math.max(0, el.getBoundingClientRect().bottom));
+    }
+    setPicked(t);
+    setSheet("full");
+  };
+
+  // Bloque 2: escena, lo del día, Edificios, Reclutar, Mercenarios, Capitán, Cartas, Objetivo y, plegados, los ajustes.
   return (
     <div>
       <CastleScene
@@ -148,70 +188,30 @@ export function CastlePanel({ state, gameId, act }: Props) {
         color={color}
         shield={shield}
         selected={picked}
-        onPick={(t) => {
-          const el = scene.current;
-          if (el) {
-            // Justo debajo de la barra de arriba, que se queda fija.
-            const bar = document.querySelector(".topbar")?.getBoundingClientRect().bottom ?? 0;
-            window.scrollTo({ top: window.scrollY + el.getBoundingClientRect().top - bar, behavior: "instant" });
-            setSheetTop(Math.max(0, el.getBoundingClientRect().bottom));
-          }
-          setPicked(t);
-          setSheet("full");
-        }}
+        onPick={pick}
+        light={light}
+        besieger={besieger}
       />
 
-      <section className="card">
-        <h2>Tesoro</h2>
-        <table className="table">
-          <thead>
-            <tr>
-              <th>Recurso</th>
-              <th>Tienes</th>
-              <th>Al día</th>
-            </tr>
-          </thead>
-          <tbody>
-            {RESOURCES.map((r) => (
-              <tr key={r}>
-                <td>
-                  <ResourceIcon r={r} size={16} />{" "}
-                  {RESOURCE_LABEL[r]}
-                </td>
-                <td>{res[r]}</td>
-                <td>+{prod[r]}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <p className="muted">
-          El domingo pagarás {state.yo.mantenimientoSemanal} de Pan de mantenimiento. Si no llega, desertan tropas.
-          {forts > 0 && (FORTIFY_UPKEEP.piedra ?? 0) > 0 && (
-            <>
-              {" "}
-              Y {forts * (FORTIFY_UPKEEP.piedra ?? 0)} de Piedra por {forts === 1 ? "tu casilla fortificada" : `tus ${forts} casillas fortificadas`}: si no llega, se desmantelan las que no se puedan pagar.
-            </>
-          )}
-        </p>
-        {state.yo.ayudaAlUltimo && (
-          <p className="note">La Corona te ayuda esta semana: +3 de {RESOURCE_LABEL[state.yo.ayudaAlUltimo]} al día.</p>
+      <p className="day-bar" aria-label="Lo que entra cada día">
+        {RESOURCES.map((r) => (
+          <span key={r}>
+            <ResourceIcon r={r} size={14} /> +{prod[r]}
+            <span className="sr-only"> de {RESOURCE_LABEL[r]}</span>
+          </span>
+        ))}
+        <small>al día</small>
+      </p>
+      <p className="muted day-note">
+        El domingo pagarás {state.yo.mantenimientoSemanal} de Pan de mantenimiento. Si no llega, desertan tropas.
+        {forts > 0 && (FORTIFY_UPKEEP.piedra ?? 0) > 0 && (
+          <>
+            {" "}
+            Y {forts * (FORTIFY_UPKEEP.piedra ?? 0)} de Piedra por {forts === 1 ? "tu casilla fortificada" : `tus ${forts} casillas fortificadas`}: si no llega, se desmantelan las que no se puedan pagar.
+          </>
         )}
-        <label>
-          Si algún domingo vas último, la Corona te ayudará con:
-          <select
-            value={state.yo.recursoAyuda ?? "pan"}
-            onChange={(e) => act(() => api.setHelp(gameId, e.target.value as Resource), "Preferencia guardada.")}
-          >
-            {RESOURCES.map((r) => (
-              <option key={r} value={r}>
-                {RESOURCE_LABEL[r]}
-              </option>
-            ))}
-          </select>
-        </label>
-      </section>
-
-      <CardsPanel state={state} act={act} />
+        {state.yo.ayudaAlUltimo && <> La Corona te ayuda esta semana: +3 de {RESOURCE_LABEL[state.yo.ayudaAlUltimo]} al día.</>}
+      </p>
 
       <section className="card">
         <h2>Edificios</h2>
@@ -220,19 +220,32 @@ export function CastlePanel({ state, gameId, act }: Props) {
             const level = levels[b];
             const cost = upgradeCost(level);
             const affordable = cost ? canAfford(res, cost) : false;
+            const r = BUILDING_RESOURCE[b] as Resource;
             return (
               <li key={b}>
-                <div>
-                  <strong>{BUILDING_LABEL[b]}</strong> · nivel {level}
-                  <br />
-                  {cost ? (
+                <button className="building-row" onClick={() => pick(b)} aria-label={`Ficha de ${BUILDING_LABEL[b]}, nivel ${level}`}>
+                  <BuildingThumb kind={b} level={level} color={color} />
+                  <span>
+                    <strong>{BUILDING_LABEL[b]}</strong> <LevelPips level={level} />
+                    <br />
                     <small>
-                      Subir a {level + 1}: <Cost cost={cost} />
+                      <ResourceIcon r={r} size={14} /> +{BUILDING_PRODUCTION[level]} de {RESOURCE_LABEL[r]} al día
                     </small>
-                  ) : (
-                    <small>Nivel máximo. Una obra maestra.</small>
-                  )}
-                </div>
+                    <br />
+                    {cost ? (
+                      <small className="row-cost">
+                        {RESOURCES.filter((k) => cost[k]).map((k) => (
+                          <span key={k} className={(cost[k] ?? 0) > res[k] ? "short" : ""}>
+                            <ResourceIcon r={k} size={14} /> {cost[k]}
+                            <span className="sr-only"> de {RESOURCE_LABEL[k]}</span>
+                          </span>
+                        ))}
+                      </small>
+                    ) : (
+                      <small>Nivel máximo. Una obra maestra.</small>
+                    )}
+                  </span>
+                </button>
                 {cost && (
                   <button
                     disabled={!affordable || !active}
@@ -253,7 +266,28 @@ export function CastlePanel({ state, gameId, act }: Props) {
 
       <CaptainCard state={state} gameId={gameId} act={act} />
 
-      <HouseSettings state={state} act={act} />
+      <CardsPanel state={state} act={act} />
+
+      <SecretObjective state={state} act={act} />
+
+      <HouseSettings state={state} act={act}>
+        <section>
+          <h3>La Corona</h3>
+          <label>
+            Si algún domingo vas último, la Corona te ayudará con:
+            <select
+              value={state.yo.recursoAyuda ?? "pan"}
+              onChange={(e) => act(() => api.setHelp(gameId, e.target.value as Resource), "Preferencia guardada.")}
+            >
+              {RESOURCES.map((r) => (
+                <option key={r} value={r}>
+                  {RESOURCE_LABEL[r]}
+                </option>
+              ))}
+            </select>
+          </label>
+        </section>
+      </HouseSettings>
 
       {picked && (
         <div className="sheet-layer" style={{ top: sheetTop }}>
