@@ -5,11 +5,12 @@
 import { Suspense, lazy, useEffect, useMemo, useState } from "react";
 import { api, type Me } from "../api";
 import { navigate } from "../App";
-import { FrayAbundio, Pixels, ShieldIcon, still, type FrayMood } from "../art";
+import { FrayAbundio, Pixels, still, type FrayMood } from "../art";
 import { bandera, brillo, carreta, corona } from "../art/portadaIconos";
 import type { Sprite } from "../art/sprites";
 import { CodeSheet } from "../components/CodeSheet";
-import { greeting, hourAt, hourFromUrl, welcomeLines, type HomeHour } from "../home";
+import { InstallCard, MainGame, Showcase, SmallGame } from "../components/HomeGames";
+import { greeting, hourAt, hourFromUrl, insideLines, mainGame, sortGames, toDeviceClock, welcomeLines, type HomeHour } from "../home";
 
 // El dibujo y el prólogo van en su propio trozo de JS: la portada sale al momento
 // con el cielo y el título, y la escena aparece encima en cuanto llega.
@@ -64,17 +65,19 @@ function Hero({ hour, small }: { hour: HomeHour; small: boolean }) {
 /** Fray Abundio con un bocadillo que cambia de frase cada pocos segundos. */
 function FrayCard({ lines, mood }: { lines: string[]; mood: FrayMood }) {
   const [i, setI] = useState(0);
+  const key = lines.join("\n");
   useEffect(() => {
     setI(0);
     if (lines.length < 2) return;
     const id = setInterval(() => setI((n) => (n + 1) % lines.length), 6500);
     return () => clearInterval(id);
-  }, [lines]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
   return (
     <div className="home-fray">
       <FrayAbundio mood={mood} size={64} />
       <p key={i} className="bubble" aria-live="polite">
-        {lines[i]}
+        {lines[i % lines.length]}
       </p>
     </div>
   );
@@ -175,35 +178,45 @@ function Outside({ hour, onCode }: { hour: HomeHour; onCode: () => void }) {
   );
 }
 
-const STATUS = (e: string) => (e === "lobby" ? "En la sala de espera" : e === "active" ? "En juego" : "Terminada");
+/** La hora para las cuentas atrás, al minuto. */
+function useNow() {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 30_000);
+    return () => clearInterval(id);
+  }, []);
+  return now;
+}
 
 function Inside({ me, hour, onLogout }: { me: Me; hour: HomeHour; onLogout: () => void }) {
+  const now = useNow();
+  const sorted = useMemo(() => sortGames(me.partidas, now), [me.partidas, now]);
+  const main = mainGame(sorted);
+  const rest = sorted.filter((g) => g !== main);
+  const lines = useMemo(() => insideLines(main, now), [main, now]);
+  // Con el juego instalado, el icono lleva cuántas partidas te piden órdenes.
+  const pending = me.partidas.filter((g) => g.resumen?.faltanOrdenes).length;
+  useEffect(() => {
+    const nav = navigator as Navigator & { setAppBadge?: (n: number) => Promise<void>; clearAppBadge?: () => Promise<void> };
+    (pending ? nav.setAppBadge?.(pending) : nav.clearAppBadge?.())?.catch(() => {});
+  }, [pending]);
   return (
     <>
       <h2 className="home-hello">
         {greeting(hour)}, {me.usuario!.nombre}
       </h2>
-      {me.partidas.length === 0 ? (
-        <FrayCard lines={["Aún no estás en ninguna partida. Pide un enlace de invitación: el cronista no se presenta solo."]} mood="solemne" />
-      ) : (
-        <ul className="home-games">
-          {me.partidas.map((p) => (
-            <li key={p.id}>
-              <button className="home-game" onClick={() => navigate(`/partida/${p.id}`)}>
-                <ShieldIcon color={p.color} escudo={p.escudo} size={40} />
-                <span>
-                  <b>{p.nombre}</b>
-                  <small>
-                    {p.casa} · {STATUS(p.estado)}
-                    {p.prueba && " · prueba"}
-                  </small>
-                </span>
-                <i aria-hidden>›</i>
-              </button>
-            </li>
+      <FrayCard lines={lines} mood={main?.resumen?.faltanOrdenes ? "escandalizado" : "solemne"} />
+      {main && <MainGame g={main} now={now} />}
+      {rest.length > 0 && (
+        <>
+          <h4 className="home-sep">Tus otras partidas</h4>
+          {rest.map((g) => (
+            <SmallGame key={g.id} g={g} now={now} />
           ))}
-        </ul>
+        </>
       )}
+      <Showcase games={me.partidas} />
+      <InstallCard />
       <InviteField />
       <button className="link home-logout" onClick={onLogout}>
         Salir
@@ -220,7 +233,7 @@ export function Home({ askCode = false }: { askCode?: boolean }) {
   const load = () =>
     api
       .me()
-      .then(setMe)
+      .then((m) => setMe({ ...m, partidas: m.partidas.map((g) => toDeviceClock(g, new Date())) }))
       .catch(() => setMe({ usuario: null, partidas: [] }));
   useEffect(() => void load(), []);
 

@@ -25,7 +25,47 @@ async function call<T>(method: string, path: string, body?: unknown): Promise<T>
 
 export interface Me {
   usuario: { id: number; nombre: string } | null;
-  partidas: { id: number; nombre: string; estado: string; prueba?: boolean; casa: string; color: string; escudo?: ShieldView }[];
+  partidas: MyGame[];
+}
+
+/** Bloque 7: lo que la portada cuenta de una partida empezada (dentro de la niebla de tu casa). */
+export interface HomeSummary {
+  noche: number | null;
+  totalNoches: number;
+  semana: number;
+  cierre: string | null;
+  ordenesAbiertas: boolean;
+  faltanOrdenes: boolean;
+  ataques: { casilla: string; resultado: "resistio" | "perdida" | "conquista" | "fallo" }[];
+  boletin: { semana: number; edicion: "domingo" | "miercoles" } | null;
+  ofertas: number;
+  clasificacion: { casa: number; total: number }[];
+  puesto: number | null;
+  puestoAntes: number | null;
+  mapa: { columnas: number; filas: number; casillas: [number, number, number, number][] } | null;
+  final: { ganador: number | null; puesto: number | null; fecha: string | null } | null;
+  /** Solo en las partidas de prueba: su hora simulada. */
+  ahora?: string;
+}
+
+export interface MyGame {
+  id: number;
+  nombre: string;
+  estado: "lobby" | "active" | "finished";
+  prueba?: boolean;
+  casa: string;
+  color: string;
+  escudo?: ShieldView;
+  /** Lo que sigue llega desde el bloque 7 (las respuestas guardadas de antes no lo traen). */
+  casaId?: number;
+  semanas?: number;
+  inicio?: string | null;
+  esCreador?: boolean;
+  codigoInvitacion?: string | null;
+  casas?: HouseInfo[];
+  resumen?: HomeSummary | null;
+  /** Tu título en la última partida acabada (para la vitrina). */
+  titulo?: string | null;
 }
 
 export interface ShieldView {

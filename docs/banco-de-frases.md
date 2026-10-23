@@ -1238,7 +1238,7 @@ Las cinemáticas del bloque 13 (`apps/web/src/cinematics.tsx`). Las viñetas de 
 
 ## 23. Portada
 
-La portada del bloque 7 (`apps/web/src/home.ts`). Fray Abundio cambia de frase cada pocos segundos en su bocadillo.
+La portada del bloque 7 (`apps/web/src/home.ts`). Fray Abundio cambia de frase cada pocos segundos en su bocadillo. La tarjeta de instalar usa la 11.11.
 
 ### 23.1 Bienvenida a quien no ha entrado
 
@@ -1251,6 +1251,25 @@ De noche se añaden:
 
 5. A estas horas solo velan los fantasmas y los que no han dado sus órdenes.
 6. El cronista duerme con un ojo abierto. El otro también, por si acaso.
+
+### 23.2 Con partidas
+
+Según la partida de arriba (la más urgente). Si toca más de una, se turnan en este orden.
+
+- Te faltan órdenes:
+  1. Las órdenes de esta noche siguen en blanco. El cronista no sabe escribir sobre nada, aunque lo intenta.
+  2. Quedan {tiempo} para el cierre y vuestras tropas miran al cielo esperando instrucciones.
+- Anoche perdiste una casilla: Anoche perdisteis {casilla}. El cronista no dirá que lo vio venir, pero lo vio venir.
+- Anoche conquistaste una: Anoche conquistasteis {casilla}. El cronista ya busca adjetivos a la altura.
+- Anoche resististe: Anoche atacaron vuestras tierras y no pasaron. El cronista lo apunta como hazaña.
+- Vas primero: {casa} va en cabeza con {n} de Prestigio. El cronista ya ensaya la reverencia, por si acaso.
+- Vas detrás: {casa} va {puesto}.º, a {n} de Prestigio del primero. El cronista lo considera un triunfo moral.
+- Vas último: {casa} cierra la clasificación. Desde abajo, dicen, se ve mejor el cielo.
+- Sin nada que contar: Noche tranquila en Aldricia. Sospechosamente tranquila.
+- En la sala de espera: La corte de «{partida}» aún se está reuniendo. El cronista guarda sitio, y pan.
+- Acabada y ganaste: {casa} lleva la corona de «{partida}». El cronista lo dijo desde el principio, en voz muy baja.
+- Acabada: «{partida}» ya tiene rey. El cronista recomienda ver la coronación, aunque duela.
+- Sin partidas: Aún no estás en ninguna partida. Pide un enlace de invitación: el cronista no se presenta solo.
 
 ### 23.4 La hoja para entrar con el código
 

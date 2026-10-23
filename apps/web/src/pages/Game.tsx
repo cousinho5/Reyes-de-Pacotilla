@@ -49,7 +49,11 @@ export function Game({ id }: { id: number }) {
   const [offlineAt, setOfflineAt] = useState<number | null>(null);
   const preloaded = useRef(false);
   const [error, setError] = useState<string | null>(null);
-  const [tab, setTab] = useState<Tab>("mapa");
+  // Bloque 7: los avisos de la portada abren su pestaña (?pestana=ordenes).
+  const [tab, setTab] = useState<Tab>(() => {
+    const want = new URLSearchParams(window.location.search).get("pestana");
+    return want === "castillo" || want === "ordenes" || want === "comercio" || want === "reino" ? want : "mapa";
+  });
   const [draft, setDraft] = useState<OrderView[]>([]);
   // Noche de la cola que se planea en el mapa (0 = la próxima resolución).
   const [night, setNight] = useState(0);
