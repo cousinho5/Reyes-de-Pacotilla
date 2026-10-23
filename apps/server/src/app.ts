@@ -85,6 +85,7 @@ import { bribeView, errataView, proclamationView, type StoredBulletin } from "./
 import { auctionView, handView, openAuctionWeek, spiedHouses, useCardStatements, type CardRow } from "./subasta";
 import { addBots, advance, botsPlayDay, deleteTestGame, testStart } from "./pruebas";
 import { ransomStatements } from "./rescate";
+import { prestigeHistory } from "./reino";
 import { crownCost, crownMarket, crownPriceView, crownPurchaseStatements } from "./corona";
 import { hireStatements, leavingDay, loadMercenaries } from "./mercenarios";
 import { acceptOffer, bundle, offerExpiry, offerView, type OfferRow } from "./offers";
@@ -591,7 +592,8 @@ app.get("/api/partidas/:id", async (c) => {
   const allianceRows = await loadAlliances(db, game.id);
   const allies = alliesOf(toEngineAlliances(allianceRows), house.id);
   const sharedVision = [...new Set([...spied, ...allies])];
-  const [buildings, prestige, orders, events, offers, trades, achievements, ending] = await Promise.all([
+  const per = rhythmOf(game).days.length;
+  const [buildings, prestige, orders, events, offers, trades, achievements, ending, snapshots] = await Promise.all([
     loadBuildings(db, game.id),
     computeAllPrestige(db, game.id, houses, tiles, now),
     db.prepare(
@@ -645,6 +647,12 @@ app.get("/api/partidas/:id", async (c) => {
           .bind(game.id)
           .first<{ payload: string }>()
       : Promise.resolve(null),
+    // Bloque 11: fotos de Prestigio de cada domingo, la de la noche anterior y la final (el total es público).
+    db.prepare(
+      "SELECT house_id, resolution_no, total FROM prestige_snapshots WHERE game_id = ? AND (resolution_no % ? = 0 OR resolution_no = ? OR resolution_no > ?) ORDER BY resolution_no",
+    )
+      .bind(game.id, per, game.current_resolution - 1, totalResolutions(game.weeks, rhythmOf(game).days))
+      .all<{ house_id: number; resolution_no: number; total: number }>(),
   ]);
   const finished = game.status === "finished";
   const objectiveView = (key: string | null) =>
@@ -716,6 +724,7 @@ app.get("/api/partidas/:id", async (c) => {
         },
       }))
       .sort((a, b) => (b.prestigio?.total ?? 0) - (a.prestigio?.total ?? 0)),
+    historia: prestigeHistory(snapshots.results, per, game.current_resolution, total),
     prueba:
       game.is_test === 1 && game.created_by === s.userId
         ? {
