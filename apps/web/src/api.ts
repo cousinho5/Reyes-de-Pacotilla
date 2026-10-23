@@ -26,6 +26,8 @@ async function call<T>(method: string, path: string, body?: unknown): Promise<T>
 export interface Me {
   usuario: { id: number; nombre: string } | null;
   partidas: MyGame[];
+  /** Solo en el cliente: sin conexión, cuándo se guardó lo que se enseña (ms). */
+  guardadoA?: number;
 }
 
 /** Bloque 7: lo que la portada cuenta de una partida empezada (dentro de la niebla de tu casa). */
@@ -89,8 +91,11 @@ export interface HouseForm {
 }
 
 export interface Invitation {
-  partida: { id: number; nombre: string; estado: string; semanas: number };
-  casas: { nombre: string; color: string; escudo?: ShieldView }[];
+  partida: { id: number; nombre: string; estado: string; semanas: number; inicio?: string | null };
+  /** Bloque 7: quién creó la partida y cuántas casas caben. */
+  anfitrion?: string | null;
+  plazas?: number;
+  casas: { nombre: string; color: string; lema?: string | null; escudo?: ShieldView }[];
   coloresLibres: string[];
   yaDentro: boolean;
 }
@@ -439,6 +444,10 @@ function forgetSaved() {
     /* sin almacenamiento */
   }
 }
+/** Lo último que se vio en la portada (sin la hora en que se guardó), o null. */
+export function savedMe(): Me | null {
+  return readSaved<Me>("yo")?.data ?? null;
+}
 /** Sin red (no un error del servidor): fetch falla con TypeError. */
 export const isOffline = (err: unknown) => !(err instanceof ApiError);
 
@@ -450,7 +459,7 @@ export const api = {
       return me;
     } catch (err) {
       const saved = isOffline(err) ? readSaved<Me>("yo") : null;
-      if (saved) return saved.data;
+      if (saved) return { ...saved.data, guardadoA: saved.at };
       throw err;
     }
   },

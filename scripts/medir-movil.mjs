@@ -1,6 +1,8 @@
 // Medidas del bloque 6 (docs/bloque6.md): carga, primer dibujo del mapa, fluidez y
 // tamaño de lo que se toca, en un móvil simulado de 390x844 (escala 3, táctil).
-// Se repite antes y después de cada paso del bloque para comparar.
+// Se repite antes y después de cada paso del bloque para comparar. Desde el bloque 7
+// mide también la portada: sin entrar y con la sesión abierta, su escena y si queda
+// quieta con «reducir movimiento».
 //
 // Necesita el servidor local (npm run dev:server) y Chromium. Uso:
 //   node scripts/medir-movil.mjs [http://localhost:8787] [clave-admin] [--partida N] [--solo normal|flojo] [--json archivo]
@@ -182,12 +184,26 @@ async function medir(browser, partida, nombre) {
   const descarga = { ...bytes };
   await page.waitForTimeout(300);
   const primera = await tiempos(page);
+  await page.waitForTimeout(1500);
 
+  // Las cinemáticas (bloque 13) y el boletín emergente (bloque 3) salen solos la
+  // primera vez: se cierran para medir lo demás.
+  const saltarCinematicas = async (p) => {
+    for (let i = 0; i < 6 && (await p.locator(".cinematic, .bulletin-popup").count()); i++) {
+      const later = p.getByRole("button", { name: /Elegir más tarde/ });
+      if (await later.count()) await later.click();
+      else if (await p.locator(".bulletin-popup").count()) await p.locator(".bulletin-popup .popup-close").first().click();
+      else await p.getByRole("button", { name: "Saltar" }).click().catch(() => {});
+      await p.waitForTimeout(400);
+    }
+  };
+  await saltarCinematicas(page);
   // La repetición de la noche sale sola la primera vez.
   let repeticion = null;
   if (await page.locator(".board.replaying").count()) {
     repeticion = await fps(page, 3000);
     await page.getByRole("button", { name: "Saltar" }).click().catch(() => {});
+    await saltarCinematicas(page);
   }
 
   // Arrastrar el mapa con el dedo.
@@ -220,6 +236,7 @@ async function medir(browser, partida, nombre) {
   const pestanas = page.locator("nav.tabs button");
   for (let i = 0; i < (await pestanas.count()); i++) {
     const nombrePestana = (await pestanas.nth(i).innerText()).trim().split("\n")[0];
+    await saltarCinematicas(page);
     await pestanas.nth(i).click();
     await page.waitForTimeout(300);
     pequenos[nombrePestana] = await tocables(page);
@@ -247,6 +264,56 @@ async function medir(browser, partida, nombre) {
   const segunda = await tiempos(page2);
   await again.close();
   return { perfil: nombre, descarga, primera, segunda, repeticion, arrastre, casillas, pequenos };
+}
+
+/** La portada (bloque 7): `/` sin sesión y con ella. */
+async function medirPortada(browser, partida, nombre) {
+  const perfil = PERFILES[nombre];
+  const out = {};
+  for (const [cual, entrar, motion] of [
+    ["fuera", false, "no-preference"],
+    ["dentro", true, "no-preference"],
+    ["quieta", false, "reduce"],
+  ]) {
+    const context = await browser.newContext({ ...MOVIL, serviceWorkers: "block", reducedMotion: motion });
+    await context.addInitScript(() => {
+      window.__largas = [];
+      try {
+        new PerformanceObserver((l) => l.getEntries().forEach((e) => window.__largas.push({ start: e.startTime, duration: e.duration }))).observe({
+          type: "longtask",
+          buffered: true,
+        });
+      } catch {
+        /* sin longtask */
+      }
+    });
+    if (entrar) await context.request.post(`${BASE}/api/entrar`, { data: { codigo: partida.codigo } });
+    const page = await context.newPage();
+    const cdp = await context.newCDPSession(page);
+    let bytes = 0;
+    await cdp.send("Network.enable");
+    cdp.on("Network.loadingFinished", (e) => (bytes += e.encodedDataLength));
+    if (perfil.cpu > 1) await cdp.send("Emulation.setCPUThrottlingRate", { rate: perfil.cpu });
+    if (perfil.red) await cdp.send("Network.emulateNetworkConditions", { offline: false, ...perfil.red });
+    await page.goto(`${BASE}/`, { waitUntil: "load" });
+    await page.waitForFunction(() => performance.getEntriesByName("portada-dibujada").length > 0, null, { timeout: 60_000 });
+    await page.waitForTimeout(300);
+    const t = await page.evaluate(() => {
+      const fcp = performance.getEntriesByName("first-contentful-paint")[0]?.startTime ?? null;
+      const escena = performance.getEntriesByName("portada-dibujada")[0]?.startTime ?? null;
+      const largas = window.__largas ?? [];
+      return { pagina: fcp, escena, congelada: largas.reduce((m, d) => Math.max(m, d.duration), 0) };
+    });
+    // ¿Se mueve? Dos fotos del plano del pueblo con un segundo de diferencia.
+    const foto = () => page.evaluate(() => document.querySelectorAll(".pano-layer")[4]?.toDataURL() ?? "");
+    const a = await foto();
+    const fluidez = motion === "reduce" ? null : await fps(page, 2000);
+    await page.waitForTimeout(motion === "reduce" ? 1000 : 0);
+    const b = await foto();
+    out[cual] = { ...t, bytes, fluidez, seMueve: a !== b, pequenos: cual === "quieta" ? [] : await tocables(page) };
+    await context.close();
+  }
+  return out;
 }
 
 const kb = (b) => `${Math.round(b / 1024)} KB`;
@@ -284,7 +351,8 @@ if (!partida.codigo) {
 }
 const browser = await chromium.launch({ executablePath: CHROME });
 const resultados = [];
-for (const nombre of solo ? [solo] : ["normal", "flojo"]) resultados.push(await medir(browser, partida, nombre));
+for (const nombre of solo ? [solo] : ["normal", "flojo"])
+  resultados.push({ ...(await medir(browser, partida, nombre)), portada: await medirPortada(browser, partida, nombre) });
 await browser.close();
 
 console.log(`Partida ${partida.id} (código ${partida.codigo})\n`);
@@ -304,4 +372,21 @@ console.log(`\nMenos de 48 px: ${total.length} (de ellas, menos de 44 px: ${tota
 for (const [pestana, lista] of unicos) {
   if (lista.length) console.log(`- ${pestana}: ${lista.map((t) => `${t.nombre} ${t.ancho}x${t.alto}`).join(" · ")}`);
 }
+// Bloque 7: la portada.
+const filaP = (q, f) => `| ${q} | ${resultados.map(f).join(" | ")} |`;
+console.log(
+  [
+    "",
+    `| Portada | ${resultados.map((r) => (r.perfil === "flojo" ? "Móvil flojo y 4G lenta" : "Móvil normal")).join(" | ")} |`,
+    `| --- | ${resultados.map(() => "---").join(" | ")} |`,
+    filaP("Descarga sin entrar / con sesión", (r) => `${kb(r.portada.fuera.bytes)} / ${kb(r.portada.dentro.bytes)}`),
+    filaP("Se ve la página sin entrar", (r) => s(r.portada.fuera.pagina)),
+    filaP("Se ve la escena sin entrar / con sesión", (r) => `${s(r.portada.fuera.escena)} / ${s(r.portada.dentro.escena)}`),
+    filaP("Pantalla congelada (la más larga)", (r) => s(Math.max(r.portada.fuera.congelada, r.portada.dentro.congelada))),
+    filaP("Fluidez con la escena en marcha", (r) => `${r.portada.fuera.fluidez} imágenes/s`),
+    filaP("Con «reducir movimiento», quieta", (r) => (r.portada.quieta.seMueve ? "no: se mueve" : "sí")),
+  ].join("\n"),
+);
+const pequenosPortada = [...new Map(resultados[0].portada.fuera.pequenos.concat(resultados[0].portada.dentro.pequenos).map((t) => [`${t.nombre}|${t.ancho}x${t.alto}`, t])).values()];
+console.log(`\nPortada, menos de 48 px: ${pequenosPortada.length ? pequenosPortada.map((t) => `${t.nombre} ${t.ancho}x${t.alto}`).join(" · ") : "nada"}`);
 if (jsonOut) writeFileSync(jsonOut, JSON.stringify({ partida, resultados }, null, 2));

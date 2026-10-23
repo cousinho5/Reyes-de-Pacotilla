@@ -10,7 +10,7 @@ import { Crown, FrayAbundio, Pixels, ShieldIcon } from "../art";
 import { makeGeo } from "../art/grid";
 import { corona } from "../art/portadaIconos";
 import { bulletinKey, bulletinSeen } from "../bulletinSeen";
-import { attackLines, closeLine, closingSoon, showcase, timeLeft } from "../home";
+import { attackLines, closeLine, closingSoon, showcase, startText, timeLeft } from "../home";
 import { HOUSE_COLORS, TERRITORY } from "../ui";
 
 const open = (g: MyGame, tab?: string) => navigate(`/partida/${g.id}${tab ? `?pestana=${tab}` : ""}`);
@@ -187,17 +187,11 @@ function InviteMore({ g }: { g: MyGame }) {
   );
 }
 
-const startLine = (g: MyGame) => {
-  const n = g.casas?.length ?? 0;
-  const when = g.inicio
-    ? `empieza el ${new Date(`${g.inicio}T12:00:00`).toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" })}`
-    : "empieza el lunes que elija quien la creó";
-  return (
-    <>
-      {n} de 8 casas · {when}
-    </>
-  );
-};
+const startLine = (g: MyGame) => (
+  <>
+    {g.casas?.length ?? 0} de 8 casas · {startText(g.inicio)}
+  </>
+);
 
 export function MainGame({ g, now }: { g: MyGame; now: Date }) {
   const r = g.resumen;

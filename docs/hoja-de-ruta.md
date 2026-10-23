@@ -18,9 +18,9 @@ Primero se definen todos los bloques; después se hacen uno a uno, en el orden d
 | 10.º | 3. Mejora del cronista | ✅ Hecho (falta probarlo en un móvil de verdad) | #76 a #80 | Fray Abundio: dos boletines por semana, repetición narrada, frases nuevas, memoria, proclamas y dibujo nuevo |
 | 11.º | 11. Diseño de la sección Reino | ✅ Hecho (falta probarlo en un móvil de verdad) | #81 a #84 | Clasificación con podio de madera y corona en pixel art, flechas desde la noche anterior, gráfica de la carrera, boletín en tarjeta, crónica por noches con filtros, ficha de casa desde cualquier pestaña, alianzas en Reino y pantalla de coronación |
 | 12.º | 13. Historia y cinemáticas | ✅ Hecho (falta probarlo en un móvil de verdad) | #85 a #87 | Cinco cinemáticas en pixel art: prólogo de la muerte de Aldric, coronación con mapa por semanas y títulos cómicos, viñetas de eventos, última semana y fantasma de Aldric; sin sonido de momento |
-| 13.º | 7. Mejorar pagina de inicio del juego | 🔨 En curso | #88 | Portada con Aldricia viva en pixel art según la hora real, tarjeta de la partida más urgente con cuenta atrás y avisos, entrar con código en una hoja, invitación como bando real, vitrina de coronas e instalar |
+| 13.º | 7. Mejorar pagina de inicio del juego | ✅ Hecho (falta probarlo en un móvil de verdad) | #88 | Portada con Aldricia viva en pixel art según la hora real, tarjeta de la partida más urgente con cuenta atrás y avisos, entrar con código en una hoja, invitación como bando real, vitrina de coronas e instalar |
 
-**Cómo vamos:** 12 de 13 bloques hechos; el 7 (página de inicio) está en curso. La tabla se actualiza al empezar y al cerrar cada bloque, con sus PR.
+**Cómo vamos:** 13 de 13 bloques hechos (el último, el 7, el 23 de octubre de 2026). Queda probarlo todo en un móvil de verdad. La tabla se actualiza al empezar y al cerrar cada bloque, con sus PR.
 
 **Por qué este orden:**
 
@@ -126,7 +126,7 @@ Decidido el 20 de octubre de 2026. Las medidas, las decisiones y los pasos está
 7. **Sin conexión:** abre al instante y enseña lo último visto; letras más ligeras y cada pestaña al abrirla.
 8. **Detalles:** muesca y bordes, sin zoom de página con la pinza ni el doble toque (solo el mapa), ayudas al tocar, altura correcta, vibración opcional y repetición más ligera.
 
-## Bloque 7: Mejorar pagina de inicio del juego **(en curso)**
+## Bloque 7: Mejorar pagina de inicio del juego **(hecho)**
 
 Decidido el 21 de octubre de 2026. Las decisiones y los pasos están en `docs/bloque7.md`; la maqueta animada, en `docs/maquetas/bloque7-portada.html` y en el documento del bloque. No cambia reglas.
 
@@ -138,7 +138,7 @@ Decidido el 21 de octubre de 2026. Las decisiones y los pasos están en `docs/bl
 4. **Si ya has entrado:** tarjeta grande con la partida más urgente y el resto debajo.
 5. **Cada partida:** cuenta atrás, órdenes que faltan, ataques, boletín, ofertas, puesto y mini mapa, dentro de la niebla.
 6. **Fray Abundio:** frases nuevas del banco (11.12) según la hora y cómo vas.
-7. **Primera vez:** presentación corta con tres pasos y el prólogo.
+7. **Primera vez:** presentación corta con tres pasos (el prólogo sale al empezar cada partida).
 8. **Entrar con código:** hoja desde abajo con seis casillas.
 9. **Invitación:** bando real con quién invita, fecha, casas apuntadas y sitios libres.
 10. **Vitrina de coronas:** sí.

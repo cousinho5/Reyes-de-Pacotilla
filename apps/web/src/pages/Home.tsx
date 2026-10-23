@@ -1,126 +1,15 @@
 // Bloque 7: la portada. Arriba, Aldricia viva según la hora del móvil; debajo,
-// según quién llega: la bienvenida con los tres pasos y el prólogo (sin entrar)
-// o las partidas (con sesión). El código se escribe en una hoja, sin salir de aquí.
+// según quién llega: la bienvenida con los tres pasos (sin entrar) o las
+// partidas (con sesión). El código se escribe en una hoja, sin salir de aquí.
+// Abre al momento con lo último que se vio y, sin conexión, lo dice.
 
-import { Suspense, lazy, useEffect, useMemo, useState } from "react";
-import { api, type Me } from "../api";
+import { useEffect, useMemo, useState } from "react";
+import { api, savedMe, type Me } from "../api";
 import { navigate } from "../App";
-import { FrayAbundio, Pixels, still, type FrayMood } from "../art";
-import { bandera, brillo, carreta, corona } from "../art/portadaIconos";
-import type { Sprite } from "../art/sprites";
 import { CodeSheet } from "../components/CodeSheet";
+import { FrayCard, Hero, Steps, useSky } from "../components/HomeParts";
 import { InstallCard, MainGame, Showcase, SmallGame } from "../components/HomeGames";
-import { greeting, hourAt, hourFromUrl, insideLines, mainGame, sortGames, toDeviceClock, welcomeLines, type HomeHour } from "../home";
-
-// El dibujo y el prólogo van en su propio trozo de JS: la portada sale al momento
-// con el cielo y el título, y la escena aparece encima en cuanto llega.
-const Panorama = lazy(() => import("../components/Panorama"));
-const HomePrologue = lazy(() => import("../components/HomePrologue"));
-
-/** La hora del cielo: la del reloj del móvil, mirada cada minuto. */
-function useHour(): HomeHour {
-  const forced = useMemo(() => hourFromUrl(window.location.search), []);
-  const [hour, setHour] = useState(() => forced ?? hourAt(new Date()));
-  useEffect(() => {
-    if (forced) return;
-    const id = setInterval(() => setHour(hourAt(new Date())), 60_000);
-    return () => clearInterval(id);
-  }, [forced]);
-  return hour;
-}
-
-/** Un dibujo animado pequeño (los iconos de los pasos y el brillo de la corona). */
-function Anim({ frames, fps, size, className }: { frames: Sprite[]; fps: number; size: number; className?: string }) {
-  const [i, setI] = useState(0);
-  useEffect(() => {
-    if (still()) return;
-    const id = setInterval(() => document.visibilityState === "visible" && setI((n) => (n + 1) % frames.length), 1000 / fps);
-    return () => clearInterval(id);
-  }, [frames, fps]);
-  const s = frames[i]!;
-  return <Pixels grid={s.grid} palette={s.palette} size={size} className={className} />;
-}
-
-function Hero({ hour, small }: { hour: HomeHour; small: boolean }) {
-  return (
-    <header className="home-hero" data-hora={hour}>
-      <Suspense fallback={null}>
-        <Panorama hour={hour} />
-      </Suspense>
-      <div className={`home-title${small ? " small" : ""}`}>
-        <h1>
-          <span className="home-crown" aria-hidden>
-            <Pixels grid={corona.grid} palette={corona.palette} size={small ? 36 : 46} />
-            <Anim frames={brillo} fps={10} size={18} className="home-shine" />
-          </span>
-          <span className="r1">Reyes de</span>
-          <span className="r2">Pacotilla</span>
-        </h1>
-        <p className="sub">Aldricia, el Reino Más o Menos Unido</p>
-      </div>
-    </header>
-  );
-}
-
-/** Fray Abundio con un bocadillo que cambia de frase cada pocos segundos. */
-function FrayCard({ lines, mood }: { lines: string[]; mood: FrayMood }) {
-  const [i, setI] = useState(0);
-  const key = lines.join("\n");
-  useEffect(() => {
-    setI(0);
-    if (lines.length < 2) return;
-    const id = setInterval(() => setI((n) => (n + 1) % lines.length), 6500);
-    return () => clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key]);
-  return (
-    <div className="home-fray">
-      <FrayAbundio mood={mood} size={64} />
-      <p key={i} className="bubble" aria-live="polite">
-        {lines[i % lines.length]}
-      </p>
-    </div>
-  );
-}
-
-/** Cómo se juega, en tres pasos. */
-function Steps() {
-  return (
-    <section className="home-steps">
-      <h2>Un trono vacío y demasiados aspirantes</h2>
-      <p className="motto">Para 4 a 8 amigos · 6 semanas · 5 minutos al día</p>
-      <ol>
-        <li>
-          <span className="icon">
-            <Anim frames={carreta} fps={6} size={60} />
-          </span>
-          <span>
-            <b>De día, das órdenes</b>
-            Cosecha, construye, comercia y mueve tus tropas. Con cinco minutos basta.
-          </span>
-        </li>
-        <li>
-          <span className="icon">
-            <Anim frames={bandera} fps={8} size={52} />
-          </span>
-          <span>
-            <b>De noche, todo se resuelve</b>
-            Las órdenes de todas las casas se cumplen a la vez. Por la mañana, Fray Abundio lo cuenta en su boletín.
-          </span>
-        </li>
-        <li>
-          <span className="icon">
-            <Pixels grid={corona.grid} palette={corona.palette} size={52} />
-          </span>
-          <span>
-            <b>En seis semanas, una corona</b>
-            Gana quien acabe con más Prestigio. Las alianzas se firman y, a veces, se rompen.
-          </span>
-        </li>
-      </ol>
-    </section>
-  );
-}
+import { CROWN_LINES, agoText, greeting, insideLines, mainGame, sortGames, toDeviceClock, welcomeLines, type HomeHour } from "../home";
 
 /** Pegar un enlace o un código de invitación. */
 function InviteField({ autoFocus }: { autoFocus?: boolean }) {
@@ -145,10 +34,9 @@ function InviteField({ autoFocus }: { autoFocus?: boolean }) {
   );
 }
 
-function Outside({ hour, onCode }: { hour: HomeHour; onCode: () => void }) {
+function Outside({ hour, crown, onCode }: { hour: HomeHour; crown: string | null; onCode: () => void }) {
   const [invite, setInvite] = useState(false);
-  const [prologue, setPrologue] = useState(false);
-  const lines = useMemo(() => welcomeLines(hour), [hour]);
+  const lines = useMemo(() => withCrown(crown, welcomeLines(hour)), [crown, hour]);
   return (
     <>
       <FrayCard lines={lines} mood="adulador" />
@@ -163,20 +51,15 @@ function Outside({ hour, onCode }: { hour: HomeHour; onCode: () => void }) {
             Tengo una invitación
           </button>
         )}
-        <button className="home-prologue" onClick={() => setPrologue(true)}>
-          <i aria-hidden>▶</i> Ver el prólogo <small>45 s</small>
-        </button>
       </div>
       <Steps />
       <footer className="home-foot">Reyes de Pacotilla · un juego para amigos con paciencia y poca vergüenza</footer>
-      {prologue && (
-        <Suspense fallback={null}>
-          <HomePrologue onClose={() => setPrologue(false)} />
-        </Suspense>
-      )}
     </>
   );
 }
+
+/** Lo que dice Fray Abundio de la corona, delante de lo de siempre. */
+const withCrown = (crown: string | null, lines: string[]) => (crown ? [crown, ...lines] : lines);
 
 /** La hora para las cuentas atrás, al minuto. */
 function useNow() {
@@ -188,23 +71,22 @@ function useNow() {
   return now;
 }
 
-function Inside({ me, hour, onLogout }: { me: Me; hour: HomeHour; onLogout: () => void }) {
+function Inside({ me, hour, crown, onLogout }: { me: Me; hour: HomeHour; crown: string | null; onLogout: () => void }) {
   const now = useNow();
   const sorted = useMemo(() => sortGames(me.partidas, now), [me.partidas, now]);
   const main = mainGame(sorted);
   const rest = sorted.filter((g) => g !== main);
-  const lines = useMemo(() => insideLines(main, now), [main, now]);
-  // Con el juego instalado, el icono lleva cuántas partidas te piden órdenes.
-  const pending = me.partidas.filter((g) => g.resumen?.faltanOrdenes).length;
-  useEffect(() => {
-    const nav = navigator as Navigator & { setAppBadge?: (n: number) => Promise<void>; clearAppBadge?: () => Promise<void> };
-    (pending ? nav.setAppBadge?.(pending) : nav.clearAppBadge?.())?.catch(() => {});
-  }, [pending]);
+  const lines = useMemo(() => withCrown(crown, insideLines(main, now)), [crown, main, now]);
   return (
     <>
       <h2 className="home-hello">
         {greeting(hour)}, {me.usuario!.nombre}
       </h2>
+      {me.guardadoA != null && (
+        <p className="home-offline" role="status">
+          Sin conexión: es lo que viste {agoText(me.guardadoA, now)}.
+        </p>
+      )}
       <FrayCard lines={lines} mood={main?.resumen?.faltanOrdenes ? "escandalizado" : "solemne"} />
       {main && <MainGame g={main} now={now} />}
       {rest.length > 0 && (
@@ -225,35 +107,45 @@ function Inside({ me, hour, onLogout }: { me: Me; hour: HomeHour; onLogout: () =
   );
 }
 
+const deviceClock = (m: Me): Me => ({ ...m, partidas: m.partidas.map((g) => toDeviceClock(g, new Date())) });
+
 export function Home({ askCode = false }: { askCode?: boolean }) {
-  const [me, setMe] = useState<Me | null>(null);
+  // Lo último que se vio sale al momento; la red lo pone al día en cuanto llega.
+  const [me, setMe] = useState<Me | null>(() => {
+    const saved = savedMe();
+    return saved ? deviceClock(saved) : null;
+  });
   const [code, setCode] = useState(askCode);
-  const hour = useHour();
+  const [crown, setCrown] = useState<string | null>(null);
+  const sky = useSky();
+  const hour = sky.hour;
+  const onCrown = () => setCrown((c) => CROWN_LINES[(CROWN_LINES.indexOf(c ?? "") + 1) % CROWN_LINES.length]!);
 
   const load = () =>
     api
       .me()
-      .then((m) => setMe({ ...m, partidas: m.partidas.map((g) => toDeviceClock(g, new Date())) }))
-      .catch(() => setMe({ usuario: null, partidas: [] }));
+      .then((m) => setMe(deviceClock(m)))
+      .catch(() => setMe((m) => m ?? { usuario: null, partidas: [] }));
   useEffect(() => void load(), []);
 
   const inside = !!me?.usuario;
   return (
     <main className="home">
-      <Hero hour={hour} small={inside} />
+      <Hero sky={sky} small={inside} onCrown={onCrown} />
       <div className="home-body">
         {me &&
           (inside ? (
             <Inside
               me={me}
               hour={hour}
+              crown={crown}
               onLogout={async () => {
                 await api.logout();
                 setMe({ usuario: null, partidas: [] });
               }}
             />
           ) : (
-            <Outside hour={hour} onCode={() => setCode(true)} />
+            <Outside hour={hour} crown={crown} onCode={() => setCode(true)} />
           ))}
       </div>
       {code && (

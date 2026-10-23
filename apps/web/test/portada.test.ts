@@ -3,6 +3,9 @@ import { HOURS, frameAt, tint } from "../src/art/panorama";
 import * as P from "../src/art/portada";
 import type { MyGame } from "../src/api";
 import {
+  CROWN_LINES,
+  HOUR_FADE_MINUTES,
+  agoText,
   attackLines,
   cleanCode,
   closeLine,
@@ -13,13 +16,12 @@ import {
   insideLines,
   mainGame,
   showcase,
+  skyAt,
   sortGames,
   timeLeft,
   toDeviceClock,
   welcomeLines,
 } from "../src/home";
-import { SAMPLE_HOUSES, sampleGame } from "../src/sampleGame";
-import { samplePrologue } from "../src/cinematics";
 
 const at = (h: number) => new Date(2026, 9, 23, h, 30);
 
@@ -40,6 +42,28 @@ describe("portada (bloque 7)", () => {
     expect(hourFromUrl("?hora=mediodia")).toBeNull();
     expect(greeting("atardecer")).toBe("Buenas tardes");
     expect(welcomeLines("noche").length).toBeGreaterThan(welcomeLines("dia").length);
+  });
+
+  it("en los últimos minutos de cada franja se funde con la siguiente", () => {
+    expect(skyAt(new Date(2026, 9, 23, 12, 0))).toEqual({ hour: "dia", next: null, mix: 0 });
+    expect(skyAt(new Date(2026, 9, 23, 17, 60 - HOUR_FADE_MINUTES))).toEqual({ hour: "dia", next: "atardecer", mix: 0 });
+    const half = skyAt(new Date(2026, 9, 23, 20, 60 - HOUR_FADE_MINUTES / 2));
+    expect(half.hour).toBe("atardecer");
+    expect(half.next).toBe("noche");
+    expect(half.mix).toBeCloseTo(0.5);
+    expect(skyAt(new Date(2026, 9, 23, 5, 59)).next).toBe("amanecer");
+    expect(skyAt(new Date(2026, 9, 23, 21, 0))).toEqual({ hour: "noche", next: null, mix: 0 });
+  });
+
+  it("dice cuánto hace que se vio la portada sin conexión", () => {
+    const now = new Date(2026, 9, 23, 12, 0);
+    const ago = (min: number) => agoText(now.getTime() - min * 60_000, now);
+    expect([ago(0), ago(12), ago(130), ago(60 * 24), ago(60 * 72)]).toEqual(["hace un momento", "hace 12 min", "hace 2 h", "hace 1 día", "hace 3 días"]);
+  });
+
+  it("la corona tiene sus frases y ninguna se repite", () => {
+    expect(new Set(CROWN_LINES).size).toBe(CROWN_LINES.length);
+    expect(CROWN_LINES.length).toBeGreaterThan(2);
   });
 
   it("el tinte de la hora deja el día tal cual y enciende las ventanas de noche", () => {
@@ -77,19 +101,6 @@ describe("portada (bloque 7)", () => {
   it("el código se escribe en mayúsculas, sin espacios y con seis caracteres", () => {
     expect(cleanCode(" ab-c 12x9")).toBe("ABC12X");
     expect(cleanCode("ñ1")).toBe("1");
-  });
-
-  it("la partida de muestra tiene siete casas, cada una con su castillo, y sale siempre igual", () => {
-    const g = sampleGame();
-    expect(g.casas).toBe(SAMPLE_HOUSES);
-    expect(g.casas).toHaveLength(7);
-    const castles = g.casillas!.filter((t) => t.type === "castillo");
-    expect(castles.map((t) => t.owner).sort()).toEqual([1, 2, 3, 4, 5, 6, 7]);
-    expect(sampleGame()).toBe(g);
-    const p = samplePrologue(g);
-    expect(p.scenes).toHaveLength(6);
-    expect(p.scenes[4]!.text).toBe("Siete casas se creyeron las más capaces.");
-    expect(p.scenes[5]!.text).toContain("Seis semanas");
   });
 });
 

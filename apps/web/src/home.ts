@@ -14,6 +14,29 @@ export function hourAt(d: Date): HomeHour {
   return h < 6 || h >= 21 ? "noche" : h < 9 ? "amanecer" : h < 18 ? "dia" : "atardecer";
 }
 
+/** Minutos que tarda el cielo en pasar de una franja a la siguiente. */
+export const HOUR_FADE_MINUTES = 10;
+const HOUR_STARTS: [number, HomeHour][] = [
+  [6, "amanecer"],
+  [9, "dia"],
+  [18, "atardecer"],
+  [21, "noche"],
+];
+
+/**
+ * El cielo con su fundido: en los últimos minutos de una franja, la siguiente
+ * se va poniendo encima (`mix` de 0 a 1) para que el cambio no sea de golpe.
+ */
+export function skyAt(d: Date): { hour: HomeHour; next: HomeHour | null; mix: number } {
+  const hour = hourAt(d);
+  const min = d.getHours() * 60 + d.getMinutes() + d.getSeconds() / 60;
+  for (const [h, next] of HOUR_STARTS) {
+    const left = h * 60 - min;
+    if (left > 0 && left <= HOUR_FADE_MINUTES) return { hour, next, mix: 1 - left / HOUR_FADE_MINUTES };
+  }
+  return { hour, next: null, mix: 0 };
+}
+
 /** Para las capturas y la mesa de pruebas: `?hora=noche` fija el cielo. */
 export function hourFromUrl(search: string): HomeHour | null {
   const h = new URLSearchParams(search).get("hora");
@@ -35,11 +58,46 @@ export const WELCOME_NIGHT = [
   "El cronista duerme con un ojo abierto. El otro también, por si acaso.",
 ];
 
+/** 23.3: la invitación. */
+export const INVITE_LINES = [
+  "Una invitación a la corte. El cronista recomienda aceptar: la comida es buena, salvo el pollo.",
+  "Se busca casa con ambición, escudo propio y pocos escrúpulos. Lo del escudo es obligatorio.",
+];
+export const INVITE_STARTED = ["Llegáis tarde: la corte ya está repartiéndose el reino. El cronista os guarda sitio en la próxima."];
+export const INVITE_MISSING = ["Esa invitación no aparece en ningún archivo. El cronista sospecha de las ratas."];
+export const INVITE_INSIDE = ["Ya tenéis casa en esta corte. El cronista no apunta a nadie dos veces, por ahorrar tinta."];
+
+/** «empieza el lunes 27 de octubre», o quién decide si aún no hay fecha. */
+export function startText(inicio: string | null | undefined): string {
+  if (!inicio) return "empieza el lunes que elija quien la creó";
+  const d = new Date(`${inicio}T12:00:00`);
+  return `empieza el ${d.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" })}`;
+}
+
 /** 23.4: el pie de la hoja para entrar con el código. */
 export const CODE_NOTE = "Fray Abundio no lo apunta, por discreción y porque se le olvidaría.";
 
 /** Las frases de la bienvenida a esta hora. */
 export const welcomeLines = (hour: HomeHour) => (hour === "noche" ? [...WELCOME_NIGHT, ...WELCOME] : WELCOME);
+
+/** 23.5: al tocar la corona del título, se pone derecha un momento. */
+export const CROWN_LINES = [
+  "No la toquéis, que se tuerce sola. Como todo en Aldricia.",
+  "La corona está torcida a propósito. El cronista lo sabe porque lo dice él.",
+  "Ponerla derecha no os hace más reyes. Pero queda bonito.",
+  "El difunto Aldric también la enderezaba. Mirad cómo acabó.",
+];
+
+/** «hace un momento», «hace 12 min», «hace 2 h», «hace 3 días». */
+export function agoText(at: number, now: Date): string {
+  const min = Math.max(0, Math.floor((now.getTime() - at) / 60_000));
+  if (min < 1) return "hace un momento";
+  if (min < 60) return `hace ${min} min`;
+  const h = Math.floor(min / 60);
+  if (h < 24) return `hace ${h} h`;
+  const d = Math.floor(h / 24);
+  return `hace ${d} ${d === 1 ? "día" : "días"}`;
+}
 
 /** El código de acceso tal como se escribe: seis letras o números, en mayúsculas. */
 export const cleanCode = (s: string) =>

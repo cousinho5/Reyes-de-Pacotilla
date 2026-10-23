@@ -1271,6 +1271,26 @@ Según la partida de arriba (la más urgente). Si toca más de una, se turnan en
 - Acabada: «{partida}» ya tiene rey. El cronista recomienda ver la coronación, aunque duela.
 - Sin partidas: Aún no estás en ninguna partida. Pide un enlace de invitación: el cronista no se presenta solo.
 
+### 23.3 Invitación
+
+1. Una invitación a la corte. El cronista recomienda aceptar: la comida es buena, salvo el pollo.
+2. Se busca casa con ambición, escudo propio y pocos escrúpulos. Lo del escudo es obligatorio.
+
+Si la partida ya ha empezado: Llegáis tarde: la corte ya está repartiéndose el reino. El cronista os guarda sitio en la próxima.
+
+Si ya tienes casa en ella: Ya tenéis casa en esta corte. El cronista no apunta a nadie dos veces, por ahorrar tinta.
+
+Si la invitación no existe: Esa invitación no aparece en ningún archivo. El cronista sospecha de las ratas.
+
 ### 23.4 La hoja para entrar con el código
 
 1. Fray Abundio no lo apunta, por discreción y porque se le olvidaría.
+
+### 23.5 La corona del título
+
+Al tocarla, la corona se pone derecha un momento y vuelve a torcerse.
+
+1. No la toquéis, que se tuerce sola. Como todo en Aldricia.
+2. La corona está torcida a propósito. El cronista lo sabe porque lo dice él.
+3. Ponerla derecha no os hace más reyes. Pero queda bonito.
+4. El difunto Aldric también la enderezaba. Mirad cómo acabó.

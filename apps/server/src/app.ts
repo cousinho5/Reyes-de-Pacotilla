@@ -350,15 +350,20 @@ app.get("/api/coronacion/:clave", async (c) => {
 });
 
 app.get("/api/invitacion/:codigo", async (c) => {
-  const game = await c.env.DB.prepare("SELECT id, name, status, weeks FROM games WHERE invite_code = ?")
+  // Bloque 7: el bando dice quién invita y cuándo empieza (si ya hay fecha).
+  const game = await c.env.DB.prepare(
+    "SELECT g.id, g.name, g.status, g.weeks, g.start_date, u.display_name AS host FROM games g LEFT JOIN users u ON u.id = g.created_by WHERE g.invite_code = ?",
+  )
     .bind(normalizeCode(c.req.param("codigo")))
-    .first<{ id: number; name: string; status: string; weeks: number }>();
+    .first<{ id: number; name: string; status: string; weeks: number; start_date: string | null; host: string | null }>();
   if (!game) return fail(c, 404, "Esa invitación no existe.");
   const houses = await loadHouses(c.env.DB, game.id);
   const s = c.get("session");
   return c.json({
-    partida: { id: game.id, nombre: game.name, estado: game.status, semanas: game.weeks },
-    casas: houses.map((h) => ({ nombre: h.name, color: h.color, escudo: shieldView(h) })),
+    partida: { id: game.id, nombre: game.name, estado: game.status, semanas: game.weeks, inicio: game.start_date },
+    anfitrion: game.host,
+    plazas: 8,
+    casas: houses.map((h) => ({ nombre: h.name, color: h.color, lema: h.motto, escudo: shieldView(h) })),
     coloresLibres: COLORS.filter((col) => !houses.some((h) => h.color === col)),
     yaDentro: s ? houses.some((h) => h.user_id === s.userId) : false,
   });
