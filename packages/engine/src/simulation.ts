@@ -43,6 +43,8 @@ import { BUILDINGS, RESOURCES, type Alliance, type Captain, type BuildingKind, t
 import {
   PERSONALITIES,
   PERSONALITY_NAMES,
+  forgetsOrders,
+  withLevel,
   botPaysRansom,
   botRansomPrice,
   chooseObjective,
@@ -58,6 +60,8 @@ import {
   proposeOffer,
   situation,
   type AiView,
+  type BotLevel,
+  type Personality,
   type PersonalityName,
 } from "./ai";
 
@@ -78,6 +82,11 @@ export const CLASSIC_STRATEGIES = ["equilibrada", "constructora", "conquistadora
 export type ClassicStrategy = (typeof CLASSIC_STRATEGIES)[number];
 export type Strategy = ClassicStrategy | PersonalityName;
 export const STRATEGIES: Strategy[] = [...PERSONALITY_NAMES, ...CLASSIC_STRATEGIES];
+
+/** Personalidad de un bot con la de su nivel (solo para los de personalidad). */
+function persona(h: { strategy: Strategy; level: BotLevel | null }): Personality {
+  return withLevel(PERSONALITIES[h.strategy as PersonalityName], h.level);
+}
 
 function isSmart(s: Strategy): s is PersonalityName {
   return s in PERSONALITIES;
@@ -121,11 +130,15 @@ export interface SimOptions {
   sieges?: boolean;
   /** Capitán y Gloria (por defecto, sí). */
   captainGlory?: boolean;
+  /** Nivel de cada bot con personalidad (por defecto, normal; `docs/bots.md`). */
+  levels?: (BotLevel | null)[];
 }
 
 export interface SimHouseResult {
   house: HouseId;
   strategy: Strategy;
+  /** Nivel del bot (solo los de personalidad). */
+  level?: BotLevel | null;
   /** Especialidades iniciales (los dos edificios a nivel 2). */
   specialty: string;
   rank: number;
@@ -284,6 +297,7 @@ export interface SimGameResult {
 interface HouseState {
   id: HouseId;
   strategy: Strategy;
+  level: BotLevel | null;
   specialty: string;
   levels: Record<BuildingKind, number>;
   res: Resources;
@@ -376,8 +390,10 @@ function runGame(opts: SimOptions): SimGameResult {
     const pair = SPECIALTY_PAIRS[i % SPECIALTY_PAIRS.length]!;
     const strategy = opts.strategies[i]!;
     const options = objectives.get(id)!;
-    const preferred = isSmart(strategy) ? [chooseObjective(options, PERSONALITIES[strategy])] : (PREFERRED_OBJECTIVES[strategy] ?? []);
+    const level = opts.levels?.[i] ?? null;
+    const preferred = isSmart(strategy) ? [chooseObjective(options, withLevel(PERSONALITIES[strategy], level))] : (PREFERRED_OBJECTIVES[strategy] ?? []);
     return {
+      level,
       id,
       strategy,
       specialty: pair.join("+"),
@@ -608,7 +624,7 @@ function runGame(opts: SimOptions): SimGameResult {
       }
       for (const h of houses) {
         if (!isSmart(h.strategy)) continue;
-        const plan = planCrown(situation(viewOf(h, day, pre), PERSONALITIES[h.strategy]), realmNow(), boughtNow());
+        const plan = planCrown(situation(viewOf(h, day, pre), persona(h)), realmNow(), boughtNow());
         if (plan.gold <= 0 || h.res.oro - plan.gold < 0) continue;
         h.res.oro -= plan.gold;
         economy.crownGoldPaid += plan.gold;
@@ -645,7 +661,7 @@ function runGame(opts: SimOptions): SimGameResult {
     const morning = ranking(day);
     for (const h of houses) {
       if (isSmart(h.strategy)) {
-        const plan = planDay(situation(viewOf(h, day, morning), PERSONALITIES[h.strategy]));
+        const plan = planDay(situation(viewOf(h, day, morning), persona(h)));
         for (const r of RESOURCES) h.res[r] -= plan.cost[r];
         for (const b of plan.upgrades) {
           h.levels[b]++;
@@ -669,7 +685,7 @@ function runGame(opts: SimOptions): SimGameResult {
         // Bloque 5: mercenarios con Oro para lo que no llega a reclutar.
         const mode = ECONOMY_TWEAKS.mercenaries;
         if (mode) {
-          const hire = planMercenaries(situation(viewOf(h, day, morning), PERSONALITIES[h.strategy]), mode, plan.recruit + plan.riders, MERCENARIES.weeklyCap - h.mercsWeek);
+          const hire = planMercenaries(situation(viewOf(h, day, morning), persona(h)), mode, plan.recruit + plan.riders, MERCENARIES.weeklyCap - h.mercsWeek);
           if (hire > 0) {
             const gold = mode === "alquiler" ? mercenaryCost(hire) : hire * MERCENARIES.signOn;
             h.res.oro -= gold;
@@ -681,7 +697,7 @@ function runGame(opts: SimOptions): SimGameResult {
           }
         }
         // Cartas de efecto inmediato (Tregua y Tambores esperan al día de la resolución).
-        const cards = planCards(situation(viewOf(h, day, morning), PERSONALITIES[h.strategy]), h.hand, false);
+        const cards = planCards(situation(viewOf(h, day, morning), persona(h)), h.hand, false);
         for (const c of cards) playCard(h, c.card, c.params);
         continue;
       }
@@ -709,7 +725,7 @@ function runGame(opts: SimOptions): SimGameResult {
           proposals = proposals.filter((x) => x.to !== h.id);
           continue;
         }
-        const s = situation(viewOf(h, day, pre), PERSONALITIES[h.strategy]);
+        const s = situation(viewOf(h, day, pre), persona(h));
         const plan = planDiplomacy(s, {
           received: proposals.filter((x) => x.to === h.id).map((x) => x.from),
           sent: proposals.filter((x) => x.from === h.id).map((x) => x.to),
@@ -770,13 +786,13 @@ function runGame(opts: SimOptions): SimGameResult {
     // la acepta quien más gane con ella (las clásicas, si no pierden).
     const market = ranking(day);
     for (const h of houses.filter((x) => isSmart(x.strategy))) {
-      const offer = proposeOffer(situation(viewOf(h, day, market), PERSONALITIES[h.strategy as PersonalityName]));
+      const offer = proposeOffer(situation(viewOf(h, day, market), persona(h)));
       if (!offer) continue;
       let best: { o: HouseState; gain: number } | null = null;
       for (const o of houses) {
         if (o.id === h.id || o.strategy === "ausente" || o.strategy === "pasiva") continue;
         const gain = isSmart(o.strategy)
-          ? offerGain(situation(viewOf(o, day, market), PERSONALITIES[o.strategy]), offer.give, offer.want, h.id)
+          ? offerGain(situation(viewOf(o, day, market), persona(o)), offer.give, offer.want, h.id)
           : botAcceptsOffer(offer.give, offer.want, o.res)
             ? totalOf(offer.give) - totalOf(offer.want)
             : -Infinity;
@@ -807,7 +823,7 @@ function runGame(opts: SimOptions): SimGameResult {
       const pre = ranking(day);
       for (const h of houses) {
         if (!isSmart(h.strategy)) continue;
-        for (const b of planBids(situation(viewOf(h, day, pre), PERSONALITIES[h.strategy]), lots)) {
+        for (const b of planBids(situation(viewOf(h, day, pre), persona(h)), lots)) {
           bids.push({ slot: b.slot, house: h.id, amount: b.amount, placedAt: `${String(day).padStart(3, "0")}:${h.id}` });
         }
       }
@@ -830,14 +846,16 @@ function runGame(opts: SimOptions): SimGameResult {
     const evening = ranking(day);
     for (const h of houses) {
       if (isSmart(h.strategy)) {
+        // Los novatos se olvidan de dar órdenes alguna noche (BOT_LEVELS), y también de sus cartas.
+        if (forgetsOrders(opts.seed, h.id, resolution, h.level)) continue;
         // Antes de dar órdenes: Tregua y Tambores (la resolución que viene es `resolution`).
         resolution--;
-        const cards = planCards(situation(viewOf(h, day, evening), PERSONALITIES[h.strategy]), h.hand, true);
+        const cards = planCards(situation(viewOf(h, day, evening), persona(h)), h.hand, true);
         for (const c of cards) playCard(h, c.card, c.params);
         // Bloque 8: ve las órdenes que ya han dado sus aliados (lo que hablarían entre ellos).
         const friends = alliesOf(plainAlliances(), h.id);
         const allyOrders = orders.filter((o) => friends.includes(o.house));
-        const plan = planOrders(situation({ ...viewOf(h, day, evening), allyOrders }, PERSONALITIES[h.strategy]));
+        const plan = planOrders(situation({ ...viewOf(h, day, evening), allyOrders }, persona(h)));
         resolution++;
         orders.push(...plan);
         continue;
@@ -1172,6 +1190,7 @@ function runGame(opts: SimOptions): SimGameResult {
     houses: final.map((f, i) => ({
       house: f.h.id,
       strategy: f.h.strategy,
+      level: f.h.level,
       specialty: f.h.specialty,
       rank: i + 1,
       prestige: f.prestige,

@@ -2,6 +2,9 @@
 // decisiones; no hay reglas distintas por personalidad, solo pesos distintos.
 
 import type { ObjectiveKey } from "../objectives";
+import { seededRandom } from "../random";
+import { BOT_LEVELS } from "../rules";
+import type { HouseId } from "../types";
 
 export interface Personality {
   /** Fuerza que quiere reunir respecto a la defensa estimada antes de atacar (1,1 = temerario, 1,6 = prudente). */
@@ -35,6 +38,27 @@ export const PERSONALITIES = {
 
 export type PersonalityName = keyof typeof PERSONALITIES;
 export const PERSONALITY_NAMES = Object.keys(PERSONALITIES) as PersonalityName[];
+
+export type BotLevel = keyof typeof BOT_LEVELS;
+export const BOT_LEVEL_NAMES = Object.keys(BOT_LEVELS) as BotLevel[];
+
+/** La personalidad con los ajustes de su nivel (`BOT_LEVELS`). */
+export function withLevel(p: Personality, level: BotLevel | null | undefined): Personality {
+  const l = BOT_LEVELS[level ?? "normal"] ?? BOT_LEVELS.normal;
+  return {
+    ...p,
+    margin: Math.max(1.05, p.margin + l.margin),
+    caution: Math.min(1, p.caution * l.caution),
+    trade: Math.min(1, p.trade + l.trade),
+    leaderHatred: Math.min(1, p.leaderHatred + l.leaderHatred),
+  };
+}
+
+/** ¿Se olvida el bot de dar órdenes esta noche? Siempre lo mismo para la misma partida, casa y noche. */
+export function forgetsOrders(seed: string, house: HouseId, resolution: number, level: BotLevel | null | undefined): boolean {
+  const chance = (BOT_LEVELS[level ?? "normal"] ?? BOT_LEVELS.normal).forget;
+  return chance > 0 && seededRandom(`${seed}:olvido:${house}:${resolution}`)() < chance;
+}
 
 /** Elige entre los dos objetivos ofrecidos el que mejor encaja con la personalidad. */
 export function chooseObjective(options: readonly ObjectiveKey[], p: Personality): ObjectiveKey {

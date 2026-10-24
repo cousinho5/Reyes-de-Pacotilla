@@ -5289,3 +5289,30 @@ button.ghost-ink {
 .home-card > h3 {
   margin: 0 0 8px;
 }
+
+/* Bots (docs/bots.md): el espantapájaros junto al nombre y lo que se elige en la sala de espera. */
+.bot-mark {
+  display: inline-block;
+  vertical-align: -2px;
+  margin-right: 0.3rem;
+}
+.house-bot {
+  margin: 0.2rem 0 0;
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+}
+.bot-line {
+  color: var(--ink-soft);
+}
+.bot-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 0.5rem 0 0.75rem;
+}
+.bot-picker label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1 1 8rem;
+}

@@ -5,6 +5,10 @@ import { Hono, type Context } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import {
   ANY_ORIGIN,
+  BOT_LEVEL_NAMES,
+  PERSONALITY_NAMES,
+  type BotLevel,
+  type PersonalityName,
   castleStage,
   BUILDINGS,
   captainName,
@@ -83,7 +87,7 @@ import { COLORS, shieldOf, shieldView } from "./heraldry";
 import { clockOf, runGameJobs } from "./jobs";
 import { bribeView, errataView, proclamationView, type StoredBulletin } from "./boletin";
 import { auctionView, handView, openAuctionWeek, spiedHouses, useCardStatements, type CardRow } from "./subasta";
-import { addBots, botsPlayDay } from "./bots";
+import { addBots, botsPlayDay, removeBot } from "./bots";
 import { advance, deleteTestGame, testStart } from "./pruebas";
 import { ransomStatements } from "./rescate";
 import { coronationView, publicCoronation, shareKeyOf } from "./coronacion";
@@ -364,7 +368,7 @@ app.get("/api/invitacion/:codigo", async (c) => {
     partida: { id: game.id, nombre: game.name, estado: game.status, semanas: game.weeks, inicio: game.start_date },
     anfitrion: game.host,
     plazas: 8,
-    casas: houses.map((h) => ({ nombre: h.name, color: h.color, lema: h.motto, escudo: shieldView(h) })),
+    casas: houses.map((h) => ({ nombre: h.name, color: h.color, lema: h.motto, escudo: shieldView(h), ...(h.is_bot === 1 ? { bot: true } : {}) })),
     coloresLibres: COLORS.filter((col) => !houses.some((h) => h.color === col)),
     yaDentro: s ? houses.some((h) => h.user_id === s.userId) : false,
   });
@@ -470,6 +474,39 @@ app.put("/api/partidas/:id/casa", async (c) => {
   return c.json({ ok: true });
 });
 
+// Bots en la sala de espera (docs/bots.md): quien crea una partida normal puede
+// añadirlos (personalidad al azar o elegida, y nivel) y quitarlos antes de empezar.
+async function lobbyAsCreator(c: Ctx): Promise<GameRow | Response> {
+  const s = c.get("session");
+  const game = await loadGame(c.env.DB, Number(c.req.param("id")));
+  if (!game) return fail(c, 404, "Esa partida no existe.");
+  if (!s || s.userId !== game.created_by) return fail(c, 403, "Solo quien creó la partida puede añadir o quitar bots.");
+  if (game.status !== "lobby") return fail(c, 409, "La partida ya ha empezado.");
+  if (game.is_test === 1) return fail(c, 409, "En las partidas de prueba los bots se añaden solos al empezar.");
+  return game;
+}
+
+app.post("/api/partidas/:id/bots", async (c) => {
+  const game = await lobbyAsCreator(c);
+  if (game instanceof Response) return game;
+  const body = await c.req.json<{ personalidad?: string | null; nivel?: string | null }>().catch(() => ({}) as { personalidad?: string; nivel?: string });
+  const personality = body.personalidad && body.personalidad !== "azar" ? body.personalidad : null;
+  if (personality && !PERSONALITY_NAMES.includes(personality as PersonalityName)) return fail(c, 400, "Esa personalidad no existe.");
+  const level = body.nivel ?? "normal";
+  if (!BOT_LEVEL_NAMES.includes(level as BotLevel)) return fail(c, 400, "Ese nivel no existe.");
+  const before = await loadHouses(c.env.DB, game.id);
+  if (before.length >= 8) return fail(c, 409, "La partida ya tiene 8 casas.");
+  const after = await addBots(c.env, game.id, 1, { personality: personality as PersonalityName | null, level: level as BotLevel });
+  return c.json({ ok: true, casa: after.find((h) => !before.some((b) => b.id === h.id))?.id ?? null });
+});
+
+app.delete("/api/partidas/:id/bots/:casa", async (c) => {
+  const game = await lobbyAsCreator(c);
+  if (game instanceof Response) return game;
+  if (!(await removeBot(c.env.DB, game.id, Number(c.req.param("casa"))))) return fail(c, 404, "Ese bot no está en la partida.");
+  return c.json({ ok: true });
+});
+
 // ---------------------------------------------------------------------------
 // Empezar la partida
 // ---------------------------------------------------------------------------
@@ -485,11 +522,15 @@ app.post("/api/partidas/:id/empezar", async (c) => {
   if (test && !(await loadHouses(db, game.id)).some((h) => h.user_id === s.userId)) {
     return fail(c, 409, "Elige primero tu casa.");
   }
-  // Las pruebas se rellenan con bots; las de verdad necesitan 4 personas.
-  const houses = test ? await addBots(c.env, game.id, game.test_bots ?? 3) : await loadHouses(db, game.id);
+  const body = await c.req.json<{ inicio?: string; rellenar?: boolean }>().catch(() => ({}) as { inicio?: string; rellenar?: boolean });
+  // Las pruebas se rellenan con bots; las de verdad, si quien la crea lo pide, hasta 4 casas (docs/bots.md).
+  const houses = test
+    ? await addBots(c.env, game.id, game.test_bots ?? 3)
+    : body.rellenar
+      ? await addBots(c.env, game.id, Math.max(0, 4 - (await loadHouses(db, game.id)).length))
+      : await loadHouses(db, game.id);
   if (houses.length < 4) return fail(c, 409, "Hacen falta al menos 4 casas para empezar.");
 
-  const body = await c.req.json<{ inicio?: string }>().catch(() => ({}) as { inicio?: string });
   const startDate = body.inicio ?? nextMonday(new Date(), game.timezone);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate) || new Date(`${startDate}T12:00:00Z`).getUTCDay() !== 1) {
     return fail(c, 400, "La partida empieza un lunes (AAAA-MM-DD).");
@@ -615,7 +656,17 @@ app.get("/api/partidas/:id", async (c) => {
     return c.json({
       ...base,
       yo: { casa: house.id },
-      casas: houses.map((h) => ({ id: h.id, nombre: h.name, color: h.color, lema: h.motto, escudo: shieldView(h) })),
+      casas: houses.map((h) => ({
+        id: h.id,
+        nombre: h.name,
+        color: h.color,
+        lema: h.motto,
+        escudo: shieldView(h),
+        // Bots (docs/bots.md): se sabe quién es bot; su personalidad y nivel solo los ve quien los añadió.
+        ...(h.is_bot === 1
+          ? { bot: true, ...(game.created_by === s.userId ? { personalidad: h.bot_personality ?? "estratega", nivel: h.bot_level ?? "normal" } : {}) }
+          : {}),
+      })),
       prueba: game.is_test === 1 ? { bots: game.test_bots ?? 3 } : null,
     });
   }
@@ -758,6 +809,8 @@ app.get("/api/partidas/:id", async (c) => {
         color: h.color,
         lema: h.motto,
         escudo: shieldView(h),
+        // Casa bot (docs/bots.md): se marca, sin decir su personalidad.
+        ...(h.is_bot === 1 ? { bot: true } : {}),
         prestigio: prestige.get(h.id),
         // Etapa del castillo (bloque 2): sale de los niveles de sus edificios, que ya son públicos por el Prestigio.
         etapa: castleStage(buildings.get(h.id)!),

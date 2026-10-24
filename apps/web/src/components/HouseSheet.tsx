@@ -5,7 +5,7 @@
 
 import { useEffect, useState } from "react";
 import { api, type GameState, type HouseInfo } from "../api";
-import { ShieldIcon } from "../art";
+import { BotMark, ShieldIcon } from "../art";
 import { involves, standings } from "../realm";
 import { describeEvent, withArticle } from "../ui";
 import { Sheet, type SheetState } from "./Sheet";
@@ -58,6 +58,11 @@ export function HouseSheet({ state, house: id, act, onClose, onShowMap }: Props)
             <div>
               <h2>{h.nombre}</h2>
               {h.lema && <p className="house-motto">«{h.lema}»</p>}
+              {h.bot && (
+                <p className="house-bot">
+                  <BotMark size={20} /> Casa gobernada por su mayordomo
+                </p>
+              )}
               {row && (
                 <p className="house-place">
                   {row.place}.º de {state.casas.length} · <strong>{row.total}</strong> de Prestigio

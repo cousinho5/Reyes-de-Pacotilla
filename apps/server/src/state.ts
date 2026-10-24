@@ -84,6 +84,7 @@ export interface HouseRow extends Resources {
   objective_met: number | null;
   is_bot: number;
   bot_personality: string | null;
+  bot_level: string | null;
   /** Noches que ha tenido rodeado un castillo ajeno (Prestigio, diseño v3). */
   siege_nights: number;
   /** Capitán (diseño v3): casilla donde está (null si preso), quién lo tiene y hasta qué resolución. */

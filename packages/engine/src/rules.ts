@@ -523,6 +523,21 @@ export const BOT_SCHEDULE = {
   ordersBeforeClose: 60,
 };
 
+/**
+ * Niveles de los bots (`docs/bots.md`): modifican los pesos de su
+ * personalidad, sin reglas aparte. Normal es el bot de siempre.
+ * - `margin`: se suma al margen con el que ataca (más = más prudente).
+ * - `caution`: multiplica el miedo a los ataques de sus vecinos (menos = defiende peor).
+ * - `trade`: se suma a sus ganas de comerciar (más = acepta tratos peores).
+ * - `leaderHatred`: se suma a su manía al líder (más = se une contra quien va primero).
+ * - `forget`: probabilidad de olvidarse de dar órdenes una noche.
+ */
+export const BOT_LEVELS = {
+  novato: { margin: 0.45, caution: 0.5, trade: 0.3, leaderHatred: 0, forget: 0.3 },
+  normal: { margin: 0, caution: 1, trade: 0, leaderHatred: 0, forget: 0 },
+  taimado: { margin: -0.1, caution: 1.3, trade: 0, leaderHatred: 0.3, forget: 0 },
+} as const;
+
 /** Umbrales de los objetivos secretos (ver objectives.ts). */
 export const OBJECTIVE_TARGETS = {
   /** Bloque 5: de 150 a 60, porque las mejoras, la Corona y los mercenarios gastan Oro. */

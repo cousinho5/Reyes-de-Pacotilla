@@ -4,7 +4,7 @@
 // la corona brilla un momento; con «reducir movimiento», nada se mueve.
 
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
-import { Crown, Podium, ShieldIcon, still } from "../art";
+import { BotMark, Crown, Podium, ShieldIcon, still } from "../art";
 import type { GameState } from "../api";
 import { chaserLine, podiumLine, standings, type Standing } from "../realm";
 import { ACHIEVEMENT_LABEL } from "../ui";
@@ -116,7 +116,10 @@ export function Standings({ state, children }: { state: GameState; children?: Re
                     </span>
                   )}
                   <ShieldIcon color={r.house.color} escudo={r.house.escudo} size={r.place === 1 ? (final ? 80 : 64) : 48} />
-                  <strong className="podium-name">{r.house.nombre}</strong>
+                  <strong className="podium-name">
+                    {r.house.bot && <BotMark size={14} />}
+                    {r.house.nombre}
+                  </strong>
                   <span className="podium-total">
                     <CountUp from={from?.[r.house.id]} to={r.total} />
                     <Move move={r.move} i={r.place - 1} />
@@ -137,6 +140,7 @@ export function Standings({ state, children }: { state: GameState; children?: Re
                 <span className="rank">{r.place}</span>
                 <ShieldIcon color={r.house.color} escudo={r.house.escudo} size={28} />
                 <span className="grow">
+                  {r.house.bot && <BotMark size={16} />}
                   <strong>{r.house.nombre}</strong>
                   {(r.house.logros ?? []).map((l) => (
                     <span key={l.clave} className="chip achievement">

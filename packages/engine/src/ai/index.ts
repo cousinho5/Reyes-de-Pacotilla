@@ -4,7 +4,18 @@
 // apoyar, cuándo defender, qué construir y con quién comerciar.
 // Son puros y deterministas, como el resto del motor.
 
-export { BOT_TWEAKS, PERSONALITIES, PERSONALITY_NAMES, chooseObjective, type Personality, type PersonalityName } from "./personality";
+export {
+  BOT_LEVEL_NAMES,
+  BOT_TWEAKS,
+  PERSONALITIES,
+  PERSONALITY_NAMES,
+  chooseObjective,
+  forgetsOrders,
+  withLevel,
+  type BotLevel,
+  type Personality,
+  type PersonalityName,
+} from "./personality";
 export { PRESTIGE_UNIT, situation, type AiView, type Situation } from "./view";
 export { planDay, type DayPlan } from "./day";
 export { planOrders, targets, militaryNeed, militaryWant, type Target } from "./orders";

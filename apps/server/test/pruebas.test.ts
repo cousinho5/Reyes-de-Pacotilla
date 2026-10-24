@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { PERSONALITY_NAMES } from "@reyes/engine";
+import { pickPersonality } from "../src/bots";
 import { nextStop, testStart } from "../src/pruebas";
 import type { GameRow } from "../src/state";
 
@@ -55,5 +57,15 @@ describe("Reloj de las partidas de prueba", () => {
   it("acabadas las resoluciones, sigue a la mañana siguiente (para cerrar la partida)", () => {
     const after = nextStop(game(4), new Date("2026-11-01T21:00:00Z"));
     expect(madrid(after)).toBe("lun, 09:00");
+  });
+});
+
+describe("Personalidad de los bots nuevos (docs/bots.md)", () => {
+  it("no se repite hasta agotarlas, y la elegida manda", () => {
+    const houses: { is_bot: number; bot_personality: string | null }[] = [{ is_bot: 0, bot_personality: null }];
+    for (let i = 0; i < PERSONALITY_NAMES.length; i++) houses.push({ is_bot: 1, bot_personality: pickPersonality("semilla", houses) });
+    expect(new Set(houses.slice(1).map((h) => h.bot_personality)).size).toBe(PERSONALITY_NAMES.length);
+    expect(pickPersonality("semilla", houses, "guerrero")).toBe("guerrero");
+    expect(pickPersonality("semilla", houses)).toBe(pickPersonality("semilla", houses));
   });
 });
