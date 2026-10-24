@@ -2,7 +2,7 @@
 // Es pura: el cron horario la llama y luego ejecuta las tareas contra D1.
 // Cada tarea tiene una clave única, así que repetirla no tiene efecto.
 
-import { CLOSE_WARNING_MINUTES, announceInstant, localDate, resolutionInfo, resolutionInstant, totalResolutions, zonedToUtc } from "@reyes/engine";
+import { BOT_SCHEDULE, CLOSE_WARNING_MINUTES, announceInstant, localDate, localParts, resolutionInfo, resolutionInstant, totalResolutions, zonedToUtc } from "@reyes/engine";
 
 export interface GameClock {
   timezone: string;
@@ -67,4 +67,34 @@ export function ordersOpen(now: Date, game: GameClock): boolean {
   const next = game.currentResolution + 1;
   if (next > totalResolutions(game.weeks, game.days)) return false;
   return now < resolutionInstant(game.startDate, next, game.closeTime, game.timezone, game.days);
+}
+
+/** Turnos de los bots en una partida real (`docs/bots.md`). */
+export type BotJob =
+  | { kind: "bot_dia"; key: string; house: number; date: string }
+  | { kind: "bot_respuestas" }
+  | { kind: "bot_ordenes"; resolution: number };
+
+/**
+ * Qué les toca a los bots en el instante `now`: el día de cada uno a su hora
+ * (o en cuanto pase el cron, si se saltó esa hora), contestar mientras están
+ * despiertos y dar las órdenes en la última hora antes del cierre.
+ */
+export function dueBotJobs(now: Date, game: GameClock, bots: { house: number; hour: number }[]): BotJob[] {
+  const jobs: BotJob[] = [];
+  if (bots.length === 0 || now < zonedToUtc(game.startDate, "00:00", game.timezone)) return jobs;
+  const next = game.currentResolution + 1;
+  if (next > totalResolutions(game.weeks, game.days)) return jobs;
+
+  const date = localDate(now, game.timezone);
+  const { hour } = localParts(now, game.timezone);
+  for (const b of bots) {
+    if (hour >= b.hour) jobs.push({ kind: "bot_dia", key: `bot_dia:${b.house}:${date}`, house: b.house, date });
+  }
+  if (hour >= BOT_SCHEDULE.awake[0] && hour < BOT_SCHEDULE.awake[1]) jobs.push({ kind: "bot_respuestas" });
+  const close = resolutionInstant(game.startDate, next, game.closeTime, game.timezone, game.days);
+  if (now.getTime() >= close.getTime() - BOT_SCHEDULE.ordersBeforeClose * 60 * 1000 && now < close) {
+    jobs.push({ kind: "bot_ordenes", resolution: next });
+  }
+  return jobs;
 }
