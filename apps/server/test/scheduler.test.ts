@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { dueJobs, ordersOpen, type GameClock } from "../src/scheduler";
+import { dueBotJobs, dueJobs, ordersOpen, type GameClock } from "../src/scheduler";
+import { isAbsent } from "../src/jobs";
 
 // Partida piloto de 2 semanas que empieza el lunes 19 de octubre de 2026.
 // Cruza el cambio de hora del domingo 25 de octubre. Con el ritmo antiguo
@@ -74,5 +75,51 @@ describe("Tareas del cron horario", () => {
     expect(ordersOpen(new Date("2026-10-19T18:59:00Z"), daily)).toBe(true);
     expect(ordersOpen(new Date("2026-10-19T19:00:00Z"), daily)).toBe(false);
     expect(ordersOpen(new Date("2026-10-19T19:00:00Z"), { ...daily, currentResolution: 1 })).toBe(true);
+  });
+});
+
+describe("Turnos de los bots en una partida real", () => {
+  const bots = [
+    { house: 7, hour: 9 },
+    { house: 8, hour: 18 },
+  ];
+  const botKinds = (now: string, g: GameClock = daily) =>
+    dueBotJobs(new Date(now), g, bots).map((j) => (j.kind === "bot_dia" ? j.key : j.kind === "bot_ordenes" ? `bot_ordenes:${j.resolution}` : j.kind));
+
+  it("de noche duermen y no hacen nada", () => {
+    expect(botKinds("2026-10-20T04:00:00Z")).toEqual([]); // 6:00 en Madrid
+  });
+
+  it("cada bot juega su día a su hora, y después si el cron se saltó esa hora", () => {
+    expect(botKinds("2026-10-20T07:00:00Z")).toEqual(["bot_dia:7:2026-10-20", "bot_respuestas"]); // 9:00
+    expect(botKinds("2026-10-20T15:00:00Z")).toEqual(["bot_dia:7:2026-10-20", "bot_respuestas"]); // 17:00
+    expect(botKinds("2026-10-20T16:00:00Z")).toEqual(["bot_dia:7:2026-10-20", "bot_dia:8:2026-10-20", "bot_respuestas"]); // 18:00
+  });
+
+  it("dan las órdenes en la última hora antes del cierre, no después", () => {
+    const tuesday = { ...daily, currentResolution: 1 }; // la del lunes ya pasó: toca la 2.ª
+    expect(botKinds("2026-10-20T17:00:00Z", tuesday)).not.toContain("bot_ordenes:2"); // 19:00
+    expect(botKinds("2026-10-20T18:00:00Z", tuesday)).toContain("bot_ordenes:2"); // 20:00
+    expect(botKinds("2026-10-20T19:00:00Z", tuesday)).not.toContain("bot_ordenes:2"); // 21:00, cerrado
+  });
+
+  it("contestan hasta las 23:00 y paran a medianoche", () => {
+    expect(botKinds("2026-10-20T21:00:00Z")).toContain("bot_respuestas"); // 23:00
+    expect(botKinds("2026-10-20T22:00:00Z")).toEqual([]); // 0:00 del 21
+  });
+
+  it("antes del inicio, sin bots o con la partida acabada, nada", () => {
+    expect(botKinds("2026-10-18T10:00:00Z")).toEqual([]);
+    expect(dueBotJobs(new Date("2026-10-20T16:00:00Z"), daily, [])).toEqual([]);
+    expect(botKinds("2026-11-01T10:00:00Z", { ...daily, currentResolution: 14 })).toEqual([]);
+  });
+});
+
+describe("Piloto automático", () => {
+  const now = new Date("2026-10-25T10:00:00Z");
+  const old = "2026-10-19T10:00:00Z"; // seis días sin entrar
+  it("una persona que no entra en 3 días pasa al piloto; un bot, nunca (juega su turno)", () => {
+    expect(isAbsent({ id: 1, vacation: 0, last_seen_at: old, is_bot: 0 }, now)).toBe(true);
+    expect(isAbsent({ id: 2, vacation: 0, last_seen_at: old, is_bot: 1 }, now)).toBe(false);
   });
 });

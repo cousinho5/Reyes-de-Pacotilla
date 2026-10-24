@@ -2,6 +2,7 @@
 // (db.batch) que empieza registrando su clave única: si la tarea ya se hizo,
 // la restricción UNIQUE hace fallar el lote entero y no se repite nada.
 
+import { addBotOrders, runBotJobs } from "./bots";
 import {
   gloryFromEvents,
   EVENTS,
@@ -81,6 +82,8 @@ export function isAbsent(
   game?: Pick<GameRow, "is_test" | "played_house_id">,
 ): boolean {
   if (h.vacation === 1) return true;
+  // Los bots juegan su turno (bots.ts): nunca pasan al piloto automático, aunque nunca «entren».
+  if (h.is_bot === 1) return false;
   // En las pruebas el reloj salta días y los bots juegan por su cuenta (pruebas.ts):
   // nadie pasa al piloto automático.
   if (game?.is_test === 1) return false;
@@ -95,7 +98,10 @@ export async function runHourly(env: NotifyEnv, now: Date): Promise<void> {
     .all<{ id: number }>();
   for (const { id } of games) {
     const game = await loadGame(db, id);
-    if (game) await runGameJobs(env, game, now);
+    if (!game) continue;
+    await runGameJobs(env, game, now);
+    // Después de la producción y de la resolución: el turno de los bots (docs/bots.md).
+    await runBotJobs(env, id, now);
   }
 }
 
@@ -121,7 +127,11 @@ export async function runGameJobs(env: NotifyEnv, game: GameRow, now: Date): Pro
       if (job.kind === "produccion") await runProduction(env, game, job.key, job.date, now);
       else if (job.kind === "anuncio") await announceAuction(env, game, job.week);
       else if (job.kind === "aviso_cierre") await closeWarning(env, game, job.resolution);
-      else if (job.kind === "resolucion") await runResolution(env, game, job.resolution, now);
+      else if (job.kind === "resolucion") {
+        // Si un cron perdido dejó a algún bot sin órdenes, las da ahora (los que ya tienen no cambian).
+        if (game.is_test !== 1) await addBotOrders(env, game, job.resolution);
+        await runResolution(env, game, job.resolution, now);
+      }
       else if (job.kind === "fin") await finishGame(env, game, now);
     } catch (err) {
       if (isAlreadyDone(err)) continue;

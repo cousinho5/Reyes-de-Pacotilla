@@ -493,8 +493,8 @@ export function mapLayout(houses: 4 | 5 | 6 | 7 | 8): { cols: number; rows: numb
 export const ABSENT_AFTER_DAYS = 3;
 
 /**
- * Bots de las partidas de prueba. No existen en las partidas reales: solo
- * sirven para probar el juego sin reunir a 4 personas.
+ * Bots clásicos del simulador (`bots.ts`, estrategias de antes de las
+ * personalidades). Los que juegan en las partidas son los de `ai/`.
  */
 export const BOT = {
   /** Atacan una casilla neutral si su fuerza supera la defensa por este factor. */
@@ -506,6 +506,22 @@ export const BOT = {
   /** Aceptan un trato si lo que reciben vale al menos esto por lo que dan. */
   tradeRatio: 1,
 } as const;
+
+/**
+ * Horario de los bots en las partidas reales (`docs/bots.md`): cada bot juega
+ * su día a su hora, contesta con algo de retraso mientras está despierto y da
+ * sus órdenes en la última hora antes del cierre. Horas locales de la partida.
+ */
+export const BOT_SCHEDULE = {
+  /** Primera y última hora a la que un bot puede jugar su día (cada uno tiene la suya). */
+  dayHours: [9, 19] as const,
+  /** Horas en que contesta ofertas y alianzas (desde la primera hasta antes de la última). */
+  awake: [9, 24] as const,
+  /** Horas que tarda como poco y como mucho en contestar una oferta o una propuesta. */
+  answerDelay: [1, 3] as const,
+  /** Minutos antes del cierre a partir de los que da sus órdenes (el cron pasa cada hora). */
+  ordersBeforeClose: 60,
+};
 
 /** Umbrales de los objetivos secretos (ver objectives.ts). */
 export const OBJECTIVE_TARGETS = {
