@@ -6,7 +6,14 @@
 import {
   ALLIANCE,
   ALLIANCE_BOTS,
+  BOT_TRADE,
   PERSONALITY_NAMES,
+  counterOffer,
+  houseInSentence,
+  noticeText,
+  offerNote,
+  totalOf,
+  withdrawOffer,
   answerDelayHours,
   forgetsOrders,
   seededRandom,
@@ -47,6 +54,7 @@ import {
   withRhythm,
   situation,
   type AiView,
+  type OfferPlan,
   type CardEffect,
   type CardKey,
   type BuildingKind,
@@ -67,7 +75,8 @@ import { clockOf, orderOf, ORDER_COLUMNS, type OrderRow } from "./jobs";
 import { dueBotJobs } from "./scheduler";
 import { acceptAlliance, breakAlliance, cooling, declineAlliance, proposeAlliance } from "./alianzas";
 import type { NotifyEnv } from "./notify";
-import { acceptOffer, bundle, offerExpiry, type OfferRow } from "./offers";
+import { acceptOffer, bundle, insertOfferStatement, type OfferRow } from "./offers";
+import { notifyHouses } from "./notify";
 import { lotOf, openAuctionWeek, useCardStatements, type CardRow, type LotRow } from "./subasta";
 import {
   computeAllPrestige,
@@ -88,7 +97,7 @@ import {
 
 
 /** Nombres y lemas de las casas bot (la personalidad va aparte: no se adivina por el nombre). */
-const BOT_HOUSES: { name: string; motto: string }[] = [
+export const BOT_HOUSES: { name: string; motto: string }[] = [
   { name: "Casa del Nabo", motto: "Raíces profundas, ideas cortas" },
   { name: "Gallina Bélica", motto: "Cacarea fuerte, corre más" },
   { name: "Los Pocapena", motto: "Ya si eso, mañana" },
@@ -101,7 +110,7 @@ const BOT_HOUSES: { name: string; motto: string }[] = [
   { name: "Marqueses del Botijo", motto: "Agua fresca, cabeza fría" },
   { name: "Los Tresmentiras", motto: "Palabra de honor, casi siempre" },
   { name: "Hidalgos del Puchero", motto: "Lo que no mata, engorda" },
-  { name: "Vizcondes de Villabache", motto: "Por mal camino, pero juntos" },
+  { name: "Vizcondes del Bache", motto: "Por mal camino, pero juntos" },
   { name: "Casa Sinblanca", motto: "Pobres pero con escudo" },
 ];
 
@@ -242,6 +251,8 @@ interface BotContext {
   buildings: Map<HouseId, Record<BuildingKind, number>>;
   prestige: { house: HouseId; total: number }[];
   partners: Map<HouseId, HouseId[]>;
+  /** Con quién cerró cada casa cada trato (válido o no) de los últimos 7 días. */
+  tradesWith: Map<HouseId, HouseId[]>;
   day: number;
   cards: CardRow[];
   lotsWon: Map<HouseId, number>;
@@ -259,9 +270,9 @@ async function botContext(db: D1Database, game: GameRow): Promise<BotContext> {
     loadHouses(db, game.id),
     loadTiles(db, game.id),
     loadBuildings(db, game.id),
-    db.prepare("SELECT house_a, house_b FROM trades WHERE game_id = ? AND valid = 1 AND at >= ?")
+    db.prepare("SELECT house_a, house_b, valid FROM trades WHERE game_id = ? AND at >= ?")
       .bind(game.id, since)
-      .all<{ house_a: number; house_b: number }>(),
+      .all<{ house_a: number; house_b: number; valid: number }>(),
     db.prepare("SELECT id, house_id, card_key, used_at, used_params FROM cards WHERE game_id = ?").bind(game.id).all<CardRow>(),
     db.prepare("SELECT winner_house_id AS house, COUNT(*) AS n FROM auction_lots WHERE game_id = ? AND winner_house_id IS NOT NULL GROUP BY winner_house_id")
       .bind(game.id)
@@ -283,7 +294,11 @@ async function botContext(db: D1Database, game: GameRow): Promise<BotContext> {
   }
   const prestige = await computeAllPrestige(db, game.id, houses, tiles, now);
   const partners = new Map<HouseId, HouseId[]>();
+  const tradesWith = new Map<HouseId, HouseId[]>();
   for (const t of trades.results) {
+    tradesWith.set(t.house_a, [...(tradesWith.get(t.house_a) ?? []), t.house_b]);
+    tradesWith.set(t.house_b, [...(tradesWith.get(t.house_b) ?? []), t.house_a]);
+    if (t.valid !== 1) continue;
     partners.set(t.house_a, [...new Set([...(partners.get(t.house_a) ?? []), t.house_b])]);
     partners.set(t.house_b, [...new Set([...(partners.get(t.house_b) ?? []), t.house_a])]);
   }
@@ -296,6 +311,7 @@ async function botContext(db: D1Database, game: GameRow): Promise<BotContext> {
     buildings,
     prestige: [...prestige].map(([house, p]) => ({ house, total: p.total })),
     partners,
+    tradesWith,
     day,
     cards: cards.results,
     lotsWon: new Map(lots.results.map((l) => [l.house, l.n])),
@@ -323,6 +339,7 @@ function botView(ctx: BotContext, h: HouseRow): AiView {
     objective: (h.objective_key as ObjectiveKey | null) ?? null,
     prestige: ctx.prestige,
     recentPartners: ctx.partners.get(h.id) ?? [],
+    tradesWith: ctx.tradesWith.get(h.id) ?? [],
     help: helpActive ? (h.help_resource ?? "pan") : null,
     spied: ctx.cards
       .filter((c) => c.house_id === h.id && c.used_at)
@@ -421,9 +438,9 @@ async function botsPlayDayInner(env: NotifyEnv, game: GameRow, only?: ReadonlySe
   await botRansoms(db, game, only);
   const ctx = await botContext(db, game);
   const { results: open } = await db
-    .prepare("SELECT from_house_id FROM offers WHERE game_id = ? AND status = 'open'")
+    .prepare("SELECT * FROM offers WHERE game_id = ? AND status = 'open' AND to_house_id IS NULL")
     .bind(game.id)
-    .all<{ from_house_id: number }>();
+    .all<OfferRow>();
   for (const h of activeBots(ctx.houses, game, only)) {
     const p = personalityOf(h);
     const st: D1PreparedStatement[] = [];
@@ -532,27 +549,29 @@ async function botsPlayDayInner(env: NotifyEnv, game: GameRow, only?: ReadonlySe
         if (stmts.length > 0) await db.batch(stmts);
       }
     }
-    // Una oferta pública como mucho, con lo que le quede después de gastar.
+    // Una oferta pública como mucho, con lo que le quede después de gastar. La que
+    // ya no le sirve o nadie ha querido en `staleDays` días la retira (y la vuelve a
+    // publicar más barata), como haría una persona (docs/bots.md, PR 3).
+    const left = resourcesOf(h);
+    for (const r of Object.keys(left) as (keyof typeof left)[]) left[r] -= c[r];
+    const after = situation({ ...botView(ctx, h), resources: left, buildings: levels }, p);
+    const mine = open.filter((o) => o.from_house_id === h.id);
+    let discount = 0;
+    for (const o of mine) {
+      const age = Math.round((gameNow(game).getTime() - Date.parse(o.created_at)) / 864e5);
+      if (!withdrawOffer(after, bundle(o, "give"), bundle(o, "want"), age)) continue;
+      await db
+        .prepare("UPDATE offers SET status = 'cancelled', closed_at = ? WHERE id = ? AND status = 'open'")
+        .bind(gameNow(game).toISOString(), o.id)
+        .run();
+      open.splice(open.indexOf(o), 1);
+      if (age >= BOT_TRADE.staleDays) discount = BOT_TRADE.repostDiscount;
+    }
     if (!open.some((o) => o.from_house_id === h.id)) {
-      const left = resourcesOf(h);
-      for (const r of Object.keys(left) as (keyof typeof left)[]) left[r] -= c[r];
-      const offer = proposeOffer(situation({ ...botView(ctx, h), resources: left, buildings: levels }, p));
+      const offer = proposeOffer(after, discount);
       if (offer) {
-        const g = offer.give;
-        const w = offer.want;
-        await db
-          .prepare(
-            `INSERT INTO offers (game_id, from_house_id, to_house_id, expires_after, give_pan, give_madera, give_piedra, give_hierro, give_oro,
-               want_pan, want_madera, want_piedra, want_hierro, want_oro, created_at)
-             VALUES (?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          )
-          .bind(
-            game.id, h.id, offerExpiry(game),
-            g.pan ?? 0, g.madera ?? 0, g.piedra ?? 0, g.hierro ?? 0, g.oro ?? 0,
-            w.pan ?? 0, w.madera ?? 0, w.piedra ?? 0, w.hierro ?? 0, w.oro ?? 0,
-            gameNow(game).toISOString(),
-          )
-          .run();
+        const note = offerNote(discount > 0 ? "rebaja" : "oferta", h.id + ctx.day, offer);
+        await insertOfferStatement(db, game, { from: h.id, to: null, parent: null, ...offer, note }).run();
       }
     }
   }
@@ -612,7 +631,11 @@ export async function addBotOrders(env: NotifyEnv, game: GameRow, n: number): Pr
 
 /**
  * Los bots contestan las ofertas abiertas: la acepta el bot que más gane con
- * ella (según su personalidad); las dirigidas a un bot que no le convienen se rechazan.
+ * ella (según su personalidad). Si a ninguno le conviene pero a alguno se le
+ * queda cerca, ese contesta con una contraoferta con su frase (una por oferta;
+ * a una contraoferta no se le contesta con otra). Las dirigidas a un bot que no
+ * le convienen ni admiten contraoferta se rechazan. Con quien le ha atacado
+ * hace poco no comercia (docs/bots.md, PR 3).
  */
 export async function botsAnswerOffers(env: NotifyEnv, game: GameRow, delayFrom: Date | null = null): Promise<void> {
   const db = env.DB;
@@ -621,12 +644,20 @@ export async function botsAnswerOffers(env: NotifyEnv, game: GameRow, delayFrom:
     .bind(game.id)
     .all<OfferRow>();
   if (offers.length === 0) return;
+  const { results: countered } = await db
+    .prepare("SELECT DISTINCT parent_offer_id AS id FROM offers WHERE game_id = ? AND parent_offer_id IS NOT NULL")
+    .bind(game.id)
+    .all<{ id: number }>();
+  const hasCounter = new Set(countered.map((x) => x.id));
   for (const offer of offers) {
     // Recursos al día: cada trato cerrado los cambia.
     const ctx = await botContext(db, game);
     const bots = activeBots(ctx.houses, game).filter((h) => h.id !== offer.from_house_id && answered(game, delayFrom, h, `oferta:${offer.id}`, offer.created_at));
     const candidates = offer.to_house_id == null ? bots : bots.filter((h) => h.id === offer.to_house_id);
     if (candidates.length === 0) continue;
+    // Puede que ya se haya cerrado (una contraoferta aceptada retira la oferta de la que sale).
+    const still = await db.prepare("SELECT status FROM offers WHERE id = ?").bind(offer.id).first<{ status: string }>();
+    if (still?.status !== "open") continue;
     const give = bundle(offer, "give");
     const want = bundle(offer, "want");
     let best: { h: HouseRow; gain: number } | null = null;
@@ -635,7 +666,41 @@ export async function botsAnswerOffers(env: NotifyEnv, game: GameRow, delayFrom:
       if (gain > 0 && (!best || gain > best.gain)) best = { h, gain };
     }
     if (best) {
-      await acceptOffer(env, game, offer, best.h);
+      const failed = await acceptOffer(env, game, offer, best.h);
+      // Aceptada la contraoferta a su oferta pública, esa ya está servida.
+      if (!failed && offer.parent_offer_id != null) {
+        await db
+          .prepare("UPDATE offers SET status = 'cancelled', closed_at = ? WHERE id = ? AND from_house_id = ? AND status = 'open'")
+          .bind(gameNow(game).toISOString(), offer.parent_offer_id, best.h.id)
+          .run();
+      }
+      continue;
+    }
+    let counter: { h: HouseRow; plan: OfferPlan } | null = null;
+    if (offer.parent_offer_id == null && !hasCounter.has(offer.id)) {
+      for (const h of candidates) {
+        const plan = counterOffer(situation(botView(ctx, h), personalityOf(h)), give, want, offer.from_house_id);
+        if (plan && (!counter || totalOf(plan.give) > totalOf(counter.plan.give))) counter = { h, plan };
+      }
+    }
+    if (counter) {
+      hasCounter.add(offer.id);
+      const note = offerNote("contraoferta", offer.id + counter.h.id, counter.plan);
+      const st = [insertOfferStatement(db, game, { from: counter.h.id, to: offer.from_house_id, parent: offer.id, ...counter.plan, note })];
+      // Como en la API: la contraoferta a una oferta dirigida la cierra; las públicas siguen abiertas.
+      if (offer.to_house_id === counter.h.id) {
+        st.push(
+          db.prepare("UPDATE offers SET status = 'countered', closed_at = ? WHERE id = ? AND status = 'open'").bind(gameNow(game).toISOString(), offer.id),
+        );
+      }
+      await db.batch(st);
+      await notifyHouses(env, [offer.from_house_id], {
+        kind: "oferta",
+        title: "Te han hecho una oferta",
+        body: noticeText("aviso.oferta", counter.h.id + offer.from_house_id, { jugador: houseInSentence(counter.h.name) }),
+        url: `/partida/${game.id}`,
+        dedupe: `contraoferta:${game.id}:${offer.id}`,
+      });
     } else if (offer.to_house_id != null) {
       await db
         .prepare("UPDATE offers SET status = 'rejected', closed_at = ? WHERE id = ? AND status = 'open'")

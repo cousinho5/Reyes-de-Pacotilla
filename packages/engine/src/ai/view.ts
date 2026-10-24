@@ -33,6 +33,8 @@ export interface AiView {
   prestige: { house: HouseId; total: number }[];
   /** Casas con las que hubo trato válido en los últimos 7 días. */
   recentPartners: HouseId[];
+  /** Con quién cerró cada trato (válido o no) de los últimos 7 días: una entrada por trato. */
+  tradesWith?: HouseId[];
   /** Ayuda al último activa (recurso), si la hay. */
   help?: Resource | null;
   /** Casas que vigila con la carta Espía. */

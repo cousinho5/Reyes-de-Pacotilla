@@ -54,6 +54,23 @@ npm run simular -- --semanas 4                    # duración de la partida
 npm run simular -- --json datos.json              # además, todos los datos
 ```
 
+## Comercio de los bots (24 de octubre de 2026, bots PR 3, aplicado)
+
+`npm run simular -- --partidas 400 --semanas 2 --informe bots`, antes y después (`docs/bots.md`, `BOT_TRADE` en `rules.ts`). El mercado del simulador pasa a dejar las ofertas abiertas hasta que caducan, como el servidor; los bots contestan con contraofertas, retiran y rebajan lo que nadie quiere, no repiten trato sin tope con la misma casa y no comercian con quien les atacó.
+
+| Dato | Antes | Después |
+| --- | --- | --- |
+| Tratos cerrados por partida | 11,6 | 11,7 |
+| Prestigio de comercio (estratega / mercader / guerrero) | 5,6 / 5,8 / 4,5 | 5,5 / 5,7 / 4,6 |
+| «comercio con tres» cumplido | 86% | 86% |
+| Gana / esperado (estratega, mercader, guerrero, arquitecta, oportunista) | 1,6 / 1,4 / 0,6 / 0,6 / 0,8 | 1,6 / 1,3 / 0,7 / 0,6 / 0,9 |
+
+Lo que hace cada bot de media en una partida de 2 semanas: publica unas 2,4 ofertas (0,4 rebajadas), le aceptan 2, acepta 2, hace 0,2 contraofertas, rechaza 1,7 por rencor, firma 0,9 alianzas, puja 1,7 veces y ataca a otras casas 2,6 veces. Entre bots casi no hay contraofertas porque sus ofertas ya salen a cuenta para alguien; están pensadas para las de las personas.
+
+«No se deja timar» se probó de dos maneras. Con lo que valora cada recurso (no aceptar si lo que recibe vale menos del 40-60% de lo que da) los tratos bajaban de 11,7 a 8-9,5 y «comercio con tres» del 86% al 46-65%: entre bots los buenos tratos parecen desiguales, porque a cada uno le falta una cosa distinta. Se quedó en unidades (recibir al menos la mitad de lo que da), que no cambia nada entre bots y corta el caso visto en el servidor local (10 de Pan por 25 de Piedra). `--bots-timo` y `--bots-tope` cambian esos dos valores.
+
+**2 personas de mentira + bots** (`--personas 2`, 400 partidas): las personas ganan 1,0 veces lo esperado y los bots también 1,0, con el mismo Prestigio medio (25,7). Los bots no tratan distinto a nadie; lo único que cambia es que no ven las órdenes de sus aliados personas.
+
 ## Niveles de los bots (24 de octubre de 2026, bots PR 2, aplicado)
 
 `npm run simular -- --partidas 400 --semanas 2 --niveles novato,normal,taimado,normal`: los niveles se reparten por turnos entre las casas (`docs/bots.md`, `BOT_LEVELS` en `rules.ts`). Normal deja al bot como estaba, así que las demás tablas no cambian si no se pasa `--niveles`.

@@ -1862,9 +1862,15 @@ app.post("/api/partidas/:id/prueba/jugar-como", async (c) => {
   return c.json({ ok: true });
 });
 
+// Borrar una partida: las de prueba en cualquier momento; las normales, solo en
+// la sala de espera (se van también sus bots). Solo quien la creó.
 app.delete("/api/partidas/:id", async (c) => {
-  const game = await testGame(c);
-  if (game instanceof Response) return game;
+  const s = c.get("session");
+  if (!s) return fail(c, 401, "Primero hay que entrar.");
+  const game = await loadGame(c.env.DB, Number(c.req.param("id")));
+  if (!game) return fail(c, 404, "Esa partida no existe.");
+  if (game.created_by !== s.userId) return fail(c, 403, "Solo quien creó la partida puede borrarla.");
+  if (game.is_test !== 1 && game.status !== "lobby") return fail(c, 409, "Una partida que ya ha empezado no se puede borrar.");
   await deleteTestGame(c.env, game);
   return c.json({ ok: true });
 });

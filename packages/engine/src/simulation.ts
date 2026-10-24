@@ -23,7 +23,7 @@ import { crownPrices } from "./crown";
 import { dismissTroops, mercenariesAlive, mercenaryCost } from "./mercenaries";
 import { alliesOf, guestTroops, noticeEnd } from "./alliances";
 import type { MapLayoutOverride } from "./mapgen";
-import { ALLIANCE, ALLIANCE_BOTS, BATTLE_TWEAKS, CROWN, ECONOMY_TWEAKS, MERCENARIES, GRID, PRESTIGE, RHYTHM, SPECIALTY_PAIRS, STARTING_RESOURCES, SIEGE, TERRAIN, TERRAIN_OFF, UNITS, CAPTAIN, GLORY } from "./rules";
+import { ALLIANCE, ALLIANCE_BOTS, BATTLE_TWEAKS, BOT_TRADE, CROWN, ECONOMY_TWEAKS, MERCENARIES, GRID, PRESTIGE, RHYTHM, SPECIALTY_PAIRS, STARTING_RESOURCES, SIEGE, TERRAIN, TERRAIN_OFF, TRADE, UNITS, CAPTAIN, GLORY } from "./rules";
 import { totalOf } from "./trade";
 import { auctionLots, doubleLot, resolveAuction, type Bid } from "./auction";
 import {
@@ -48,7 +48,10 @@ import {
   botPaysRansom,
   botRansomPrice,
   chooseObjective,
+  counterOffer,
+  holdsGrudge,
   offerGain,
+  withdrawOffer,
   planBids,
   planCards,
   planCrown,
@@ -59,6 +62,7 @@ import {
   planOrders,
   proposeOffer,
   situation,
+  type OfferPlan,
   type AiView,
   type BotLevel,
   type Personality,
@@ -132,7 +136,32 @@ export interface SimOptions {
   captainGlory?: boolean;
   /** Nivel de cada bot con personalidad (por defecto, normal; `docs/bots.md`). */
   levels?: (BotLevel | null)[];
+  /**
+   * Las primeras casas hacen de personas (`docs/bots.md`): juegan como su
+   * personalidad, pero no ven las órdenes de sus aliados ni los aliados las suyas.
+   */
+  humans?: number;
 }
+
+/** Lo que hace cada casa con personalidad, por semanas (informe `--informe bots`). */
+export const BOT_STATS = [
+  "ofertas",
+  "rebajas",
+  "retiradas",
+  "vendidas",
+  "compradas",
+  "contraofertas",
+  "contraAceptadas",
+  "rencor",
+  "alianzas",
+  "rupturas",
+  "pujas",
+  "lotes",
+  "cartas",
+  "ataquesCasas",
+  "ataquesNeutrales",
+] as const;
+export type BotStat = (typeof BOT_STATS)[number];
 
 export interface SimHouseResult {
   house: HouseId;
@@ -183,6 +212,10 @@ export interface SimHouseResult {
   alliances: { signed: number; broke: number; atEnd: HouseId[] };
   /** Bloque 13: el título de fin de partida que le toca. */
   title: TitleKey;
+  /** Hace de persona (`SimOptions.humans`). */
+  human: boolean;
+  /** Lo que hizo cada semana (`BOT_STATS`). */
+  log: Record<BotStat, number[]>;
 }
 
 export interface SimGameResult {
@@ -333,6 +366,8 @@ interface HouseState {
   /** Bloque 13, para los títulos: ruinas saqueadas y noches en una alianza en vigor. */
   ruins: number;
   allianceNights: number;
+  human: boolean;
+  log: Record<BotStat, number[]>;
 }
 
 export function simulateGame(opts: SimOptions): SimGameResult {
@@ -426,9 +461,16 @@ function runGame(opts: SimOptions): SimGameResult {
       broke: 0,
       ruins: 0,
       allianceNights: 0,
+      human: i < (opts.humans ?? 0),
+      log: Object.fromEntries(BOT_STATS.map((k) => [k, Array.from({ length: opts.weeks }, () => 0)])) as Record<BotStat, number[]>,
     };
   });
   const byId = new Map(houses.map((h) => [h.id, h]));
+  /** Día en curso, para anotar en `log`. */
+  let today = 0;
+  const note = (h: HouseState, stat: BotStat, n = 1) => {
+    h.log[stat][Math.min(opts.weeks - 1, Math.floor(today / 7))]! += n;
+  };
   const trades: { a: HouseId; b: HouseId; day: number; valid: boolean }[] = [];
   const titleCombats: TitleCombat[] = [];
   const absent = houses.filter((h) => h.strategy === "ausente").map((h) => h.id);
@@ -541,6 +583,7 @@ function runGame(opts: SimOptions): SimGameResult {
           .map((t) => (t.a === h.id ? t.b : t.a)),
       ),
     ],
+    tradesWith: trades.filter((t) => day - t.day < 7 && (t.a === h.id || t.b === h.id)).map((t) => (t.a === h.id ? t.b : t.a)),
     help: h.helpUntil != null && h.helpUntil > resolution ? (h.helpChoice ?? "pan") : null,
     spied: h.spies.filter((x) => x.until > resolution).map((x) => x.house),
     attackBonus: h.drums.find((d) => d.resolution === resolution + 1)?.bonus ?? 0,
@@ -568,6 +611,7 @@ function runGame(opts: SimOptions): SimGameResult {
     const e = check.effect;
     h.hand.splice(i, 1);
     cardsPlayed++;
+    note(h, "cartas");
     for (const [r, v] of Object.entries(e.resources ?? {}) as [Resource, number][]) h.res[r] += v;
     if (e.castleTroops) tiles = tiles.map((t) => (t.castleOf === h.id ? { ...t, troops: t.troops + e.castleTroops! } : t));
     if (e.fortify) tiles = tiles.map((t) => (t.id === e.fortify!.tile ? { ...t, fortifiedUntil: e.fortify!.until } : t));
@@ -581,7 +625,13 @@ function runGame(opts: SimOptions): SimGameResult {
   };
   const ranking = (day: number) => houses.map((h) => ({ house: h.id, total: prestigeOf(h, day).total }));
 
+  /** Ofertas abiertas (bots PR 3): públicas (`to` null) o contraofertas a quien publicó `parent`. */
+  type SimOffer = OfferPlan & { id: number; from: HouseId; to: HouseId | null; day: number; expires: number; parent: number | null; countered: boolean };
+  let offers: SimOffer[] = [];
+  let offerIds = 0;
+
   for (let day = 0; day < totalDays; day++) {
+    today = day;
     // 1. Producción (y ayuda al último si está activa).
     for (const h of houses) {
       const helpActive = h.helpUntil != null && h.helpUntil > resolution;
@@ -740,6 +790,7 @@ function runGame(opts: SimOptions): SimGameResult {
           al.endsAt = noticeEnd(resolution + 1);
           h.brokeDay = day;
           h.broke++;
+          note(h, "rupturas");
           allianceStats.broken++;
           const why = breakReason(s, a) ?? "otro";
           allianceStats.reasons[why] = (allianceStats.reasons[why] ?? 0) + 1;
@@ -757,6 +808,8 @@ function runGame(opts: SimOptions): SimGameResult {
           alliances.push({ a, b, status: "active", endsAt: null, since: resolution + 1, signedAt: resolution + 1 });
           byId.get(from)!.signed++;
           h.signed++;
+          note(h, "alianzas");
+          note(byId.get(from)!, "alianzas");
           allianceStats.signed++;
         }
         allianceStats.declined += plan.decline.length;
@@ -782,30 +835,89 @@ function runGame(opts: SimOptions): SimGameResult {
       trades.push({ a: h.id, b: partner.id, day, valid: isValidTrade(amount, amount) });
     }
 
-    // 3b. Mercado: cada casa con personalidad publica como mucho una oferta y
-    // la acepta quien más gane con ella (las clásicas, si no pierden).
+    // 3b. Mercado, como en el servidor (docs/bots.md, PR 3): las ofertas públicas
+    // siguen abiertas hasta que caducan (`TRADE.offerNights`). Cada casa con
+    // personalidad retira la suya si ya no le sirve o lleva `staleDays` días sin
+    // que nadie la quiera (y entonces la publica más barata), y tiene una como
+    // mucho. Cada oferta la acepta quien más gane con ella (las clásicas, si no
+    // pierden); si nadie, la casa con personalidad a la que se le queda más
+    // cerca contesta con una contraoferta (una por oferta), y quien publicó la
+    // acepta o la rechaza al momento.
     const market = ranking(day);
+    const smart = (h: HouseState) => situation(viewOf(h, day, market), persona(h));
+    offers = offers.filter((o) => o.expires > resolution);
     for (const h of houses.filter((x) => isSmart(x.strategy))) {
-      const offer = proposeOffer(situation(viewOf(h, day, market), persona(h)));
+      const mine = offers.find((o) => o.from === h.id && o.to == null);
+      let discount = 0;
+      if (mine && withdrawOffer(smart(h), mine.give, mine.want, day - mine.day)) {
+        offers = offers.filter((o) => o !== mine);
+        note(h, "retiradas");
+        if (day - mine.day >= BOT_TRADE.staleDays) discount = BOT_TRADE.repostDiscount;
+      }
+      if (offers.some((o) => o.from === h.id && o.to == null)) continue;
+      const offer = proposeOffer(smart(h), discount);
       if (!offer) continue;
+      offers.push({ ...offer, id: ++offerIds, from: h.id, to: null, day, expires: resolution + TRADE.offerNights, parent: null, countered: false });
+      note(h, discount > 0 ? "rebajas" : "ofertas");
+    }
+    const grudges = new Set<string>();
+    for (let k = 0; k < offers.length; k++) {
+      const offer = offers[k]!;
+      const h = byId.get(offer.from)!;
+      // Si a quien la publicó ya no le llega, se retira (como `acceptOffer` en el servidor).
+      if (RESOURCES.some((r) => h.res[r] < (offer.give[r] ?? 0))) {
+        offers.splice(k--, 1);
+        continue;
+      }
+      const candidates = houses.filter(
+        (o) => o.id !== h.id && o.strategy !== "ausente" && o.strategy !== "pasiva" && (offer.to == null || o.id === offer.to),
+      );
       let best: { o: HouseState; gain: number } | null = null;
-      for (const o of houses) {
-        if (o.id === h.id || o.strategy === "ausente" || o.strategy === "pasiva") continue;
+      for (const o of candidates) {
+        if (isSmart(o.strategy) && holdsGrudge(smart(o), h.id) && !grudges.has(`${offer.id}:${o.id}`)) {
+          grudges.add(`${offer.id}:${o.id}`);
+          note(o, "rencor");
+        }
         const gain = isSmart(o.strategy)
-          ? offerGain(situation(viewOf(o, day, market), persona(o)), offer.give, offer.want, h.id)
+          ? offerGain(smart(o), offer.give, offer.want, h.id)
           : botAcceptsOffer(offer.give, offer.want, o.res)
             ? totalOf(offer.give) - totalOf(offer.want)
             : -Infinity;
         if (gain > 0 && (!best || gain > best.gain)) best = { o, gain };
       }
-      if (!best) continue;
-      if (RESOURCES.some((r) => h.res[r] < (offer.give[r] ?? 0))) continue;
-      for (const r of RESOURCES) {
-        const d = (offer.give[r] ?? 0) - (offer.want[r] ?? 0);
-        h.res[r] -= d;
-        best.o.res[r] += d;
+      if (best) {
+        for (const r of RESOURCES) {
+          const d = (offer.give[r] ?? 0) - (offer.want[r] ?? 0);
+          h.res[r] -= d;
+          best.o.res[r] += d;
+        }
+        trades.push({ a: h.id, b: best.o.id, day, valid: isValidTrade(totalOf(offer.give), totalOf(offer.want)) });
+        note(h, "vendidas");
+        note(best.o, "compradas");
+        if (offer.parent != null) {
+          // Contraoferta aceptada: la oferta pública de quien la acepta ya está servida.
+          note(h, "contraAceptadas");
+          offers = offers.filter((o) => o.id !== offer.parent);
+          k = offers.indexOf(offer);
+        }
+        offers.splice(k--, 1);
+        continue;
       }
-      trades.push({ a: h.id, b: best.o.id, day, valid: isValidTrade(totalOf(offer.give), totalOf(offer.want)) });
+      if (offer.to != null) {
+        offers.splice(k--, 1);
+        continue;
+      }
+      if (offer.countered || offer.parent != null) continue;
+      let counter: { o: HouseState; plan: OfferPlan } | null = null;
+      for (const o of candidates) {
+        if (!isSmart(o.strategy)) continue;
+        const plan = counterOffer(smart(o), offer.give, offer.want, h.id);
+        if (plan && (!counter || totalOf(plan.give) > totalOf(counter.plan.give))) counter = { o, plan };
+      }
+      if (!counter) continue;
+      offer.countered = true;
+      offers.push({ ...counter.plan, id: ++offerIds, from: counter.o.id, to: h.id, day, expires: resolution + TRADE.offerNights, parent: offer.id, countered: false });
+      note(counter.o, "contraofertas");
     }
 
     // 4. Resolución los días de RHYTHM (miércoles y domingo, o cada día).
@@ -824,6 +936,7 @@ function runGame(opts: SimOptions): SimGameResult {
       for (const h of houses) {
         if (!isSmart(h.strategy)) continue;
         for (const b of planBids(situation(viewOf(h, day, pre), persona(h)), lots)) {
+          note(h, "pujas");
           bids.push({ slot: b.slot, house: h.id, amount: b.amount, placedAt: `${String(day).padStart(3, "0")}:${h.id}` });
         }
       }
@@ -835,6 +948,7 @@ function runGame(opts: SimOptions): SimGameResult {
         h.res.oro -= r.price;
         auctionGold += r.price;
         h.auctionsWon++;
+        note(h, "lotes");
         h.achievements.ganador_subasta = Math.min(PRESTIGE.auctionAchievementMax, (h.achievements.ganador_subasta ?? 0) + 1);
         if (lot.kind === "card") for (let k = 0; k < (lot.count ?? 1); k++) h.hand.push(lot.card);
         else for (const [res, v] of Object.entries(lot.resources) as [Resource, number][]) h.res[res] += v;
@@ -853,7 +967,8 @@ function runGame(opts: SimOptions): SimGameResult {
         const cards = planCards(situation(viewOf(h, day, evening), persona(h)), h.hand, true);
         for (const c of cards) playCard(h, c.card, c.params);
         // Bloque 8: ve las órdenes que ya han dado sus aliados (lo que hablarían entre ellos).
-        const friends = alliesOf(plainAlliances(), h.id);
+        // Quien hace de persona no ve las de nadie, ni nadie las suyas (docs/bots.md).
+        const friends = h.human ? [] : alliesOf(plainAlliances(), h.id).filter((a) => !byId.get(a)!.human);
         const allyOrders = orders.filter((o) => friends.includes(o.house));
         const plan = planOrders(situation({ ...viewOf(h, day, evening), allyOrders }, persona(h)));
         resolution++;
@@ -914,7 +1029,11 @@ function runGame(opts: SimOptions): SimGameResult {
       if (o.kind === "support") supports++;
       else if (o.kind === "siege") siegeOrders++;
       else {
-        if (before.get(o.to)?.owner !== o.house) attacks++;
+        const owner = before.get(o.to)?.owner;
+        if (owner !== o.house) {
+          attacks++;
+          if (isSmart(byId.get(o.house)!.strategy) && !(owner != null && alliesOf(plainAlliances(), o.house).includes(owner))) note(byId.get(o.house)!, owner == null ? "ataquesNeutrales" : "ataquesCasas");
+        }
         const how = marchKind(before.get(o.from)!, before.get(o.to)!, tiles, o.house);
         if (how === "camino") roadMoves++;
         if (how === "mar") seaMoves++;
@@ -1218,6 +1337,8 @@ function runGame(opts: SimOptions): SimGameResult {
         atEnd: alliances.filter((al) => al.status === "active" && (al.a === f.h.id || al.b === f.h.id)).map((al) => (al.a === f.h.id ? al.b : al.a)),
       },
       title: titleOf.get(f.h.id)!,
+      human: f.h.human,
+      log: f.h.log,
     })),
   };
 }

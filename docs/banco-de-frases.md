@@ -1,6 +1,6 @@
 # Banco de frases de Fray Abundio
 
-Banco de textos del cronista de Reyes de Pacotilla, versión 2 (adaptada al diseño v2: sin puntos de acción, con apoyos, rebotes, logros y objetivos secretos). Complementa la sección 17 del documento de diseño. En el código, las secciones 1 a 9 y 12 a 20 (y los avisos de alianzas, 11.15 a 11.19) están en `packages/engine/src/texts/cronista.ts` y los eventos en `packages/engine/src/events.ts`: si cambia una frase aquí, se cambia también allí.
+Banco de textos del cronista de Reyes de Pacotilla, versión 2 (adaptada al diseño v2: sin puntos de acción, con apoyos, rebotes, logros y objetivos secretos). Complementa la sección 17 del documento de diseño. En el código, las secciones 1 a 9, 12 a 21 y 24 (y los avisos de alianzas, 11.15 a 11.19) están en `packages/engine/src/texts/cronista.ts` y los eventos en `packages/engine/src/events.ts`: si cambia una frase aquí, se cambia también allí.
 
 ## Cómo se usa
 
@@ -1294,3 +1294,29 @@ Al tocarla, la corona se pone derecha un momento y vuelve a torcerse.
 2. La corona está torcida a propósito. El cronista lo sabe porque lo dice él.
 3. Ponerla derecha no os hace más reyes. Pero queda bonito.
 4. El difunto Aldric también la enderezaba. Mirad cómo acabó.
+
+## 24. Los mayordomos (bots)
+
+Las casas que lleva un bot (`docs/bots.md`) hablan por boca de su mayordomo, no de Fray Abundio. Van en la frase corta de sus ofertas (80 letras como mucho). {da} y {pide} son el recurso principal de lo que dan y de lo que piden. En el código, claves `bot.*` de `packages/engine/src/texts/cronista.ts`.
+
+### 24.1 Oferta del día
+
+1. Nos sobra {da} y nos falta {pide}. Trato limpio, sin letra pequeña.
+2. {da} recién contado. Se cambia por {pide}, nada de gallinas.
+3. El mayordomo cambia {da} por {pide}. Precio justo, lo jura por su escoba.
+4. Oferta de la casa: {da} por {pide}. Hasta que se acabe la paciencia.
+5. {da} de primera para quien traiga {pide}. Se aceptan apretones de mano.
+
+### 24.2 Oferta rebajada (la vuelve a publicar porque nadie la quiso)
+
+1. Rebajado: nadie quiso lo de ayer. {da} por menos {pide}.
+2. Segunda vuelta, mejor precio. {da} por {pide}.
+3. El mayordomo baja el precio y la cabeza. {da} por {pide}.
+
+### 24.3 Contraoferta
+
+1. Casi, casi. Con esto el mayordomo duerme más tranquilo.
+2. Buena oferta. Esta es mejor, sobre todo para nosotros.
+3. El mayordomo ha hecho cuentas y le salen otras. Mirad estas.
+4. Trato hecho si nos dejáis algo menos. Pobres, pero honrados.
+5. Así no, pero así sí. El mayordomo regatea por costumbre.

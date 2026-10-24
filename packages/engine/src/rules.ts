@@ -538,6 +538,32 @@ export const BOT_LEVELS = {
   taimado: { margin: -0.1, caution: 1.3, trade: 0, leaderHatred: 0.3, forget: 0 },
 } as const;
 
+/**
+ * Comercio de los bots (`docs/bots.md`, PR 3), con lo que valora cada bot sus recursos.
+ * - `acceptFloor`: no acepta nada en que reciba menos de esta parte de las
+ *   unidades que entrega, ni por ganar un socio nuevo (no se deja timar). Va en
+ *   unidades y no en lo que valora cada recurso porque entre bots los tratos
+ *   buenos parecen desiguales: a cada uno le falta una cosa distinta.
+ * - `counterFloor`: contraoferta solo si lo que le dan vale al menos esta parte de
+ *   lo que le piden; y nunca rebaja lo que entrega por debajo de esa parte.
+ * - `counterStep`: cuánto rebaja cada vez que prueba una contraoferta.
+ * - `perPartnerWeek`: tratos como mucho con la misma casa en 7 días; cada trato
+ *   anterior con ella le quita `repeatCost` de las ganas (rendimiento decreciente).
+ * - `staleDays`: días que deja abierta su oferta pública antes de retirarla y
+ *   publicarla otra vez pidiendo un `repostDiscount` menos.
+ * - El rencor dura lo de las alianzas (`ALLIANCE_BOTS.grudgeDays`): no comercia
+ *   con quien le ha atacado.
+ */
+export const BOT_TRADE = {
+  acceptFloor: 0.5,
+  counterFloor: 0.6,
+  counterStep: 0.1,
+  perPartnerWeek: 3,
+  repeatCost: 5,
+  staleDays: 2,
+  repostDiscount: 0.15,
+};
+
 /** Umbrales de los objetivos secretos (ver objectives.ts). */
 export const OBJECTIVE_TARGETS = {
   /** Bloque 5: de 150 a 60, porque las mejoras, la Corona y los mercenarios gastan Oro. */

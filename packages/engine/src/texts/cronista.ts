@@ -1,4 +1,4 @@
-// Banco de frases de Fray Abundio (docs/banco-de-frases.md, secciones 1 a 9 y 12 a 20).
+// Banco de frases de Fray Abundio (docs/banco-de-frases.md, secciones 1 a 9, 12 a 21 y 24).
 // Generado a partir del documento: si cambia el banco, se cambia aquí también.
 // Las variables entre llaves las rellena bulletin.ts; las cifras siempre son exactas.
 
@@ -861,6 +861,25 @@ export const PHRASES = {
   "titulo.guardian": [
     "{n} tropas en su castillo al final. El mundo exterior es peligroso y {casa} lo sabía.",
     "{n} tropas guardando la puerta de casa. Nadie entró en el castillo de {casa}; casi nadie salió."
+  ],
+  "bot.oferta": [
+    "Nos sobra {da} y nos falta {pide}. Trato limpio, sin letra pequeña.",
+    "{da} recién contado. Se cambia por {pide}, nada de gallinas.",
+    "El mayordomo cambia {da} por {pide}. Precio justo, lo jura por su escoba.",
+    "Oferta de la casa: {da} por {pide}. Hasta que se acabe la paciencia.",
+    "{da} de primera para quien traiga {pide}. Se aceptan apretones de mano."
+  ],
+  "bot.rebaja": [
+    "Rebajado: nadie quiso lo de ayer. {da} por menos {pide}.",
+    "Segunda vuelta, mejor precio. {da} por {pide}.",
+    "El mayordomo baja el precio y la cabeza. {da} por {pide}."
+  ],
+  "bot.contraoferta": [
+    "Casi, casi. Con esto el mayordomo duerme más tranquilo.",
+    "Buena oferta. Esta es mejor, sobre todo para nosotros.",
+    "El mayordomo ha hecho cuentas y le salen otras. Mirad estas.",
+    "Trato hecho si nos dejáis algo menos. Pobres, pero honrados.",
+    "Así no, pero así sí. El mayordomo regatea por costumbre."
   ]
 } as const;
 
