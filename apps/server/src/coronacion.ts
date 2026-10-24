@@ -4,7 +4,8 @@
 // el estado de la partida y la página pública del enlace para compartirla.
 
 import {
-  OBJECTIVES,
+  OBJECTIVE_KEYS,
+  objectiveText,
   castleStage,
   combatTitleStats,
   comebacks,
@@ -176,7 +177,7 @@ export async function publicCoronation(db: D1Database, key: string) {
       escudo: shieldView(h),
       etapa: castleStage(buildings.get(h.id)!),
       objetivo: h.objective_key
-        ? { clave: h.objective_key, texto: OBJECTIVES[h.objective_key as ObjectiveKey] ?? h.objective_key, cumplido: h.objective_met === 1 }
+        ? { clave: h.objective_key, texto: OBJECTIVE_KEYS.includes(h.objective_key as ObjectiveKey) ? objectiveText(h.objective_key as ObjectiveKey, game.weeks) : h.objective_key, cumplido: h.objective_met === 1 }
         : null,
     })),
     casillas: toEngineTiles(tileRows).map((t) => ({

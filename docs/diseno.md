@@ -489,6 +489,16 @@ Al empezar, cada casa recibe dos objetivos al azar y elige uno. Nadie más lo co
 
 Catálogo actual (10, en `packages/engine/src/objectives.ts`, umbrales en `rules.ts`): controlar un puerto y una montaña al final (antes «un puerto y una fortaleza»: con la geografía del bloque 1 los puertos quedan en la costa y las fortalezas tierra adentro, y bajó al 13%; con la montaña se cumple el 29%); sumar 16 niveles entre los cinco edificios (17 hasta el bloque 5, cuando las mejoras pasaron a costar más); terminar con 60 Oro o más (antes 200 y luego 150: con la subasta, las mejoras con Oro, la Corona y los mercenarios, el Oro se gasta); cerrar tratos válidos con 3 casas distintas; controlar una fortaleza al final; tomar 3 casillas a otras casas; terminar con 40 tropas o más (contando las de paso en casillas aliadas, bloque 8); controlar 5 casillas o más al final; tener un edificio a nivel 5; cerrar 10 tratos válidos; ganar 3 lotes de la Gran Subasta (añadido en la versión 1). Los umbrales se ajustaron con la simulación del 16 de octubre de 2026: con los anteriores, terminar con 100 Oro se cumplía casi siempre y controlar 2 puertos o comerciar con todas casi nunca. Un segundo ajuste, con los bots con personalidad, cambió "los 5 edificios a nivel 3" (se cumplía el 97%) por "17 niveles" (35%), "6 casillas" (3%) por "5 casillas" (15%), abarató el nivel 5 de los edificios (de 200 a 155 recursos), bajó la guarnición de las fortalezas de 10 a 8 y fortificar a 8 de Piedra. Con la versión 1 se añadirán los de subastas (ganar 2 Gran Subastas) y pactos (firmar 2 pactos sin romper ninguno).
 
+En las partidas cortas los umbrales bajan con la duración (`SHORT_OBJECTIVES` en `rules.ts`, decidido el 24 de octubre de 2026): con los de siempre, en 2 semanas casi nadie sumaba 16 niveles, llegaba a nivel 5, a 40 tropas o ganaba 3 lotes (solo hay 2 subastas). El texto de cada ambición lleva el umbral de su partida.
+
+| Ambición | 2 semanas | 4 semanas | 6 y 8 semanas |
+| --- | --- | --- | --- |
+| Sumar niveles | 11 | 14 | 16 |
+| Edificio a nivel | 4 | 5 | 5 |
+| Terminar con tropas | 20 | 30 | 40 |
+| Tratos válidos | 8 | 10 | 10 |
+| Lotes de la Gran Subasta | 2 | 2 | 3 |
+
 El objetivo se elige antes de la primera resolución; quien no elige se queda con la primera opción.
 
 El objetivo secreto da una meta propia a quien va detrás y hace que el marcador nunca sea del todo seguro, lo que reduce el kingmaking: es difícil decidir quién gana desde abajo si no sabes quién va de verdad primero.

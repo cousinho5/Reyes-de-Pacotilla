@@ -5,7 +5,7 @@ import { checkCard, type CardContext, type CardKey, type CardParams } from "../c
 import { upgradeCost } from "../economy";
 import type { Lot } from "../auction";
 import { defenseMultiplier } from "../combat";
-import { CARD_VALUES, FORTIFY_COST, OBJECTIVE_TARGETS, PRESTIGE, TROOP_COST } from "../rules";
+import { CARD_VALUES, FORTIFY_COST, PRESTIGE, TROOP_COST } from "../rules";
 import { BUILDINGS, RESOURCES, type Resource } from "../types";
 import { targets } from "./orders";
 import { PRESTIGE_UNIT, valueOf, type Situation } from "./view";
@@ -43,7 +43,7 @@ export function lotValue(s: Situation, lot: Lot): number {
   const won = s.view.auctionsWon ?? 0;
   // Ganar la subasta da Prestigio (logro, hasta 3 veces) y puede cumplir su objetivo.
   let bonus = won < PRESTIGE.auctionAchievementMax ? PRESTIGE.achievement.ganador_subasta * PRESTIGE_UNIT : 0;
-  const goal = OBJECTIVE_TARGETS.auctionsWon;
+  const goal = s.goals.auctionsWon;
   if (s.view.objective === "subastas" && won < goal) bonus += (PRESTIGE.secretObjective * PRESTIGE_UNIT) / (goal - won);
   return base + bonus;
 }

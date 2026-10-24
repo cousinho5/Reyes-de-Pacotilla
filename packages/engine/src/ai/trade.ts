@@ -7,7 +7,7 @@
 
 import { noticeText } from "../notices";
 import { isValidTrade } from "../prestige";
-import { BOT_TRADE, PRESTIGE } from "../rules";
+import { BOT_TRADE, OBJECTIVE_GOALS, PRESTIGE } from "../rules";
 import { totalOf } from "../trade";
 import { RESOURCES, type HouseId, type Resource, type Resources } from "../types";
 import { PRESTIGE_UNIT, clamp, valueOf, type Situation } from "./view";
@@ -23,8 +23,10 @@ export interface OfferPlan {
  */
 export function proposeOffer(s: Situation, discount = 0): OfferPlan | null {
   const { view, p, values } = s;
-  // Los menos comerciantes no ofrecen todos los días (salvo para rebajar la que ya tenían).
-  const every = Math.max(1, Math.round(1 / Math.max(0.1, p.trade)));
+  // Los menos comerciantes no ofrecen todos los días (salvo para rebajar la que ya tenían
+  // o si su ambición es de comercio).
+  const eager = view.objective === "diez_tratos" || view.objective === "comercio_con_tres";
+  const every = eager ? 1 : Math.max(1, Math.round(1 / Math.max(0.1, p.trade)));
   if (discount === 0 && (view.day + view.house) % every !== 0) return null;
   const byValue = [...RESOURCES].sort((a, b) => values[a] - values[b] || RESOURCES.indexOf(a) - RESOURCES.indexOf(b));
   const surplus = byValue.find((r) => spare(s, r) >= 25);
@@ -74,8 +76,23 @@ export function offerGain(s: Situation, give: Partial<Resources>, want: Partial<
   ) {
     gain += PRESTIGE.perTradePartner * PRESTIGE_UNIT * (0.3 + 0.7 * p.trade);
   }
+  gain += ambitionGain(s, give, want, from);
   if (from === s.leader) gain -= p.leaderHatred * PRESTIGE_UNIT;
   return gain - (1 - p.trade) * 3 - repeats * BOT_TRADE.repeatCost;
+}
+
+/** Lo que acerca un trato a su ambición de comercio («diez_tratos» o «comercio_con_tres»). */
+function ambitionGain(s: Situation, give: Partial<Resources>, want: Partial<Resources>, from: HouseId): number {
+  const totals = s.view.tradeTotals;
+  if (!totals || !isValidTrade(totalOf(give), totalOf(want))) return 0;
+  const prize = PRESTIGE.secretObjective * PRESTIGE_UNIT * OBJECTIVE_GOALS.weight;
+  if (s.view.objective === "diez_tratos" && totals.valid < s.goals.validTrades) {
+    return prize / (s.goals.validTrades - totals.valid);
+  }
+  if (s.view.objective === "comercio_con_tres" && !totals.partners.includes(from) && totals.partners.length < s.goals.tradePartners) {
+    return prize / (s.goals.tradePartners - totals.partners.length);
+  }
+  return 0;
 }
 
 /**

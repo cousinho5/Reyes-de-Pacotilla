@@ -425,6 +425,9 @@ if (args.get("informe") === "bots") {
     cartas: "cartas usadas",
     ataquesCasas: "ataques a casas",
     ataquesNeutrales: "ataques a neutrales",
+    proclamas: "proclamas",
+    respuestas: "respuestas a menciones",
+    sobornos: "sobornos al cronista",
   };
   table(
     "Bots: qué hacen cada semana (media por casa con personalidad)",
@@ -432,7 +435,7 @@ if (args.get("informe") === "bots") {
     BOT_STATS.map((k) => [label[k], ...Array.from({ length: weeks }, (_, w) => f1(avg(smart.map((h) => h.log[k][w] ?? 0))))]),
   );
   const total = (h: SimHouseResult, k: (typeof BOT_STATS)[number]) => h.log[k].reduce((a, b) => a + b, 0);
-  const cols = ["ofertas", "vendidas", "compradas", "contraofertas", "contraAceptadas", "rencor", "alianzas", "rupturas", "pujas", "cartas", "ataquesCasas"] as const;
+  const cols = ["ofertas", "vendidas", "contraofertas", "rencor", "alianzas", "rupturas", "pujas", "cartas", "ataquesCasas", "proclamas", "respuestas", "sobornos"] as const;
   table(
     "Bots: por personalidad (total de la partida, media por casa)",
     ["personalidad", ...cols, "ambición"],

@@ -54,6 +54,26 @@ npm run simular -- --semanas 4                    # duración de la partida
 npm run simular -- --json datos.json              # además, todos los datos
 ```
 
+## Ambiciones de los bots y umbrales por duración (24 de octubre de 2026, bots PR 4, aplicado)
+
+Repaso de las 11 ambiciones (objetivos secretos) con `npm run simular -- --partidas 400 --semanas 2` y 300 partidas de 4 y 6 semanas. Dos cambios: los bots persiguen las ambiciones que antes ignoraban (tesoro, diez tratos, comercio con tres y 40 tropas; `OBJECTIVE_GOALS`), y en partidas de 2 y 4 semanas los umbrales bajan (`SHORT_OBJECTIVES`, decisión de Pablo; tabla en `docs/diseno.md`). Porcentaje de casas que cumplen la ambición elegida:
+
+| Ambición | 2 semanas antes | 2 semanas después | 4 semanas después | 6 semanas antes | 6 semanas después |
+| --- | --- | --- | --- | --- | --- |
+| Sumar niveles (16; 11 en 2 sem., 14 en 4) | 0% | 43% | 46% | 31% | 26% |
+| Tesoro (60 de Oro) | 4% | 26% | 60% | 37% | 70% |
+| Comercio con tres | 86% | 94% | 99% | 99% | 100% |
+| Tropas (40; 20 en 2 sem., 30 en 4) | 0% | 6% | 19% | 35% | 41% |
+| Obra maestra (nivel 5; 4 en 2 sem.) | 0% | 4% | 28% | 66% | 70% |
+| Tratos válidos (10; 8 en 2 sem.) | 0% | 53% | 99% | 96% | 99% |
+| Lotes de la Subasta (3; 2 en 2 y 4 sem.) | 4% | 10% | 31% | 39% | 21% |
+| Puerto y montaña / fortaleza / casillas ajenas / cinco casillas | 10 / 16 / 36 / 48% | 8 / 13 / 36 / 48% | 12 / 30 / 88 / 66% | 22 / 43 / 98 / 75% | 21 / 39 / 96 / 74% |
+
+- En 2 semanas, «tropas» (6%) y «obra maestra» (4%) siguen siendo difíciles para los bots: acaban con una mediana de 11 tropas (el 10% pasa de 18) y casi nunca suben un edificio dos veces. Una persona que vaya a por ellas puede; se dejan así para no regalarlas.
+- La subasta baja en 6 semanas (39% → 21%) porque quien guarda Oro para el tesoro puja menos.
+- El equilibrio entre personalidades apenas cambia (en 2 semanas, gana / esperado: estratega 1,5, mercader 1,3, guerrero 0,6, arquitecta 0,7, oportunista 1,0).
+- La voz de los bots no cambia el juego: cada bot escribe unas 0,85 proclamas por semana, contesta 0,35 menciones y soborna muy de vez en cuando (0,1 en la segunda semana), porque solo lo hace tras bajar puestos o yendo primero y si le sobra Oro.
+
 ## Comercio de los bots (24 de octubre de 2026, bots PR 3, aplicado)
 
 `npm run simular -- --partidas 400 --semanas 2 --informe bots`, antes y después (`docs/bots.md`, `BOT_TRADE` en `rules.ts`). El mercado del simulador pasa a dejar las ofertas abiertas hasta que caducan, como el servidor; los bots contestan con contraofertas, retiran y rebajan lo que nadie quiere, no repiten trato sin tope con la misma casa y no comercian con quien les atacó.

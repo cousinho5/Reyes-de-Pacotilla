@@ -8,7 +8,7 @@
 // - Quien las crea puede "jugar como" cualquier casa.
 
 import { localDate, resolutionInstant, totalResolutions, zonedToUtc } from "@reyes/engine";
-import { addBotOrders, botsAnswerOffers, botsDiplomacy, botsPlayDay, type BotEnv } from "./bots";
+import { addBotOrders, botsAnswerMentions, botsAnswerOffers, botsDiplomacy, botsPlayDay, type BotEnv } from "./bots";
 import { clockOf, runGameJobs } from "./jobs";
 import type { NotifyEnv } from "./notify";
 import { gameNow, loadGame, loadHouses, rhythmOf, type GameRow } from "./state";
@@ -58,6 +58,7 @@ export async function advance(env: BotEnv, gameId: number, until: "paso" | "reso
       stop >= resolutionInstant(clock.startDate, next, clock.resolveTime, clock.timezone, clock.days);
     // Las ofertas se hicieron durante el día: los bots contestan antes de nada.
     await botsAnswerOffers(env, game);
+    await botsAnswerMentions(env, game);
     // Bloque 8: antes de la noche, los bots contestan las propuestas de alianza que les han llegado.
     if (resolving) await botsDiplomacy(env, game, true);
     if (resolving) await addBotOrders(env, game, next);

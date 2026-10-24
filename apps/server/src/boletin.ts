@@ -6,7 +6,8 @@
 
 import {
   BRIBE_COST,
-  OBJECTIVES,
+  OBJECTIVE_KEYS,
+  objectiveText,
   MIDWEEK_TYPES,
   PHRASES,
   PROCLAMATION,
@@ -165,7 +166,7 @@ export async function publishBulletin(
       ? {
           objectives: houses
             .filter((h) => h.objective_key)
-            .map((h) => ({ house: h.id, text: OBJECTIVES[h.objective_key as ObjectiveKey] ?? h.objective_key!, met: h.objective_met === 1 })),
+            .map((h) => ({ house: h.id, text: OBJECTIVE_KEYS.includes(h.objective_key as ObjectiveKey) ? objectiveText(h.objective_key as ObjectiveKey, game.weeks) : h.objective_key!, met: h.objective_met === 1 })),
           patron,
           traitor,
         }

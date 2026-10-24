@@ -354,7 +354,8 @@ export function describeEvent(e: EventView, houses: HouseInfo[], tiles: TileView
       return `Tu piloto automático ${parts.length ? parts.join(", ") : "vigila y no toca nada"}.`;
     }
     case "objetivo": {
-      const texto = OBJECTIVES[d.objetivo as ObjectiveKey];
+      // Desde las ambiciones a escala (bots, PR 4) el texto viene en el suceso; los de antes, del catálogo.
+      const texto = (d.texto as string | null | undefined) ?? OBJECTIVES[d.objetivo as ObjectiveKey];
       if (!texto) return `${houseName(houses, d.house)} no tenía ambición secreta. El cronista lo encuentra admirable.`;
       return `La ambición secreta de ${houseName(houses, d.house)} era: «${texto.replace(/\.$/, "")}». ${
         d.cumplido ? "Cumplida: +6 de Prestigio." : "No la cumplió."

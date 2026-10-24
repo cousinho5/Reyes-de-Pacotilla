@@ -4,7 +4,7 @@
 import { checkFortify, recruitCost } from "../actions";
 import { defenseMultiplier, walled } from "../combat";
 import { canAfford, upgradeCost, weeklyUpkeep } from "../economy";
-import { BUILDING_PRODUCTION, BUILDING_RESOURCE, OBJECTIVE_TARGETS, PRESTIGE, UNITS } from "../rules";
+import { BUILDING_PRODUCTION, BUILDING_RESOURCE, PRESTIGE, UNITS } from "../rules";
 import { unitsOf } from "../units";
 import { areAdjacent } from "../map";
 import { BUILDINGS, RESOURCES, type BuildingKind, type Resource, type Resources, type TileId } from "../types";
@@ -181,9 +181,11 @@ export function planDay(s: Situation): DayPlan {
 /** Prestigio extra (en puntos) por acercarse a un objetivo secreto de edificios. */
 function objectiveProgress(s: Situation, levels: Record<BuildingKind, number>, b: BuildingKind, focus: BuildingKind): number {
   const objective = PRESTIGE.secretObjective;
-  if (s.view.objective === "obra_maestra" && b === focus) return objective / Math.max(1, 5 - levels[b]);
+  if (s.view.objective === "obra_maestra" && b === focus && levels[b] < s.goals.masterpieceLevel) {
+    return objective / Math.max(1, s.goals.masterpieceLevel - levels[b]);
+  }
   if (s.view.objective === "niveles_17") {
-    const missing = OBJECTIVE_TARGETS.totalLevels - BUILDINGS.reduce((a, k) => a + levels[k], 0);
+    const missing = s.goals.totalLevels - BUILDINGS.reduce((a, k) => a + levels[k], 0);
     return missing > 0 ? objective / missing : 0;
   }
   return 0;

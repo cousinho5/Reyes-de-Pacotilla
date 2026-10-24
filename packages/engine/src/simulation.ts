@@ -23,7 +23,7 @@ import { crownPrices } from "./crown";
 import { dismissTroops, mercenariesAlive, mercenaryCost } from "./mercenaries";
 import { alliesOf, guestTroops, noticeEnd } from "./alliances";
 import type { MapLayoutOverride } from "./mapgen";
-import { ALLIANCE, ALLIANCE_BOTS, BATTLE_TWEAKS, BOT_TRADE, CROWN, ECONOMY_TWEAKS, MERCENARIES, GRID, PRESTIGE, RHYTHM, SPECIALTY_PAIRS, STARTING_RESOURCES, SIEGE, TERRAIN, TERRAIN_OFF, TRADE, UNITS, CAPTAIN, GLORY } from "./rules";
+import { ALLIANCE, ALLIANCE_BOTS, BATTLE_TWEAKS, BOT_TRADE, BRIBE_COST, CROWN, ECONOMY_TWEAKS, MERCENARIES, GRID, PRESTIGE, RHYTHM, SPECIALTY_PAIRS, STARTING_RESOURCES, SIEGE, TERRAIN, TERRAIN_OFF, TRADE, UNITS, CAPTAIN, GLORY } from "./rules";
 import { totalOf } from "./trade";
 import { auctionLots, doubleLot, resolveAuction, type Bid } from "./auction";
 import {
@@ -37,6 +37,7 @@ import {
   type EventKey,
   type WeekEvent,
 } from "./events";
+import { proclamationMentions } from "./bulletin";
 import { checkCard, type CardKey, type CardParams } from "./cards";
 import { combatTitleStats, comebacks, endTitles, type TitleCombat, type TitleKey } from "./titles";
 import { BUILDINGS, RESOURCES, type Alliance, type Captain, type BuildingKind, type HouseId, type Order, type Resource, type Resources, type Tile } from "./types";
@@ -48,6 +49,10 @@ import {
   botPaysRansom,
   botRansomPrice,
   chooseObjective,
+  answerMention,
+  planBribe,
+  planProclamation,
+  type VoiceContext,
   counterOffer,
   holdsGrudge,
   offerGain,
@@ -160,6 +165,9 @@ export const BOT_STATS = [
   "cartas",
   "ataquesCasas",
   "ataquesNeutrales",
+  "proclamas",
+  "respuestas",
+  "sobornos",
 ] as const;
 export type BotStat = (typeof BOT_STATS)[number];
 
@@ -366,6 +374,8 @@ interface HouseState {
   /** Bloque 13, para los títulos: ruinas saqueadas y noches en una alianza en vigor. */
   ruins: number;
   allianceNights: number;
+  /** Oro dado al cronista en sobornos. */
+  bribeGold: number;
   human: boolean;
   log: Record<BotStat, number[]>;
 }
@@ -461,6 +471,7 @@ function runGame(opts: SimOptions): SimGameResult {
       broke: 0,
       ruins: 0,
       allianceNights: 0,
+      bribeGold: 0,
       human: i < (opts.humans ?? 0),
       log: Object.fromEntries(BOT_STATS.map((k) => [k, Array.from({ length: opts.weeks }, () => 0)])) as Record<BotStat, number[]>,
     };
@@ -584,6 +595,10 @@ function runGame(opts: SimOptions): SimGameResult {
       ),
     ],
     tradesWith: trades.filter((t) => day - t.day < 7 && (t.a === h.id || t.b === h.id)).map((t) => (t.a === h.id ? t.b : t.a)),
+    tradeTotals: {
+      valid: trades.filter((t) => t.valid && (t.a === h.id || t.b === h.id)).length,
+      partners: [...new Set(trades.filter((t) => t.valid && (t.a === h.id || t.b === h.id)).map((t) => (t.a === h.id ? t.b : t.a)))],
+    },
     help: h.helpUntil != null && h.helpUntil > resolution ? (h.helpChoice ?? "pan") : null,
     spied: h.spies.filter((x) => x.until > resolution).map((x) => x.house),
     attackBonus: h.drums.find((d) => d.resolution === resolution + 1)?.bonus ?? 0,
@@ -818,6 +833,51 @@ function runGame(opts: SimOptions): SimGameResult {
         if (plan.propose != null) {
           proposals.push({ from: h.id, to: plan.propose, until: resolution + ALLIANCE.proposalResolutions });
           allianceStats.proposed++;
+        }
+      }
+    }
+
+    // 2c. La voz de los bots (docs/bots.md, PR 4): el sábado, la víspera del
+    // boletín, cada casa con personalidad escribe su proclama y quizá soborna
+    // al cronista; las nombradas con «@» contestan una vez (su respuesta
+    // sustituye a su proclama). No cambian nada del juego salvo el Oro del soborno.
+    if (day % 7 === 5) {
+      const now = ranking(day);
+      const rankOf = (totals: { house: HouseId; total: number }[], id: HouseId) => ranks(totals).get(id)!;
+      const lastSunday = houses.every((h) => h.prestigeBySunday.length > 0)
+        ? houses.map((h) => ({ house: h.id, total: h.prestigeBySunday[h.prestigeBySunday.length - 1]! }))
+        : null;
+      const names = new Map(houses.map((h) => [h.id, `Casa ${h.id}`]));
+      const ctxOf = (h: HouseState): VoiceContext => ({
+        seed: opts.seed,
+        week: Math.floor(day / 7) + 1,
+        names,
+        rank: rankOf(now, h.id),
+        rankBefore: lastSunday ? rankOf(lastSunday, h.id) : null,
+        newAllies: alliances
+          .filter((al) => al.status === "active" && al.signedAt > resolution + 1 - RHYTHM.days.length && (al.a === h.id || al.b === h.id))
+          .map((al) => (al.a === h.id ? al.b : al.a)),
+      });
+      const said = new Map<HouseId, string>();
+      for (const h of houses.filter((x) => isSmart(x.strategy))) {
+        const s = situation(viewOf(h, day, now), persona(h));
+        const text = planProclamation(s, ctxOf(h));
+        if (text) {
+          said.set(h.id, text);
+          note(h, "proclamas");
+        }
+        if (planBribe(s, ctxOf(h)) != null) {
+          h.res.oro -= BRIBE_COST;
+          h.bribeGold += BRIBE_COST;
+          note(h, "sobornos");
+        }
+      }
+      for (const [from, text] of [...said]) {
+        const named = proclamationMentions(text, houses.map((x) => ({ ...x, name: names.get(x.id)! })));
+        for (const h of named.filter((x) => isSmart(x.strategy) && x.id !== from)) {
+          if (said.get(h.id)?.includes(`@${names.get(from)}`)) continue;
+          said.set(h.id, answerMention(situation(viewOf(h, day, now), persona(h)), ctxOf(h), from));
+          note(h, "respuestas");
         }
       }
     }
@@ -1221,6 +1281,7 @@ function runGame(opts: SimOptions): SimGameResult {
       validTradesAllGame: valid,
       tilesTakenFromHouses: h.takenFromHouses,
       auctionsWon: h.auctionsWon,
+      weeks: opts.weeks,
     });
     const own = tiles.filter((t) => t.owner === h.id);
     return {
@@ -1257,7 +1318,7 @@ function runGame(opts: SimOptions): SimGameResult {
       auctions: f.h.auctionsWon,
       betrayals: f.h.broke,
       allianceNights: f.h.allianceNights,
-      bribes: 0,
+      bribes: f.h.bribeGold,
       ruins: f.h.ruins,
       comeback: climbs.get(f.h.id) ?? 0,
       castleTroops: tiles.find((t) => t.castleOf === f.h.id && t.owner === f.h.id)?.troops ?? 0,
