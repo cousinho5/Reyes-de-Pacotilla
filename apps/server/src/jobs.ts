@@ -2,7 +2,7 @@
 // (db.batch) que empieza registrando su clave única: si la tarea ya se hizo,
 // la restricción UNIQUE hace fallar el lote entero y no se repite nada.
 
-import { addBotOrders, runBotJobs } from "./bots";
+import { addBotOrders, botsWriteErrata, runBotJobs } from "./bots";
 import {
   gloryFromEvents,
   EVENTS,
@@ -25,6 +25,7 @@ import {
   dailyProduction,
   lastPlace,
   objectiveMet,
+  objectiveText,
   planAutopilot,
   resolutionInfo,
   totalResolutions,
@@ -710,6 +711,7 @@ export async function finishGame(env: NotifyEnv, game: GameRow, now: Date): Prom
         validTradesAllGame: valid,
         tilesTakenFromHouses: takes.results.find((t) => t.house === h.id)?.n ?? 0,
         auctionsWon: lotsWon.results.find((l) => l.house === h.id)?.n ?? 0,
+        weeks: game.weeks,
       });
     const p = prestige.get(h.id)!;
     const total = p.total + (met ? PRESTIGE.secretObjective : 0);
@@ -721,7 +723,7 @@ export async function finishGame(env: NotifyEnv, game: GameRow, now: Date): Prom
       ).bind(game.id, h.id, totalResolutions(game.weeks, rhythmOf(game).days) + 1, total, JSON.stringify({ ...p, objetivo: met ? PRESTIGE.secretObjective : 0, total })),
       db.prepare("INSERT INTO event_log (game_id, type, visible_to, payload) VALUES (?, 'objetivo', NULL, ?)").bind(
         game.id,
-        JSON.stringify({ house: h.id, objetivo: h.objective_key, cumplido: met }),
+        JSON.stringify({ house: h.id, objetivo: h.objective_key, texto: h.objective_key ? objectiveText(h.objective_key as ObjectiveKey, game.weeks) : null, cumplido: met }),
       ),
     );
   }
@@ -745,7 +747,11 @@ export async function finishGame(env: NotifyEnv, game: GameRow, now: Date): Prom
   // Bloque 3: la Crónica Definitiva, a favor del ganador.
   try {
     const finished = await loadGame(db, game.id);
-    if (finished) await publishChronicle(env, finished);
+    if (finished) {
+      await publishChronicle(env, finished);
+      // Los bots que no ganaron dejan su fe de erratas (docs/bots.md, PR 4).
+      await botsWriteErrata(env, finished).catch((err) => console.error(`Fe de erratas de los bots, partida ${finished.id}:`, err));
+    }
   } catch (err) {
     console.error(`Partida ${game.id}, Crónica Definitiva:`, err);
   }

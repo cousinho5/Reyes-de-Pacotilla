@@ -8,6 +8,13 @@ import {
   ALLIANCE_BOTS,
   BOT_TRADE,
   PERSONALITY_NAMES,
+  PROCLAMATION,
+  answerMention,
+  planBribe,
+  planErrata,
+  planProclamation,
+  proclamationMentions,
+  type VoiceContext,
   counterOffer,
   houseInSentence,
   noticeText,
@@ -32,7 +39,6 @@ import {
   PERSONALITIES,
   PRESTIGE,
   BRIBE_COST,
-  PHRASES,
   chooseObjective,
   eventCombat,
   eventOfWeek,
@@ -72,7 +78,7 @@ import { hireStatements } from "./mercenarios";
 import { hashCode, randomCode } from "./auth";
 import { COLORS, pickShield } from "./heraldry";
 import { clockOf, orderOf, ORDER_COLUMNS, type OrderRow } from "./jobs";
-import { dueBotJobs } from "./scheduler";
+import { dueBotJobs, ordersOpen } from "./scheduler";
 import { acceptAlliance, breakAlliance, cooling, declineAlliance, proposeAlliance } from "./alianzas";
 import type { NotifyEnv } from "./notify";
 import { acceptOffer, bundle, insertOfferStatement, type OfferRow } from "./offers";
@@ -514,22 +520,8 @@ async function botsPlayDayInner(env: NotifyEnv, game: GameRow, only?: ReadonlySe
       }
     }
     await botPlaysCards(db, game, ctx, fresh, false);
-    // De vez en cuando, un soborno al cronista (las casas más ricas y vanidosas).
-    const bribeWeek = Math.floor(ctx.day / 7) + 1;
-    if (fresh.oro >= 60 + BRIBE_COST && (h.id + bribeWeek) % 3 === 0 && ctx.day % 7 >= 4 && ctx.day % 7 <= 6) {
-      await db
-        .batch([
-          db.prepare("INSERT OR IGNORE INTO bribes (game_id, house_id, week, amount, template_key) VALUES (?, ?, ?, ?, ?)").bind(
-            game.id,
-            h.id,
-            bribeWeek,
-            BRIBE_COST,
-            String((h.id + bribeWeek) % PHRASES["soborno.frase"].length),
-          ),
-          db.prepare("UPDATE houses SET oro = oro - ? WHERE id = ? AND changes() > 0").bind(BRIBE_COST, h.id),
-        ])
-        .catch((err) => console.error(`Soborno de ${h.name}:`, err));
-    }
+    // La víspera del boletín (el sábado), su proclama y quizá un soborno con motivo (docs/bots.md, PR 4).
+    if (ctx.day % 7 === 5) await botSpeaks(db, game, ctx, (await loadHouses(db, game.id)).find((x) => x.id === h.id)!, p);
     // Pujas de la Gran Subasta (si hay lotes anunciados y sigue abierta).
     const week = openAuctionWeek(game);
     if (week != null) {
@@ -575,6 +567,110 @@ async function botsPlayDayInner(env: NotifyEnv, game: GameRow, only?: ReadonlySe
       }
     }
   }
+}
+
+/** Lo que sabe un bot para hablar esta semana: puestos de ahora y del domingo anterior, y alianzas nuevas. */
+async function voiceContext(db: D1Database, game: GameRow, ctx: BotContext, h: HouseRow): Promise<VoiceContext> {
+  const days = rhythmOf(game).days;
+  const week = resolutionInfo(game.current_resolution + 1, days).week;
+  const rankIn = (totals: { house: HouseId; total: number }[]) =>
+    [...totals].sort((a, b) => b.total - a.total || a.house - b.house).findIndex((t) => t.house === h.id) + 1;
+  const { results: before } = await db
+    .prepare("SELECT house_id AS house, total FROM prestige_snapshots WHERE game_id = ? AND resolution_no = ?")
+    .bind(game.id, (week - 1) * days.length)
+    .all<{ house: number; total: number }>();
+  return {
+    seed: game.seed,
+    week,
+    names: new Map(ctx.houses.map((x) => [x.id, x.name])),
+    rank: rankIn(ctx.prestige),
+    rankBefore: before.some((t) => t.house === h.id) ? rankIn(before) : null,
+    newAllies: ctx.alliances
+      .filter((al) => al.status === "active" && al.since > game.current_resolution + 1 - days.length && (al.a === h.id || al.b === h.id))
+      .map((al) => (al.a === h.id ? al.b : al.a)),
+  };
+}
+
+/** Proclama de la semana y soborno con motivo (`ai/voice.ts`), mientras el cronista no haya cerrado el boletín. */
+async function botSpeaks(db: D1Database, game: GameRow, ctx: BotContext, h: HouseRow, p: Personality): Promise<void> {
+  if (!ordersOpen(gameNow(game), clockOf(game)!)) return;
+  const voice = await voiceContext(db, game, ctx, h);
+  const s = situation(botView(ctx, h), p);
+  const text = planProclamation(s, voice);
+  const st: D1PreparedStatement[] = [];
+  // INSERT OR IGNORE: si ya contestó a una mención esta semana, su respuesta se queda.
+  if (text) {
+    st.push(
+      db.prepare("INSERT OR IGNORE INTO proclamations (game_id, house_id, week, text, updated_at) VALUES (?, ?, ?, ?, ?)").bind(
+        game.id, h.id, voice.week, [...text].slice(0, PROCLAMATION.maxLetters).join(""), gameNow(game).toISOString(),
+      ),
+    );
+  }
+  const template = planBribe(s, voice);
+  if (template != null) {
+    st.push(
+      db.prepare("INSERT OR IGNORE INTO bribes (game_id, house_id, week, amount, template_key) VALUES (?, ?, ?, ?, ?)").bind(
+        game.id, h.id, voice.week, BRIBE_COST, String(template),
+      ),
+      db.prepare("UPDATE houses SET oro = oro - ? WHERE id = ? AND changes() > 0").bind(BRIBE_COST, h.id),
+    );
+  }
+  if (st.length > 0) await db.batch(st).catch((err) => console.error(`Proclama o soborno de ${h.name}:`, err));
+}
+
+/**
+ * Los bots contestan a las proclamas de esta semana que les nombran con «@»
+ * (`answerMention`): una respuesta por semana, que sustituye a su proclama.
+ * Con el retraso de siempre si hay reloj (`answered`).
+ */
+export async function botsAnswerMentions(env: NotifyEnv, game: GameRow, delayFrom: Date | null = null): Promise<void> {
+  const db = env.DB;
+  if (!ordersOpen(gameNow(game), clockOf(game)!)) return;
+  const week = resolutionInfo(game.current_resolution + 1, rhythmOf(game).days).week;
+  const { results: said } = await db
+    .prepare("SELECT house_id, text, updated_at FROM proclamations WHERE game_id = ? AND week = ?")
+    .bind(game.id, week)
+    .all<{ house_id: number; text: string; updated_at: string }>();
+  if (said.length === 0) return;
+  const ctx = await botContext(db, game);
+  const bots = activeBots(ctx.houses, game);
+  for (const p of said) {
+    for (const h of proclamationMentions(p.text, bots)) {
+      if (h.id === p.house_id || !answered(game, delayFrom, h, `mencion:${p.house_id}:${week}`, p.updated_at)) continue;
+      // Una respuesta por semana: se reserva antes, como el día del bot.
+      const claimed = await db
+        .prepare("INSERT OR IGNORE INTO job_runs (game_id, job_key) VALUES (?, ?)")
+        .bind(game.id, `bot_mencion:${h.id}:${week}`)
+        .run();
+      if (claimed.meta.changes === 0) continue;
+      const text = answerMention(situation(botView(ctx, h), personalityOf(h)), await voiceContext(db, game, ctx, h), p.house_id);
+      await db
+        .prepare(
+          "INSERT INTO proclamations (game_id, house_id, week, text, updated_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT (game_id, house_id, week) DO UPDATE SET text = excluded.text, updated_at = excluded.updated_at",
+        )
+        .bind(game.id, h.id, week, [...text].slice(0, PROCLAMATION.maxLetters).join(""), gameNow(game).toISOString())
+        .run();
+    }
+  }
+}
+
+/** Fe de erratas de los bots que no ganaron, al acabar la partida (`planErrata`). */
+export async function botsWriteErrata(env: NotifyEnv, game: GameRow): Promise<void> {
+  const db = env.DB;
+  const end = await db.prepare("SELECT payload FROM event_log WHERE game_id = ? AND type = 'fin' ORDER BY id DESC LIMIT 1").bind(game.id).first<{ payload: string }>();
+  const winner = end ? (JSON.parse(end.payload) as { winner: number | null }).winner : null;
+  const houses = await loadHouses(db, game.id);
+  const names = new Map(houses.map((x) => [x.id, x.name]));
+  const st = houses
+    .filter((h) => h.is_bot === 1)
+    .map((h) => ({ h, text: planErrata(h.id, winner, { seed: game.seed, week: 0, names, rank: 0, rankBefore: null, newAllies: [] }) }))
+    .filter((x) => x.text)
+    .map(({ h, text }) =>
+      db.prepare("INSERT OR IGNORE INTO proclamations (game_id, house_id, week, text, updated_at) VALUES (?, ?, 0, ?, ?)").bind(
+        game.id, h.id, [...text!].slice(0, PROCLAMATION.maxLetters).join(""), gameNow(game).toISOString(),
+      ),
+    );
+  if (st.length > 0) await db.batch(st);
 }
 
 /** Órdenes de los bots para la resolución `n` (si aún no tienen): ataques con apoyos, defensa y avance. */
@@ -800,6 +896,7 @@ export async function runBotJobs(env: NotifyEnv, gameId: number, now: Date): Pro
         await botsPlayDay(env, (await loadGame(db, game.id))!, new Set([job.house]), now);
       } else if (job.kind === "bot_respuestas") {
         await botsAnswerOffers(env, game, now);
+        await botsAnswerMentions(env, game, now);
         await botsDiplomacy(env, game, true, undefined, now);
       } else {
         await addBotOrders(env, game, job.resolution);

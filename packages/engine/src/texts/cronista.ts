@@ -874,6 +874,63 @@ export const PHRASES = {
     "Segunda vuelta, mejor precio. {da} por {pide}.",
     "El mayordomo baja el precio y la cabeza. {da} por {pide}."
   ],
+  "bot.proclama.rencor": [
+    "{casa} entró en nuestras tierras sin llamar. El mayordomo lo ha apuntado en el libro gordo.",
+    "Aviso a {casa}: lo de esta semana no se olvida. El mayordomo tiene buena memoria y mejor rencor.",
+    "{casa} nos debe una casilla y una disculpa. La disculpa nos da igual.",
+    "Que {casa} no venga ahora a ofrecernos tratos. Esta casa no comercia con quien la pisa."
+  ],
+  "bot.proclama.alianza": [
+    "Brindamos por {casa}, aliada leal y vecina razonable. Que dure más que la última.",
+    "Con {casa} a nuestro lado, el reino duerme más tranquilo. Nosotros, desde luego.",
+    "El mayordomo celebra la alianza con {casa}. Ha sacado la vajilla buena."
+  ],
+  "bot.proclama.lider": [
+    "Primeros de la corte y sin despeinarnos. El mayordomo pide calma: aún quedan semanas.",
+    "La corona nos sienta bien, dicen los espejos. Los espejos de esta casa nunca mienten.",
+    "Vamos en cabeza. A quien venga a por nosotros, le esperamos con sopa y murallas."
+  ],
+  "bot.proclama.caida": [
+    "Mala semana, lo admitimos. {casa} no debería acostumbrarse a ir delante.",
+    "Hemos bajado en la clasificación para tomar impulso. {casa}, tome nota.",
+    "Un tropiezo no es una caída. El mayordomo lo repite cada mañana delante del espejo."
+  ],
+  "bot.proclama.contra_lider": [
+    "{casa} va primera. El mayordomo recuerda que el rey Aldric también iba primero, hasta el pollo.",
+    "Se busca casa valiente para bajarle los humos a {casa}. Se pagan bien las ideas.",
+    "{casa} presume de corona antes de tiempo. En esta corte las coronas se tuercen solas."
+  ],
+  "bot.proclama.mercado": [
+    "Mercado abierto en esta casa: se cambia lo que sobra por lo que falta. Precios justos, casi siempre.",
+    "El mayordomo busca socios. Se valoran la puntualidad, la honradez y el Hierro.",
+    "Quien quiera hacer negocios, que pase. Quien quiera hacer la guerra, que pase de largo."
+  ],
+  "bot.proclama.tranquila": [
+    "Semana tranquila en esta casa. El mayordomo ha contado las gallinas dos veces: están todas.",
+    "Nada que declarar, salvo que la sopa estaba buena.",
+    "Esta casa trabaja en silencio. El cronista lo llama sospechoso; nosotros, eficiente."
+  ],
+  "bot.respuesta.aliado": [
+    "Gracias por la mención, {casa}. El mayordomo se ha emocionado, aunque lo niega.",
+    "{casa} habla bien de nosotros y nosotros de {casa}. Así da gusto.",
+    "Recibido, {casa}. Seguimos codo con codo, salvo que haya pollo."
+  ],
+  "bot.respuesta.amenaza": [
+    "{casa} habla mucho para lo poco que defiende. El mayordomo afila las respuestas y algo más.",
+    "Leído, {casa}. Contestaremos en el campo de batalla, que tiene más espacio.",
+    "{casa} se atreve a nombrarnos después de lo que hizo. Valor no le falta; memoria, sí."
+  ],
+  "bot.respuesta.neutral": [
+    "El mayordomo ha leído lo de {casa} con atención y una ceja levantada.",
+    "{casa} nos nombra en público. Lo tomamos como un cumplido, por si acaso.",
+    "Contestamos a {casa}: tomamos nota y seguimos a lo nuestro."
+  ],
+  "bot.erratas": [
+    "Donde dice que {casa} ganó, léase que tuvo mucha suerte.",
+    "Fe de erratas: esta casa no perdió, simplemente no ganó. {casa}, disfrute mientras dure.",
+    "El mayordomo exige que conste que con una semana más todo habría sido distinto.",
+    "Errata: la corona de {casa} está torcida. Lo dice esta casa, que la ha visto de cerca."
+  ],
   "bot.contraoferta": [
     "Casi, casi. Con esto el mayordomo duerme más tranquilo.",
     "Buena oferta. Esta es mejor, sobre todo para nosotros.",

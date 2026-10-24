@@ -6,8 +6,8 @@ import { dailyProduction, upgradeCost, weeklyUpkeep } from "../economy";
 import { ambushed, visibleTileIds } from "../fog";
 import { upkeepTroops } from "../units";
 import { areAdjacent } from "../map";
-import type { ObjectiveKey } from "../objectives";
-import { FORTIFY_COST, PRESTIGE, SPECIALTY_PAIRS, TROOP_COST, TROOPS_PER_PAN } from "../rules";
+import { objectiveTargets, type ObjectiveKey, type ObjectiveTargets } from "../objectives";
+import { FORTIFY_COST, OBJECTIVE_GOALS, PRESTIGE, SPECIALTY_PAIRS, TROOP_COST, TROOPS_PER_PAN } from "../rules";
 import { BUILDINGS, RESOURCES, type Alliance, type BuildingKind, type HouseId, type Resource, type Resources, type Tile } from "../types";
 import { alliesOf, bound, guestStacks, inForce } from "../alliances";
 import type { Personality } from "./personality";
@@ -33,6 +33,8 @@ export interface AiView {
   prestige: { house: HouseId; total: number }[];
   /** Casas con las que hubo trato válido en los últimos 7 días. */
   recentPartners: HouseId[];
+  /** Tratos válidos de toda la partida y casas distintas con las que comerció (ambiciones de comercio). */
+  tradeTotals?: { valid: number; partners: HouseId[] };
   /** Con quién cerró cada trato (válido o no) de los últimos 7 días: una entrada por trato. */
   tradesWith?: HouseId[];
   /** Ayuda al último activa (recurso), si la hay. */
@@ -81,6 +83,8 @@ export interface Situation {
   /** Edificio en el que se especializa y coste de su próxima mejora, si está ahorrando para ella. */
   focus: BuildingKind;
   savingFor: Partial<Resources> | null;
+  /** Umbrales de las ambiciones en esta partida (más bajos en las cortas). */
+  goals: ObjectiveTargets;
 }
 
 /** Edificio en el que se especializa: el de mayor nivel (en empate, el de su especialidad inicial). */
@@ -141,7 +145,8 @@ export function situation(view: AiView, p: Personality): Situation {
   const stretch = upkeep - weeklyUpkeep(troops, 0);
   const focus = focusBuilding(view.buildings);
   // Ahorra para la mejora de su especialidad si su objetivo secreto es la obra maestra.
-  const saving = view.objective === "obra_maestra" && s_daysLeft(view) > 3;
+  const goals = objectiveTargets(view.totalDays / 7);
+  const saving = view.objective === "obra_maestra" && s_daysLeft(view) > 3 && view.buildings[focus] < goals.masterpieceLevel;
   const s: Situation = {
     view,
     p,
@@ -160,6 +165,7 @@ export function situation(view: AiView, p: Personality): Situation {
     sustainableTroops: Math.max(0, Math.floor((income.pan * 7 * 0.8 - stretch) * TROOPS_PER_PAN)),
     focus,
     savingFor: saving ? upgradeCost(view.buildings[focus]) : null,
+    goals,
   };
   s.values = resourceValues(s);
   return s;
@@ -201,6 +207,10 @@ function resourceValues(s: Situation, have: Resources = s.view.resources): Resou
   // El Oro también da Prestigio de Riqueza (hasta el tope).
   const goldCap = PRESTIGE.goldPerPoint * PRESTIGE.goldMax;
   if (have.oro < goldCap) out.oro = Math.max(out.oro, PRESTIGE_UNIT / PRESTIGE.goldPerPoint);
+  // Ambición «tesoro»: cada moneda que le falta vale su parte del Prestigio del objetivo.
+  if (view.objective === "tesoro" && have.oro < s.goals.gold) {
+    out.oro = Math.max(out.oro, (PRESTIGE.secretObjective * PRESTIGE_UNIT * OBJECTIVE_GOALS.weight) / s.goals.gold);
+  }
   return out;
 }
 

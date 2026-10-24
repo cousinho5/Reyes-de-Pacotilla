@@ -576,7 +576,50 @@ export const OBJECTIVE_TARGETS = {
   /** Bloque 5: de 17 a 16, porque las mejoras piden más. Niveles sumando los cinco edificios (se empieza con 7). */
   totalLevels: 16,
   auctionsWon: 3,
+  /** Nivel del edificio de la «obra maestra». */
+  masterpieceLevel: 5,
 } as const;
+
+/**
+ * Umbrales de las ambiciones en partidas cortas, por semanas (las de 6 y 8
+ * usan `OBJECTIVE_TARGETS`): en 2 semanas no da tiempo a 16 niveles, a un
+ * edificio a nivel 5, a 40 tropas ni a 3 lotes (solo hay 2 subastas).
+ * Decidido el 24 de octubre de 2026; simulación en `docs/simulaciones.md`.
+ */
+export const SHORT_OBJECTIVES: Record<number, Partial<Record<keyof typeof OBJECTIVE_TARGETS, number>>> = {
+  2: { totalLevels: 11, masterpieceLevel: 4, troops: 20, auctionsWon: 2, validTrades: 8 },
+  4: { totalLevels: 14, troops: 30, auctionsWon: 2 },
+};
+
+/**
+ * La voz de los bots (`docs/bots.md`, PR 4, `ai/voice.ts`).
+ * - `proclamationChance`: semanas en que escriben proclama (si les han atacado, siempre).
+ * - `leaderHatred` y `trader`: desde qué manía al líder o ganas de comerciar usan esas proclamas.
+ * - `bribeChance`: probabilidad de sobornar al cronista cuando tienen motivo
+ *   (han bajado puestos o van primeros), si les quedan `bribeReserve` de Oro después.
+ * - `bribeAfterFall` y `bribeAsLeader`: frases del catálogo del soborno (sección 7, desde 0) para cada motivo.
+ * - `errataChance`: casas que no ganan y dejan su fe de erratas.
+ */
+export const VOICE = {
+  proclamationChance: 0.7,
+  leaderHatred: 0.6,
+  trader: 0.8,
+  bribeChance: 0.5,
+  bribeReserve: 10,
+  bribeAfterFall: [9, 7, 4, 3],
+  bribeAsLeader: [0, 6, 10, 8],
+  errataChance: 0.8,
+};
+
+/**
+ * Cómo persiguen los bots sus ambiciones (`docs/bots.md`, PR 4).
+ * - `weight`: parte del Prestigio del objetivo que cuenta al decidir (más = lo persiguen con más ganas).
+ * - `troopsDays`: días antes del final en que reclutan lo que les falta para «tropas_40».
+ */
+export const OBJECTIVE_GOALS = {
+  weight: 1,
+  troopsDays: 10,
+};
 
 /**
  * Gran Subasta (diseño, sección 9): tres lotes anunciados el martes; pujas

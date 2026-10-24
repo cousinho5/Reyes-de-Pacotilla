@@ -9,7 +9,7 @@ import { checkOrders, defenseMultiplier, walled } from "../combat";
 import { areAdjacent, riverBetween } from "../map";
 import { bridgeBetween, marchKind } from "../terrain";
 import { tilePrestige } from "../prestige";
-import { ANY_ORIGIN, BATTLE_TWEAKS, CAPTAIN, FEATURES, OBJECTIVE_TARGETS, PRESTIGE, SIEGE, STRETCH_FREE_TILES, STRETCH_PAN, TILE_PRODUCTION, TROOP_COST, RIVERS, UNITS } from "../rules";
+import { ANY_ORIGIN, BATTLE_TWEAKS, CAPTAIN, FEATURES, OBJECTIVE_GOALS, PRESTIGE, SIEGE, STRETCH_FREE_TILES, STRETCH_PAN, TILE_PRODUCTION, TROOP_COST, RIVERS, UNITS } from "../rules";
 import { isPlain, totalUnits, unitFields, unitsOf, type UnitKind, type Units } from "../units";
 import { RESOURCES, type Order, type Tile, type TileId } from "../types";
 import { exitDistance, guestStacks } from "../alliances";
@@ -100,7 +100,7 @@ function objectiveBonus(s: Situation, t: Tile): number {
       if (t.type === "montana" && !own.some((o) => o.type === "montana")) return big;
       return t.type === "puerto" && !own.some((o) => o.type === "puerto") ? big : 0;
     case "cinco_casillas":
-      return own.filter((o) => o.type !== "castillo").length < OBJECTIVE_TARGETS.tiles ? big / 3 : 0;
+      return own.filter((o) => o.type !== "castillo").length < s.goals.tiles ? big / 3 : 0;
     case "casillas_ajenas":
       return t.owner != null ? big / 2 : 0;
     default:
@@ -111,8 +111,16 @@ function objectiveBonus(s: Situation, t: Tile): number {
 /** Tropas que le faltan al bot para defenderse y para su mejor ataque. */
 export function militaryNeed(s: Situation): number {
   const troops = s.own.reduce((a, t) => a + t.troops, 0);
-  // Nunca más tropas de las que puede alimentar.
-  return Math.max(0, Math.min(Math.max(0, s.sustainableTroops - troops), militaryWant(s)));
+  // Nunca más tropas de las que puede alimentar, salvo las que le faltan para su
+  // ambición de las 40 tropas en los últimos días (ya no habrá muchos domingos que pagar).
+  const need = Math.max(0, Math.min(Math.max(0, s.sustainableTroops - troops), militaryWant(s)));
+  return Math.max(need, troopsGoal(s));
+}
+
+/** Tropas que le faltan para la ambición «tropas_40» si la partida acaba pronto (0 si no es la suya). */
+export function troopsGoal(s: Situation): number {
+  if (s.view.objective !== "tropas_40" || s.daysLeft > OBJECTIVE_GOALS.troopsDays) return 0;
+  return Math.max(0, s.goals.troops - s.own.reduce((a, t) => a + t.troops, 0) - s.away);
 }
 
 /** Tropas que querría tener de más, sin mirar si puede alimentarlas. */

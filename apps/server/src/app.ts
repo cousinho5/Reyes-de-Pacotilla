@@ -29,7 +29,8 @@ import {
   checkOffer,
   cleanBundle,
   dealObjectives,
-  OBJECTIVES,
+  OBJECTIVE_KEYS,
+  objectiveText,
   type ObjectiveKey,
   dailyProduction,
   MAX_OPEN_PUBLIC_OFFERS,
@@ -756,7 +757,7 @@ app.get("/api/partidas/:id", async (c) => {
     myTrades.results,
   );
   const objectiveView = (key: string | null) =>
-    key ? { clave: key, texto: OBJECTIVES[key as ObjectiveKey] ?? key } : null;
+    key ? { clave: key, texto: OBJECTIVE_KEYS.includes(key as ObjectiveKey) ? objectiveText(key as ObjectiveKey, game.weeks) : key } : null;
 
   const clock = clockOf(game)!;
   const next = game.current_resolution + 1;

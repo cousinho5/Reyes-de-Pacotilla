@@ -1320,3 +1320,73 @@ Las casas que lleva un bot (`docs/bots.md`) hablan por boca de su mayordomo, no 
 3. El mayordomo ha hecho cuentas y le salen otras. Mirad estas.
 4. Trato hecho si nos dejáis algo menos. Pobres, pero honrados.
 5. Así no, pero así sí. El mayordomo regatea por costumbre.
+
+**Proclamas de los bots.** Como mucho una por semana, la víspera del boletín del domingo; {casa} es la casa nombrada con «@» (la mención la lee el boletín). Se elige la primera que encaje, en este orden: rencor, alianza, va primero, ha bajado, contra el líder, mercado y tranquila. Si otra casa le nombra con «@», contesta una vez por semana y esa respuesta sustituye a su proclama. El soborno al cronista usa las frases de siempre (sección 7), elegidas por el motivo.
+
+### 24.4 Proclama: rencor (le atacaron en los últimos 7 días; nombra a quien lo hizo)
+
+1. {casa} entró en nuestras tierras sin llamar. El mayordomo lo ha apuntado en el libro gordo.
+2. Aviso a {casa}: lo de esta semana no se olvida. El mayordomo tiene buena memoria y mejor rencor.
+3. {casa} nos debe una casilla y una disculpa. La disculpa nos da igual.
+4. Que {casa} no venga ahora a ofrecernos tratos. Esta casa no comercia con quien la pisa.
+
+### 24.5 Proclama: alianza nueva
+
+1. Brindamos por {casa}, aliada leal y vecina razonable. Que dure más que la última.
+2. Con {casa} a nuestro lado, el reino duerme más tranquilo. Nosotros, desde luego.
+3. El mayordomo celebra la alianza con {casa}. Ha sacado la vajilla buena.
+
+### 24.6 Proclama: va primero
+
+1. Primeros de la corte y sin despeinarnos. El mayordomo pide calma: aún quedan semanas.
+2. La corona nos sienta bien, dicen los espejos. Los espejos de esta casa nunca mienten.
+3. Vamos en cabeza. A quien venga a por nosotros, le esperamos con sopa y murallas.
+
+### 24.7 Proclama: ha bajado en la clasificación (nombra a quien va primero)
+
+1. Mala semana, lo admitimos. {casa} no debería acostumbrarse a ir delante.
+2. Hemos bajado en la clasificación para tomar impulso. {casa}, tome nota.
+3. Un tropiezo no es una caída. El mayordomo lo repite cada mañana delante del espejo.
+
+### 24.8 Proclama: contra quien va primero (los que le tienen manía al líder)
+
+1. {casa} va primera. El mayordomo recuerda que el rey Aldric también iba primero, hasta el pollo.
+2. Se busca casa valiente para bajarle los humos a {casa}. Se pagan bien las ideas.
+3. {casa} presume de corona antes de tiempo. En esta corte las coronas se tuercen solas.
+
+### 24.9 Proclama: mercado (los más comerciantes)
+
+1. Mercado abierto en esta casa: se cambia lo que sobra por lo que falta. Precios justos, casi siempre.
+2. El mayordomo busca socios. Se valoran la puntualidad, la honradez y el Hierro.
+3. Quien quiera hacer negocios, que pase. Quien quiera hacer la guerra, que pase de largo.
+
+### 24.10 Proclama: semana tranquila
+
+1. Semana tranquila en esta casa. El mayordomo ha contado las gallinas dos veces: están todas.
+2. Nada que declarar, salvo que la sopa estaba buena.
+3. Esta casa trabaja en silencio. El cronista lo llama sospechoso; nosotros, eficiente.
+
+### 24.11 Respuesta a una mención: de un aliado
+
+1. Gracias por la mención, {casa}. El mayordomo se ha emocionado, aunque lo niega.
+2. {casa} habla bien de nosotros y nosotros de {casa}. Así da gusto.
+3. Recibido, {casa}. Seguimos codo con codo, salvo que haya pollo.
+
+### 24.12 Respuesta a una mención: de quien le atacó
+
+1. {casa} habla mucho para lo poco que defiende. El mayordomo afila las respuestas y algo más.
+2. Leído, {casa}. Contestaremos en el campo de batalla, que tiene más espacio.
+3. {casa} se atreve a nombrarnos después de lo que hizo. Valor no le falta; memoria, sí.
+
+### 24.13 Respuesta a una mención: de cualquier otra casa
+
+1. El mayordomo ha leído lo de {casa} con atención y una ceja levantada.
+2. {casa} nos nombra en público. Lo tomamos como un cumplido, por si acaso.
+3. Contestamos a {casa}: tomamos nota y seguimos a lo nuestro.
+
+### 24.14 Fe de erratas al acabar (las casas que no ganan; {casa} es la ganadora)
+
+1. Donde dice que {casa} ganó, léase que tuvo mucha suerte.
+2. Fe de erratas: esta casa no perdió, simplemente no ganó. {casa}, disfrute mientras dure.
+3. El mayordomo exige que conste que con una semana más todo habría sido distinto.
+4. Errata: la corona de {casa} está torcida. Lo dice esta casa, que la ha visto de cerca.
