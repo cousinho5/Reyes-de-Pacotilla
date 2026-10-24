@@ -14,10 +14,12 @@
 //   npm run simular -- --geografia no     # mapa de antes del bloque 1 (sin geografía ni Prado), para comparar
 //   npm run simular -- --rios no          # sin ríos ni lagos, para comparar
 //   npm run simular -- --alianzas no      # sin alianzas (bloque 8), para comparar
+//   npm run simular -- --informe bots     # qué hace cada bot por semana: comercio, alianzas, subasta, cartas, ataques
+//   npm run simular -- --personas 2       # las 2 primeras casas hacen de personas (no comparten órdenes con aliados)
 //   npm run simular -- --json simulacion.json   # además, todos los datos en JSON
 
 import { writeFileSync } from "node:fs";
-import { TITLES, ALLIANCE, ALLIANCE_BOTS, BATTLE_TWEAKS, BOT_TWEAKS, CROWN, ECONOMY_TWEAKS, FEATURES, MERCENARIES, OBJECTIVE_TARGETS, MAP_GEN, RIVERS, FORTIFY_COST, FORTIFY_UPKEEP, PRESTIGE, SIEGE, UNITS, UPGRADE_COST } from "../packages/engine/src";
+import { TITLES, ALLIANCE, ALLIANCE_BOTS, BATTLE_TWEAKS, BOT_TRADE, BOT_TWEAKS, CROWN, ECONOMY_TWEAKS, FEATURES, MERCENARIES, OBJECTIVE_TARGETS, MAP_GEN, RIVERS, FORTIFY_COST, FORTIFY_UPKEEP, PRESTIGE, SIEGE, UNITS, UPGRADE_COST } from "../packages/engine/src";
 import {
   CLASSIC_STRATEGIES,
   OBJECTIVES,
@@ -26,6 +28,7 @@ import {
   STRATEGIES,
   seededRandom,
   BOT_LEVEL_NAMES,
+  BOT_STATS,
   type BotLevel,
   simulateGame,
   type ObjectiveKey,
@@ -91,6 +94,9 @@ if (args.has("oro-mejora")) {
     cost.oro = (cost.oro ?? 0) + Number(n);
   });
 }
+// Bots, PR 3: --bots-timo 0.5 (lo mínimo que acepta frente a lo que da; 0 = como antes) y --bots-tope 3 (tratos con la misma casa en 7 días).
+if (args.has("bots-timo")) BOT_TRADE.acceptFloor = Number(args.get("bots-timo"));
+if (args.has("bots-tope")) BOT_TRADE.perPartnerWeek = args.get("bots-tope") === "no" ? Infinity : Number(args.get("bots-tope"));
 if (args.has("riqueza-tope")) PRESTIGE.goldMax = Number(args.get("riqueza-tope"));
 //   --tesoro 100               Oro del objetivo «tesoro»
 if (args.has("tesoro")) (OBJECTIVE_TARGETS as { gold: number }).gold = Number(args.get("tesoro"));
@@ -153,7 +159,7 @@ for (let i = 0; i < games; i++) {
   const strategies = Array.from({ length: players }, () => pool[Math.floor(rand() * pool.length)]!);
   // --niveles novato,normal,taimado: niveles de los bots, por turnos entre las casas (docs/bots.md).
   const levels = levelCycle.length ? strategies.map((_, k) => levelCycle[(k + i) % levelCycle.length]!) : undefined;
-  results.push(simulateGame({ seed: `sim-${args.get("semilla") ?? ""}${i}`, strategies, weeks, events: args.get("eventos") !== "no", terrain: args.get("terreno") !== "no", units: args.get("tropas") !== "no", sieges: args.get("asedios") !== "no", captainGlory: args.get("capitan") !== "no", levels }));
+  results.push(simulateGame({ seed: `sim-${args.get("semilla") ?? ""}${i}`, strategies, weeks, events: args.get("eventos") !== "no", terrain: args.get("terreno") !== "no", units: args.get("tropas") !== "no", sieges: args.get("asedios") !== "no", captainGlory: args.get("capitan") !== "no", levels, humans: Number(args.get("personas") ?? 0) }));
 }
 const houses = results.flatMap((g) => g.houses.map((h) => ({ ...h, players: g.houses.length })));
 
@@ -398,6 +404,61 @@ if (levelCycle.length) {
     }),
   );
 }
+}
+
+// Bots (docs/bots.md, PR 3): qué hacen por semana y si tratan igual a las personas.
+if (args.get("informe") === "bots") {
+  const smart = houses.filter((h) => (PERSONALITY_NAMES as readonly string[]).includes(h.strategy));
+  const label: Record<(typeof BOT_STATS)[number], string> = {
+    ofertas: "ofertas publicadas",
+    rebajas: "ofertas rebajadas",
+    retiradas: "ofertas retiradas",
+    vendidas: "sus ofertas aceptadas",
+    compradas: "ofertas que acepta",
+    contraofertas: "contraofertas hechas",
+    contraAceptadas: "contraofertas aceptadas",
+    rencor: "tratos que rechaza por rencor",
+    alianzas: "alianzas firmadas",
+    rupturas: "alianzas rotas",
+    pujas: "pujas",
+    lotes: "lotes ganados",
+    cartas: "cartas usadas",
+    ataquesCasas: "ataques a casas",
+    ataquesNeutrales: "ataques a neutrales",
+  };
+  table(
+    "Bots: qué hacen cada semana (media por casa con personalidad)",
+    ["dato", ...Array.from({ length: weeks }, (_, w) => `semana ${w + 1}`)],
+    BOT_STATS.map((k) => [label[k], ...Array.from({ length: weeks }, (_, w) => f1(avg(smart.map((h) => h.log[k][w] ?? 0))))]),
+  );
+  const total = (h: SimHouseResult, k: (typeof BOT_STATS)[number]) => h.log[k].reduce((a, b) => a + b, 0);
+  const cols = ["ofertas", "vendidas", "compradas", "contraofertas", "contraAceptadas", "rencor", "alianzas", "rupturas", "pujas", "cartas", "ataquesCasas"] as const;
+  table(
+    "Bots: por personalidad (total de la partida, media por casa)",
+    ["personalidad", ...cols, "ambición"],
+    PERSONALITY_NAMES.map((p) => {
+      const g = smart.filter((h) => h.strategy === p);
+      return [p, ...cols.map((k) => f1(avg(g.map((h) => total(h, k))))), g.length ? pct(g.filter((h) => h.objectiveMet).length / g.length) : "—"];
+    }),
+  );
+  if (games === 1) {
+    table(
+      "Bots: casa a casa",
+      ["casa", "estrategia", ...cols, "ambición", "puesto"],
+      results[0]!.houses.map((h) => [h.house, h.strategy + (h.human ? " (persona)" : ""), ...cols.map((k) => total(h, k)), `${h.objective}${h.objectiveMet ? " ✓" : ""}`, h.rank]),
+    );
+  }
+}
+if (Number(args.get("personas") ?? 0) > 0) {
+  table(
+    "Personas de mentira frente a bots (docs/bots.md)",
+    ["casas", "n", "gana", "x esperado", "puesto medio", "Prestigio", "tratos"],
+    [true, false].map((human) => {
+      const g = houses.filter((h) => h.human === human);
+      const w = winStats(g);
+      return [human ? "personas" : "bots", g.length, pct(w.rate), f1(w.ratio), f1(avg(g.map(norm))), f1(avg(g.map((h) => h.prestige.total))), f1(avg(g.map((h) => h.validTrades)))];
+    }),
+  );
 }
 
 // Bloque 13: cuántas veces sale cada título de fin de partida y con qué puesto medio.

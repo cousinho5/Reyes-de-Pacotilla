@@ -19,7 +19,7 @@ export {
 export { PRESTIGE_UNIT, situation, type AiView, type Situation } from "./view";
 export { planDay, type DayPlan } from "./day";
 export { planOrders, targets, militaryNeed, militaryWant, type Target } from "./orders";
-export { offerGain, proposeOffer, type OfferPlan } from "./trade";
+export { counterOffer, holdsGrudge, offerGain, offerNote, proposeOffer, withdrawOffer, type OfferPlan } from "./trade";
 export { cardValue, lotValue, planBids, planCards } from "./auction";
 export { planCrown, planMercenaries, type CrownPlan } from "./oro";
 export { botPaysRansom, botRansomPrice } from "./ransom";

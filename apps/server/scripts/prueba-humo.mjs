@@ -385,6 +385,18 @@ check(
 );
 const borrada = await pablo("DELETE", `/api/partidas/${prueba.data.id}`);
 check("borrar la partida de prueba entera", borrada.status === 200, borrada);
+// Una partida normal se puede borrar en la sala de espera (con sus bots), solo quien la creó.
+const sala = await pablo("POST", "/api/partidas", { nombre: "Sala para borrar", semanas: 2 }, { "x-admin": ADMIN });
+await pablo("POST", `/api/partidas/${sala.data.id}/bots`, { personalidad: "azar", nivel: "normal" });
+const ajeno = await dani("DELETE", `/api/partidas/${sala.data.id}`);
+const empezada = await pablo("DELETE", `/api/partidas/${gameId}`);
+const salaBorrada = await pablo("DELETE", `/api/partidas/${sala.data.id}`);
+const yaNo = await pablo("GET", `/api/partidas/${sala.data.id}`);
+check(
+  "borrar una partida en la sala de espera (no la de otro ni una empezada)",
+  ajeno.status === 403 && empezada.status === 409 && salaBorrada.status === 200 && yaNo.status === 404,
+  { ajeno: ajeno.status, empezada: empezada.status, salaBorrada, yaNo: yaNo.status },
+);
 
 // --- MVP 2: notificaciones ---
 const key = await pablo("GET", "/api/push/clave");

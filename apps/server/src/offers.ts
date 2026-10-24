@@ -29,6 +29,29 @@ export function offerExpiry(game: GameRow): number {
   return game.current_resolution + TRADE.offerNights;
 }
 
+/** Inserta una oferta (pública si `to` es null; contraoferta si lleva `parent`). La usan los bots. */
+export function insertOfferStatement(
+  db: D1Database,
+  game: GameRow,
+  o: { from: number; to: number | null; parent: number | null; give: Partial<Resources>; want: Partial<Resources>; note: string | null },
+): D1PreparedStatement {
+  const g = o.give;
+  const w = o.want;
+  return db
+    .prepare(
+      `INSERT INTO offers (game_id, from_house_id, to_house_id, parent_offer_id, expires_after, note,
+         give_pan, give_madera, give_piedra, give_hierro, give_oro,
+         want_pan, want_madera, want_piedra, want_hierro, want_oro, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .bind(
+      game.id, o.from, o.to, o.parent, offerExpiry(game), o.note ? [...o.note].slice(0, TRADE.noteMax).join("") : null,
+      g.pan ?? 0, g.madera ?? 0, g.piedra ?? 0, g.hierro ?? 0, g.oro ?? 0,
+      w.pan ?? 0, w.madera ?? 0, w.piedra ?? 0, w.hierro ?? 0, w.oro ?? 0,
+      gameNow(game).toISOString(),
+    );
+}
+
 /** Retira las ofertas abiertas que caducan con la resolución `n`. Va en el lote de la resolución. */
 export function expireOffersStatement(db: D1Database, game: GameRow, n: number, now: Date): D1PreparedStatement {
   return db

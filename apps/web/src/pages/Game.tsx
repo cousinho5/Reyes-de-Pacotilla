@@ -470,6 +470,7 @@ function Lobby({
   const others = state.casas.filter((h) => h.id !== state.yo.casa);
   const [form, setForm] = useState<HouseForm | null>(null);
   const [botPick, setBotPick] = useState({ personalidad: "azar", nivel: "normal" });
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const canBots = p.esCreador && !state.prueba;
   const missing = Math.max(0, 4 - state.casas.length);
   const link = p.codigoInvitacion ? `${window.location.origin}/unirse/${p.codigoInvitacion}` : null;
@@ -620,6 +621,39 @@ function Lobby({
         </section>
       ) : (
         <p>Esperando a que quien creó la partida la ponga en marcha.</p>
+      )}
+      {p.esCreador && !state.prueba && (
+        <section className="card">
+          {confirmDelete ? (
+            <>
+              <p>
+                ¿Borrar «{p.nombre}»? Se van con ella las casas apuntadas y sus bots, y el enlace de invitación deja de
+                servir. No se puede deshacer.
+              </p>
+              <div className="actions">
+                <button
+                  className="danger"
+                  onClick={async () => {
+                    try {
+                      await api.deleteGame(p.id);
+                      navigate("/");
+                    } catch (err) {
+                      // Para el aviso de error, sin volver a cargar una partida que quizá ya no existe.
+                      await act(() => Promise.reject(err));
+                    }
+                  }}
+                >
+                  Sí, borrarla
+                </button>
+                <button onClick={() => setConfirmDelete(false)}>Cancelar</button>
+              </div>
+            </>
+          ) : (
+            <button className="link" onClick={() => setConfirmDelete(true)}>
+              Borrar partida
+            </button>
+          )}
+        </section>
       )}
     </main>
   );

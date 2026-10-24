@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { PERSONALITY_NAMES } from "@reyes/engine";
-import { pickPersonality } from "../src/bots";
+import { BOT_HOUSES, pickPersonality } from "../src/bots";
 import { nextStop, testStart } from "../src/pruebas";
 import type { GameRow } from "../src/state";
 
@@ -67,5 +67,9 @@ describe("Personalidad de los bots nuevos (docs/bots.md)", () => {
     expect(new Set(houses.slice(1).map((h) => h.bot_personality)).size).toBe(PERSONALITY_NAMES.length);
     expect(pickPersonality("semilla", houses, "guerrero")).toBe("guerrero");
     expect(pickPersonality("semilla", houses)).toBe(pickPersonality("semilla", houses));
+  });
+
+  it("los nombres de los bots caben en el de una casa (20 letras como mucho)", () => {
+    for (const b of BOT_HOUSES) expect([...b.name].length).toBeLessThanOrEqual(20);
   });
 });
