@@ -6,7 +6,7 @@ Plan aprobado por Pablo el 24 de octubre de 2026 (documento de trabajo en claude
 
 1. La partida de prueba con el amigo será una partida normal de 2 semanas con el calendario real (una noche al día) y 2 o 3 bots.
 2. Sin ritmo más rápido en esta fase.
-3. Se sabe quién es bot: marca pequeña junto al escudo (espantapájaros de pxl, 16x16) y «Casa gobernada por su mayordomo» en la ficha. La personalidad no se enseña.
+3. Se sabe quién es bot: marca pequeña junto al nombre (espantapájaros de pxl, 16x16) y «Casa gobernada por su mayordomo» en la ficha. La personalidad no se enseña.
 4. La personalidad sale al azar (sin repetir hasta agotarlas) o se elige al añadir el bot.
 5. Tres niveles: Novato, Normal (el bot de hoy) y Taimado, con `BOT_LEVELS` en `rules.ts` modificando los pesos de la personalidad.
 6. Los bots tratan igual a personas y a bots. Se comprueba en el simulador con «2 personas de mentira + bots».
@@ -33,6 +33,6 @@ Medido con el simulador (8 casas, 2 semanas, 10 partidas): la resolución del mo
 ## Pasos
 
 1. **PR 1: bots en partidas reales** (hecho): `bots.ts`, horario, órdenes antes del cierre y de reserva, `isAbsent`.
-2. **PR 2: sala de espera y marca de bot**: «Añadir bot» y quitarlo, «Rellenar hasta 4» al empezar, más nombres, niveles, espantapájaros y su sitio en clasificación, ficha y portada.
+2. **PR 2: sala de espera y marca de bot** (hecho): «Añadir bot» y «Quitar» en la sala de espera (`POST`/`DELETE /api/partidas/:id/bots`), «Empezar con N bots más» (`rellenar` en `empezar`), 14 nombres sin personalidad fija, personalidad al azar sin repetir (`pickPersonality`), niveles (`BOT_LEVELS`, `withLevel`, `forgetsOrders`; `houses.bot_level`, migración 0023; simulación en `docs/simulaciones.md`), espantapájaros (`docs/maquetas/bots/pxl/espantapajaros.px.js` → `art/espantapajaros.ts`, componente `BotMark`) en la sala de espera, la invitación, la clasificación y la ficha de casa. El servidor manda `bot` en cada casa; la personalidad y el nivel solo a quien creó la partida, en la sala de espera.
 3. **PR 3: comercio y diplomacia más humanos**: contraofertas con frase, límite de tratos por casa, retirar ofertas, rencor en el comercio, informe `--informe bots` en el simulador.
 4. **PR 4: la voz de los bots**: proclamas (sección 24), respuestas a menciones, soborno con motivo, fe de erratas, repaso de las 11 ambiciones.

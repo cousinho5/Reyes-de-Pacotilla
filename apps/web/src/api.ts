@@ -95,7 +95,7 @@ export interface Invitation {
   /** Bloque 7: quién creó la partida y cuántas casas caben. */
   anfitrion?: string | null;
   plazas?: number;
-  casas: { nombre: string; color: string; lema?: string | null; escudo?: ShieldView }[];
+  casas: { nombre: string; color: string; lema?: string | null; escudo?: ShieldView; bot?: boolean }[];
   coloresLibres: string[];
   yaDentro: boolean;
 }
@@ -111,6 +111,10 @@ export interface HouseInfo {
   color: string;
   lema: string | null;
   escudo?: ShieldView;
+  /** Casa gobernada por un bot (docs/bots.md). En la sala de espera, quien la creó ve también su personalidad y nivel. */
+  bot?: boolean;
+  personalidad?: string;
+  nivel?: string;
   prestigio?: PrestigeBreakdown;
   /** Etapa de su castillo, de 1 a 5 (bloque 2). */
   etapa?: number;
@@ -470,7 +474,10 @@ export const api = {
     call<{ ok: true; partida: number; codigoAcceso: string | null }>("POST", `/invitacion/${encodeURIComponent(codigo)}/unirse`, body),
   game: (id: number) => call<GameState>("GET", `/partidas/${id}`),
   editHouse: (id: number, body: HouseForm) => call<{ ok: true }>("PUT", `/partidas/${id}/casa`, body),
-  start: (id: number, inicio?: string) => call<{ ok: true; inicio: string }>("POST", `/partidas/${id}/empezar`, inicio ? { inicio } : {}),
+  start: (id: number, inicio?: string, rellenar?: boolean) =>
+    call<{ ok: true; inicio: string }>("POST", `/partidas/${id}/empezar`, { ...(inicio ? { inicio } : {}), ...(rellenar ? { rellenar } : {}) }),
+  addBot: (id: number, personalidad: string, nivel: string) => call<{ ok: true; casa: number | null }>("POST", `/partidas/${id}/bots`, { personalidad, nivel }),
+  removeBot: (id: number, casa: number) => call<{ ok: true }>("DELETE", `/partidas/${id}/bots/${casa}`),
   upgrade: (id: number, edificio: BuildingKind) => call<{ ok: true }>("POST", `/partidas/${id}/mejorar`, { edificio }),
   recruit: (id: number, cantidad: number, tipo: "mesnada" | "jinetes" | "catapultas" = "mesnada", casilla?: number) =>
     call<{ ok: true }>("POST", `/partidas/${id}/reclutar`, casilla != null ? { cantidad, tipo, casilla } : { cantidad, tipo }),

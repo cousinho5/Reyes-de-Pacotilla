@@ -1,8 +1,8 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { RESOURCES } from "@reyes/engine";
+import { BOT_LEVEL_NAMES, PERSONALITY_NAMES, RESOURCES } from "@reyes/engine";
 import { api, ApiError, isOffline, saveGame, savedGame, type GameState, type HouseForm, type OrderView } from "../api";
 import { OpenHouse } from "../houseSheet";
-import { FrayAbundio, Icon, ResourceIcon, ShieldIcon } from "../art";
+import { BotMark, FrayAbundio, Icon, ResourceIcon, ShieldIcon } from "../art";
 import { HouseEditor } from "../components/HouseEditor";
 import { navigate } from "../App";
 import { MapView } from "../components/MapView";
@@ -164,7 +164,7 @@ export function Game({ id }: { id: number }) {
   if (!state) return <main className="page">Cargando el reino…</main>;
   if (state.partida.estado === "lobby") {
     const ok = state.prueba ? "Empieza la prueba. El reloj solo avanza cuando tú quieras." : "¡La partida empieza el lunes!";
-    return <Lobby state={state} onStart={() => act(() => api.start(id), ok)} act={act} />;
+    return <Lobby state={state} onStart={(rellenar) => act(() => api.start(id, undefined, rellenar), ok)} act={act} />;
   }
 
   const me = state.casas.find((h) => h.id === state.yo.casa)!;
@@ -453,19 +453,25 @@ function formatSavedAt(at: number): string {
   return d.toDateString() === new Date().toDateString() ? `a las ${time}` : `el ${d.toLocaleDateString("es-ES", { weekday: "long" })} a las ${time}`;
 }
 
+/** Niveles de los bots (docs/bots.md), con su nombre para la sala de espera. */
+const LEVEL_LABEL: Record<string, string> = Object.fromEntries(BOT_LEVEL_NAMES.map((l) => [l, l[0]!.toUpperCase() + l.slice(1)]));
+
 function Lobby({
   state,
   onStart,
   act,
 }: {
   state: GameState;
-  onStart: () => void;
+  onStart: (rellenar?: boolean) => void;
   act: (fn: () => Promise<unknown>, ok?: string) => Promise<void>;
 }) {
   const p = state.partida;
   const mine = state.casas.find((h) => h.id === state.yo.casa);
   const others = state.casas.filter((h) => h.id !== state.yo.casa);
   const [form, setForm] = useState<HouseForm | null>(null);
+  const [botPick, setBotPick] = useState({ personalidad: "azar", nivel: "normal" });
+  const canBots = p.esCreador && !state.prueba;
+  const missing = Math.max(0, 4 - state.casas.length);
   const link = p.codigoInvitacion ? `${window.location.origin}/unirse/${p.codigoInvitacion}` : null;
   const share = link
     ? `https://wa.me/?text=${encodeURIComponent(`Te invito a Reyes de Pacotilla, partida «${p.nombre}». Elige tu casa aquí: ${link}`)}`
@@ -480,8 +486,15 @@ function Lobby({
           {state.casas.map((h) => (
             <li key={h.id} className="house-row">
               <ShieldIcon color={h.color} escudo={h.escudo} size={32} />
-              <span>
+              <span className="grow">
+                {h.bot && <BotMark size={16} />}
                 <strong>{h.nombre}</strong>
+                {h.bot && h.personalidad && (
+                  <small className="bot-line">
+                    {" "}
+                    · bot {h.personalidad}, {LEVEL_LABEL[h.nivel ?? "normal"] ?? h.nivel}
+                  </small>
+                )}
                 {h.lema && (
                   <>
                     <br />
@@ -489,10 +502,45 @@ function Lobby({
                   </>
                 )}
               </span>
+              {canBots && h.bot && (
+                <button className="link" onClick={() => act(() => api.removeBot(p.id, h.id), `${h.nombre} se va de la corte.`)}>
+                  Quitar
+                </button>
+              )}
             </li>
           ))}
         </ul>
       </section>
+      {canBots && state.casas.length < 8 && (
+        <section className="card">
+          <h2>Bots</h2>
+          <p>Si faltan personas, rellena la partida con bots. Juegan con el mismo calendario que vosotros y se nota quiénes son.</p>
+          <div className="bot-picker">
+            <label>
+              Personalidad
+              <select value={botPick.personalidad} onChange={(e) => setBotPick({ ...botPick, personalidad: e.target.value })}>
+                <option value="azar">Al azar</option>
+                {PERSONALITY_NAMES.map((x) => (
+                  <option key={x} value={x}>
+                    {x[0]!.toUpperCase() + x.slice(1)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Nivel
+              <select value={botPick.nivel} onChange={(e) => setBotPick({ ...botPick, nivel: e.target.value })}>
+                {Object.entries(LEVEL_LABEL).map(([k, v]) => (
+                  <option key={k} value={k}>
+                    {v}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <button onClick={() => act(() => api.addBot(p.id, botPick.personalidad, botPick.nivel), "Un bot se une a la corte.")}>Añadir bot</button>
+        </section>
+      )}
       {mine && (
         <section className="card">
           {form ? (
@@ -553,16 +601,22 @@ function Lobby({
             Partida de prueba: al empezar se añaden {state.prueba.bots} bots y el reloj solo avanza cuando tú lo
             decidas.
           </p>
-          <button className="primary" onClick={onStart}>
+          <button className="primary" onClick={() => onStart()}>
             Empezar la prueba
           </button>
         </section>
       ) : p.esCreador ? (
         <section className="card">
           <p>Hacen falta al menos 4 casas. La partida empezará el lunes siguiente.</p>
-          <button className="primary" disabled={state.casas.length < 4} onClick={onStart}>
-            Empezar la partida
-          </button>
+          {missing > 0 ? (
+            <button className="primary" onClick={() => onStart(true)}>
+              Empezar con {missing} {missing === 1 ? "bot" : "bots"} más
+            </button>
+          ) : (
+            <button className="primary" onClick={() => onStart()}>
+              Empezar la partida
+            </button>
+          )}
         </section>
       ) : (
         <p>Esperando a que quien creó la partida la ponga en marcha.</p>

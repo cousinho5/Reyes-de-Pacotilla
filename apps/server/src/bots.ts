@@ -6,7 +6,13 @@
 import {
   ALLIANCE,
   ALLIANCE_BOTS,
+  PERSONALITY_NAMES,
   answerDelayHours,
+  forgetsOrders,
+  seededRandom,
+  shuffle,
+  withLevel,
+  type BotLevel,
   botHour,
   alliesOf,
   planDiplomacy,
@@ -81,19 +87,28 @@ import {
 } from "./state";
 
 
-const BOT_HOUSES: { name: string; motto: string; personality: PersonalityName }[] = [
-  { name: "Casa del Nabo", motto: "Raíces profundas, ideas cortas", personality: "arquitecta" },
-  { name: "Gallina Bélica", motto: "Cacarea fuerte, corre más", personality: "guerrero" },
-  { name: "Los Pocapena", motto: "Ya si eso, mañana", personality: "mercader" },
-  { name: "Barones del Barro", motto: "Del barro venimos", personality: "estratega" },
-  { name: "Señores del Pato", motto: "Ni frío ni calor", personality: "oportunista" },
-  { name: "Duques del Queso", motto: "Cuanto más curado, mejor", personality: "mercader" },
-  { name: "Caracol Veloz", motto: "Llegaremos", personality: "guerrero" },
+/** Nombres y lemas de las casas bot (la personalidad va aparte: no se adivina por el nombre). */
+const BOT_HOUSES: { name: string; motto: string }[] = [
+  { name: "Casa del Nabo", motto: "Raíces profundas, ideas cortas" },
+  { name: "Gallina Bélica", motto: "Cacarea fuerte, corre más" },
+  { name: "Los Pocapena", motto: "Ya si eso, mañana" },
+  { name: "Barones del Barro", motto: "Del barro venimos" },
+  { name: "Señores del Pato", motto: "Ni frío ni calor" },
+  { name: "Duques del Queso", motto: "Cuanto más curado, mejor" },
+  { name: "Caracol Veloz", motto: "Llegaremos" },
+  { name: "Condes de la Siesta", motto: "Después de comer, ya veremos" },
+  { name: "Casa Berenjena", motto: "Morada y orgullosa" },
+  { name: "Marqueses del Botijo", motto: "Agua fresca, cabeza fría" },
+  { name: "Los Tresmentiras", motto: "Palabra de honor, casi siempre" },
+  { name: "Hidalgos del Puchero", motto: "Lo que no mata, engorda" },
+  { name: "Vizcondes de Villabache", motto: "Por mal camino, pero juntos" },
+  { name: "Casa Sinblanca", motto: "Pobres pero con escudo" },
 ];
 
-/** Personalidad de un bot (los creados antes de que existieran, estrategas). */
+/** Personalidad de un bot con la de su nivel (los creados antes de que existieran, estrategas y normales). */
 function personalityOf(h: HouseRow): Personality {
-  return PERSONALITIES[(h.bot_personality ?? "estratega") as PersonalityName] ?? PERSONALITIES.estratega;
+  const base = PERSONALITIES[(h.bot_personality ?? "estratega") as PersonalityName] ?? PERSONALITIES.estratega;
+  return withLevel(base, h.bot_level as BotLevel | null);
 }
 
 /**
@@ -144,18 +159,39 @@ async function botRansoms(db: D1Database, game: GameRow, only?: ReadonlySet<Hous
   }
 }
 
+/** Lo que se puede elegir al añadir un bot desde la sala de espera (sin personalidad: al azar). */
+export interface BotChoice {
+  personality?: PersonalityName | null;
+  level?: BotLevel | null;
+}
+
+/**
+ * Personalidad para un bot nuevo: la elegida o, al azar, una de las menos
+ * usadas en la partida (no se repite hasta agotarlas). El azar sale de la
+ * semilla de la partida y del número de casas, así que es reproducible.
+ */
+export function pickPersonality(seed: string, houses: Pick<HouseRow, "is_bot" | "bot_personality">[], chosen?: PersonalityName | null): PersonalityName {
+  if (chosen) return chosen;
+  const used = (p: PersonalityName) => houses.filter((h) => h.is_bot === 1 && h.bot_personality === p).length;
+  const fewest = Math.min(...PERSONALITY_NAMES.map(used));
+  const options = PERSONALITY_NAMES.filter((p) => used(p) === fewest);
+  return shuffle(options, seededRandom(`${seed}:bot-personalidad:${houses.length}`))[0]!;
+}
+
 /** Añade bots hasta tener `count` (y nunca más de 8 casas). Devuelve las casas resultantes. */
-export async function addBots(env: BotEnv, gameId: number, count: number): Promise<HouseRow[]> {
+export async function addBots(env: BotEnv, gameId: number, count: number, choice: BotChoice = {}): Promise<HouseRow[]> {
   const db = env.DB;
+  const game = (await loadGame(db, gameId))!;
   let houses = await loadHouses(db, gameId);
   const wanted = Math.min(count, 8 - houses.length);
   for (let i = 0; i < wanted; i++) {
     const color = COLORS.find((c) => !houses.some((h) => h.color === c))!;
-    const who = BOT_HOUSES.find((b) => !houses.some((h) => h.name === b.name)) ?? {
-      name: `Bot ${i + 1}`,
-      motto: "",
-      personality: "estratega" as const,
-    };
+    const free = BOT_HOUSES.filter((b) => !houses.some((h) => h.name === b.name));
+    const who = free.length
+      ? shuffle(free, seededRandom(`${game.seed}:bot-nombre:${houses.length}`))[0]!
+      : { name: `Casa sin nombre ${houses.length + 1}`, motto: "" };
+    const personality = pickPersonality(game.seed, houses, choice.personality);
+    const level = choice.level && choice.level !== "normal" ? choice.level : null;
     const shield = pickShield(houses);
     // Cada bot es un usuario con un código que nadie conoce: no se puede entrar con él.
     const user = await db
@@ -164,7 +200,7 @@ export async function addBots(env: BotEnv, gameId: number, count: number): Promi
       .first<{ id: number }>();
     await db
       .prepare(
-        "INSERT INTO houses (game_id, user_id, name, color, shield_shape, shield_division, color2, symbol, metal, motto, is_bot, bot_personality) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)",
+        "INSERT INTO houses (game_id, user_id, name, color, shield_shape, shield_division, color2, symbol, metal, motto, is_bot, bot_personality, bot_level) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)",
       )
       .bind(
         gameId,
@@ -177,12 +213,24 @@ export async function addBots(env: BotEnv, gameId: number, count: number): Promi
         shield.symbol,
         shield.metal,
         who.motto || null,
-        who.personality,
+        personality,
+        level,
       )
       .run();
     houses = await loadHouses(db, gameId);
   }
   return houses;
+}
+
+/** Quita un bot de la sala de espera, con su usuario. */
+export async function removeBot(db: D1Database, gameId: number, houseId: HouseId): Promise<boolean> {
+  const house = (await loadHouses(db, gameId)).find((h) => h.id === houseId && h.is_bot === 1);
+  if (!house) return false;
+  await db.batch([
+    db.prepare("DELETE FROM houses WHERE id = ? AND game_id = ? AND is_bot = 1").bind(houseId, gameId),
+    db.prepare("DELETE FROM users WHERE id = ?").bind(house.user_id),
+  ]);
+  return true;
 }
 
 
@@ -531,6 +579,8 @@ export async function addBotOrders(env: NotifyEnv, game: GameRow, n: number): Pr
   const statements: D1PreparedStatement[] = [];
   for (const h of activeBots(ctx.houses, game)) {
     if (existing.results.some((e) => e.house_id === h.id)) continue;
+    // Los novatos se olvidan de dar órdenes alguna noche (BOT_LEVELS), como en el simulador.
+    if (forgetsOrders(game.seed, h.id, n, h.bot_level as BotLevel | null)) continue;
     const allies = alliesOf(ctx.alliances, h.id);
     const allyOrders = planned.filter((o) => allies.includes(o.house));
     const orders = withRhythm(rhythmOf(game), () => planOrders(situation({ ...botView(ctx, h), allyOrders }, personalityOf(h))));

@@ -11,6 +11,7 @@ import { ICONS, type IconName } from "./icons";
 import { FRAY_ANIMS, FRAY_SPRITES, RESOURCE_SPRITES, type FrayAnim, type FrayMood } from "./sprites";
 import { corona, corona_brilla, podio } from "./podio";
 
+import { espantapajaros } from "./espantapajaros";
 export { Pixels } from "./Pixels";
 export type { FrayAnim, FrayMood } from "./sprites";
 
@@ -123,6 +124,12 @@ export function FrayAbundio({ mood = "solemne", size = 72, anim }: { mood?: Fray
   }, [which]);
   const s = which && !still() ? (FRAY_ANIMS[which].frames[frame] ?? FRAY_SPRITES[mood]) : FRAY_SPRITES[mood];
   return <Pixels grid={s.grid} palette={s.palette} size={size} title={MOOD_LABEL[mood]} className="fray" />;
+}
+
+/** Marca de las casas bot (docs/bots.md): el espantapájaros, «casa gobernada por su mayordomo». */
+export const BOT_TITLE = "Casa gobernada por su mayordomo (un bot)";
+export function BotMark({ size = 16 }: { size?: number }) {
+  return <Pixels grid={espantapajaros.grid} palette={espantapajaros.palette} size={size} title={BOT_TITLE} className="bot-mark" />;
 }
 
 /** Icono de interfaz en pixel art, teñido con `color`. */

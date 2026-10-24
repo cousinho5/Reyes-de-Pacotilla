@@ -133,6 +133,8 @@ Para probar el juego sin reunir a 4 personas:
 
 Migración 0004: `houses.bot_personality`, la personalidad de cada bot (estratega, mercader, guerrero, arquitecta u oportunista; ver `packages/engine/src/ai`).
 
+Migración 0023: `houses.bot_level`, el nivel de cada bot (novato, normal o taimado; `BOT_LEVELS` en `rules.ts`, `docs/bots.md`). NULL es normal.
+
 Gran Subasta y cartas (versión 1) usan las tablas que ya estaban en la migración 0001: `auction_lots` (payload `{"hierro":30}` o `{"card":"espia"}`), `bids` (se cambia con `ON CONFLICT ... DO UPDATE`, que actualiza `placed_at`) y `cards` (`used_params` guarda `{params, effect, token}`; el token hace que usar una carta sea idempotente, como la aceptación de ofertas). La adjudicación va dentro del lote de la resolución del miércoles y cada sentencia comprueba en la propia base que el ganador aún tiene el Oro.
 
 Boletín (versión 1): `bulletins.content` guarda el boletín ya escrito en JSON (titular, secciones, notas al margen, patrocinio, líder y `lastEventId`, el último evento del registro incluido; el siguiente boletín empieza después). `phrase_usage` guarda las frases usadas para no repetirlas y `bribes` los sobornos (`template_key` es el número de la frase comprada). Las mejoras de nivel 3 o más quedan en `event_log` como `mejora` para la sección de obras.

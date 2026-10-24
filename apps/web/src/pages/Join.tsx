@@ -5,7 +5,7 @@
 import { useEffect, useState } from "react";
 import { api, type HouseForm, type Invitation, type Me } from "../api";
 import { navigate } from "../App";
-import { ShieldIcon } from "../art";
+import { BotMark, ShieldIcon } from "../art";
 import { CodeSheet } from "../components/CodeSheet";
 import { HouseEditor, initialForm } from "../components/HouseEditor";
 import { FrayCard, Hero, Steps, useSky } from "../components/HomeParts";
@@ -44,7 +44,10 @@ function Court({ inv }: { inv: Invitation }) {
           <li key={h.nombre}>
             <ShieldIcon color={h.color} escudo={h.escudo} size={34} title="" />
             <div>
-              <b>{h.nombre}</b>
+              <b>
+                {h.bot && <BotMark size={14} />}
+                {h.nombre}
+              </b>
               {h.lema && <i>«{h.lema}»</i>}
             </div>
           </li>

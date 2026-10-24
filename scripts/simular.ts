@@ -25,6 +25,8 @@ import {
   RESOURCES,
   STRATEGIES,
   seededRandom,
+  BOT_LEVEL_NAMES,
+  type BotLevel,
   simulateGame,
   type ObjectiveKey,
   type SimGameResult,
@@ -141,13 +143,17 @@ const pool = (args.get("estrategias")?.split(",") ?? pools[mode] ?? pools.mezcla
 const unknown = pool.filter((p) => !STRATEGIES.includes(p));
 if (unknown.length) throw new Error(`Estrategias desconocidas: ${unknown.join(", ")}. Hay: ${STRATEGIES.join(", ")}`);
 
+const levelCycle = (args.get("niveles")?.split(",") ?? []) as BotLevel[];
+if (levelCycle.some((l) => !BOT_LEVEL_NAMES.includes(l))) throw new Error(`Niveles desconocidos. Hay: ${BOT_LEVEL_NAMES.join(", ")}`);
 const rand = seededRandom(`simulacion-${games}-${weeks}-${mode}${args.get("semilla") ?? ""}`);
 const results: SimGameResult[] = [];
 const started = Date.now();
 for (let i = 0; i < games; i++) {
   const players = minPlayers + Math.floor(rand() * (maxPlayers - minPlayers + 1));
   const strategies = Array.from({ length: players }, () => pool[Math.floor(rand() * pool.length)]!);
-  results.push(simulateGame({ seed: `sim-${args.get("semilla") ?? ""}${i}`, strategies, weeks, events: args.get("eventos") !== "no", terrain: args.get("terreno") !== "no", units: args.get("tropas") !== "no", sieges: args.get("asedios") !== "no", captainGlory: args.get("capitan") !== "no" }));
+  // --niveles novato,normal,taimado: niveles de los bots, por turnos entre las casas (docs/bots.md).
+  const levels = levelCycle.length ? strategies.map((_, k) => levelCycle[(k + i) % levelCycle.length]!) : undefined;
+  results.push(simulateGame({ seed: `sim-${args.get("semilla") ?? ""}${i}`, strategies, weeks, events: args.get("eventos") !== "no", terrain: args.get("terreno") !== "no", units: args.get("tropas") !== "no", sieges: args.get("asedios") !== "no", captainGlory: args.get("capitan") !== "no", levels }));
 }
 const houses = results.flatMap((g) => g.houses.map((h) => ({ ...h, players: g.houses.length })));
 
@@ -379,6 +385,19 @@ if (ALLIANCE.enabled) {
       }),
   );
   console.log("\n«puesto medio»: 0 = primero, 1 = último.");
+
+if (levelCycle.length) {
+  table(
+    "Bots: niveles (docs/bots.md)",
+    ["nivel", "casas", "gana", "gana / esperado", "puesto medio"],
+    BOT_LEVEL_NAMES.map((l) => {
+      const g = houses.filter((h) => (h.level ?? "normal") === l);
+      const expected = g.reduce((a, h) => a + 1 / h.players, 0);
+      const wins = g.filter((h) => h.rank === 1).length;
+      return [l, g.length, g.length ? pct(wins / g.length) : "—", expected ? f1(wins / expected) : "—", g.length ? f1(avg(g.map(norm))) : "—"];
+    }),
+  );
+}
 }
 
 // Bloque 13: cuántas veces sale cada título de fin de partida y con qué puesto medio.

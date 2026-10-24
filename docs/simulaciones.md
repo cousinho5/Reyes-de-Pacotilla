@@ -54,6 +54,18 @@ npm run simular -- --semanas 4                    # duración de la partida
 npm run simular -- --json datos.json              # además, todos los datos
 ```
 
+## Niveles de los bots (24 de octubre de 2026, bots PR 2, aplicado)
+
+`npm run simular -- --partidas 400 --semanas 2 --niveles novato,normal,taimado,normal`: los niveles se reparten por turnos entre las casas (`docs/bots.md`, `BOT_LEVELS` en `rules.ts`). Normal deja al bot como estaba, así que las demás tablas no cambian si no se pasa `--niveles`.
+
+| nivel | casas | gana | gana / esperado |
+| --- | --- | --- | --- |
+| Novato | 595 | 14% | 0,8 |
+| Normal | 1182 | 18% | 1,0 |
+| Taimado | 583 | 19% | 1,1 |
+
+Con un primer ajuste más suave (novato: margen +0,3, cautela ×0,6, olvido 20%; taimado: margen −0,05, cautela ×1,2) salía 0,9 / 1,0 / 1,1. Se quedó el más marcado: novato con margen +0,45, cautela ×0,5, +0,3 de ganas de comerciar y un 30% de noches sin órdenes; taimado con margen −0,1, cautela ×1,3 y +0,3 de manía al líder. Entre bots la diferencia es pequeña porque todos se equivocan igual; contra personas, el novato que se olvida de defenderse se notará más.
+
 ## Títulos de fin de partida (23 de octubre de 2026, bloque 13, sin cambios de reglas)
 
 No cambia reglas: solo mira cuántas partidas reparten cada título (200 partidas mezcladas de 6 semanas, `npm run simular`, tabla «Bloque 13: títulos de fin de partida»). Cada casa recibe uno distinto, así que en partidas de 4 a 8 casas salen de 4 a 8 títulos de los 16.
